@@ -1,0 +1,15 @@
+# Contrato canónico — item (producto)
+entidad: item
+tipo: dimension
+dominio: datos_maestros
+grano: un producto
+empresa_scoped: true          # catálogos distintos por empresa; se homologan en Silver
+clave_natural: [empresa_id, item_codigo]
+miembro_default: { item_codigo: "DESCONOCIDO", nombre: "Producto desconocido" }
+campos:
+  - { nombre: empresa_id,   tipo: text, requerido: true,  descripcion: "Empresa del grupo" }
+  - { nombre: item_codigo,  tipo: text, requerido: true,  descripcion: "Código de producto en el origen" }
+  - { nombre: nombre,       tipo: text, requerido: true,  descripcion: "Descripción del producto" }
+  - { nombre: categoria,    tipo: text, requerido: false, descripcion: "Categoría/familia (p.ej. huevo AA)" }
+  - { nombre: unidad_medida, tipo: text, requerido: false, descripcion: "Unidad de venta (p.ej. cartón)" }
+  - { nombre: activo,       tipo: boolean, requerido: false, descripcion: "Producto activo" }

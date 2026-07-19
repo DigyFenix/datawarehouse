@@ -1,0 +1,19 @@
+# Contrato canónico — documento_cobro (Cuentas por Cobrar)
+entidad: documento_cobro
+tipo: hecho_linea
+dominio: tesoreria
+grano: una línea/documento de CxC con saldo
+empresa_scoped: true
+clave_natural: [empresa_id, documento_codigo, linea_numero]
+campos:
+  - { nombre: empresa_id,           tipo: text,          requerido: true,  descripcion: "Empresa del grupo (RLS)" }
+  - { nombre: documento_codigo,     tipo: text,          requerido: true,  descripcion: "Documento de CxC en el origen" }
+  - { nombre: linea_numero,         tipo: integer,       requerido: false, descripcion: "Línea si aplica; default 1" }
+  - { nombre: socio_negocio_codigo, tipo: text,          requerido: true,  descripcion: "Cliente deudor (FK a socio_negocio)" }
+  - { nombre: factura_referencia,   tipo: text,          requerido: false, descripcion: "Factura de origen (consistencia con ventas)" }
+  - { nombre: fecha_documento,      tipo: date,          requerido: true,  descripcion: "Fecha de emisión" }
+  - { nombre: fecha_vencimiento,    tipo: date,          requerido: true,  descripcion: "Base del aging" }
+  - { nombre: moneda,               tipo: text,          requerido: true,  descripcion: "Código de moneda" }
+  - { nombre: monto_original,       tipo: numeric(18,4), requerido: true,  descripcion: "Monto original del documento" }
+  - { nombre: saldo_pendiente,      tipo: numeric(18,4), requerido: true,  descripcion: "Saldo abierto por cobrar" }
+  - { nombre: estado_documento,     tipo: text,          requerido: true,  descripcion: "abierto | cerrado" }

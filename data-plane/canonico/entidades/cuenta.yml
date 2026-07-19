@@ -1,0 +1,13 @@
+# Contrato canónico — cuenta (cuenta contable, dimensión aparte, nivel línea, §8)
+entidad: cuenta
+tipo: dimension
+dominio: datos_maestros
+grano: una cuenta contable
+empresa_scoped: true
+clave_natural: [empresa_id, cuenta_codigo]
+miembro_default: { cuenta_codigo: "DESCONOCIDO", nombre: "Cuenta desconocida" }
+campos:
+  - { nombre: empresa_id,    tipo: text, requerido: true,  descripcion: "Empresa del grupo" }
+  - { nombre: cuenta_codigo, tipo: text, requerido: true,  descripcion: "Código de cuenta contable en el origen" }
+  - { nombre: nombre,        tipo: text, requerido: true,  descripcion: "Nombre de la cuenta" }
+  - { nombre: tipo_cuenta,   tipo: text, requerido: false, descripcion: "Clasificación contable" }

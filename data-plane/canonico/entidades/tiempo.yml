@@ -1,0 +1,16 @@
+# Contrato canónico — tiempo (calendario)
+entidad: tiempo
+tipo: dimension
+dominio: datos_maestros
+grano: un día
+empresa_scoped: false         # calendario compartido, no depende de empresa
+clave_natural: [fecha]
+miembro_default: { fecha: "1900-01-01", descripcion: "Fecha desconocida" }
+campos:
+  - { nombre: fecha,        tipo: date,    requerido: true,  descripcion: "Fecha (clave natural)" }
+  - { nombre: anio,         tipo: integer, requerido: true,  descripcion: "Año" }
+  - { nombre: mes,          tipo: integer, requerido: true,  descripcion: "Mes (1-12)" }
+  - { nombre: dia,          tipo: integer, requerido: true,  descripcion: "Día del mes" }
+  - { nombre: trimestre,    tipo: integer, requerido: true,  descripcion: "Trimestre (1-4)" }
+  - { nombre: nombre_mes,   tipo: text,    requerido: false, descripcion: "Nombre del mes" }
+  - { nombre: anio_mes,     tipo: text,    requerido: false, descripcion: "AAAA-MM para agrupaciones" }

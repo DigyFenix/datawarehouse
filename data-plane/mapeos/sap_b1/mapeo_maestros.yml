@@ -1,0 +1,46 @@
+# Mapeo SAP B1 -> canónico: maestros (clientes, ítems, vendedores, centro costo, cuenta)
+# Spec de las vistas read-only HANA.
+
+socio_negocio:              # OCRD (solo clientes)
+  vista_origen: OCRD
+  filtro: "CardType = 'C'"   # C = cliente
+  clave_sap: CardCode
+  campos:
+    socio_negocio_codigo: { sap: CardCode,  desc: "Código de cliente" }
+    nombre:               { sap: CardName,  desc: "Razón social" }
+    nit:                  { sap: LicTradNum, desc: "NIT / identificación tributaria" }
+    region:               { sap: U_Region,  desc: "Región/zona (o campo estándar equivalente)" }
+    activo:               { sap: validFor,  desc: "Y=activo" }
+
+item:                       # OITM
+  vista_origen: OITM
+  clave_sap: ItemCode
+  campos:
+    item_codigo:   { sap: ItemCode,     desc: "Código de producto" }
+    nombre:        { sap: ItemName,     desc: "Descripción" }
+    categoria:     { sap: ItmsGrpCod,   desc: "Grupo de artículos (traducir a nombre vía OITB)" }
+    unidad_medida: { sap: BuyUnitMsr,   desc: "Unidad (o SalUnitMsr)" }
+    activo:        { sap: validFor,     desc: "Y=activo" }
+
+vendedor:                   # OSLP
+  vista_origen: OSLP
+  clave_sap: SlpCode
+  campos:
+    vendedor_codigo: { sap: SlpCode,  desc: "Código de vendedor" }
+    nombre:          { sap: SlpName,  desc: "Nombre" }
+    activo:          { sap: Active,   desc: "Y=activo" }
+
+centro_costo:               # OOCR (dimensión de centros de costo)
+  vista_origen: OOCR
+  clave_sap: OcrCode
+  campos:
+    centro_costo_codigo: { sap: OcrCode,  desc: "Código de centro de costo" }
+    nombre:              { sap: OcrName,  desc: "Nombre" }
+
+cuenta:                     # OACT (plan de cuentas)
+  vista_origen: OACT
+  clave_sap: AcctCode
+  campos:
+    cuenta_codigo: { sap: AcctCode, desc: "Código de cuenta" }
+    nombre:        { sap: AcctName, desc: "Nombre de la cuenta" }
+    tipo_cuenta:   { sap: GroupMask, desc: "Clasificación contable" }

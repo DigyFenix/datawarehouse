@@ -1,0 +1,186 @@
+import { DatePipe } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+
+import { ApiService } from '../../core/api.service';
+import { DrawerComponent } from '../../core/drawer.component';
+import { EntradaAuditoria } from '../../core/modelos';
+import { ToastService } from '../../core/toast.service';
+
+interface CambioCampo {
+  campo: string;
+  antes: string;
+  despues: string;
+}
+
+@Component({
+  selector: 'app-auditoria',
+  standalone: true,
+  imports: [DatePipe, FormsModule, DrawerComponent],
+  template: `
+    <div class="page-header">
+      <div class="titulo-grupo">
+        <span class="eyebrow">Trazabilidad</span>
+        <h2>Auditoría</h2>
+      </div>
+    </div>
+
+    <div class="filtros">
+      <div class="campo">
+        <label>Acción</label>
+        <select [(ngModel)]="fAccion" (ngModelChange)="sincronizar()">
+          <option value="">Todas</option>
+          @for (a of acciones(); track a) { <option [value]="a">{{ a }}</option> }
+        </select>
+      </div>
+      <div class="campo">
+        <label>Entidad</label>
+        <select [(ngModel)]="fEntidad" (ngModelChange)="sincronizar()">
+          <option value="">Todas</option>
+          @for (e of entidades(); track e) { <option [value]="e">{{ e }}</option> }
+        </select>
+      </div>
+      <div class="campo" style="flex:1;">
+        <label>Usuario o ID</label>
+        <input [(ngModel)]="fTexto" (ngModelChange)="sincronizar()" placeholder="Buscar por usuario o ID de registro…" />
+      </div>
+      <button class="secundario" (click)="limpiar()" [disabled]="!hayFiltro()">Limpiar</button>
+    </div>
+
+    <div class="tarjeta" style="padding:0;">
+      <div class="tabla-wrap">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>ID</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (e of filtradas(); track e.id) {
+              <tr>
+                <td style="white-space:nowrap;">{{ e.ocurridoEn | date: 'dd MMM, HH:mm' }}</td>
+                <td>{{ e.usuarioEmail ?? 'sistema' }}</td>
+                <td><span class="badge badge--neutral">{{ e.accion }}</span></td>
+                <td><code>{{ e.entidad }}</code></td>
+                <td><code>{{ e.entidadId ?? '—' }}</code></td>
+                <td style="text-align:right;"><button class="secundario pequeno" (click)="ver(e)">Ver cambios</button></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6"><div class="vacio"><strong>Sin registros</strong>Ajusta los filtros o realiza una acción en el portal.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    @if (detalle(); as e) {
+      <app-drawer [titulo]="e.accion + ' · ' + e.entidad" [eyebrow]="'Registro ' + (e.entidadId ?? '—')" (cerrar)="detalle.set(null)">
+        <dl class="meta">
+          <div><dt>Fecha</dt><dd>{{ e.ocurridoEn | date: 'dd MMM y, HH:mm:ss' }}</dd></div>
+          <div><dt>Usuario</dt><dd>{{ e.usuarioEmail ?? 'sistema' }}</dd></div>
+          <div><dt>Origen</dt><dd>{{ e.ip ?? '—' }}</dd></div>
+        </dl>
+
+        <h4 style="margin:18px 0 10px;">Qué cambió</h4>
+        @if (cambios(e).length) {
+          <table class="diff">
+            <thead><tr><th>Campo</th><th>Antes</th><th>Después</th></tr></thead>
+            <tbody>
+              @for (c of cambios(e); track c.campo) {
+                <tr>
+                  <td><code>{{ c.campo }}</code></td>
+                  <td class="antes">{{ c.antes }}</td>
+                  <td class="despues">{{ c.despues }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p style="color:var(--muted); font-size:13.5px;">Este evento no registró cambios de campos (p. ej. inicio de sesión).</p>
+        }
+      </app-drawer>
+    }
+  `,
+  styles: [`
+    .filtros { display: flex; gap: 14px; align-items: flex-end; margin-bottom: 18px; flex-wrap: wrap; }
+    .filtros .campo { margin: 0; min-width: 150px; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; margin: 0; }
+    .meta dt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); }
+    .meta dd { margin: 2px 0 0; font-size: 13.5px; }
+    table.diff td { vertical-align: top; font-size: 13px; }
+    table.diff .antes { color: var(--muted); text-decoration: line-through; }
+    table.diff .despues { color: var(--ok); }
+  `],
+})
+export class AuditoriaComponent implements OnInit {
+  private readonly api = inject(ApiService);
+  private readonly toast = inject(ToastService);
+
+  readonly entradas = signal<EntradaAuditoria[]>([]);
+  readonly detalle = signal<EntradaAuditoria | null>(null);
+
+  fAccion = '';
+  fEntidad = '';
+  fTexto = '';
+  // Espejo en signals para que los computed reaccionen a los ngModel.
+  private readonly _accion = signal('');
+  private readonly _entidad = signal('');
+  private readonly _texto = signal('');
+
+  readonly acciones = computed(() => [...new Set(this.entradas().map((e) => e.accion))].sort());
+  readonly entidades = computed(() => [...new Set(this.entradas().map((e) => e.entidad))].sort());
+
+  readonly filtradas = computed(() => {
+    const acc = this._accion();
+    const ent = this._entidad();
+    const txt = this._texto().toLowerCase().trim();
+    return this.entradas().filter((e) => {
+      if (acc && e.accion !== acc) return false;
+      if (ent && e.entidad !== ent) return false;
+      if (txt) {
+        const enUsuario = (e.usuarioEmail ?? '').toLowerCase().includes(txt);
+        const enId = (e.entidadId ?? '').toLowerCase().includes(txt);
+        if (!enUsuario && !enId) return false;
+      }
+      return true;
+    });
+  });
+
+  hayFiltro(): boolean {
+    return !!(this.fAccion || this.fEntidad || this.fTexto);
+  }
+
+  ngOnInit(): void {
+    this.api.get<EntradaAuditoria[]>('/auditoria').subscribe({
+      next: (d) => this.entradas.set(d),
+      error: (e: Error) => this.toast.error('No se pudo cargar la auditoría', e.message),
+    });
+  }
+
+  // Sincroniza ngModel -> signals en cada cambio de filtro.
+  sincronizar(): void {
+    this._accion.set(this.fAccion);
+    this._entidad.set(this.fEntidad);
+    this._texto.set(this.fTexto);
+  }
+
+  limpiar(): void {
+    this.fAccion = this.fEntidad = this.fTexto = '';
+    this.sincronizar();
+  }
+
+  ver(e: EntradaAuditoria): void {
+    this.detalle.set(e);
+  }
+
+  /** Compara antes/después y devuelve los campos que cambiaron (ignora columnas técnicas). */
+  cambios(e: EntradaAuditoria): CambioCampo[] {
+    const ignorar = new Set(['creadoEn', 'actualizadoEn', 'creado_en', 'actualizado_en', 'id']);
+    const antes = e.antes ?? {};
+    const despues = e.despues ?? {};
+    const campos = [...new Set([...Object.keys(antes), ...Object.keys(despues)])].filter((c) => !ignorar.has(c));
+    const fmt = (v: unknown): string =>
+      v === undefined || v === null ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return campos
+      .map((campo) => ({ campo, antes: fmt(antes[campo]), despues: fmt(despues[campo]) }))
+      .filter((c) => c.antes !== c.despues);
+  }
+}

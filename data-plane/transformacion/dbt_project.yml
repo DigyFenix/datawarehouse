@@ -1,0 +1,40 @@
+name: cresta_dw
+version: "0.1.0"
+config-version: 2
+
+# Perfil de conexión (ver profiles.yml.example). El profiles.yml real va fuera del repo
+# o en ~/.dbt/ y NUNCA se versiona con credenciales.
+profile: cresta_dw
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# Medallion: Bronze -> Silver (canónico + calidad) -> Gold (estrella + métricas).
+# Silver es la costura agnóstica (CLAUDE.md §6): no se salta.
+models:
+  cresta_dw:
+    silver:
+      +schema: silver
+      +materialized: table
+    gold:
+      +schema: gold
+      +materialized: table
+
+# Seeds sintéticos que imitan objetos SAP B1 crudos (representan Bronze mientras no hay
+# extracción real desde HANA). Se cargan en el esquema bronze.
+seeds:
+  cresta_dw:
+    +schema: bronze
+    bronze_oinv:
+      +column_types: { docdate: date, docduedate: date, doctotal: "numeric(18,4)", paidtodate: "numeric(18,4)" }
+    bronze_orin:
+      +column_types: { docdate: date, docduedate: date, doctotal: "numeric(18,4)", paidtodate: "numeric(18,4)" }
+    bronze_inv1:
+      +column_types: { quantity: "numeric(18,4)", price: "numeric(18,4)", linetotal: "numeric(18,4)" }
+    bronze_rin1:
+      +column_types: { quantity: "numeric(18,4)", price: "numeric(18,4)", linetotal: "numeric(18,4)" }

@@ -1,0 +1,6 @@
+empresa_id,docentry,linenum,itemcode,quantity,price,linetotal,whscode,ocrcode,acctcode
+proavisa,1,0,I001,10,100.00,1000.00,S01,CC01,4100
+proavisa,2,0,I002,5,100.00,500.00,S01,CC01,4100
+proavisa,99,0,I001,1,9999.00,9999.00,S01,CC01,4100
+loreto,10,0,I010,20,100.00,2000.00,S02,CC02,4100
+loreto,11,0,I011,8,100.00,800.00,S02,CC02,4100

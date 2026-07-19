@@ -1,0 +1,47 @@
+version: 2
+
+# Tests de calidad (CLAUDE.md §10), en Silver antes de Gold. Usan solo tests nativos de dbt
+# (not_null, unique, accepted_values, relationships) — sin dependencias externas.
+# La unicidad por combinación de columnas se cubre con un test singular en tests/.
+
+models:
+  - name: silver_socio_negocio
+    columns:
+      - name: socio_negocio_codigo
+        data_tests: [not_null]
+      - name: empresa_id
+        data_tests: [not_null]
+
+  - name: silver_item
+    columns:
+      - name: item_codigo
+        data_tests: [not_null]
+
+  - name: silver_documento_venta
+    columns:
+      - name: documento_codigo
+        data_tests: [not_null]
+      - name: fecha_documento
+        data_tests: [not_null]
+      - name: socio_negocio_codigo
+        data_tests:
+          - not_null
+          # consistencia / integridad referencial: el cliente existe en el maestro
+          - relationships:
+              to: ref('silver_socio_negocio')
+              field: socio_negocio_codigo
+      - name: tipo_documento
+        data_tests:
+          - accepted_values:
+              values: ['factura', 'nota_credito']
+
+  - name: silver_linea_documento_venta
+    columns:
+      - name: monto_linea
+        data_tests: [not_null]
+      - name: item_codigo
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('silver_item')
+              field: item_codigo

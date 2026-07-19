@@ -1,0 +1,2 @@
+empresa_id,docentry,docnum,cardcode,slpcode,docdate,docduedate,doccur,doctotal,paidtodate,docstatus,canceled
+proavisa,500,5001,C001,1,2026-05-20,2026-05-20,GTQ,200.00,200.00,C,N

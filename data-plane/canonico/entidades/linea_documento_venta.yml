@@ -1,0 +1,22 @@
+# Contrato canónico — linea_documento_venta (GRANO DEL HECHO, §8)
+entidad: linea_documento_venta
+tipo: hecho_linea
+dominio: ventas
+grano: una línea de un documento de venta
+empresa_scoped: true
+clave_natural: [empresa_id, tipo_documento, documento_codigo, linea_numero]
+campos:
+  - { nombre: empresa_id,          tipo: text,          requerido: true,  descripcion: "Empresa del grupo (RLS)" }
+  - { nombre: documento_codigo,    tipo: text,          requerido: true,  descripcion: "Documento padre (FK a documento_venta)" }
+  - { nombre: tipo_documento,      tipo: text,          requerido: true,  descripcion: "factura | nota_credito" }
+  - { nombre: linea_numero,        tipo: integer,       requerido: true,  descripcion: "Número de línea dentro del documento" }
+  - { nombre: fecha_documento,     tipo: date,          requerido: true,  descripcion: "Denormalizada de la cabecera para el hecho" }
+  - { nombre: item_codigo,         tipo: text,          requerido: true,  descripcion: "Producto (FK natural a item)" }
+  - { nombre: socio_negocio_codigo, tipo: text,         requerido: true,  descripcion: "Cliente (denormalizado)" }
+  - { nombre: vendedor_codigo,     tipo: text,          requerido: false, descripcion: "Vendedor (denormalizado)" }
+  - { nombre: sucursal_codigo,     tipo: text,          requerido: false, descripcion: "Sucursal a nivel línea (dim_organizacion)" }
+  - { nombre: centro_costo_codigo, tipo: text,          requerido: false, descripcion: "Centro de costo a nivel línea" }
+  - { nombre: cuenta_codigo,       tipo: text,          requerido: false, descripcion: "Cuenta contable a nivel línea" }
+  - { nombre: cantidad,            tipo: numeric(18,4), requerido: true,  descripcion: "Cantidad facturada" }
+  - { nombre: precio_unitario,     tipo: numeric(18,4), requerido: true,  descripcion: "Precio unitario" }
+  - { nombre: monto_linea,         tipo: numeric(18,4), requerido: true,  descripcion: "Monto de la línea; signo según tipo_documento" }

@@ -1,0 +1,33 @@
+# Mapeo SAP B1 -> canónico: ventas (facturas OINV/INV1 y notas de crédito ORIN/RIN1)
+# Spec de las vistas read-only HANA. Una vista por objeto con AL MENOS estas columnas.
+
+documento_venta:            # cabecera (OINV facturas, ORIN notas de crédito)
+  vistas_origen: [OINV, ORIN]
+  clave_sap: DocEntry
+  campos:
+    documento_codigo:      { sap: DocEntry,   desc: "Id interno del documento" }
+    documento_numero:      { sap: DocNum,     desc: "Número visible del documento" }
+    tipo_documento:        { sap: "(constante)", desc: "factura para OINV, nota_credito para ORIN" }
+    fecha_documento:       { sap: DocDate,    desc: "Fecha contable" }
+    fecha_vencimiento:     { sap: DocDueDate, desc: "Vencimiento (para CxC/aging)" }
+    socio_negocio_codigo:  { sap: CardCode,   desc: "Cliente (FK OCRD)" }
+    vendedor_codigo:       { sap: SlpCode,    desc: "Vendedor (FK OSLP)" }
+    moneda:                { sap: DocCur,     desc: "Moneda del documento" }
+    total_documento:       { sap: DocTotal,   desc: "Total; signo - para ORIN" }
+    saldo_pagado:          { sap: PaidToDate, desc: "Pagado a la fecha (para saldo CxC)" }
+    estado_documento:      { sap: DocStatus,  desc: "O=abierto, C=cerrado" }
+    cancelado:             { sap: CANCELED,   desc: "Y/N; excluir Y de ventas activas" }
+
+linea_documento_venta:      # líneas (INV1 facturas, RIN1 notas de crédito) — GRANO DEL HECHO
+  vistas_origen: [INV1, RIN1]
+  clave_sap: [DocEntry, LineNum]
+  campos:
+    documento_codigo:      { sap: DocEntry,  desc: "Documento padre" }
+    linea_numero:          { sap: LineNum,   desc: "Número de línea" }
+    item_codigo:           { sap: ItemCode,  desc: "Producto (FK OITM)" }
+    cantidad:              { sap: Quantity,  desc: "Cantidad" }
+    precio_unitario:       { sap: Price,     desc: "Precio unitario" }
+    monto_linea:           { sap: LineTotal, desc: "Monto de línea; signo - para RIN1" }
+    sucursal_codigo:       { sap: WhsCode,   desc: "Almacén/sucursal (dim_organizacion)" }
+    centro_costo_codigo:   { sap: OcrCode,   desc: "Centro de costo" }
+    cuenta_codigo:         { sap: AcctCode,  desc: "Cuenta contable" }

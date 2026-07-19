@@ -1,0 +1,40 @@
+# Secretos y entorno — NUNCA versionar
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.*
+credentials.*
+
+# Node
+node_modules/
+dist/
+build/
+out/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# dbt
+target/
+dbt_packages/
+logs/
+
+# Docker (datos persistentes locales)
+infra/local/data/
+pgdata/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

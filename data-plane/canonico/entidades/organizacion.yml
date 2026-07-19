@@ -1,0 +1,14 @@
+# Contrato canónico — organizacion (empresa → sucursal, §8)
+entidad: organizacion
+tipo: dimension
+dominio: datos_maestros
+grano: una sucursal dentro de una empresa (jerarquía empresa → sucursal)
+empresa_scoped: true
+clave_natural: [empresa_id, sucursal_codigo]
+miembro_default: { sucursal_codigo: "DESCONOCIDO", nombre_sucursal: "Sucursal desconocida" }
+campos:
+  - { nombre: empresa_id,      tipo: text, requerido: true,  descripcion: "Empresa del grupo (nivel superior de la jerarquía)" }
+  - { nombre: empresa_nombre,  tipo: text, requerido: true,  descripcion: "Razón social de la empresa" }
+  - { nombre: sucursal_codigo, tipo: text, requerido: true,  descripcion: "Código de sucursal (nivel línea)" }
+  - { nombre: nombre_sucursal, tipo: text, requerido: true,  descripcion: "Nombre de la sucursal" }
+notas: "Sucursal se resuelve a nivel línea del documento; empresa a nivel tenencia (RLS)."

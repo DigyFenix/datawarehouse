@@ -1,0 +1,15 @@
+# Contrato canónico — socio_negocio (cliente)
+entidad: socio_negocio
+tipo: dimension
+dominio: datos_maestros
+grano: un socio de negocio (cliente)
+empresa_scoped: true          # el maestro puede diferir por empresa; se homologa en Silver
+clave_natural: [empresa_id, socio_negocio_codigo]
+miembro_default: { socio_negocio_codigo: "DESCONOCIDO", nombre: "Cliente desconocido" }
+campos:
+  - { nombre: empresa_id,           tipo: text, requerido: true,  descripcion: "Empresa del grupo" }
+  - { nombre: socio_negocio_codigo, tipo: text, requerido: true,  descripcion: "Código de cliente en el origen" }
+  - { nombre: nombre,               tipo: text, requerido: true,  descripcion: "Razón social / nombre" }
+  - { nombre: nit,                  tipo: text, requerido: false, descripcion: "Identificación tributaria" }
+  - { nombre: region,               tipo: text, requerido: false, descripcion: "Región/zona (posible eje de RLS de cartera)" }
+  - { nombre: activo,               tipo: boolean, requerido: false, descripcion: "Cliente activo" }

@@ -1,0 +1,5 @@
+empresa_id,cardcode,cardname,lictradnum,region,validfor
+proavisa,C001,Cliente Uno,111,Centro,Y
+proavisa,C002,Cliente Dos,222,Sur,Y
+loreto,C010,Cliente Diez,333,Norte,Y
+loreto,C011,Cliente Once,444,Norte,Y

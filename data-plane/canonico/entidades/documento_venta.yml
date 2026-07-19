@@ -1,0 +1,17 @@
+# Contrato canónico — documento_venta (cabecera de factura / nota de crédito)
+entidad: documento_venta
+tipo: hecho_cabecera
+dominio: ventas
+grano: un documento de venta (cabecera)
+empresa_scoped: true          # toda fila lleva empresa_id (tenencia + RLS)
+clave_natural: [empresa_id, tipo_documento, documento_codigo]
+campos:
+  - { nombre: empresa_id,        tipo: text,           requerido: true,  descripcion: "Empresa del grupo (clave de tenencia/RLS)" }
+  - { nombre: documento_codigo,  tipo: text,           requerido: true,  descripcion: "Identificador del documento en el origen" }
+  - { nombre: tipo_documento,    tipo: text,           requerido: true,  descripcion: "factura | nota_credito" }
+  - { nombre: fecha_documento,   tipo: date,           requerido: true,  descripcion: "Fecha contable del documento" }
+  - { nombre: socio_negocio_codigo, tipo: text,        requerido: true,  descripcion: "Cliente (FK natural a socio_negocio)" }
+  - { nombre: vendedor_codigo,   tipo: text,           requerido: false, descripcion: "Vendedor (FK natural a vendedor)" }
+  - { nombre: moneda,            tipo: text,           requerido: true,  descripcion: "Código de moneda" }
+  - { nombre: total_documento,   tipo: numeric(18,4),  requerido: true,  descripcion: "Total; signo según tipo (factura +, NC −)" }
+  - { nombre: estado_documento,  tipo: text,           requerido: false, descripcion: "abierto | cerrado | cancelado" }

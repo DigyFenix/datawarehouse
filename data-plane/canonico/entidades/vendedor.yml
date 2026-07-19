@@ -1,0 +1,13 @@
+# Contrato canónico — vendedor
+entidad: vendedor
+tipo: dimension
+dominio: datos_maestros
+grano: un vendedor
+empresa_scoped: true
+clave_natural: [empresa_id, vendedor_codigo]
+miembro_default: { vendedor_codigo: "DESCONOCIDO", nombre: "Vendedor desconocido" }
+campos:
+  - { nombre: empresa_id,      tipo: text, requerido: true,  descripcion: "Empresa del grupo" }
+  - { nombre: vendedor_codigo, tipo: text, requerido: true,  descripcion: "Código de vendedor en el origen" }
+  - { nombre: nombre,          tipo: text, requerido: true,  descripcion: "Nombre del vendedor" }
+  - { nombre: activo,          tipo: boolean, requerido: false, descripcion: "Vendedor activo" }
