@@ -25,17 +25,20 @@ end-to-end en dbt (24 modelos, 12 tests calidad, métricas correctas):
 - Falta (requiere HANA): extractor Python read-only → Bronze; escalar a otras 4 sociedades.
 - dbt 1.12 + dbt-postgres instalados; profiles.yml.example usa env_var; correr con `set -a; source .env; set +a` y `--profiles-dir`.
 
-**Frente B — Portal Etapa A restante COMPLETO y verificado end-to-end (2026-07-19):**
-glosario (CRUD), catálogo de métricas (CRUD + versionado) y **certificación multi-aprobador**
-(§9: se certifica solo cuando todos los aprobadores aprueban; un rechazo la devuelve a borrador).
-Backend NestJS + Angular (vistas Glosario y Métricas con gestión de versiones/certificación).
-Verificado: 2 aprobadores, 1 voto deja en_revision, 2º certifica y promueve la fórmula.
+**Frente B — Portal Etapa A COMPLETO y verificado end-to-end (2026-07-19):**
+glosario, catálogo de métricas (CRUD + versionado) y **certificación multi-aprobador** (§9).
+Backend NestJS + Angular. UI rediseñada con sistema de diseño propio (verde + ámbar, mono para
+datos), patrón lista + **drawer** para crear/editar (con Editar en todas las entidades), toasts.
+**Auditoría mejorada:** muestra el diff antes→después y filtros por acción/entidad/usuario.
+
+**Repositorio publicado en GitHub:** https://github.com/DigyFenix/datawarehouse.git (branch
+`master`). Primer commit 6f3c90e con toda la fundación + portal + pipeline dbt (2026-07-19).
 
 **Pendiente Portal (cuando se retome):** editor de mapeos ERP→canónico y RLS.
 
 **Estado global de frentes:**
-- (a) Datos: pipeline dbt probado con sintéticos; **falta solo el extractor HANA** (bloqueado por vistas + credenciales read-only de Edwin).
-- (b) Portal: Fundación + Etapa A (orgs, usuarios/roles, auditoría, glosario, métricas, certificación) COMPLETOS. Falta mapeos + RLS.
+- (a) Datos: pipeline dbt probado con sintéticos; **falta el extractor/transporte real desde HANA** (bloqueado por vistas + credenciales read-only de Edwin).
+- (b) Portal: Fundación + Etapa A COMPLETOS y en GitHub. Falta mapeos + RLS.
 
 ## Marco del proyecto
 
@@ -68,7 +71,15 @@ El `CLAUDE.md` del repo ya representa el marco real (producto), reescrito 2026-0
 - **Extracción:** Python (read-only → Bronze).
 - **Sociedades (6):** proavisa, loreto, organicos, sepesa, seragro, inavisa. **Piloto: proavisa + loreto.**
 
-## Próximo paso — Fase 1 (Datos), par piloto proavisa + loreto
+## FOCO PRÓXIMA SESIÓN (sesión 2) — Transporte y extracción de datos
+
+Edwin lo definió como lo principal a construir en la siguiente sesión: el **extractor/transporte
+de datos read-only desde HANA → Bronze** (Fase 1). Prerrequisitos de su lado: vistas HANA según
+`organizaciones/grupocresta/mapeo/sap_b1/vistas-requeridas.md` + credenciales read-only en `.env`.
+El pipeline dbt (Silver→Gold→métricas) ya está probado, así que al llegar los datos solo se
+implementa el extractor Python en `data-plane/extraccion/`.
+
+## Detalle Fase 1 (Datos), par piloto proavisa + loreto
 
 1. Confirmar vía de extracción HANA: **vistas dedicadas read-only** (recomendado) vs Service Layer.
 2. Extractores Python read-only SAP B1 → Bronze (facturas/NC, CxC, maestros) para el piloto.
