@@ -1,0 +1,54 @@
+# Contrato canónico — partida_cartera (CUENTAS POR COBRAR Y POR PAGAR)
+#
+# Reemplaza `documento_cobro` del v1, que calculaba el saldo DESDE LA FACTURA. Eso es
+# incorrecto en ambos ERPs y quedó demostrado con datos reales:
+#     Iron Network (Odoo): mayor 553,009.54 vs facturas 468,136.86 → 18.1% de diferencia
+#     Proavisa (SAP B1)  : mayor 92,013,402.88 vs documentos 92,076,348.59 → 0.07%
+# En Odoo la causa es directa: 516 asientos manuales mueven cartera sin pasar por factura.
+# En Guatemala además las RETENCIONES DE IVA reducen el saldo por cobrar y solo se ven
+# por el mayor.
+#
+# El grano es LA PARTIDA DEL MAYOR, no el documento.
+entidad: partida_cartera
+tipo: hecho_linea
+dominio: tesoreria
+grano: una partida del mayor en cuenta por cobrar o por pagar
+empresa_scoped: true
+clave_natural: [empresa_id, partida_id]
+campos:
+  # --- identificación -------------------------------------------------------
+  - { nombre: empresa_id,            tipo: text, requerido: true,  descripcion: "Empresa (clave de tenencia/RLS)" }
+  - { nombre: partida_id,            tipo: text, requerido: true,  descripcion: "Identificador de la partida del mayor" }
+  - { nombre: tipo_cartera,          tipo: text, requerido: true,  descripcion: "cobrar | pagar" }
+  # --- relaciones -----------------------------------------------------------
+  - { nombre: socio_codigo,          tipo: text, requerido: true,  descripcion: "Cliente (cobrar) o proveedor (pagar)" }
+  - { nombre: cuenta_codigo,         tipo: text, requerido: true,  descripcion: "Cuenta contable de la partida" }
+  - { nombre: vendedor_codigo,       tipo: text, requerido: false, descripcion: "Vendedor asociado (cartera comercial)" }
+  # --- trazabilidad al documento -------------------------------------------
+  - { nombre: documento_origen,       tipo: text, requerido: false, descripcion: "Documento que originó la partida" }
+  - { nombre: tipo_documento_origen,  tipo: text, requerido: false, descripcion: "Tipo nativo del documento origen" }
+  - { nombre: origen_partida,         tipo: text, requerido: false, descripcion: "documento | asiento — de dónde nace la partida" }
+  # --- fechas ---------------------------------------------------------------
+  - { nombre: fecha_documento,    tipo: date, requerido: true,  descripcion: "Fecha de la partida" }
+  - { nombre: fecha_vencimiento,  tipo: date, requerido: true,  descripcion: "BASE DEL AGING" }
+  # --- montos ---------------------------------------------------------------
+  - { nombre: moneda_documento,        tipo: text,          requerido: true,  descripcion: "Moneda de la partida" }
+  - { nombre: moneda_local,            tipo: text,          requerido: true,  descripcion: "Moneda funcional de la empresa" }
+  - { nombre: monto_original_doc,      tipo: numeric(18,4), requerido: false, descripcion: "Monto original, moneda del documento" }
+  - { nombre: monto_original_local,    tipo: numeric(18,4), requerido: true,  descripcion: "Monto original, moneda local" }
+  - { nombre: saldo_pendiente_doc,     tipo: numeric(18,4), requerido: false, descripcion: "Saldo abierto, moneda del documento" }
+  - { nombre: saldo_pendiente_local,   tipo: numeric(18,4), requerido: true,  descripcion: "Saldo abierto, moneda local — LA MEDIDA DE LA CARTERA" }
+  # --- estado ---------------------------------------------------------------
+  - { nombre: esta_abierta,   tipo: boolean, requerido: true,  descripcion: "La partida tiene saldo pendiente" }
+  - { nombre: conciliada,     tipo: boolean, requerido: false, descripcion: "La partida quedó totalmente conciliada" }
+  - { nombre: dias_vencido,   tipo: integer, requerido: false, descripcion: "Días entre la fecha de corte y el vencimiento" }
+  - { nombre: fecha_corte,    tipo: date,    requerido: true,  descripcion: "Fecha a la que se evaluó el saldo" }
+reglas:
+  - "FILTRO OBLIGATORIO: solo partidas cuya cuenta tenga tipo_cuenta IN (por_cobrar, por_pagar),
+     y solo asientos contabilizados."
+  - "NO filtrar por el tipo de línea del origen: en Iron Network hay 370 líneas de tipo
+     'producto' que apuntan a cuentas por cobrar; excluirlas perdería Q22,118."
+  - "NO filtrar solo por 'tiene saldo': el mayor incluye inventario y producción. En Proavisa
+     1,043,823 de 1,732,253 partidas tienen saldo y la mayoría NO es cartera."
+  - "El signo se conserva tal como viene del mayor: cobrar positivo (deudor),
+     pagar negativo (acreedor). Las métricas aplican el valor absoluto cuando corresponde."

@@ -16,7 +16,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export const gobierno = pgSchema('gobierno');
-export const metadata = pgSchema('metadata');
+export const metadatos = pgSchema('metadatos');
 
 export const organizaciones = gobierno.table('organizaciones', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
@@ -26,6 +26,7 @@ export const organizaciones = gobierno.table('organizaciones', {
   erpTipo: text('erp_tipo').notNull().default('sap_b1'),
   estado: text('estado').notNull().default('en_arranque'),
   secretoConexionRef: text('secreto_conexion_ref'),
+  colorMarca: text('color_marca'),
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -86,21 +87,21 @@ export const auditoria = gobierno.table('auditoria', {
 });
 
 // ---------------------------------------------------------------------------
-// Catálogo de metadatos (esquema `metadata`). El estado se maneja como text;
+// Catálogo de metadatos (esquema `metadatos`). El estado se maneja como text;
 // el tipo enum estado_metrica lo valida la BD (DDL 10_tipos.sql).
 // ---------------------------------------------------------------------------
 
-export const catalogoHechos = metadata.table('catalogo_hechos', {
+export const catalogoHechos = metadatos.table('catalogo_hechos', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   clave: text('clave').notNull().unique(),
   nombreNegocio: text('nombre_negocio').notNull(),
   grano: text('grano').notNull(),
   dominio: text('dominio').notNull(),
   descripcion: text('descripcion'),
-  tablaGold: text('tabla_gold'),
+  tablaOro: text('tabla_oro'),
 });
 
-export const glosarioNegocio = metadata.table('glosario_negocio', {
+export const glosarioNegocio = metadatos.table('glosario_negocio', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   termino: text('termino').notNull().unique(),
   definicion: text('definicion').notNull(),
@@ -110,7 +111,7 @@ export const glosarioNegocio = metadata.table('glosario_negocio', {
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const catalogoMetricas = metadata.table('catalogo_metricas', {
+export const catalogoMetricas = metadatos.table('catalogo_metricas', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
   clave: text('clave').notNull().unique(),
   nombreOficial: text('nombre_oficial').notNull(),
@@ -128,7 +129,7 @@ export const catalogoMetricas = metadata.table('catalogo_metricas', {
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const metricaVersiones = metadata.table(
+export const metricaVersiones = metadatos.table(
   'metrica_versiones',
   {
     id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
@@ -146,7 +147,7 @@ export const metricaVersiones = metadata.table(
   (t) => [unique().on(t.metricaId, t.version)],
 );
 
-export const metricaAprobaciones = metadata.table(
+export const metricaAprobaciones = metadatos.table(
   'metrica_aprobaciones',
   {
     id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
@@ -157,6 +158,167 @@ export const metricaAprobaciones = metadata.table(
     comentario: text('comentario'),
   },
   (t) => [unique().on(t.metricaVersionId, t.aprobador)],
+);
+
+// ---------------------------------------------------------------------------
+// Ingesta gobernada (esquema `metadatos`). Refleja el DDL 90/91. El portal
+// escribe; el worker/extractor del plano de datos lee (§4). Los CHECK y la
+// coherencia los gobierna la BD (DDL); aquí solo se declara para tipado/queries.
+// ---------------------------------------------------------------------------
+
+// La configuración de ingesta es propia de cada organización (migración 102): el mismo
+// objeto canónico sale de OITM en SAP B1 y de product_product en Odoo. La unicidad es
+// compuesta (organización, objeto) — nunca global por objeto.
+export const politicaIngesta = metadatos.table(
+  'politica_ingesta',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    organizacionId: bigint('organizacion_id', { mode: 'number' }).notNull(),
+    objeto: text('objeto').notNull(),
+    nombreNegocio: text('nombre_negocio').notNull(),
+    dominio: text('dominio').notNull(),
+    tipoObjeto: text('tipo_objeto').notNull(), // hecho | maestro
+    estrategia: text('estrategia').notNull(), // incremental_ventana | abiertos | full_replace | versionado
+    fuenteObjeto: text('fuente_objeto').notNull(),
+    campoFecha: text('campo_fecha'),
+    lookbackValor: integer('lookback_valor'),
+    lookbackUnidad: text('lookback_unidad'), // dias | meses
+    claveNatural: text('clave_natural').notNull(),
+    columnasVersionado: text('columnas_versionado').array().notNull().default([]),
+    modelosDbt: text('modelos_dbt'), // selección dbt --select para transformar el objeto (Bronze→Gold)
+    filtroOrigen: text('filtro_origen'), // filtro WHERE aplicado en origen (migración 103)
+    activo: boolean('activo').notNull().default(true),
+    owner: text('owner').notNull(),
+    version: integer('version').notNull().default(1),
+    creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+    actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('uq_politica_org_objeto').on(t.organizacionId, t.objeto)],
+);
+
+export const entornosEjecucion = metadatos.table('entornos_ejecucion', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  clave: text('clave').notNull().unique(),
+  nombre: text('nombre').notNull(),
+  erp: text('erp').notNull(),
+  motor: text('motor').notNull(),
+  driver: text('driver').notNull(),
+  puertoDefault: integer('puerto_default'),
+  activo: boolean('activo').notNull().default(true),
+  creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const conexiones = gobierno.table('conexiones', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  nombre: text('nombre').notNull().unique(),
+  entornoClave: text('entorno_clave').notNull(),
+  host: text('host').notNull(),
+  puerto: integer('puerto').notNull(),
+  baseDatos: text('base_datos'),
+  secretoRef: text('secreto_ref').notNull(),
+  activo: boolean('activo').notNull().default(true),
+  notas: text('notas'),
+  creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+  actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const sociedades = gobierno.table('sociedades', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  organizacionId: bigint('organizacion_id', { mode: 'number' }).notNull(),
+  empresaId: text('empresa_id').notNull().unique(),
+  nombre: text('nombre').notNull(),
+  nit: text('nit'),
+  conexionId: bigint('conexion_id', { mode: 'number' }),
+  esquemaOrigen: text('esquema_origen'),
+  activo: boolean('activo').notNull().default(true),
+  orden: integer('orden').notNull().default(0),
+  creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+  actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const campoIngesta = metadatos.table(
+  'campo_ingesta',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    organizacionId: bigint('organizacion_id', { mode: 'number' }).notNull(),
+    objeto: text('objeto').notNull(),
+    tablaOrigen: text('tabla_origen').notNull(),
+    campoOrigen: text('campo_origen').notNull(),
+    esUdf: boolean('es_udf').notNull().default(false),
+    tipoOrigen: text('tipo_origen'),
+    descripcion: text('descripcion'),
+    canonicoEntidad: text('canonico_entidad'),
+    campoCanonico: text('campo_canonico'),
+    transformacion: text('transformacion').notNull().default('directo'),
+    sugerido: boolean('sugerido').notNull().default(false),
+    incluido: boolean('incluido').notNull().default(false),
+    tieneDatos: boolean('tiene_datos'),
+    origen: text('origen').notNull().default('diccionario'),
+    filtroOp: text('filtro_op'), // filtro por campo aplicado en origen
+    filtroValor: text('filtro_valor'),
+    creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+    actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('uq_campo_org').on(t.organizacionId, t.objeto, t.tablaOrigen, t.campoOrigen)],
+);
+
+export const canonicoEntidad = metadatos.table('canonico_entidad', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  clave: text('clave').notNull().unique(),
+  nombre: text('nombre').notNull(),
+  dominio: text('dominio').notNull(),
+  tipo: text('tipo').notNull(),
+  descripcion: text('descripcion'),
+  activo: boolean('activo').notNull().default(true),
+  creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+  actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const canonicoCampo = metadatos.table(
+  'canonico_campo',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    entidadClave: text('entidad_clave').notNull(),
+    nombre: text('nombre').notNull(),
+    tipo: text('tipo').notNull(),
+    requerido: boolean('requerido').notNull().default(false),
+    descripcion: text('descripcion'),
+    orden: integer('orden').notNull().default(0),
+    activo: boolean('activo').notNull().default(true),
+    creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+    actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.entidadClave, t.nombre)],
+);
+
+export const catalogoDominios = metadatos.table('catalogo_dominios', {
+  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+  clave: text('clave').notNull().unique(),
+  nombre: text('nombre').notNull(),
+  descripcion: text('descripcion'),
+  activo: boolean('activo').notNull().default(true),
+  creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+  actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Plan por organización (migración 104): los objetos y sociedades que lista solo
+// tienen sentido dentro de su organización.
+export const planIngesta = metadatos.table(
+  'plan_ingesta',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    organizacionId: bigint('organizacion_id', { mode: 'number' }).notNull(),
+    nombre: text('nombre').notNull(),
+    descripcion: text('descripcion'),
+    cron: text('cron').notNull(),
+    empresas: text('empresas').array().notNull(),
+    objetos: text('objetos').array().notNull(),
+    encadenaTransformacion: boolean('encadena_transformacion').notNull().default(true),
+    activo: boolean('activo').notNull().default(true),
+    creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+    actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('uq_plan_org_nombre').on(t.organizacionId, t.nombre)],
 );
 
 export const schema = {
@@ -171,4 +333,13 @@ export const schema = {
   catalogoMetricas,
   metricaVersiones,
   metricaAprobaciones,
+  politicaIngesta,
+  planIngesta,
+  catalogoDominios,
+  entornosEjecucion,
+  conexiones,
+  sociedades,
+  campoIngesta,
+  canonicoEntidad,
+  canonicoCampo,
 };

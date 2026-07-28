@@ -1,13 +1,25 @@
-# Contrato canónico — cuenta (cuenta contable, dimensión aparte, nivel línea, §8)
+# Contrato canónico — cuenta (plan contable)
+# CAMBIO v2: deja de ser un maestro de apoyo y pasa a ser PIEZA OBLIGATORIA del
+# pipeline de cartera. `tipo_cuenta` es lo que decide qué partida del mayor es
+# cuenta por cobrar o por pagar. Sin esta entidad no hay cartera correcta: el mayor
+# incluye inventario y producción (en Proavisa, 1,043,823 de 1,732,253 partidas
+# tienen saldo, pero la mayoría NO es cartera).
 entidad: cuenta
 tipo: dimension
-dominio: datos_maestros
-grano: una cuenta contable
+dominio: finanzas
+grano: una cuenta contable por empresa
 empresa_scoped: true
 clave_natural: [empresa_id, cuenta_codigo]
 miembro_default: { cuenta_codigo: "DESCONOCIDO", nombre: "Cuenta desconocida" }
 campos:
-  - { nombre: empresa_id,    tipo: text, requerido: true,  descripcion: "Empresa del grupo" }
-  - { nombre: cuenta_codigo, tipo: text, requerido: true,  descripcion: "Código de cuenta contable en el origen" }
-  - { nombre: nombre,        tipo: text, requerido: true,  descripcion: "Nombre de la cuenta" }
-  - { nombre: tipo_cuenta,   tipo: text, requerido: false, descripcion: "Clasificación contable" }
+  - { nombre: empresa_id,           tipo: text,    requerido: true,  descripcion: "Empresa (RLS)" }
+  - { nombre: cuenta_codigo,        tipo: text,    requerido: true,  descripcion: "Código de cuenta contable en el origen" }
+  - { nombre: nombre,               tipo: text,    requerido: true,  descripcion: "Nombre de la cuenta" }
+  - { nombre: tipo_cuenta,          tipo: text,    requerido: true,  descripcion: "Tipo normalizado (ver dominio_tipo_cuenta)" }
+  - { nombre: es_cartera_cobrar,    tipo: boolean, requerido: true,  descripcion: "Cuenta por cobrar (deriva de tipo_cuenta)" }
+  - { nombre: es_cartera_pagar,     tipo: boolean, requerido: true,  descripcion: "Cuenta por pagar (deriva de tipo_cuenta)" }
+  - { nombre: permite_conciliacion, tipo: boolean, requerido: false, descripcion: "La cuenta se concilia por partida" }
+  - { nombre: activa,               tipo: boolean, requerido: false, descripcion: "Cuenta no dada de baja" }
+dominio_tipo_cuenta:
+  [por_cobrar, por_pagar, banco, caja, ingreso, gasto, costo, inventario,
+   activo, pasivo, patrimonio, orden]

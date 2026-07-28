@@ -35,6 +35,9 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: "False"
+      # El TLD .local es "special-use": pgAdmin lo rechaza salvo que se permita explícitamente.
+      PGADMIN_CONFIG_ALLOW_SPECIAL_EMAIL_DOMAINS: "['grupocresta.local', 'local']"
+      PGADMIN_CONFIG_CHECK_EMAIL_DELIVERABILITY: "False"
     ports:
       - "${PGADMIN_PORT}:80"
     depends_on:
@@ -60,6 +63,11 @@ services:
       JWT_EXPIRA_EN: ${JWT_EXPIRA_EN}
       PORTAL_ADMIN_EMAIL: ${PORTAL_ADMIN_EMAIL}
       PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD}
+      # URL del worker del plano de datos (introspección/extracción).
+      WORKER_URL: http://worker:3010
+      # Tope de espera de una corrida del worker. Un `dbt build` con volumen real tarda
+      # minutos; por debajo de eso el portal reporta un fallo que no ocurrió.
+      WORKER_TIMEOUT_MS: ${WORKER_TIMEOUT_MS:-1800000}
     ports:
       - "${API_PORT}:3001"
     depends_on:
@@ -77,3 +85,34 @@ services:
       - "${WEB_PORT}:80"
     depends_on:
       - api
+
+  # Worker del plano de datos: introspección (y extracción). Read-only al ERP; escribe metadatos.
+  worker:
+    build:
+      context: ../../data-plane/extraccion
+    container_name: cresta-worker
+    restart: unless-stopped
+    profiles: ["portal"]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Credenciales read-only de los ERP (solo referencia por nombre; el valor vive en el
+      # .env de la raíz, nunca en el repo). Una pareja por tipo de origen.
+      HANA_USER: ${HANA_USER}
+      HANA_PASSWORD: ${HANA_PASSWORD}
+      ODOO_USER: ${ODOO_USER}
+      ODOO_PASSWORD: ${ODOO_PASSWORD}
+      # Transformación: proyecto dbt montado y ubicación del profiles.yml generado en runtime.
+      DBT_PROJECT_DIR: /dbt
+      DBT_PROFILES_DIR: /tmp/dbt
+    volumes:
+      # Proyecto dbt (modelos gobernados). El worker corre `dbt build` con la selección de la política.
+      - ../../data-plane/transformacion:/dbt
+    ports:
+      - "${WORKER_PORT:-3010}:3010"
+    depends_on:
+      postgres:
+        condition: service_healthy

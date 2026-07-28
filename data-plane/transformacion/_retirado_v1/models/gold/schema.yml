@@ -1,0 +1,13 @@
+version: 2
+
+# Tests de la capa Gold. dim_cliente es SCD2 (versionado): la clave surrogate identifica una versión.
+models:
+  - name: dim_cliente
+    columns:
+      - name: sk
+        description: Clave surrogate por versión (SCD2).
+        data_tests: [not_null, unique]
+      - name: empresa_id
+        data_tests: [not_null]
+      - name: es_vigente
+        data_tests: [not_null]

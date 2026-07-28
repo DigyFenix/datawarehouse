@@ -4,7 +4,7 @@
 -- NO son certificadas todavía; el agente aún no puede usarlas (§11).
 -- Idempotente (ON CONFLICT sobre clave).
 -- =====================================================================
-INSERT INTO metadata.catalogo_metricas
+INSERT INTO metadatos.catalogo_metricas
   (clave, nombre_oficial, definicion_negocio, hecho_origen, periodicidad, owner, estado)
 VALUES
   ('ventas_brutas', 'Ventas Brutas',

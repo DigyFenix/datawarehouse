@@ -1,0 +1,77 @@
+table 'Cuenta contable'
+
+	column cuenta_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cuenta_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column cuenta_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: cuenta_codigo
+
+	column cuenta_codigo_visible
+		dataType: string
+		summarizeBy: none
+		sourceColumn: cuenta_codigo_visible
+
+	column nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nombre
+
+	column tipo_cuenta
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_cuenta
+
+	column es_cartera_cobrar
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_cartera_cobrar
+
+	column es_cartera_pagar
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_cartera_pagar
+
+	column activa
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: activa
+
+	column valido_desde
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_desde
+		formatString: dd/MM/yyyy
+
+	column valido_hasta
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_hasta
+		formatString: dd/MM/yyyy
+
+	column es_vigente
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+		sourceColumn: es_vigente
+
+	partition 'Cuenta contable' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="dim_cuenta"]}[Data]
+				in
+				    Tabla

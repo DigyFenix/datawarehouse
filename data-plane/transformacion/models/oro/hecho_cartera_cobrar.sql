@@ -1,0 +1,59 @@
+{#
+  HECHO DE CARTERA POR COBRAR — grano: partida abierta del mayor. Dominio `tesoreria`.
+  Trae el aging ya calculado a la fecha de corte, que es como se consume en Power BI.
+#}
+{{ config(
+    materialized = 'table',
+    pre_hook = "set local max_parallel_workers_per_gather = 0"
+) }}
+
+{%- set corte = "current_date" -%}
+
+select
+    coalesce((to_char(p.fecha_documento, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+                                                      as tiempo_clave,
+    coalesce((to_char(p.fecha_vencimiento, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+                                                      as tiempo_vencimiento_clave,
+    {{ clave_o_no_definido('dc', 'cliente_clave') }}  as cliente_clave,
+    {{ clave_o_no_definido('dorg', 'organizacion_clave') }} as organizacion_clave,
+    {{ clave_o_no_definido('dm', 'moneda_clave') }}   as moneda_clave,
+    {{ clave_o_no_definido('dcu', 'cuenta_clave') }}  as cuenta_clave,
+
+    p.empresa_id,
+    p.partida_id,
+    p.documento_origen,
+    p.tipo_documento_origen,
+    p.origen_partida,
+    p.fecha_documento,
+    p.fecha_vencimiento,
+    {{ corte }}                                       as fecha_corte,
+
+    p.monto_original_local,
+    p.monto_original_doc,
+    p.saldo_pendiente_local,
+    p.saldo_pendiente_doc,
+
+    -- Aging a la fecha de corte. Negativo = aún no vence.
+    ({{ corte }} - p.fecha_vencimiento)               as dias_vencido,
+    case
+        when p.fecha_vencimiento is null                    then 'sin_vencimiento'
+        when {{ corte }} <= p.fecha_vencimiento            then 'corriente'
+        when {{ corte }} - p.fecha_vencimiento <= 30       then '1-30'
+        when {{ corte }} - p.fecha_vencimiento <= 60       then '31-60'
+        when {{ corte }} - p.fecha_vencimiento <= 90       then '61-90'
+        else '+90'
+    end                                               as rango_aging,
+
+    p.proceso_transformacion,
+    p.version_proceso
+from {{ ref('plata_partida_cartera') }} p
+left join {{ ref('dim_cliente') }} dc
+       on dc.cliente_codigo = p.socio_codigo and dc.empresa_id = p.empresa_id
+left join {{ ref('dim_organizacion') }} dorg
+       on dorg.empresa_id = p.empresa_id
+left join {{ ref('dim_moneda') }} dm
+       on dm.moneda_codigo = p.moneda_documento and dm.empresa_id = p.empresa_id
+left join {{ ref('dim_cuenta') }} dcu
+       on dcu.cuenta_codigo = p.cuenta_codigo and dcu.empresa_id = p.empresa_id
+where p.tipo_cartera = 'cobrar'
+  and p.esta_abierta

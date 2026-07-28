@@ -1,0 +1,16 @@
+# Contrato canónico — almacen (bodega)
+# NUEVO en v2. Motivo: ninguna sociedad de Grupo Cresta usa sucursales; usan BODEGAS.
+# En Proavisa el código de almacén está en 247,787 de 254,246 líneas (97.5%).
+# Sustituye al nivel "sucursal" que el v1 colgaba de organizacion.
+entidad: almacen
+tipo: dimension
+dominio: datos_maestros
+grano: un almacén/bodega por empresa
+empresa_scoped: true
+clave_natural: [empresa_id, almacen_codigo]
+miembro_default: { almacen_codigo: "DESCONOCIDO", nombre: "Almacén desconocido" }
+campos:
+  - { nombre: empresa_id,      tipo: text,    requerido: true,  descripcion: "Empresa (RLS)" }
+  - { nombre: almacen_codigo,  tipo: text,    requerido: true,  descripcion: "Código de bodega en el origen" }
+  - { nombre: nombre,          tipo: text,    requerido: true,  descripcion: "Nombre de la bodega" }
+  - { nombre: activo,          tipo: boolean, requerido: false, descripcion: "Bodega activa" }

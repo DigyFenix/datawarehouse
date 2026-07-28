@@ -1,14 +1,19 @@
-# Contrato canónico — organizacion (empresa → sucursal, §8)
+# Contrato canónico — organizacion (empresa)
+# CAMBIO v2: se elimina el nivel "sucursal". Verificado en vivo: el código de sucursal
+# está NULL en las 161,439 facturas de Proavisa y la tabla de sucursales está vacía.
+# La granularidad física la aporta `almacen` (bodegas), que sí se usa en 97.5% de líneas.
 entidad: organizacion
 tipo: dimension
 dominio: datos_maestros
-grano: una sucursal dentro de una empresa (jerarquía empresa → sucursal)
+grano: una empresa (sociedad)
 empresa_scoped: true
-clave_natural: [empresa_id, sucursal_codigo]
-miembro_default: { sucursal_codigo: "DESCONOCIDO", nombre_sucursal: "Sucursal desconocida" }
+clave_natural: [empresa_id]
+miembro_default: { empresa_id: "DESCONOCIDO", nombre: "Empresa desconocida" }
 campos:
-  - { nombre: empresa_id,      tipo: text, requerido: true,  descripcion: "Empresa del grupo (nivel superior de la jerarquía)" }
-  - { nombre: empresa_nombre,  tipo: text, requerido: true,  descripcion: "Razón social de la empresa" }
-  - { nombre: sucursal_codigo, tipo: text, requerido: true,  descripcion: "Código de sucursal (nivel línea)" }
-  - { nombre: nombre_sucursal, tipo: text, requerido: true,  descripcion: "Nombre de la sucursal" }
-notas: "Sucursal se resuelve a nivel línea del documento; empresa a nivel tenencia (RLS)."
+  - { nombre: empresa_id,   tipo: text, requerido: true,  descripcion: "Identificador de la empresa (clave de tenencia/RLS)" }
+  - { nombre: nombre,       tipo: text, requerido: true,  descripcion: "Razón social de la empresa" }
+  - { nombre: nit,          tipo: text, requerido: false, descripcion: "Identificación tributaria" }
+  - { nombre: moneda_local, tipo: text, requerido: true,  descripcion: "Moneda funcional de la empresa" }
+notas:
+  - "En SAP B1 empresa_id viene de la CONEXIÓN (una base por sociedad)."
+  - "En Odoo empresa_id viene de una COLUMNA de la fila (una base, varias compañías)."

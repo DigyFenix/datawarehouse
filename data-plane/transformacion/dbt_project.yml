@@ -1,5 +1,5 @@
 name: cresta_dw
-version: "0.1.0"
+version: "0.2.0"
 config-version: 2
 
 # Perfil de conexión (ver profiles.yml.example). El profiles.yml real va fuera del repo
@@ -10,31 +10,35 @@ model-paths: ["models"]
 seed-paths: ["seeds"]
 test-paths: ["tests"]
 macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
 
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
-# Medallion: Bronze -> Silver (canónico + calidad) -> Gold (estrella + métricas).
-# Silver es la costura agnóstica (CLAUDE.md §6): no se salta.
+# Versionado de maestros (SCD2). Espejo de metadatos.politica_ingesta.columnas_versionado:
+# el portal es la fuente de verdad; esta var alimenta el check_cols del snapshot (que se
+# resuelve en parseo). El test tests/versionado_coincide_politica.sql detecta drift entre
+# ambos. Al automatizar el portal→dbt, este valor se generará desde la política.
+vars:
+  cols_versionado_clientes: ["nombre", "region"]
+
+# Medallion: Bronce -> Plata (canónico + calidad) -> Oro (estrella + métricas).
+# Plata es la costura agnóstica (CLAUDE.md §6): no se salta.
+# Nomenclatura española sin mezcla (canónico v2 §1).
 models:
   cresta_dw:
-    silver:
-      +schema: silver
+    plata:
+      +schema: plata
       +materialized: table
-    gold:
-      +schema: gold
+    oro:
+      +schema: oro
       +materialized: table
 
-# Seeds sintéticos que imitan objetos SAP B1 crudos (representan Bronze mientras no hay
-# extracción real desde HANA). Se cargan en el esquema bronze.
+# El canónico v1 (documento_venta / documento_cobro / item, prefijos silver_ y fct_)
+# y los seeds sintéticos estilo SAP B1 se conservan como referencia histórica en
+# `_retirado_v1/`, FUERA de las rutas que dbt escanea (no compilan, no estorban).
+# Reemplazados por el canónico v2: data-plane/canonico/DISENO-plata-oro.md
+# La extracción real desde HANA y Odoo alimenta `bronce` directamente.
 seeds:
   cresta_dw:
-    +schema: bronze
-    bronze_oinv:
-      +column_types: { docdate: date, docduedate: date, doctotal: "numeric(18,4)", paidtodate: "numeric(18,4)" }
-    bronze_orin:
-      +column_types: { docdate: date, docduedate: date, doctotal: "numeric(18,4)", paidtodate: "numeric(18,4)" }
-    bronze_inv1:
-      +column_types: { quantity: "numeric(18,4)", price: "numeric(18,4)", linetotal: "numeric(18,4)" }
-    bronze_rin1:
-      +column_types: { quantity: "numeric(18,4)", price: "numeric(18,4)", linetotal: "numeric(18,4)" }
+    +schema: bronce

@@ -2,7 +2,7 @@
 -- Seed: hechos del primer corte order-to-cash (§8, §15).
 -- Idempotente (ON CONFLICT sobre clave).
 -- =====================================================================
-INSERT INTO metadata.catalogo_hechos (clave, nombre_negocio, grano, dominio, descripcion)
+INSERT INTO metadatos.catalogo_hechos (clave, nombre_negocio, grano, dominio, descripcion)
 VALUES
   ('fct_ventas_facturacion', 'Ventas / Facturación', 'línea de documento', 'ventas',
    'Facturas y notas de crédito a nivel línea. Base de Ventas Brutas, Devoluciones y Ventas Netas.'),

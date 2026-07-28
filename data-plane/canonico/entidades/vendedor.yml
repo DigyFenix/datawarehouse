@@ -1,13 +1,16 @@
 # Contrato canónico — vendedor
+# Dimensión OPCIONAL: fuerte en SAP B1 (maestro propio, 53 vendedores en Proavisa),
+# débil en Odoo (se deriva del usuario responsable del documento). Miembro default
+# obligatorio para que el hecho siempre cruce.
 entidad: vendedor
 tipo: dimension
 dominio: datos_maestros
-grano: un vendedor
+grano: un vendedor por empresa
 empresa_scoped: true
 clave_natural: [empresa_id, vendedor_codigo]
 miembro_default: { vendedor_codigo: "DESCONOCIDO", nombre: "Vendedor desconocido" }
 campos:
-  - { nombre: empresa_id,      tipo: text, requerido: true,  descripcion: "Empresa del grupo" }
-  - { nombre: vendedor_codigo, tipo: text, requerido: true,  descripcion: "Código de vendedor en el origen" }
-  - { nombre: nombre,          tipo: text, requerido: true,  descripcion: "Nombre del vendedor" }
+  - { nombre: empresa_id,      tipo: text,    requerido: true,  descripcion: "Empresa (RLS)" }
+  - { nombre: vendedor_codigo, tipo: text,    requerido: true,  descripcion: "Código de vendedor en el origen" }
+  - { nombre: nombre,          tipo: text,    requerido: true,  descripcion: "Nombre del vendedor" }
   - { nombre: activo,          tipo: boolean, requerido: false, descripcion: "Vendedor activo" }

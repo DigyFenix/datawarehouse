@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "PulsoCresta"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f4c65ebe-3ce7-4287-a75d-d65a80db5200"
+  }
+}

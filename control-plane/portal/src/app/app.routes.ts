@@ -34,6 +34,36 @@ export const routes: Routes = [
           import('./features/metricas/metricas.component').then((m) => m.MetricasComponent),
       },
       {
+        path: 'conexiones',
+        loadComponent: () =>
+          import('./features/conexiones/conexiones.component').then((m) => m.ConexionesComponent),
+      },
+      {
+        path: 'sociedades',
+        loadComponent: () =>
+          import('./features/sociedades/sociedades.component').then((m) => m.SociedadesComponent),
+      },
+      {
+        path: 'ingesta',
+        loadComponent: () =>
+          import('./features/ingesta/ingesta.component').then((m) => m.IngestaComponent),
+      },
+      {
+        path: 'campos/:objeto',
+        loadComponent: () =>
+          import('./features/campos/campos.component').then((m) => m.CamposComponent),
+      },
+      {
+        path: 'canonico',
+        loadComponent: () =>
+          import('./features/canonico/canonico.component').then((m) => m.CanonicoComponent),
+      },
+      {
+        path: 'canonico/:clave',
+        loadComponent: () =>
+          import('./features/canonico/canonico-entidad.component').then((m) => m.CanonicoEntidadComponent),
+      },
+      {
         path: 'auditoria',
         loadComponent: () =>
           import('./features/auditoria/auditoria.component').then((m) => m.AuditoriaComponent),

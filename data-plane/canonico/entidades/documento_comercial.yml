@@ -1,0 +1,56 @@
+# Contrato canónico — documento_comercial (cabecera; VENTA Y COMPRA en la misma entidad)
+#
+# Reemplaza `documento_venta` del v1. La unificación ocurre SOLO en Plata (costura
+# agnóstica): SAP B1 trae los documentos en 4 tablas separadas y Odoo en 1 sola, así que
+# unificar aquí es lo que evita duplicar el mapeo por ERP. En Oro se separa por proceso
+# de negocio (hecho_venta_linea / hecho_compra_linea) para no mezclar totales.
+entidad: documento_comercial
+tipo: hecho_cabecera
+dominio: ventas_compras
+grano: un documento comercial (cabecera)
+empresa_scoped: true
+clave_natural: [empresa_id, flujo, tipo_documento, documento_id]
+campos:
+  # --- identificación -------------------------------------------------------
+  - { nombre: empresa_id,             tipo: text, requerido: true,  descripcion: "Empresa (clave de tenencia/RLS)" }
+  - { nombre: documento_id,           tipo: text, requerido: true,  descripcion: "Identificador interno del documento en el origen" }
+  - { nombre: documento_numero,       tipo: text, requerido: false, descripcion: "Número visible del documento" }
+  - { nombre: flujo,                  tipo: text, requerido: true,  descripcion: "venta | compra" }
+  - { nombre: tipo_documento,         tipo: text, requerido: true,  descripcion: "factura | nota_credito" }
+  - { nombre: tipo_documento_origen,  tipo: text, requerido: false, descripcion: "Tipo nativo del ERP (trazabilidad)" }
+  - { nombre: documento_referencia,   tipo: text, requerido: false, descripcion: "Documento origen (nota de crédito → factura)" }
+  - { nombre: referencia_externa,     tipo: text, requerido: false, descripcion: "Referencia del socio / número externo" }
+  # --- relaciones -----------------------------------------------------------
+  - { nombre: socio_codigo,           tipo: text, requerido: true,  descripcion: "Cliente o proveedor según flujo" }
+  - { nombre: vendedor_codigo,        tipo: text, requerido: false, descripcion: "Vendedor (solo relevante en venta)" }
+  # --- fechas ---------------------------------------------------------------
+  - { nombre: fecha_documento,        tipo: date, requerido: true,  descripcion: "Fecha del documento (PUEDE SER FUTURA: operación normal)" }
+  - { nombre: fecha_vencimiento,      tipo: date, requerido: false, descripcion: "Fecha de vencimiento pactada" }
+  - { nombre: fecha_registro,         tipo: date, requerido: false, descripcion: "Fecha contable/fiscal de registro" }
+  # --- moneda ---------------------------------------------------------------
+  - { nombre: moneda_documento,       tipo: text,          requerido: true,  descripcion: "Moneda en que se emitió el documento" }
+  - { nombre: moneda_local,           tipo: text,          requerido: true,  descripcion: "Moneda funcional de la empresa" }
+  - { nombre: tipo_cambio,            tipo: numeric(18,6), requerido: false, descripcion: "Tasa aplicada por el ERP al documento" }
+  # --- montos: TODOS los ejes (decisión de Edwin) ---------------------------
+  - { nombre: total_sin_impuesto_doc,   tipo: numeric(18,4), requerido: true,  descripcion: "Base imponible, moneda del documento" }
+  - { nombre: total_impuesto_doc,       tipo: numeric(18,4), requerido: false, descripcion: "Impuesto, moneda del documento" }
+  - { nombre: total_con_impuesto_doc,   tipo: numeric(18,4), requerido: true,  descripcion: "Total, moneda del documento" }
+  - { nombre: total_sin_impuesto_local, tipo: numeric(18,4), requerido: true,  descripcion: "Base imponible, moneda local" }
+  - { nombre: total_impuesto_local,     tipo: numeric(18,4), requerido: false, descripcion: "Impuesto, moneda local" }
+  - { nombre: total_con_impuesto_local, tipo: numeric(18,4), requerido: true,  descripcion: "Total, moneda local" }
+  - { nombre: total_descuento_local,    tipo: numeric(18,4), requerido: false, descripcion: "Descuento total, moneda local" }
+  - { nombre: saldo_documento_local,    tipo: numeric(18,4), requerido: false, descripcion: "Saldo según el documento — INFORMATIVO, NO es la cartera" }
+  # --- estado ---------------------------------------------------------------
+  - { nombre: estado,                 tipo: text, requerido: true,  descripcion: "abierto | cerrado (borradores y cancelados NO entran)" }
+  - { nombre: estado_pago,            tipo: text, requerido: false, descripcion: "Estado de pago del ERP (informativo)" }
+  # --- ventana de extracción ------------------------------------------------
+  - { nombre: creado_en,              tipo: timestamp, requerido: false, descripcion: "Alta en el ERP — base de la ventana incremental" }
+  - { nombre: actualizado_en,         tipo: timestamp, requerido: false, descripcion: "Última modificación en el ERP — base de la ventana incremental" }
+reglas:
+  - "SIGNO: tipo_documento = nota_credito ⇒ montos negativos. Se normaliza aquí, en un solo lugar."
+  - "EXCLUIR borradores y cancelados. En Odoo viven en la MISMA tabla que los contabilizados:
+     37 facturas de compra en borrador contra 150 contabilizadas = 25% de inflación si se cuelan."
+  - "VENTANA INCREMENTAL por creado_en/actualizado_en, NUNCA por fecha_documento: en Grupo Cresta
+     las facturas con fecha futura son operación normal y recurrente."
+  - "saldo_documento_local NO es la fuente de la cartera. Ver `partida_cartera`: en Iron Network
+     la diferencia entre ambos enfoques es del 18.1%."

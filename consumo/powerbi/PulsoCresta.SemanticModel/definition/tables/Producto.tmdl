@@ -1,0 +1,72 @@
+table Producto
+
+	column producto_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: producto_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column producto_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: producto_codigo
+
+	column nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nombre
+
+	column grupo_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: grupo_codigo
+
+	column unidad_medida
+		dataType: string
+		summarizeBy: none
+		sourceColumn: unidad_medida
+
+	column tipo_producto
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_producto
+
+	column activo
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: activo
+
+	column valido_desde
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_desde
+		formatString: dd/MM/yyyy
+
+	column valido_hasta
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_hasta
+		formatString: dd/MM/yyyy
+
+	column es_vigente
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+		sourceColumn: es_vigente
+
+	partition Producto = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="dim_producto"]}[Data]
+				in
+				    Tabla

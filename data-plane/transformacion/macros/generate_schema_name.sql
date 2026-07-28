@@ -1,5 +1,5 @@
 {#
-  Fuerza el nombre de schema EXACTO definido en +schema (bronze/silver/gold),
+  Fuerza el nombre de schema EXACTO definido en +schema (bronce/plata/oro),
   sin el prefijo del target que dbt agrega por defecto. Así las capas medallion
   caen en los schemas creados por infra/local/init/01_esquemas.sql.
 #}

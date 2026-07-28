@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS gobierno.organizaciones (
   estado                text        NOT NULL DEFAULT 'en_arranque', -- activa | inactiva | en_arranque
   -- NUNCA el secreto: solo la referencia (nombre de variable/secreto en el secrets manager).
   secreto_conexion_ref  text,
+  -- Marca (white-label): color primario del tenant en hex. Los demás tonos derivan de éste.
+  color_marca           text,
   creado_en             timestamptz NOT NULL DEFAULT now(),
   actualizado_en        timestamptz NOT NULL DEFAULT now()
 );

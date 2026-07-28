@@ -1,0 +1,17 @@
+# Contrato canónico — tipo_cambio
+# NUEVO en v2, pero SOLO INFORMATIVO. Los importes NO se reconvierten con estas tasas:
+# ambos ERPs ya guardan cada monto en moneda del documento Y en moneda local, y ese
+# valor es el que usó la contabilidad. Recalcular daría números que no cuadran.
+# Evidencia: Iron Network tiene UNA sola tasa registrada (2025-12-12) pese a operar
+# con documentos en USD en varias fechas.
+entidad: tipo_cambio
+tipo: dimension
+dominio: finanzas
+grano: una tasa por empresa, moneda y fecha
+empresa_scoped: true
+clave_natural: [empresa_id, moneda_codigo, fecha]
+campos:
+  - { nombre: empresa_id,    tipo: text,          requerido: true, descripcion: "Empresa (RLS)" }
+  - { nombre: moneda_codigo, tipo: text,          requerido: true, descripcion: "Moneda de la tasa" }
+  - { nombre: fecha,         tipo: date,          requerido: true, descripcion: "Fecha de vigencia" }
+  - { nombre: tasa,          tipo: numeric(18,6), requerido: true, descripcion: "Unidades de moneda local por unidad extranjera" }

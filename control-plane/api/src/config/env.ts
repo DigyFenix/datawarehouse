@@ -22,6 +22,9 @@ const esquemaEnv = z.object({
   // Admin de arranque: se crea si la tabla de usuarios está vacía (bootstrap).
   PORTAL_ADMIN_EMAIL: z.string().email().default('admin@grupocresta.local'),
   PORTAL_ADMIN_PASSWORD: z.string().min(8).default('cambiar_admin_2026'),
+
+  // Worker del plano de datos (introspección/extracción).
+  WORKER_URL: z.string().url().default('http://worker:3010'),
 });
 
 export type Env = z.infer<typeof esquemaEnv>;

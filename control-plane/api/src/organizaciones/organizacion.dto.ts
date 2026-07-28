@@ -13,6 +13,12 @@ export const crearOrganizacionSchema = z.object({
   estado: z.enum(['activa', 'inactiva', 'en_arranque']).default('en_arranque'),
   // Solo la REFERENCIA al secreto, nunca el valor de la credencial (§12).
   secretoConexionRef: z.string().max(200).optional(),
+  // Marca white-label: color primario en hex (#RRGGBB). Los demás tonos derivan.
+  colorMarca: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, 'Color hex #RRGGBB')
+    .nullable()
+    .optional(),
 });
 
 export const actualizarOrganizacionSchema = crearOrganizacionSchema.partial().omit({ codigo: true });

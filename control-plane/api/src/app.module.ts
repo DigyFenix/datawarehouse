@@ -7,11 +7,15 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { validarEnv } from './config/env';
+import { CanonicoModule } from './canonico/canonico.module';
+import { ConexionesModule } from './conexiones/conexiones.module';
 import { DrizzleModule } from './db/drizzle.module';
 import { GlosarioModule } from './glosario/glosario.module';
 import { HealthController } from './health/health.controller';
+import { IngestaModule } from './ingesta/ingesta.module';
 import { MetricasModule } from './metricas/metricas.module';
 import { OrganizacionesModule } from './organizaciones/organizaciones.module';
+import { SociedadesModule } from './sociedades/sociedades.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
 @Module({
@@ -30,6 +34,10 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     OrganizacionesModule,
     GlosarioModule,
     MetricasModule,
+    IngestaModule,
+    ConexionesModule,
+    SociedadesModule,
+    CanonicoModule,
   ],
   controllers: [HealthController],
   providers: [

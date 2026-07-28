@@ -1,0 +1,35 @@
+# Contrato canónico — control_cuadre
+#
+# NUEVO en v2. No es un extra: es la credibilidad del producto. Compara el total del
+# canónico contra el total calculado directamente contra el ERP. Si no cuadra, Oro NO
+# publica ese concepto.
+#
+# Motivo: en una demo, un total que no coincide con lo que el contador ve en su ERP mata
+# la venta y no se recupera. Mejor no mostrar el dato que mostrarlo mal.
+entidad: control_cuadre
+tipo: control
+dominio: gobierno
+grano: una verificación por empresa, concepto y fecha de corte
+empresa_scoped: true
+clave_natural: [empresa_id, concepto, fecha_corte]
+campos:
+  - { nombre: empresa_id,      tipo: text,          requerido: true,  descripcion: "Empresa verificada" }
+  - { nombre: concepto,        tipo: text,          requerido: true,  descripcion: "Qué se verifica (ver dominio_concepto)" }
+  - { nombre: fecha_corte,     tipo: date,          requerido: true,  descripcion: "Fecha de la verificación" }
+  - { nombre: periodo_desde,   tipo: date,          requerido: false, descripcion: "Inicio del período verificado (conceptos de flujo)" }
+  - { nombre: periodo_hasta,   tipo: date,          requerido: false, descripcion: "Fin del período verificado" }
+  - { nombre: valor_erp,       tipo: numeric(18,4), requerido: true,  descripcion: "Total calculado directamente contra el origen" }
+  - { nombre: valor_canonico,  tipo: numeric(18,4), requerido: true,  descripcion: "Total según la capa Plata" }
+  - { nombre: diferencia,      tipo: numeric(18,4), requerido: true,  descripcion: "valor_canonico − valor_erp" }
+  - { nombre: diferencia_pct,  tipo: numeric(9,4),  requerido: false, descripcion: "Diferencia relativa" }
+  - { nombre: tolerancia,      tipo: numeric(18,4), requerido: true,  descripcion: "Umbral aceptado para el concepto" }
+  - { nombre: cuadra,          tipo: boolean,       requerido: true,  descripcion: "abs(diferencia) <= tolerancia" }
+  - { nombre: detalle,         tipo: text,          requerido: false, descripcion: "Explicación cuando no cuadra" }
+dominio_concepto:
+  [saldo_cartera_cobrar, saldo_cartera_pagar, ventas_periodo, compras_periodo,
+   conteo_documentos, conteo_socios]
+reglas:
+  - "REGLA DURA: si cuadra = false para un concepto, los modelos de Oro que dependen de ese
+     concepto no se publican. Se registra el fallo y se alerta."
+  - "La tolerancia se define por concepto, no global: un céntimo de redondeo es aceptable en
+     un total de millones, pero un conteo de documentos debe cuadrar exacto."

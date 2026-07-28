@@ -1,0 +1,16 @@
+# Contrato canónico — producto (reemplaza `item` del canónico v1: sin mezcla de idioma)
+entidad: producto
+tipo: dimension
+dominio: datos_maestros
+grano: un producto por empresa
+empresa_scoped: true
+clave_natural: [empresa_id, producto_codigo]
+miembro_default: { producto_codigo: "DESCONOCIDO", nombre: "Producto desconocido" }
+campos:
+  - { nombre: empresa_id,       tipo: text,    requerido: true,  descripcion: "Empresa (RLS)" }
+  - { nombre: producto_codigo,  tipo: text,    requerido: true,  descripcion: "Código del producto en el origen" }
+  - { nombre: nombre,           tipo: text,    requerido: true,  descripcion: "Descripción del producto" }
+  - { nombre: grupo_codigo,     tipo: text,    requerido: false, descripcion: "Grupo/categoría de producto" }
+  - { nombre: unidad_medida,    tipo: text,    requerido: false, descripcion: "Unidad de medida base" }
+  - { nombre: tipo_producto,    tipo: text,    requerido: false, descripcion: "bien | servicio" }
+  - { nombre: activo,           tipo: boolean, requerido: false, descripcion: "Producto activo" }

@@ -2,13 +2,16 @@
 name = "cresta-extraccion"
 version = "0.1.0"
 description = "Extracción read-only SAP Business One / HANA -> Bronze (Postgres). Motor agnóstico, instancia Grupo Cresta."
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
   "hdbcli>=2.19",           # driver oficial SAP HANA (read-only)
   "psycopg[binary]>=3.1",   # escritura a Bronze (Postgres)
   "pydantic>=2.6",
   "pydantic-settings>=2.2", # config desde .env (equivalente a Zod para entradas externas)
   "structlog>=24.1",        # logging estructurado (sin secretos)
+  "fastapi>=0.110",         # worker HTTP que el portal dispara (introspección/extracción)
+  "uvicorn[standard]>=0.29",
+  "dbt-postgres>=1.7",      # transformación Bronze→Silver→Gold disparada desde el portal (dbtRunner)
 ]
 
 [project.optional-dependencies]

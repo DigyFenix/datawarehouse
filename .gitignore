@@ -33,6 +33,14 @@ logs/
 infra/local/data/
 pgdata/
 
+# Power BI: el PBIP (TMDL en texto) SÍ se versiona; lo demás no.
+# - .pbix es binario propietario y se regenera abriendo el PBIP en Desktop.
+# - localSettings.json guarda rutas locales y credenciales de la máquina.
+# - cache.abf es el caché del modelo, lo rehace Desktop.
+*.pbix
+**/.pbi/localSettings.json
+**/.pbi/cache.abf
+
 # Editor / SO
 .vscode/
 .idea/

@@ -8,7 +8,7 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class LoteBronze:
-    """Un lote crudo listo para aterrizar en bronze, etiquetado con su empresa."""
+    """Un lote crudo listo para aterrizar en bronce, etiquetado con su empresa."""
 
     empresa_id: str
     objeto: str  # nombre lógico del objeto de origen (p.ej. 'ventas_facturas')

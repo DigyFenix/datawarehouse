@@ -1,0 +1,256 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 103.28343583512707,
+        "y": 341.62982622388182
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 1888.9431468507905,
+            "y": 941.21497732489843
+          },
+          "nodeIndex": "_ Métricas",
+          "nodeLineageTag": "3e3a4660-cb83-4df0-b49e-be80b6cb8d77",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 151.09808653075461,
+            "y": 496.43131774561289
+          },
+          "nodeIndex": "Bodega",
+          "nodeLineageTag": "660d8343-41d0-47d7-a53f-2a2190f07a0a",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1445.8307697759255,
+            "y": 1053.6614112384436
+          },
+          "nodeIndex": "Calendario",
+          "nodeLineageTag": "a12b75f7-c975-417e-9dd4-7bcdf5c92bc9",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1189.936512108487,
+            "y": 372.5225125151992
+          },
+          "nodeIndex": "Cartera cobrar histórico",
+          "nodeLineageTag": "726ff46d-6d84-4c2e-b3f0-b0c16caffe5d",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1245.2848415843248,
+            "y": 1587.5241970861175
+          },
+          "nodeIndex": "Cartera pagar histórico",
+          "nodeLineageTag": "b731a00e-2e18-4de5-864f-88e41dad4344",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1654.9431468507908,
+            "y": 659.70865608778263
+          },
+          "nodeIndex": "Cartera por cobrar",
+          "nodeLineageTag": "30f262ff-43de-4b6d-ab04-ee1f1d9302a8",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1534.1214989471796,
+            "y": 1417.4884885195006
+          },
+          "nodeIndex": "Cartera por pagar",
+          "nodeLineageTag": "d40ec3a9-c500-4122-81d5-ea3e20981ad5",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 665.3773951376462,
+            "y": 1528.7451394097352
+          },
+          "nodeIndex": "Centro de costo",
+          "nodeLineageTag": "6732070e-f64a-42b9-a15d-d98a1e562a49",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1477.7144976946779,
+            "y": 62.416882249996434
+          },
+          "nodeIndex": "Cliente",
+          "nodeLineageTag": "70ae8826-d10b-4aff-904a-8eab4b3b4103",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 577.7725257717442,
+            "y": 989.29385222072654
+          },
+          "nodeIndex": "Compras",
+          "nodeLineageTag": "f46c2ad1-e8f7-4416-b83b-29d448c1de44",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1157.0690594200646,
+            "y": 1230.3136890406058
+          },
+          "nodeIndex": "Cuenta contable",
+          "nodeLineageTag": "f6ad1658-dbbc-48a0-be27-f22a5cf2c1ef",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 925.47016737714853,
+            "y": 901.49214702218342
+          },
+          "nodeIndex": "Empresa",
+          "nodeLineageTag": "66daea44-63c1-4203-85fb-8b5df7fe6a73",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1366.6792965094292,
+            "y": 728.68103791758472
+          },
+          "nodeIndex": "Moneda",
+          "nodeLineageTag": "47195a12-1da8-454e-8324-8a1b107f2370",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 50,
+            "y": 825.34439694611365
+          },
+          "nodeIndex": "Producto",
+          "nodeLineageTag": "253f183f-cfe6-41eb-ac28-9ff1a412ed06",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 955.42203020316992,
+            "y": 1832.4299546497973
+          },
+          "nodeIndex": "Proveedor",
+          "nodeLineageTag": "58840ae6-81e9-4be7-991a-5dbcd7231abd",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 441.00099617611244,
+            "y": 278.94949234072192
+          },
+          "nodeIndex": "Tipo de documento",
+          "nodeLineageTag": "fbe6d0f5-3cde-4f04-967a-bdf032d3cdf1",
+          "size": {
+            "height": 296,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 400.3214930163694,
+            "y": -50
+          },
+          "nodeIndex": "Vendedor",
+          "nodeLineageTag": "38b18296-b65a-4869-8bf1-420e597b3b99",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 635.59995524830856,
+            "y": 632.08667748334233
+          },
+          "nodeIndex": "Ventas",
+          "nodeLineageTag": "d6fa96ed-4211-4cf5-98ca-d50d14ca813d",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "Todas las tablas",
+      "zoomValue": 50.346892102823148,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "Todas las tablas",
+  "defaultDiagram": "Todas las tablas"
+}

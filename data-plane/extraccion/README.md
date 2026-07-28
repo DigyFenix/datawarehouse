@@ -29,9 +29,22 @@ src/cresta_extraccion/
   main.py           # orquestador CLI (esqueleto)
 ```
 
-## Uso (cuando esté implementado)
+## Uso
+
+### Descubrir campos (introspección) — implementado
+Introspecta el origen de una sociedad (columnas nativas de `SYS.TABLE_COLUMNS` + UDFs de `CUFD` +
+perfilado de no-nulos) y llena `metadata.campo_ingesta`. Resuelve host/puerto/esquema desde el
+metadata-store (conexiones + sociedades) y las credenciales desde el `.env` (`<REF>_USER`/`_PASSWORD`).
 
 ```bash
-pip install -e ".[dev]"
-python -m cresta_extraccion.main --empresas proavisa,loreto --dominio ventas
+python -m venv .venv && ./.venv/Scripts/python -m pip install hdbcli "psycopg[binary]" pydantic pydantic-settings structlog
+# .env cargado; POSTGRES_HOST=localhost si se corre desde el host (fuera de Docker)
+PYTHONPATH=src python -m cresta_extraccion.main descubrir --sociedad proavisa --objeto clientes --tabla OCRD
+```
+- `--tabla` es opcional: si se omite, se toman las tablas de la política del objeto (`fuente_objeto`).
+- No pisa la decisión del usuario (`incluido`); solo enriquece metadatos y `tiene_datos`.
+
+### Extraer a Bronze — Fase siguiente
+```bash
+python -m cresta_extraccion.main extraer --empresas proavisa,loreto --dominio ventas   # (pendiente)
 ```

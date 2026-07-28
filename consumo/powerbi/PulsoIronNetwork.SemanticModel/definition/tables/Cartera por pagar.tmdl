@@ -1,0 +1,143 @@
+table 'Cartera por pagar'
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column tiempo_vencimiento_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_vencimiento_clave
+
+	column proveedor_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: proveedor_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column moneda_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: moneda_clave
+
+	column cuenta_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cuenta_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column partida_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: partida_id
+
+	column documento_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: documento_origen
+
+	column tipo_documento_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_documento_origen
+
+	column origen_partida
+		dataType: string
+		summarizeBy: none
+		sourceColumn: origen_partida
+
+	column fecha_documento
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_documento
+		formatString: dd/MM/yyyy
+
+	column fecha_vencimiento
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_vencimiento
+		formatString: dd/MM/yyyy
+
+	column fecha_corte
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_corte
+		formatString: dd/MM/yyyy
+
+	column monto_original_local
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_original_local
+		formatString: #,0.00
+
+	column monto_original_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_original_doc
+		formatString: #,0.00
+
+	column saldo_pendiente_local
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_local
+		formatString: #,0.00
+
+	column saldo_pendiente_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_doc
+		formatString: #,0.00
+
+	column saldo_pendiente_absoluto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_absoluto
+		formatString: #,0.00
+
+	column dias_vencido
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_vencido
+		formatString: #,0
+
+	column rango_aging
+		dataType: string
+		summarizeBy: none
+		sourceColumn: rango_aging
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	partition 'Cartera por pagar' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_cartera_pagar"]}[Data]
+				in
+				    Tabla

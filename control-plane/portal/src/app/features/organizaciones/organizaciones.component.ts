@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
 import { Organizacion } from '../../core/modelos';
+import { ThemeService } from '../../core/theme.service';
 import { ToastService } from '../../core/toast.service';
 
 interface FormOrg {
@@ -12,6 +13,7 @@ interface FormOrg {
   sector: string;
   erpTipo: string;
   estado: string;
+  colorMarca: string;
 }
 
 @Component({
@@ -77,6 +79,15 @@ interface FormOrg {
               </select>
             </div>
           }
+          <div class="campo">
+            <label>Color de marca <span style="font-weight:400;color:var(--faint);">· tiñe el portal</span></label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input type="color" name="colorMarca" [(ngModel)]="form.colorMarca" style="width:46px; height:38px; padding:2px; cursor:pointer;" />
+              <input name="colorMarcaHex" [(ngModel)]="form.colorMarca" placeholder="#2d5aa0" style="max-width:130px; font-family:var(--mono);" />
+              <button type="button" class="secundario pequeno" (click)="form.colorMarca=''">Default</button>
+              <span [style.background]="form.colorMarca || '#2d5aa0'" style="width:26px;height:26px;border-radius:7px;border:1px solid var(--border-2);display:inline-block;"></span>
+            </div>
+          </div>
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="cerrar()">Cancelar</button>
@@ -90,6 +101,7 @@ interface FormOrg {
 export class OrganizacionesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+  private readonly tema = inject(ThemeService);
 
   readonly orgs = signal<Organizacion[]>([]);
   readonly abierto = signal(false);
@@ -104,7 +116,7 @@ export class OrganizacionesComponent implements OnInit {
   }
 
   private vacio(): FormOrg {
-    return { codigo: '', nombre: '', sector: '', erpTipo: 'sap_b1', estado: 'en_arranque' };
+    return { codigo: '', nombre: '', sector: '', erpTipo: 'sap_b1', estado: 'en_arranque', colorMarca: '' };
   }
 
   cargar(): void {
@@ -122,7 +134,7 @@ export class OrganizacionesComponent implements OnInit {
   }
 
   editar(o: Organizacion): void {
-    this.form = { codigo: o.codigo, nombre: o.nombre, sector: o.sector ?? '', erpTipo: o.erpTipo, estado: o.estado };
+    this.form = { codigo: o.codigo, nombre: o.nombre, sector: o.sector ?? '', erpTipo: o.erpTipo, estado: o.estado, colorMarca: o.colorMarca ?? '' };
     this.edicionId.set(o.id);
     this.errorForm.set(null);
     this.abierto.set(true);
@@ -140,6 +152,7 @@ export class OrganizacionesComponent implements OnInit {
       nombre: this.form.nombre,
       sector: this.form.sector || undefined,
       erpTipo: this.form.erpTipo,
+      colorMarca: this.form.colorMarca || null,
       ...(id ? { estado: this.form.estado } : { codigo: this.form.codigo }),
     };
     const accion = id
@@ -148,6 +161,8 @@ export class OrganizacionesComponent implements OnInit {
     accion.subscribe({
       next: (o) => {
         this.toast.exito(id ? 'Organización actualizada' : 'Organización creada', o.nombre);
+        // Si es la organización primaria, aplica su color al portal al instante.
+        if (this.orgs()[0]?.id === o.id || this.orgs().length === 0) this.tema.aplicar(o.colorMarca ?? null);
         this.guardando.set(false);
         this.abierto.set(false);
         this.cargar();

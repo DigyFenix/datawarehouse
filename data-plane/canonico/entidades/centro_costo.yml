@@ -1,12 +1,20 @@
-# Contrato canónico — centro_costo (dimensión aparte, nivel línea, §8)
+# Contrato canónico — centro_costo (dimensión a nivel línea)
+# Uso OPUESTO entre los dos clientes, y por eso el miembro default es obligatorio:
+#   Proavisa (SAP B1) : presente en 253,752 de 254,246 líneas (99.8%)
+#   Iron Network (Odoo): 1 línea de 2,923
 entidad: centro_costo
 tipo: dimension
-dominio: datos_maestros
-grano: un centro de costo
+dominio: finanzas
+grano: un centro de costo por empresa
 empresa_scoped: true
 clave_natural: [empresa_id, centro_costo_codigo]
 miembro_default: { centro_costo_codigo: "DESCONOCIDO", nombre: "Centro de costo desconocido" }
 campos:
-  - { nombre: empresa_id,          tipo: text, requerido: true,  descripcion: "Empresa del grupo" }
-  - { nombre: centro_costo_codigo, tipo: text, requerido: true,  descripcion: "Código de centro de costo en el origen" }
-  - { nombre: nombre,              tipo: text, requerido: true,  descripcion: "Nombre del centro de costo" }
+  - { nombre: empresa_id,          tipo: text,    requerido: true,  descripcion: "Empresa (RLS)" }
+  - { nombre: centro_costo_codigo, tipo: text,    requerido: true,  descripcion: "Código de centro de costo en el origen" }
+  - { nombre: nombre,              tipo: text,    requerido: true,  descripcion: "Nombre del centro de costo" }
+  - { nombre: activo,              tipo: boolean, requerido: false, descripcion: "Centro de costo activo" }
+notas:
+  - "Valor reservado 'MULTIPLE': el origen reparte la línea entre varios centros con
+     porcentaje (caso Odoo). Explotar por porcentaje rompe el grano del hecho; se
+     posterga a v1.1 y por ahora la línea se marca MULTIPLE."

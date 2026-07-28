@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: dim_rango_aging
+    description: >
+      Rangos de antigüedad de cartera con su orden de presentación. Catálogo cerrado del motor
+      (llaves fijas 1-6): los cortes 30/60/90 son los del paquete base y significan lo mismo en
+      todos los tenants. Se relaciona con los hechos de cartera por `rango_aging` (texto).
+    columns:
+      - name: rango_aging_clave
+        data_tests: [not_null, unique]
+      - name: rango_aging
+        description: Etiqueta que produce el `case` de los hechos de cartera. Clave de relación.
+        data_tests: [not_null, unique]
+      - name: rango_aging_orden
+        description: Orden de presentación. Sin esto '+90' sale antes que '1-30' en los visuales.
+        data_tests: [not_null]
+      - name: severidad
+        data_tests:
+          - accepted_values: { values: [ninguna, baja, media, alta, critica, indeterminada] }
+
+  - name: clasificacion_abc_cliente
+    description: >
+      Clasificación ABC (Pareto) de clientes por venta neta a terceros, calculada en el
+      warehouse para que Power BI, los reportes y el futuro agente usen la MISMA definición.
+      Grano: una fila por (empresa, cliente); los dos ámbitos temporales —año en curso e
+      histórico— van como columnas para que la clase pueda filtrar el hecho de ventas sin
+      relaciones bidireccionales.
+    columns:
+      - name: cliente_clave
+        description: Clave de la dimensión Cliente. Única — la relación con Cliente es 1:1.
+        data_tests: [not_null, unique]
+      - name: clase_abc_anio
+        description: A hasta el 80% acumulado del año en curso, B hasta 95%, C el resto, S sin ventas.
+        data_tests:
+          - not_null
+          - accepted_values: { values: [A, B, C, S] }
+      - name: clase_abc_historico
+        data_tests:
+          - not_null
+          - accepted_values: { values: [A, B, C, S] }
+      - name: ranking_anio
+        data_tests: [not_null]
+      - name: ranking_historico
+        data_tests: [not_null]
+      - name: participacion_acumulada_anio
+        data_tests: [not_null]
+
+  # Los hechos de cartera solo pueden producir etiquetas que existan en la dimensión: si el
+  # `case` del hecho y el catálogo se desincronizan, el aging pierde filas al relacionar.
+  - name: hecho_cartera_cobrar
+    columns:
+      - name: rango_aging
+        data_tests:
+          - relationships:
+              to: ref('dim_rango_aging')
+              field: rango_aging
+
+  - name: hecho_cartera_pagar
+    columns:
+      - name: rango_aging
+        data_tests:
+          - relationships:
+              to: ref('dim_rango_aging')
+              field: rango_aging

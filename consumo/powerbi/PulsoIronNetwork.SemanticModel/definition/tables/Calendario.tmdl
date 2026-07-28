@@ -1,0 +1,312 @@
+table Calendario
+
+	dataCategory: Time
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column fecha
+		dataType: dateTime
+		isKey
+		summarizeBy: none
+		sourceColumn: fecha
+		formatString: dd/MM/yyyy
+
+	column anio
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio
+		formatString: #,0
+
+	column trimestre
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: trimestre
+		formatString: #,0
+
+	column mes
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: mes
+		formatString: #,0
+
+	column dia
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dia
+		formatString: #,0
+
+	column trimestre_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: trimestre_nombre
+
+	column mes_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mes_nombre
+		sortByColumn: mes_orden
+
+	column mes_nombre_corto
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mes_nombre_corto
+		sortByColumn: mes_orden
+
+	column anio_mes
+		dataType: string
+		summarizeBy: none
+		sourceColumn: anio_mes
+		sortByColumn: anio_mes_orden
+
+	column anio_trimestre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: anio_trimestre
+		sortByColumn: anio_trimestre_orden
+
+	column mes_anio_etiqueta
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mes_anio_etiqueta
+		sortByColumn: anio_mes_orden
+
+	column anio_iso
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio_iso
+		formatString: #,0
+
+	column semana_iso
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: semana_iso
+		formatString: #,0
+
+	column anio_semana
+		dataType: string
+		summarizeBy: none
+		sourceColumn: anio_semana
+		sortByColumn: anio_semana_orden
+
+	column dia_semana_num
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dia_semana_num
+		formatString: #,0
+
+	column dia_semana_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: dia_semana_nombre
+		sortByColumn: dia_semana_orden
+
+	column dia_semana_corto
+		dataType: string
+		summarizeBy: none
+		sourceColumn: dia_semana_corto
+		sortByColumn: dia_semana_orden
+
+	column dia_del_anio
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dia_del_anio
+		formatString: #,0
+
+	column anio_fiscal
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio_fiscal
+		formatString: #,0
+
+	column mes_fiscal
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: mes_fiscal
+		formatString: #,0
+
+	column anio_fiscal_etiqueta
+		dataType: string
+		summarizeBy: none
+		sourceColumn: anio_fiscal_etiqueta
+
+	column es_dia_habil
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_dia_habil
+
+	column es_fin_semana
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_fin_semana
+
+	column primer_dia_mes
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: primer_dia_mes
+		formatString: dd/MM/yyyy
+
+	column ultimo_dia_mes
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: ultimo_dia_mes
+		formatString: dd/MM/yyyy
+
+	column primer_dia_trimestre
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: primer_dia_trimestre
+		formatString: dd/MM/yyyy
+
+	column primer_dia_anio
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: primer_dia_anio
+		formatString: dd/MM/yyyy
+
+	column es_ultimo_dia_mes
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_ultimo_dia_mes
+
+	column es_primer_dia_mes
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_primer_dia_mes
+
+	column dias_del_mes
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_del_mes
+		formatString: #,0
+
+	column es_hoy
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_hoy
+
+	column es_pasado
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_pasado
+
+	column es_mes_actual
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_mes_actual
+
+	column es_anio_actual
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_anio_actual
+
+	column es_mes_anterior
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_mes_anterior
+
+	column dias_desde_hoy
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_desde_hoy
+		formatString: #,0
+
+	column meses_desde_hoy
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: meses_desde_hoy
+		formatString: #,0
+
+	column es_anio_hasta_hoy
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_anio_hasta_hoy
+
+	column es_mes_hasta_hoy
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_mes_hasta_hoy
+
+	column fecha_anio_anterior
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_anio_anterior
+		formatString: dd/MM/yyyy
+
+	column fecha_mes_anterior
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_mes_anterior
+		formatString: dd/MM/yyyy
+
+	column tiempo_clave_anio_anterior
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: tiempo_clave_anio_anterior
+		formatString: #,0
+
+	column tiempo_clave_mes_anterior
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: tiempo_clave_mes_anterior
+		formatString: #,0
+
+	column anio_mes_orden
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio_mes_orden
+		formatString: #,0
+
+	column anio_trimestre_orden
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio_trimestre_orden
+		formatString: #,0
+
+	column anio_semana_orden
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio_semana_orden
+		formatString: #,0
+
+	column mes_orden
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: mes_orden
+		formatString: #,0
+
+	column dia_semana_orden
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dia_semana_orden
+		formatString: #,0
+
+	hierarchy 'Jerarquía natural'
+		level 'Año'
+			column: anio
+		level Trimestre
+			column: trimestre_nombre
+		level Mes
+			column: mes_nombre
+		level 'Día'
+			column: dia
+
+	hierarchy 'Jerarquía ISO'
+		level 'Año ISO'
+			column: anio_iso
+		level Semana
+			column: semana_iso
+		level 'Día de semana'
+			column: dia_semana_nombre
+
+	partition Calendario = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="dim_tiempo"]}[Data]
+				in
+				    Tabla

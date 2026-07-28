@@ -1,6 +1,707 @@
 # SESSION — datawarehouse
 
-## Estado actual (2026-07-19)
+## ══════ CIERRE DE SESIÓN 10 (2026-07-28) — leer esto primero ══════
+
+**Foco: el portal dejó de mezclar tenants, el pipeline se recargó con la regla de datos nueva
+(todo 2026) y el modelo de Power BI se rehízo para presentarlo a un cliente.**
+
+### Regla de datos vigente (decisión de Edwin, 2026-07-28)
+
+**Todo 2026 desde el 1 de enero.** Implementada como `filtro_origen` de política:
+`"DocDate" >= '2026-01-01'` en los 4 documentos de Cresta + ventana de 12 meses (el filtro es el
+que manda; la ventana solo evita que el lookback recorte por encima).
+
+**La cartera NO se filtra por fecha** — es un saldo, no un flujo: una partida abierta de
+noviembre 2025 sigue siendo saldo por cobrar hoy. `hecho_cartera_cobrar` arranca 2025-11-30 a
+propósito. Iron Network tampoco lleva filtro de fecha porque su objeto `movimientos` alimenta
+cabecera, líneas Y cartera: filtrarlo recortaría la cartera.
+
+ATENCIÓN: el filtro es una fecha FIJA. Al entrar 2027 hay que revisarlo (o convertirlo en una
+estrategia "año en curso" del motor, que hoy no existe).
+
+### Estado de los datos (verificado, cuadre 5/5 en ambos tenants)
+
+```
+                          Grupo Cresta (SAP B1)   Iron Network (Odoo 18)
+plata_documento_comercial         141,992                   452
+oro.hecho_venta_linea             214,702                   540
+oro.hecho_compra_linea             24,500                   157
+rango de ventas            2026-01-01 -> 07-28     2026-01-08 -> 07-24
+control de cuadre             5/5 al centavo          5/5 al centavo
+```
+
+### Bugs reales corregidos (todos estaban en producción)
+
+1. **El portal mezclaba los dos tenants.** `listarPoliticas()` y `listarCampos(objeto)` no
+   filtraban por organización: `productos` mostraba OITM (SAP) y product_product +
+   product_template (Odoo) en la misma lista. La BD ya era multi-tenant (migración 102); el API
+   y la UI estaban atrasados. `schema.ts` ni declaraba `organizacionId` y marcaba `objeto` como
+   `.unique()`.
+2. **`/transformar` nunca se cableó con `organizacion`** (pendiente que ESTADO.md marcaba): el
+   worker exige el código de la organización y el API le mandaba `sociedad` → 422 siempre.
+3. **`_selector_de_objeto` del worker** buscaba `where objeto = %s` sin organización → con dos
+   tenants tomaba la política de cualquiera.
+4. **Las políticas de documentos no reconstruían las líneas.** `plata_documento_linea` lee de
+   Bronce directo (no desciende de `plata_documento_comercial`), así que
+   `plata_documento_comercial+` no lo alcanzaba y el cuadre comparaba cabeceras nuevas contra
+   líneas viejas.
+5. **Tolerancia del cuadre no escalaba**: absoluto de 0.05. Con 25k líneas daba 0.03 (pasaba),
+   con 215k da 0.69 (bloqueaba). Ahora mixta: `greatest(0.05, filas * 0.00001)`.
+6. **El portal abortaba el fetch al worker a los 5 min** y reportaba "no se pudo contactar el
+   worker" mientras dbt terminaba bien. Ahora `WORKER_TIMEOUT_MS` (30 min por defecto).
+7. **Sociedades huérfanas**: el portal las creaba sin `organizacion_id` (era nullable). Una
+   sociedad sin organización es inextraíble (el worker deduce el tenant desde ella).
+8. **`ODOO_USER` / `ODOO_PASSWORD` no llegaban al worker** — faltaba inyectarlas en el compose.
+
+### Migraciones nuevas (Nivel 2, con rollback)
+
+- `104_plan_por_organizacion.sql` — `plan_ingesta` era global; `nombre` era UNIQUE global.
+- `105_sociedad_organizacion_obligatoria.sql` — `organizacion_id` → NOT NULL.
+
+`sociedades.empresa_id` sigue UNIQUE **global** a propósito: el worker resuelve la sociedad por
+`empresa_id` y es la etiqueta de trazabilidad en Bronce. Cambiarlo obliga a tocar el worker.
+
+### Portal: eje de configuración = ORGANIZACIÓN
+
+Decisión tomada con Edwin: la política de ingesta pertenece a la **organización** (el ERP es de
+la organización; las 6 sociedades de Cresta leen las mismas tablas). La **sociedad se elige al
+ejecutar** (Descubrir / Extraer). Lo contrario obligaría a duplicar 12 políticas × 6 sociedades.
+
+- Nuevo `core/organizacion.service.ts` + selector en la barra superior (persiste en
+  localStorage, arrastra el color de marca). Ingesta, Campos y Sociedades lo siguen.
+- Los GET de `/ingesta/politicas|planes|campos` y `/sociedades` **exigen** `organizacionId`.
+- `descubrir` / `extraer` / `transformar` verifican que la sociedad pertenezca a la organización.
+- En "Mapea a" el desplegable ofrece solo los campos canónicos **sin asignar**; los tomados
+  salen deshabilitados con el nombre de la columna que los ocupa. Las filas con duplicado
+  preexistente se marcan en rojo. (Había 4: `estado` desde CANCELED y desde DocStatus.)
+
+### Oro: dos objetos nuevos
+
+- **`clasificacion_abc_cliente`** — Pareto sobre venta a terceros, calculado en el WAREHOUSE
+  (no en DAX) para que Power BI, reportes y el futuro agente usen la misma definición. Grano:
+  una fila por (empresa, cliente); los ámbitos año/histórico son COLUMNAS — con dos filas la
+  clase no puede filtrar Ventas sin volver ambiguo el modelo. Excluye intercompañía.
+  Cresta: 43 clientes = 79.6% de la venta. Iron Network: 12 = 79.0%.
+- **`dim_rango_aging`** — rangos con columna de orden (sin ella `+90` sale antes que `1 a 30`).
+  Se relaciona con los 4 hechos de cartera por `rango_aging` (texto, 6 valores) para no tocar
+  los hechos. Test de `relationships` para que el `case` y el catálogo no se desincronicen.
+
+### Power BI (regenerado)
+
+19 tablas · 48 relaciones · **74 medidas repartidas en sus tablas** (Ventas 27, CxC 18,
+Compras 10, CxP 9, ABC 10) · 5 páginas · 72 visuales. La tabla `_ Métricas` **desapareció**.
+
+**Prueba clave del producto:** el modelo generado desde `dw_grupocresta` y desde
+`dw_ironnetwork` es idéntico archivo por archivo salvo el valor por defecto del parámetro
+`BaseDatos`. Un solo PBIP sirve para SAP B1 y para Odoo.
+
+Nuevo `consumo/powerbi/validar_reporte.py`: cruza report.json contra el TMDL (tablas, columnas,
+medidas), detecta visuales fuera del lienzo y solapes. Atrapó 8 solapes reales.
+
+El generador ahora **borra las tablas de fecha automáticas de Desktop** (`LocalDateTable_*`,
+`DateTableTemplate_*` — eran 33 archivos huérfanos) y escribe
+`annotation __PBI_TimeIntelligenceEnabled = 0` para que no vuelvan.
+
+### Próximo paso
+
+Edwin abre `consumo/powerbi/PulsoCresta.pbip` en Desktop y construye las visuales y el análisis.
+Si sale un error de TMDL, **agregarlo al validador** (patrón establecido en la sesión 9).
+
+### Pendientes conocidos
+
+- **No se abrió en Desktop** — los validadores cubren sintaxis TMDL, referencias cruzadas,
+  requisitos del calendario y geometría, pero hay errores que solo aparecen al abrir.
+- **`generar_plata` no la usa ningún modelo** (quedó huérfana al pasar al paquete base en git).
+  Decidir: retirarla o reactivarla. Mientras siga ahí, la cobertura "8/18 campos cubiertos" de
+  la pantalla de Campos mide contra algo que no se ejecuta.
+- **`clientes_perdidos` = 0** y es correcto: con datos solo de 2026, histórico y año en curso son
+  el mismo período. Cobra sentido con más de un año cargado.
+- **El proyecto se llama `PulsoCresta`** y se va a mostrar a Iron Network. Renombrarlo a un
+  nombre neutro es cambiar un argumento del script (implica renombrar carpetas).
+- **Tablas del metadata-store aún globales que deberían ser por tenant**: `conexiones`,
+  `glosario_negocio`, `linaje`. Decisión pendiente en `catalogo_metricas` (+ versiones y
+  aprobaciones): separar por organización o marcar "base vs extensión".
+- **Bind mount de Postgres en NTFS**: `FileFallocate(): Interrupted system call` intermitente al
+  materializar tablas grandes (no es falta de espacio; hay 186 GB libres). Reintentar funciona.
+  Mover el volumen a uno nombrado de Docker lo elimina y acelera mucho la escritura.
+
+---
+
+## ══════ CIERRE DE SESIÓN 9 (2026-07-26) — leer esto primero ══════
+
+**Sesión larga y muy productiva: se construyó el pipeline completo end-to-end sobre DOS ERPs
+reales, con datos productivos y cuadre al centavo.** Detalle abajo.
+
+### Dónde quedó todo
+
+```
+cresta_dw        control: metadatos + gobierno, 2 organizaciones, 19 objetos, 320 campos mapeados
+dw_grupocresta   bronce (17 tablas) → plata (13) → oro (11 dims + 6 hechos + 2 métricas)
+dw_ironnetwork   bronce (9)         → plata (13) → oro (idéntico, mismo código)
+consumo/powerbi  PulsoCresta.pbip y PulsoIronNetwork.pbip (18 tablas, 43 relaciones, 24 medidas,
+                 3 páginas, 35 visuales)
+```
+
+### Cómo correr las capas
+
+```bash
+# extraer (CLI local; venv en data-plane/extraccion/.venv, POSTGRES_HOST=localhost)
+PYTHONPATH=src .venv/Scripts/python.exe -m cresta_extraccion.main extraer \
+  --sociedad proavisa --objeto ventas_factura --desde 2026-06-01 --hasta 2026-07-01
+
+# transformar (worker; OJO con el escapado de --vars, ver más abajo)
+export MSYS_NO_PATHCONV=1
+docker exec cresta-worker /tmp/correr.sh grupocresta sap_b1 "plata oro" '["109967739","5333814","P05011105181019","90738772","1230263"]'
+docker exec cresta-worker /tmp/correr.sh ironnetwork odoo "plata oro"
+
+# regenerar Power BI
+POSTGRES_HOST=localhost python consumo/powerbi/generar_pbip.py dw_grupocresta PulsoCresta consumo/powerbi
+```
+
+### PRÓXIMO PASO CONCRETO
+
+1. **Edwin abre el PBIP regenerado y valida los 35 visuales** (cerrar Desktop primero: no detecta
+   cambios en archivos del proyecto mientras está abierto). Si algún visual falla, agregar el caso
+   al validador de `generar_reporte.py`.
+2. Cablear la API NestJS: `/api/ingesta/transformar` todavía llama al worker **sin** `organizacion`,
+   que ahora es obligatoria.
+3. Recablear el catálogo de métricas del portal al canónico v2 (las 14 métricas nuevas).
+4. Escalar a las otras 5 sociedades de Cresta (loreto, organicos, sepesa, seragro, inavisa): es
+   registrar sociedad + correr el paquete base, el motor no cambia.
+
+### DUDAS ABIERTAS PARA EDWIN
+
+- **¿Los saldos intercompañía de +90 días son reales o migrados?** `JDT1.DueDate` llega a 2017 y la
+  migración de SQL Server fue en noviembre 2025. Cambia la lectura del hallazgo principal.
+- **¿Qué pasó el 30 de junio?** Q2,993,549 de venta con Q2,049,042 de margen (68%) contra ~Q1.3M y
+  ~20% de un día normal. Parece ajuste de cierre más que venta.
+- **¿Se activarán las otras 3 compañías de la base Odoo?** Hoy solo `company_id=1` tiene movimiento.
+
+### Bloqueantes
+
+Ninguno. Ambos ERPs conectan (HANA requiere estar en la red corporativa: desde fuera da timeout
+`rc=10060`, no es problema de configuración).
+
+---
+
+## Estado sesión 9 (2026-07-26) · DOS TENANTS CARGADOS Y CUADRANDO
+
+**Hecho y verificado en vivo.** Nomenclatura española (migración 99), tenencia multi-organización
+(100/101/102/103), canónico v2 sembrado, paquetes base SAP B1 y Odoo 18, y **carga real de las dos
+empresas** con cuadre exacto contra sus ERPs.
+
+**Arquitectura de aislamiento:** 1 instancia Postgres · `cresta_dw` = plano de control
+(metadatos+gobierno, un solo portal para ambos tenants) · `dw_grupocresta` y `dw_ironnetwork` =
+planos de datos separados (bronce/plata/oro). Los datos de dos clientes nunca comparten base.
+
+**Cargado (junio 2026 para documentos por DocDate — decisión de Edwin para poder cuadrar; la
+política de producción queda por UpdateDate/write_date):**
+- **Cresta**: 7 maestros + ventas 18,310 docs/25,196 líneas + compras 944/3,597 + NC 51/77 +
+  cartera 9,684 partidas. Ventas junio con IVA 37,419,526.89 · sin IVA 33,708,774.89 ·
+  CxC 92,353,298.03 · CxP −47,933,183.12.
+- **Iron Network**: 6 maestros + movimientos 968 asientos/2,631 líneas.
+  CxC 553,009.54 (74 partidas) · CxP −14,668.06 (5) — **idéntico al diagnóstico directo**.
+
+**TRES BUGS QUE LOS DATOS DELATARON (ninguno se habría visto sin cuadrar):**
+1. **`CANCELED='C'` en SAP B1.** Por cada documento anulado ('Y') B1 crea uno de cancelación ('C')
+   por el MISMO importe (1,819 y 1,819 en el histórico, Q132,639,220.39 cada grupo). Filtrar
+   `<> 'Y'` inflaba junio en **Q1,634,294.22**. El filtro correcto es `= 'N'`.
+2. **Claves distintas padre/hija en Odoo.** `account_move.id` → `account_move_line.move_id`.
+   El encadenamiento trajo 842 líneas en vez de 2,631. Formato nuevo: `clave_natural='id>move_id'`.
+3. **Contraseña y clave de negocio en la misma variable** (`clave`) en extraccion.py — riesgo de
+   fuga a logs. Separadas en `clave_acceso` / `clave_padre`.
+
+**Otros hallazgos incorporados:**
+- La cartera de SAP B1 se acota por las **cuentas de control de socios** (`OCRD.DebPayAcct`):
+  de 1,043,823 partidas del mayor a **9,682**. Es lo ÚNICO propio de cada instalación SAP B1.
+- El mayor NO es todo cartera (incluye inventario y producción) → `plata_cuenta` es obligatoria.
+- La tabla hija no lleva el campo de fecha: se encadena por la clave del padre en lotes de 900.
+
+**Regla cambiada por Edwin:** ahora YO siembro la configuración de ambas empresas y él corrige
+encima desde el portal (antes era al revés). Ver memoria [[portal-fuente-de-verdad]].
+
+**CAPA PLATA COMPLETA — 43/43 tests PASS en los dos tenants, cuadre 0.00 en los 5 conceptos.**
+13 modelos + cuarentena, SQL explícito por ERP con `var('erp')`. Corrida:
+`dbt build --select plata --target <tenant> --vars "{erp: sap_b1|odoo, moneda_local: GTQ, ...}"`
+
+| | Cresta | Iron Network |
+|---|---|---|
+| socio_negocio | 1,932 | 73 (+1 en cuarentena) |
+| producto / cuenta | 10,353 / 471 | 647 / 100 |
+| documento_comercial | 19,305 | 452 |
+| documento_linea | 28,870 | 699 |
+| partida_cartera | 9,684 | 975 |
+
+**Cuatro problemas resueltos durante la construcción (todos con la causa documentada en el código):**
+1. **`erp_actual()` emitía whitespace** → `{% if erp == 'sap_b1' %}` fallaba y TODOS los modelos
+   compilaban la rama de Odoo sin error visible. El macro ahora es whitespace-free + `| trim`.
+2. **`FileFallocate(): Interrupted system call`** en `plata_documento_linea` — se reporta como
+   falta de disco con 942 GB libres. Son los *parallel workers* de Postgres 16 sobre el volumen
+   de Docker Desktop/WSL2. `pre_hook: set local max_parallel_workers_per_gather = 0`.
+   En Postgres sobre Linux nativo se puede quitar.
+3. **`numeric field overflow` en descuento_pct** → el ERP trae porcentajes imposibles:
+   **−260,073% en PCH1** y −35,902% en INV1 (4,387 líneas con descuento negativo). Plata debe
+   REFLEJAR el origen, así que se amplió a `numeric(18,6)` y la calidad lo marca. **Pendiente de
+   revisar con Edwin: qué significan esos descuentos.**
+4. **`jsonb_object_keys` sobre escalar** — Odoo guarda `analytic_distribution` como escalar
+   (no objeto vacío) cuando la línea no tiene analítica. Guarda con `jsonb_typeof(...)='object'`.
+
+**Cuarentena (§10) implementada** con el patrón correcto: `prep_socio_negocio` efímero alimenta
+a `plata_socio_negocio` (válidos) y `cuarentena_socio_negocio` (violaciones) sin duplicar el
+mapeo. Caso real: el socio 337 de Iron Network tiene rango de cliente y NIT pero nombre vacío
+(es un contacto hijo de la empresa 336). Sin cuarentena una fila tumbaba toda la corrida.
+
+**Test de gobernanza** `cuadre_sin_desvios`: si un concepto no cuadra, la corrida FALLA y Oro no
+publica.
+
+**CAPA ORO — dimensiones y hechos LISTOS (17/17 en ambos tenants), métricas pendientes.**
+
+**Miembro NO DEFINIDO implementado** (pedido de Edwin, §8): toda dimensión lleva la clave `-1`
+con código `NO_DEFINIDO` / nombre `No definido`, y todo hecho resuelve con LEFT JOIN +
+`coalesce(clave, -1)`. `dim_centro_costo` lleva además el miembro `-2` = `MULTIPLE` (Odoo reparte
+una línea entre varios centros con porcentaje). **Ya está trabajando: 152 líneas de venta de
+Cresta sin vendedor caen al miembro No definido en vez de perderse** — con INNER JOIN el total
+habría dejado de cuadrar sin aviso.
+
+**Clave sustituta = hash md5 determinista** de la clave natural (60 bits → bigint), NO
+row_number: las dimensiones se reconstruyen completas cada corrida y con row_number insertar un
+socio correría todas las claves siguientes, dejando las relaciones de Power BI apuntando a filas
+equivocadas en silencio.
+
+**Oro cuadra EXACTO con Plata** (ninguna fila perdida en los joins):
+ventas 25,273 filas / 32,935,084.74 · compras 3,597 / 29,262,725.19 · CxC 8,339 / 92,353,298.03.
+
+| | Cresta | Iron Network |
+|---|---|---|
+| dim_cliente / dim_proveedor | 815 / 1,119 | 67 / 10 |
+| hecho_venta_linea | 25,273 | 542 |
+| hecho_compra_linea | 3,597 | 157 |
+| hecho_cartera_cobrar / pagar | 8,339 / 1,345 | 74 / 5 |
+
+Fotos diarias de cartera materializadas como `incremental` con `unique_key` (empresa, partida,
+fecha_corte): repetir una corrida el mismo día no duplica.
+
+**Bug: `do` es palabra reservada en Postgres** — usarlo de alias para dim_organizacion tumbaba
+los 4 hechos. Renombrado a `dorg`.
+
+**Descuento corregido en la documentación:** Edwin confirma que los descuentos grandes
+(−260,073%) son REALES — el negocio aplica descuentos muy altos y casos especiales para llegar al
+monto pactado. NO es dato sucio: se conserva tal cual, no entra a cuarentena y no se marca en
+calidad. Contrato, seed y modelo actualizados.
+
+**LLAVES SUSTITUTAS = AUTOINCREMENTALES (decisión de Edwin, reemplaza el hash).**
+Mapas `oro/llaves/llave_*.sql`: modelos `incremental` que guardan (llave natural del ERP → entero)
+y **nunca reasignan**. Un código que ya tiene llave la conserva, así que insertar un socio nuevo no
+corre las llaves siguientes ni descuadra las relaciones guardadas en Power BI. Rangos en Cresta:
+clientes 1-814, productos 1-10,353, cuentas 1-471. Miembro No definido = -1.
+La llave de NEGOCIO es la del ERP y queda visible: `cliente_codigo`=CardCode, `documento_id`=DocEntry.
+El macro de hash (`clave_sustituta`) quedó marcado OBSOLETO, no borrado.
+
+**DocNum validado y agregado al hecho.** SAP B1: `DocEntry` 155906 (interna) + **`DocNum` 53000128**
+(visible). Odoo: `id` 1095 + **`name` "INV/2026/00325"**. Cero nulos en ambos (19,305 y 452).
+Los hechos de línea ahora llevan `documento_numero` vía join a la cabecera.
+
+**14 MÉTRICAS en `oro.metrica_valor`** (formato largo: empresa/métrica/período→valor) + `metrica_aging`
+(por rango y socio). Una sola tabla en vez de 14: Power BI agrega solo; esta tabla existe para
+validar contra el ERP, para el agente (consulta por clave, sin SQL libre) y para cerrar el catálogo.
+
+**Corrección: las métricas CON IVA salen de la CABECERA, no de las líneas.** El IVA se calcula a
+nivel documento; sumar el total-con-IVA de las líneas daba **Q25.37 de diferencia** en junio de
+Cresta por prorrateo. Ahora "con IVA" cuadra al centavo con el ERP.
+
+**Validación final contra SAP:** Ventas Brutas con IVA 37,419,526.89 = ERP exacto · Saldo CxC
+92,353,298.03 = exacto · Saldo CxP 47,933,183.12 = exacto · las de "sin IVA" difieren 2-3 centavos
+por redondeo línea/documento.
+
+**⚑ HALLAZGO DE NEGOCIO (pendiente de validar con Edwin): el 60% de la cartera de Proavisa está en
++90 días — Q55,081,420.54 en 3,006 partidas concentradas en 25 socios.** Contra Q22.2M corriente.
+Puede ser real o un artefacto de los saldos migrados de SQL Server en noviembre 2025. Si es real,
+es el hallazgo más vendible del proyecto.
+
+**Modelo Power BI:** especificación técnica escrita en `data-plane/semantico/MODELO-POWER-BI.md`
+(tablas, relaciones 1:N unidireccionales, dim_tiempo como tabla de fechas, medidas DAX, la doble
+relación de cartera con USERELATIONSHIP). **El CONTENIDO —qué reportes, qué audiencia, si "ventas"
+es con o sin IVA por defecto, RLS— queda pendiente de conversar con Edwin.**
+
+**⚑⚑ HALLAZGO PRINCIPAL — LA CARTERA DE CRESTA ES 72.7% INTERCOMPAÑÍA.**
+De los Q92,353,298 de CxC, **Q67,155,038 (5 socios) son empresas del propio grupo**: Avícola
+Loreto (Q50.4M), Industrias Avícolas Integradas (Q10.8M), Proavis (Q5.8M), Orgánicos El Paraíso y
+la propia Productos Avícolas. **La cartera real a terceros son Q25,198,259 (247 socios).**
+Un aging estándar habría reportado "60% vencido a +90 días" y desatado una crisis inexistente:
+de los Q55.1M en +90, **Q51.0M son intercompañía**. La mora real de terceros es Q4.1M, y el 51%
+de esa se concentra en 2 clientes con el saldo 100% vencido (Ledy Marleni Ramírez Caal Q1.28M,
+Innovaciones Agropecuarias C&T Q0.83M). Días de venta en la calle: **84 aparentes vs 29 reales**.
+*Pendiente de validar con Edwin si los saldos intercompañía +90 incluyen partidas migradas.*
+
+**`es_intercompania` implementado** en dim_cliente/dim_proveedor. La lista de NIT llega por
+`var('nits_grupo')` — la administra el portal en `gobierno.sociedades`, NO se fija en el modelo.
+Iron Network da 0 (correcto, no tiene grupo configurado).
+
+**BUG GRAVE CORREGIDO — el costo estaba mal mapeado.** `StockPrice` de SAP B1 es el costo
+**UNITARIO**, no el de la línea: el costo real es `StockPrice × Quantity`. Verificado contra
+`GrssProfit` del propio ERP (doc 1600345: 20,000 × 10.00 = 200,000 y 230,357.14 − 200,000 =
+30,357.14 = GrssProfit exacto). Con el mapeo viejo el margen daba **95%**; el real es **22.6%**.
+Además el signo se aplicaba a cada factor y en las notas de crédito los dos negativos se
+cancelaban. Cualquier análisis de rentabilidad habría sido basura.
+
+**`dim_tiempo` reconstruida: 46 columnas, grano DÍA sin hora.** Jerarquía natural + ISO (semanas
+comparables) + año fiscal configurable + perspectivas relativas a hoy (`es_mes_actual`,
+`es_anio_hasta_hoy`, `meses_desde_hoy`) + comparativos precalculados (`tiempo_clave_anio_anterior`)
++ operativas (`es_dia_habil`, `dias_del_mes`) + columnas `*_orden` para Ordenar por columna.
+
+**Dashboard publicado** (artifact): análisis "Pulso financiero" con datos reales, paleta validada
+con el script de dataviz (CVD ΔE 24.7 light / 25.2 dark, todos los checks PASS en ambos modos).
+
+**Notas de operación:** para pasar `--vars` con listas al worker hay que usar
+`docker exec cresta-worker /tmp/correr.sh <target> <erp> "<selección>" '<json>'` y exportar
+`MSYS_NO_PATHCONV=1` en Git Bash (convierte `/tmp/...` a ruta Windows). Un comentario Jinja con
+`-#}` antes de una línea SQL se come el salto de línea y mete el SQL dentro de un comentario `--`.
+
+**MODELO POWER BI GENERADO** en `consumo/powerbi/` — un proyecto **PBIP** por organización
+(`PulsoCresta` → dw_grupocresta, `PulsoIronNetwork` → dw_ironnetwork). 18 tablas, 43 relaciones,
+24 medidas DAX.
+
+**No se puede generar `.pbix`**: es binario propietario, solo Power BI Desktop lo escribe. PBIP es
+la versión en carpeta/texto del mismo proyecto (formato oficial de Microsoft para control de
+versiones): se abre igual en Desktop y al guardar produce el .pbix. Ventaja: el modelo vive en git
+y se **regenera** con `python consumo/powerbi/generar_pbip.py <base> <proyecto> <salida>`, que
+introspecciona `oro` — no puede quedar desincronizado del warehouse. Regenerar NO toca los visuales.
+
+**Decisiones ya aplicadas en el modelo:** relaciones 1:N unidireccionales · `Calendario` con
+`dataCategory: Time` · `discourageImplicitMeasures` + `summarizeBy: none` (nadie arrastra una
+columna y obtiene una suma que nadie definió) · segunda relación al calendario por vencimiento
+**inactiva** (USERELATIONSHIP) · llaves y columnas técnicas ocultas · `sortByColumn` en meses/días ·
+nombres de negocio (Ventas, Cliente, Cartera por cobrar) en vez de `hecho_`/`dim_` · medidas en
+carpetas 01-06 · pares terceros/grupo apoyados en `Cliente[es_intercompania]`.
+
+**Validación automática que pasa:** identificadores TMDL con comillas donde llevan acento o espacio,
+relaciones apuntando a columnas existentes, medidas sin referencias huérfanas.
+**NO verificado:** la apertura real en Power BI Desktop (no está disponible en el entorno). Si
+Desktop reporta error indica archivo y línea exactos.
+
+**Requisitos para Edwin:** habilitar en Desktop las preview *«Guardar el modelo semántico con
+formato TMDL»* y *«Proyectos de Power BI (.pbip)»*, y el conector Npgsql para PostgreSQL. Servidor
+y base son **parámetros** M, así que cambiar de entorno no toca las 17 consultas.
+
+**PBIP ABRE Y CARGA BIEN** (verificado por Edwin, guardó como .pbix). Dos errores corregidos en el
+camino, ambos solo detectables en Desktop:
+1. **`///comentario` después del `=` + expresión DAX multilínea** → `InvalidLineType: Other`. En TMDL
+   el comentario va en la línea ANTERIOR y la expresión en una sola línea. Afectaba 4 medidas.
+2. **`dim_tiempo` con miembro No definido de `fecha` nula** → Power BI rechaza el modelo completo:
+   una tabla marcada como calendario exige columna clave única, SIN NULOS y CONTIGUA. `dim_tiempo`
+   es ahora la ÚNICA dimensión sin miembro No definido, y está documentado por qué (con centinela
+   1900-01-01 rompería la contigüidad). Los hechos con clave -1 caen en la fila en blanco automática
+   de Power BI y el total sigue cuadrando. Hoy son 0 de 25,273 y 0 de 8,339.
+
+**El generador ahora valida en TRES capas** (cada una nació de un fallo real):
+sintaxis línea por línea del TMDL · integridad de relaciones y referencias de medidas ·
+requisitos de datos del calendario (nulos, duplicados, contigüidad).
+
+**PÁGINAS Y VISUALES GENERADOS** — `consumo/powerbi/generar_reporte.py`: 3 páginas, 35 visuales.
+Edwin reclamó con razón que el primer entregable traía el modelo pero ninguna página.
+- **Pulso**: 8 tarjetas (arriba el período, abajo terceros vs grupo, días de cartera reales,
+  margen de terceros) + antigüedad de cartera en barras partidas azul/naranja + venta diaria.
+- **Cartera**: tabla de saldo por cliente, saldo por antigüedad, mayor vencido por cliente en rojo.
+- **Ventas**: terceros vs grupo, los dos márgenes lado a lado, venta por producto, margen por
+  cliente, venta por día de semana.
+- Segmentadores en las tres: período y **¿Es empresa del grupo?**.
+
+`report.json` se genera por código (el `config` de cada visual es un JSON escapado DENTRO del JSON)
+y se valida: JSON parseable y alias del `prototypeQuery` consistentes con el `From`.
+**OJO: `generar_reporte.py` sobrescribe `report.json`** — se lleva los visuales hechos a mano.
+
+**Próximo:** que Edwin abra el PBIP regenerado y valide los visuales. Pendientes menores: la API NestJS
+todavía llama a `/transformar` sin `organizacion`; el `profiles.yml` de los dos targets se genera
+a mano en `/tmp/dbt` del worker (el worker ya lo genera solo al disparar desde el portal).
+
+---
+
+
+## Estado actual (2026-07-26) — sesión 8 · CORRECCIÓN DE RUMBO + CANÓNICO v2 (B1 ↔ Odoo)
+
+**Sesión de estrategia y rediseño, no de implementación.** Edwin pidió un diagnóstico franco de
+viabilidad. Resultado: cambia el alcance y la tesis comercial. Detalle completo en `ESTADO.md`
+(sección "⚑ CORRECCIÓN DE RUMBO") y en `data-plane/canonico/PROPUESTA-canonico-v2.md`.
+
+### Modelo de negocio definido (esto es lo que ordena todo lo demás)
+
+Producto llave en mano para **SAP B1 y Odoo** (no BI genérico multi-ERP). Gancho con los datos
+propios del cliente en ≤5 días → suscripción (hosting+updates+soporte) → asesoría cobrada aparte.
+**Dos clientes de arranque:** Grupo Cresta (SAP B1/HANA) y un amigo con **Odoo** que pidió CxC+CxP.
+
+### Cambios de rumbo (resumen)
+
+- **Entra CxP / procure-to-pay.** El alcance ya no es solo order-to-cash.
+- **Agente de IA POSPUESTO** hasta 3 clientes pagando. No es el diferenciador; se comoditiza.
+- **Plantilla base en git + delta configurable** > todo config-driven. Bajar el nivel de
+  meta-programación en dbt (era deuda de complejidad para un dev solo).
+- **Regla base/extensión** obligatoria antes del 2º tenant: el paquete base es solo-lectura para
+  el tenant; el tenant extiende, nunca modifica.
+- **Postgres se queda** (base por tenant en instancia compartida). **Gateway SaaS** para proteger
+  la IP: agente read-only en la red del cliente, solo conexión saliente, lógica en servidor propio.
+
+### Hallazgo técnico de la investigación (el que simplifica todo)
+
+SAP B1 y Odoo comparten el mismo modelo contable de doble partida:
+`JDT1` ≈ `account_move_line` · `OJDT` ≈ `account_move` ·
+`BalDueDeb−BalDueCred` ≈ `amount_residual` · `DueDate` ≈ `date_maturity`.
+
+→ **La cartera (CxC+CxP) se modela UNA sola vez para los dos ERPs.** Eso es lo que abarata el
+segundo cliente. Igual con documentos: B1 separa `OINV/ORIN/OPCH/ORPC` (ObjType 13/14/18/19) y
+Odoo unifica en `move_type` (`out_invoice`/`out_refund`/`in_invoice`/`in_refund`) — el canónico
+los recibe como un `documento_comercial` con `flujo` (venta/compra) + `tipo_documento`.
+
+### Problemas del canónico v1 que v2 corrige
+
+1. Sesgado a ventas (`documento_venta`, `documento_cobro`) → con CxP se duplicaría todo.
+2. **El saldo salía de la factura** → incorrecto con pagos parciales, NC conciliadas, anticipos.
+   v2 lo toma del **mayor**.
+3. Sin multimoneda ni impuesto separado → totales mal en cuanto haya USD/GTQ.
+
+### Propuesta v2 (PENDIENTE DE ACUERDO — decisiones A1–A7)
+
+- **Silver (11):** maestros (socio_negocio *unificado cliente+proveedor*, item, vendedor,
+  organizacion, cuenta *con tipo normalizado*, centro_costo, **moneda**) · documentos
+  (`silver_documento_comercial` + `silver_linea_documento_comercial`) · **`silver_partida_cartera`**
+  (CxC+CxP desde el mayor) · **`silver_control_cuadre`** (si no cuadra con el ERP, no publica).
+- **Gold:** 9 dims (`dim_socio_negocio` SCD2 reemplaza `dim_cliente`; nueva `dim_moneda` y
+  `dim_tipo_documento`) · 3 hechos (`fct_documento_linea`, `fct_cartera`,
+  **`fct_cartera_snapshot`** diario — sin él no hay aging histórico y no se recupera después).
+- **Métricas: 5 → 10** (entran Compras Brutas/NC Compra/Compras Netas, Saldo CxP, Aging CxP).
+- **Bronze se deriva**: paquete B1 (17 tablas) + paquete Odoo (12 tablas). No hay que construir
+  nada nuevo en Bronze — el mecanismo config-driven ya funciona; solo declarar objetos.
+
+### Diferencias B1↔Odoo resueltas en la propuesta (D1–D10)
+
+multi-empresa (conexión vs columna `company_id`) · impuestos (Odoo genera líneas de impuesto
+aparte → filtrar `display_type='product'`) · sucursal (`BPLId` vs no existe) · centro de costo
+(`analytic_distribution` JSON con % → `MULTIPLE` en v1) · vendedor · **borradores (Odoo
+`state='draft'` en la MISMA tabla — filtrar `state='posted'` siempre)** · moneda · signo de NC ·
+cliente/proveedor unificados en ambos · estado de pago (informativo, no fuente del saldo).
+
+### VALIDADO EN VIVO CONTRA LOS DOS ERPs (2026-07-26)
+
+Diagnósticos read-only ejecutados. Detalle completo en `PROPUESTA-canonico-v2.md` §8bis (SAP B1) y
+§8ter (Odoo). Scripts en el scratchpad de la sesión (`diagnostico_sap_b1.py`, `diagnostico_odoo.py`,
+`diagnostico_odoo2.py`) — **promoverlos a herramienta de onboarding del producto**.
+
+**SAP B1 / Proavisa** (`SBOPROAVISA_`): ~2.5M filas · 814 clientes + 1,118 proveedores ·
+**35 NIT duales** · `BPLId` NULL (sin sucursal) · **49% del valor de compras en USD** ·
+centro de costo en **99.8%** de líneas · `JDT1.DueDate` sin nulos ·
+saldo mayor vs documento: diferencia **0.07%** (Q62,946).
+
+**Odoo 18.0.1.3** (con `l10n_gt`): ~5k filas · 74 socios comerciales de 225 `res_partner` ·
+2 duales · analítica casi sin uso (1 línea) ·
+saldo mayor vs documento: **diferencia 18.1%** (Q84,873) — 516 asientos `entry` mueven cartera
+sin factura. **A2 demostrada.**
+
+**Correcciones al diseño que salieron del diagnóstico:**
+- **C1** Multimoneda es barata: ambos ERPs ya guardan monto local + moneda del documento
+  (`balance`/`amount_currency`, `DocTotal`/`DocTotalFC`). **No recalcular con tasas propias**
+  (este Odoo tiene 1 sola tasa registrada).
+- **C2** Odoo 18 usa **jsonb**: `account_account.code_store->>'<company_id>'` y `name->>'es_GT'`.
+  No hay columnas `code` ni `company_id`. El mapeo Odoo necesita **expresiones**
+  (`campo_ingesta.transformacion`) desde el día uno.
+- **C3** `res_partner` ≠ socios de negocio: filtrar `customer_rank>0 OR supplier_rank>0` + `active`.
+- **C4** 4 compañías en Odoo, solo `company_id=1` con movimiento. Preguntar si activarán las otras.
+- **C5** **IVA guatemalteco = 12% INCLUIDO** → efectivo sobre base 13.64%. Explica el 9.71% de
+  Cresta (≈29% de ventas exentas). **"Ventas Netas" debe declarar con/sin IVA en el catálogo.**
+- **Filtro de cartera = `account_type`/tipo de cuenta, NO `display_type`** (370 líneas `product`
+  apuntan a cuentas por cobrar). `display_type` se guarda como `origen_partida` (documento vs asiento).
+- El mayor incluye inventario y producción → `plata_cuenta` es **pieza obligatoria** del pipeline.
+
+**Pendiente técnico nuevo:** el extractor solo habla HANA. Odoo requiere
+`fuentes/odoo_postgres.py` (psycopg ya está en el venv).
+
+### Próximo paso concreto
+
+1. **Edwin confirma A1–A8** (tabla al final de `PROPUESTA-canonico-v2.md`).
+2. Con eso: contratos YAML v2 → paquete base SAP B1 como **seeds versionados en git** → Silver →
+   Gold → control de cuadre → paquete base Odoo.
+3. Validar `BalDueDeb`/`BalDueCred` contra la instalación real de Grupo Cresta (anticipos y
+   reconciliaciones internas) y **preguntar la versión de Odoo del 2º cliente** (`account_type`
+   solo existe en Odoo ≥16; en ≤15 es `user_type_id` y el mapeo cambia).
+
+**Pendientes heredados de sesión 7 (siguen vivos):** validar happy path de clientes desde el
+portal; encadenado automático extracción→dbt; UI del filtro por campo.
+
+**Advertencia registrada:** definir por escrito la **propiedad intelectual** frente al empleo en
+Grupo Cresta antes de que el producto tenga valor. Si se construye en horario/recursos de la
+empresa, puede argumentarse que es de ellos.
+
+---
+
+## Estado sesión 7 (2026-07-24) · TRANSFORMACIÓN DISPARABLE DESDE EL PORTAL
+
+**Rumbo acordado:** de aquí en adelante todo lo que se construya debe quedar **operable y
+verificable desde el portal** (Edwin construye la config en el portal; yo cablo los mecanismos
+para que el portal los dispare).
+
+**Diagnóstico de inicio:** solo `Descubrir` y `Extraer a Bronze` cruzaban al plano de datos.
+La transformación dbt (Bronze→Silver→Gold) era 100% CLI manual; `encadena_transformacion`/`cron`
+eran metadatos huérfanos. El worker no tenía dbt ni el proyecto montado.
+
+**Entregado en esta sesión (botón manual, sin encadenado todavía — decisión de alcance):**
+1. **Migración Nivel 2**: `metadata.politica_ingesta.modelos_dbt text` (selección `dbt build
+   --select`, ej. `silver_socio_negocio+`). `schema/98_politica_modelos_dbt.sql` (idempotente) +
+   rollback `98_..._down.sql`; columna también en el CREATE de `90_`. Aplicada en vivo.
+2. **Worker corre dbt** (`data-plane/extraccion`): dep `dbt-postgres>=1.7` en pyproject; módulo
+   `transformacion.py` (`transformar_objeto`: lee `politica.modelos_dbt`, genera profiles desde
+   el entorno, corre `dbtRunner build --select`); endpoint `POST /transformar` en `worker.py`;
+   subcomando `transformar` en `main.py`. Proyecto dbt montado en el worker vía compose
+   (`../../data-plane/transformacion:/dbt`, `DBT_PROJECT_DIR=/dbt`, `DBT_PROFILES_DIR=/tmp/dbt`).
+3. **API**: `POST /api/ingesta/transformar` (auditado, entidad `gold`) + `modelosDbt` en política
+   (schema Drizzle + Zod). 4. **Portal**: campo "Modelos dbt" en el drawer de política; botón
+   **"Transformar (Bronze → Gold)"** en la pantalla Campos.
+
+**Verificado EN VIVO (mecanismo):** worker con dbt 1.12.0/postgres 1.11.0, proyecto montado,
+`dbt debug` conecta OK al Postgres del stack; login OK; `POST /ingesta/transformar {clientes}`
+→ error gobernado `"'clientes' no tiene política de ingesta."` (config vacía); 401 sin token.
+API+web+worker compilan y levantan.
+
+**PENDIENTE DE VALIDAR CON EDWIN (happy path):** requiere que Edwin re-arme config en el portal
+(entidad canónica → política de clientes con `modelos_dbt='silver_socio_negocio+'` → descubrir →
+incluir/mapear → extraer a Bronze) y luego pulsar **Transformar** → validar 812 clientes en
+`gold.dim_cliente`. No sembré config ni datos (respeta "portal = fuente de verdad").
+
+**Nota:** el worker no tiene `git` (dbt lo pide solo para `dbt deps` con paquetes git; no usamos
+paquetes, `dbt build` corre sin él). `pgadmin` reinicia en loop (irrelevante). Cambios sin commit.
+
+**Próximo:**
+1. Validar happy path de clientes con Edwin (arriba).
+2. **Encadenado automático**: que `Extraer` dispare `Transformar` cuando el plan tiene
+   `encadena_transformacion=true` (siguiente incremento del rumbo).
+3. UI del filtro por campo (`filtro_op`/`filtro_valor`).
+4. Ventas end-to-end (OINV/INV1).
+
+---
+
+## Estado sesión 6 (2026-07-23) · PLUG-AND-PLAY REAL + BORRÓN Y CUENTA NUEVA
+
+**Principio de trabajo acordado:** de ahora en adelante **la fuente de verdad es lo que Edwin
+configura en el portal**. Se rehará el ejercicio **desde 0** en el portal. Yo NO siembro, restauro
+ni sobreescribo su config; construyo mecanismos genéricos que la LEEN y respetan; pregunto solo
+ante una duda real.
+
+**Estado tras "borrón y cuenta nueva" (limpieza aprobada):**
+- **Vaciado (BD en vivo):** `politica_ingesta`, `plan_ingesta`, `campo_ingesta`, `canonico_entidad`,
+  `canonico_campo`, `catalogo_dominios`; y esquemas `bronze`/`silver`/`gold` (drop+create, sin datos).
+- **Conservado:** `metadata.entornos_ejecucion` (3), `gobierno.conexiones` (Hana GrupoCresta →
+  10.10.143.69:30015, secreto_ref `HANA_USER`), `gobierno.sociedades` (proavisa, esquema
+  `SBOPROAVISA_`), `gobierno.organizaciones` (grupocresta, color `#2d5aa0`), usuarios/roles (login).
+
+**TODOS los mecanismos están construidos, probados EN VIVO y quedan listos** para lo que Edwin configure:
+
+1. **Introspección auto-descriptiva** (worker `cresta-worker`, FastAPI+hdbcli): `POST /descubrir` →
+   lee `SYS.TABLE_COLUMNS` (nativos) + `CUFD` (UDFs con descripción) + perfila no-nulos (excluye LOB)
+   → llena `campo_ingesta`. Probado: OCRD real = 421 cols, 30 UDFs, 247 con datos.
+2. **Extractor read-only → Bronze** (worker `POST /extraer`): lee política + campos INCLUIDOS, SELECT
+   read-only con filtro/ventana, aterriza en `bronze.<tabla>` como **jsonb + trazabilidad**
+   (source_origen, extraido_en, empresa_id). Probado: 1928 clientes reales en `bronze.ocrd`.
+3. **Silver config-driven** (macro dbt `generar_silver('<entidad>')`): lee `canonico_campo` (columnas)
+   + `campo_ingesta` (mapeo/transformación/filtro) en runtime y arma el SELECT desde el jsonb.
+   Agregar campo/mapeo en el portal = cero SQL. Probado: `silver_socio_negocio` = 812 clientes reales.
+4. **Gold SCD2** (`dim_cliente` vía snapshot + `columnas_versionado`). Probado: 812 clientes reales.
+5. **Modelo canónico administrable** (capa plata): `canonico_entidad` + `canonico_campo`, pantalla
+   lista→detalle en el portal. **Filtro por campo**: `campo_ingesta.filtro_op`/`filtro_valor`.
+6. **Config del origen administrable**: entornos, conexiones (server+secreto_ref), sociedades
+   (conexión+esquema). **Acceso: usuario read-only sobre tablas base** (sin vistas).
+7. **Diseño "Mesa de gobierno"**: fuentes self-hosted (Space Grotesk/Inter/JetBrains Mono en
+   `portal/src/assets/fonts`), metales medallion (firma), login hero, **color primario configurable
+   por organización** (`--marca` derivado por color-mix; ThemeService).
+
+**Cómo correr las capas (por ahora manual; el encadenado automático es lo siguiente):**
+- Worker: contenedor `cresta-worker` (perfil portal). Botones en Campos: *Descubrir* / *Extraer a Bronze*.
+- Extractor CLI local: venv en `data-plane/extraccion/.venv`, `POSTGRES_HOST=localhost`,
+  `PYTHONPATH=src python -m cresta_extraccion.main {descubrir|extraer} --sociedad proavisa --objeto <x>`.
+- dbt contra la BD real: profile en `<scratchpad>/dbt_real/profiles.yml` (localhost:5432). Ej.:
+  `dbt run --select silver_socio_negocio` → `dbt snapshot --select snap_cliente` → `dbt run --select dim_cliente`.
+
+**Próximo (cuando se retome):**
+1. **Edwin reconstruye la config desde 0 en el portal** (modelo canónico → entidades/políticas →
+   descubrir → incluir/mapear/filtrar → extraer).
+2. **Encadenar extracción → dbt** (que `plan_ingesta.encadena_transformacion` dispare Silver→Gold
+   tras Bronze; el worker corre dbt).
+3. **UI del filtro por campo** en Campos (DDL `filtro_op`/`filtro_valor` ya existe; hoy se setea por SQL).
+4. **Ventas end-to-end** (OINV/INV1) con el mismo patrón.
+5. (Opcional) desactivar los seeds de config del repo para que un reset de volumen también arranque en blanco.
+
+**Bloqueantes:** ninguno. HANA conecta y todo el flujo corre en vivo.
+
+**Nota:** `region` en `socio_negocio` lo borró Edwin a propósito; NO restaurar. Si se quita definitivo,
+ajustar `columnas_versionado` (política) + var `cols_versionado_clientes` (dbt) para mantener consistencia.
+
+---
+
+## Estado sesión 5 (2026-07-23)
+
+**Introspección real HANA CONSTRUIDA y VALIDADA contra el ERP en vivo.** El extractor descubre
+campos auto-descriptivamente y llena `metadata.campo_ingesta`.
+- **Motor** (`data-plane/extraccion/src/cresta_extraccion/`): `config.py` (credenciales por
+  `secreto_ref` desde .env, tolerante a sufijo `_USER`), `catalogo.py` (resuelve sociedad→conexión→
+  entorno desde Postgres; upsert en campo_ingesta preservando `incluido`), `diccionario.py` (OCRD/
+  OINV/INV1 → canónico + sugeridos + descripción ES), `fuentes/sap_b1.py` (hdbcli con fallback
+  cifrado; `SYS.TABLE_COLUMNS` + `CUFD` para UDFs + perfilado de no-nulos excluyendo tipos LOB),
+  `introspeccion.py` (orquestador), `main.py` (comando `descubrir`).
+- **Validado en vivo** contra `10.10.143.69:30015` schema `SBOPROAVISA_`, tabla OCRD: **421 columnas,
+  30 UDFs con descripción de CUFD, 247 con datos, 9 sugeridos, 5 auto-incluidos** (los de mapeo
+  canónico). Hallazgo real: `Territory` sin datos (región probablemente en UDF), existe `U_NIT`.
+- **Portal — pantalla Campos** (página completa, no drawer): filtro **Sugeridos/Con datos/Incluidos/
+  Todos**, búsqueda, badges UDF/sugerido/sin-datos + tipo, acciones masivas. Maneja las 421 columnas.
+- **Config real creada por Edwin en el portal**: conexión `Hana GrupoCresta`, sociedad `proavisa`,
+  política `clientes` (maestro/versionado/OCRD).
+- Correr: `PYTHONPATH=src .venv/Scripts/python -m cresta_extraccion.main descubrir --sociedad proavisa
+  --objeto clientes --tabla OCRD` (venv en `data-plane/extraccion/.venv`, POSTGRES_HOST=localhost).
+- **Decisión Edwin:** NO generar permisos read-only; el usuario del .env ya los tiene.
+- **Falta:** trigger desde el portal (botón "Descubrir" → worker), y el extractor dinámico
+  read-only → Bronze (siguiente etapa del DWH).
+
+---
+
+## Estado sesión 4 (2026-07-23)
+
+**Sesión 4 — Config de origen administrable (plug-and-play) construida y verificada (sin HANA).**
+Foco: que dar credenciales de una sociedad arme la organización. Verificado E2E en Docker.
+- **Modelo:** `metadata.entornos_ejecucion` (SAP B1·HANA / SAP B1·SQL Server / Odoo) · `gobierno.conexiones`
+  (server/host/puerto/secreto_ref, NUNCA credencial) · `gobierno.sociedades` (empresa_id + NIT +
+  conexión + esquema_origen) · `metadata.campo_ingesta` (columna origen→canónico, es_udf, descripción
+  ES, transformación, sugerido/incluido, tabla_origen). DDL 93-96 + rollback + seeds 52-54.
+- **Diccionario base sembrado** (investigado de SAP B1): OCRD (clientes), OINV+INV1 (ventas) con
+  descripciones en español y sugeridos (precios=Price, IVA=VatSum, costos=StockPrice, margen=GrssProfit).
+  48 campos. Solo nativos; los UDFs (U_*) los agrega la introspección real.
+- **Portal:** módulos Conexiones y Sociedades (CRUD auditado) + vista **Campos** por entidad en Ingesta
+  (toggle incluir, badges sugerido/UDF, mapeo canónico). Nav + rutas. API + frontend compilan; E2E OK.
+- **Decisiones:** acceso = usuario read-only sobre tablas base (SELECT generado, sin vistas por objeto);
+  introspección en el plano de datos; auto-mapeo 1:1 + semánticas del motor. `politica_ingesta.fuente_objeto`
+  reconciliado a objeto nativo (OCRD, OINV+INV1...). Etapas: **DWH ahora**, semántica después, agente al final.
+- **Alcance primer flujo:** solo OCRD + OINV (SAP HANA) para probar todo el sistema; luego las demás.
+- **Falta (requiere HANA):** introspección real (SYS.TABLE_COLUMNS + CUFD) que hace merge en campo_ingesta
+  y perfila no-nulos; extractor dinámico read-only → Bronze; correr primer flujo y validar/corregir.
+- Plan de diseño detallado: `.claude/plans/cual-es-el-estado-crystalline-bunny.md`.
+
+---
+
+## Estado previo (2026-07-22)
+
+**Sesión 3 — Fundación de INGESTA GOBERNADA completada y verificada (sin HANA).** Se diseñó y
+construyó la arquitectura de ingesta configurable desde el portal. Detalle y verificación en
+`ESTADO.md` (sección "Ingesta gobernada"). Resumen:
+- **Metadatos** `metadata.politica_ingesta` (qué/cómo por objeto: ventana, campo_fecha, estrategia,
+  clave, columnas_versionado) + `metadata.plan_ingesta` (cuándo: un cron por corrida, empresas,
+  objetos, encadena Bronze→Gold). DDL 90/91 + rollback + seed 50 (8 objetos + plan piloto).
+- **Table functions** parametrizadas por fecha (spec en `vistas-requeridas.md`).
+- **Maestros en dbt**: full_replace (SCD1) vs versionado (SCD2 vía snapshot + `dim_cliente` con
+  rango de vigencia + `rpt_ventas_region_versionada` + test de gobernanza). `dbt build` = 52 PASS.
+- **Portal**: módulo Ingesta (API NestJS + Angular, auditado) sobre política/plan. Verificado E2E.
+- **Decisiones**: worker dedicado en el plano de datos (orquestación); corrida encadenada, un cron
+  por plan (no por objeto); CxC = estrategia `abiertos`; clientes = versionado (nombre/región).
+
+**Próximo paso concreto:** ver "FOCO PRÓXIMA SESIÓN" abajo — extractor Python real + worker de
+scheduling (bloqueado por vistas/credenciales HANA de Edwin). La capa de configuración ya está lista.
+
+---
+
+## Estado previo (2026-07-19)
 
 **Fase 0 (Fundación agnóstica) COMPLETADA.** Motor en pie: git, estructura, Docker/Postgres
 (medallion), metadata-store con DDL versionado + rollback, modelo canónico agnóstico, esqueletos
@@ -71,13 +772,20 @@ El `CLAUDE.md` del repo ya representa el marco real (producto), reescrito 2026-0
 - **Extracción:** Python (read-only → Bronze).
 - **Sociedades (6):** proavisa, loreto, organicos, sepesa, seragro, inavisa. **Piloto: proavisa + loreto.**
 
-## FOCO PRÓXIMA SESIÓN (sesión 2) — Transporte y extracción de datos
+## FOCO PRÓXIMA SESIÓN — Extractor real + worker (requiere HANA)
 
-Edwin lo definió como lo principal a construir en la siguiente sesión: el **extractor/transporte
-de datos read-only desde HANA → Bronze** (Fase 1). Prerrequisitos de su lado: vistas HANA según
-`organizaciones/grupocresta/mapeo/sap_b1/vistas-requeridas.md` + credenciales read-only en `.env`.
-El pipeline dbt (Silver→Gold→métricas) ya está probado, así que al llegar los datos solo se
-implementa el extractor Python en `data-plane/extraccion/`.
+La capa de configuración de ingesta ya está lista (política/plan en el portal). Falta lo que
+depende de HANA:
+1. **Extractor Python real** (`data-plane/extraccion/`): `fuentes/sap_b1.py` (hdbcli read-only, llama
+   las table functions con `p_fecha_desde` = hoy − lookback), `destino_bronze.py` (delete-insert por
+   ventana / delete-all abiertos / full maestros según `estrategia`), `main.py` (lee `politica_ingesta`).
+2. **Worker de scheduling** en el plano de datos: lee `plan_ingesta`, ejecuta la corrida encadenada
+   (extracción → Bronze → `dbt run + test` → Gold) según `cron`.
+3. `bronze_*` como sources reales (reemplazan los seeds sintéticos).
+
+Prerrequisitos de Edwin: vistas/table functions HANA según `vistas-requeridas.md` (actualizada) +
+credenciales read-only en `.env`. Confirmar schema (`DW_READONLY`) y si expone hechos como
+cabecera+líneas unidas o separadas.
 
 ## Detalle Fase 1 (Datos), par piloto proavisa + loreto
 

@@ -1,0 +1,77 @@
+version: 2
+
+# Fuentes de Bronce. Cada tenant tiene UNA sola base de datos y UN solo ERP, así que
+# solo se resuelve el grupo que corresponde a var('erp'). Declarar ambos no cuesta nada:
+# dbt solo registra la dependencia de la rama que el modelo compila.
+sources:
+  - name: bronce
+    schema: bronce
+    description: >
+      Crudo por ERP, aterrizado por el extractor. Cada fila lleva su payload original en
+      `datos` (jsonb) más trazabilidad (empresa_id, fuente_origen, extraido_en).
+    tables:
+      # ---------------- SAP Business One ----------------
+      - name: ocrd
+        description: Socios de negocio (clientes C, proveedores S, leads L)
+      - name: oitm
+        description: Artículos
+      - name: oslp
+        description: Vendedores
+      - name: oact
+        description: Plan de cuentas
+      - name: owhs
+        description: Bodegas
+      - name: ocrn
+        description: Monedas
+      - name: oprc
+        description: Centros de costo
+      - name: oinv
+        description: Facturas de venta (cabecera)
+      - name: inv1
+        description: Facturas de venta (líneas)
+      - name: orin
+        description: Notas de crédito de venta (cabecera)
+      - name: rin1
+        description: Notas de crédito de venta (líneas)
+      - name: opch
+        description: Facturas de compra (cabecera)
+      - name: pch1
+        description: Facturas de compra (líneas)
+      - name: orpc
+        description: Notas de crédito de compra (cabecera)
+      - name: rpc1
+        description: Notas de crédito de compra (líneas)
+      - name: jdt1
+        description: >
+          Líneas del mayor. FUENTE DE LA CARTERA: el saldo abierto vive aquí
+          (BalDueDeb − BalDueCred), no en las facturas.
+      - name: ojdt
+        description: Cabecera del asiento contable (da el tipo de documento origen)
+
+      # ---------------- Odoo 18 ----------------
+      - name: res_partner
+        description: >
+          Socios. OJO: incluye contactos y direcciones; solo son socios de negocio los que
+          tienen customer_rank o supplier_rank > 0.
+      - name: product_product
+        description: Variantes de producto
+      - name: product_template
+        description: Plantillas de producto (name es jsonb con traducciones)
+      - name: account_account
+        description: >
+          Plan de cuentas. En Odoo 18 el código vive en `code_store` (jsonb por compañía)
+          y el nombre en `name` (jsonb por idioma). `account_type` clasifica la cartera.
+      - name: stock_warehouse
+        description: Almacenes
+      - name: res_currency
+        description: Monedas
+      - name: account_analytic_account
+        description: Cuentas analíticas (centros de costo)
+      - name: account_move
+        description: >
+          Asientos y documentos unificados. move_type distingue venta/compra/NC/manual.
+          Solo llegan los `posted` de la compañía operativa (filtro del paquete base).
+      - name: account_move_line
+        description: >
+          Líneas del asiento. Alimenta TANTO las líneas de documento (display_type='product')
+          COMO las partidas de cartera (cuenta receivable/payable con amount_residual).

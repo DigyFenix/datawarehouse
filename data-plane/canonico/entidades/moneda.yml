@@ -1,0 +1,15 @@
+# Contrato canónico — moneda
+# NUEVO en v2. Necesario para consolidar el grupo: en Proavisa el 49% del VALOR de
+# compras está en documentos USD (591 de 11,224 documentos).
+entidad: moneda
+tipo: dimension
+dominio: finanzas
+grano: una moneda por empresa
+empresa_scoped: true
+clave_natural: [empresa_id, moneda_codigo]
+miembro_default: { moneda_codigo: "DESCONOCIDO", nombre: "Moneda desconocida" }
+campos:
+  - { nombre: empresa_id,    tipo: text,    requerido: true,  descripcion: "Empresa (RLS)" }
+  - { nombre: moneda_codigo, tipo: text,    requerido: true,  descripcion: "Código ISO de la moneda" }
+  - { nombre: nombre,        tipo: text,    requerido: false, descripcion: "Nombre de la moneda" }
+  - { nombre: es_local,      tipo: boolean, requerido: true,  descripcion: "Es la moneda funcional de la empresa" }

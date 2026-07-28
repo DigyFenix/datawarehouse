@@ -1,0 +1,29 @@
+model Model
+	culture: es-GT
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: es-GT
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_QueryOrder = ["Servidor","BaseDatos"]
+
+ref table Calendario
+ref table Cliente
+ref table Proveedor
+ref table Producto
+ref table Vendedor
+ref table Empresa
+ref table Bodega
+ref table Moneda
+ref table 'Cuenta contable'
+ref table 'Centro de costo'
+ref table 'Tipo de documento'
+ref table Ventas
+ref table Compras
+ref table 'Cartera por cobrar'
+ref table 'Cartera por pagar'
+ref table 'Cartera cobrar histórico'
+ref table 'Cartera pagar histórico'
+ref table '_ Métricas'

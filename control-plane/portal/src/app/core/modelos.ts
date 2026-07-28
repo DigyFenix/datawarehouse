@@ -13,6 +13,7 @@ export interface Organizacion {
   erpTipo: string;
   estado: string;
   secretoConexionRef: string | null;
+  colorMarca: string | null;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -103,4 +104,118 @@ export interface VersionMetrica {
 
 export interface MetricaDetalle extends Metrica {
   versiones: VersionMetrica[];
+}
+
+export interface PoliticaIngesta {
+  id: number;
+  organizacionId: number;
+  objeto: string;
+  nombreNegocio: string;
+  dominio: string;
+  tipoObjeto: 'hecho' | 'maestro';
+  estrategia: 'incremental_ventana' | 'abiertos' | 'full_replace' | 'versionado';
+  fuenteObjeto: string;
+  campoFecha: string | null;
+  lookbackValor: number | null;
+  lookbackUnidad: 'dias' | 'meses' | null;
+  claveNatural: string;
+  columnasVersionado: string[];
+  modelosDbt: string | null;
+  activo: boolean;
+  owner: string;
+  version: number;
+}
+
+export interface PlanIngesta {
+  id: number;
+  organizacionId: number;
+  nombre: string;
+  descripcion: string | null;
+  cron: string;
+  empresas: string[];
+  objetos: string[];
+  encadenaTransformacion: boolean;
+  activo: boolean;
+}
+
+export interface Dominio {
+  id: number;
+  clave: string;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+}
+
+export interface Entorno {
+  id: number;
+  clave: string;
+  nombre: string;
+  erp: string;
+  motor: string;
+  driver: string;
+  puertoDefault: number | null;
+  activo: boolean;
+}
+
+export interface Conexion {
+  id: number;
+  nombre: string;
+  entornoClave: string;
+  host: string;
+  puerto: number;
+  baseDatos: string | null;
+  secretoRef: string;
+  activo: boolean;
+  notas: string | null;
+}
+
+export interface Sociedad {
+  id: number;
+  organizacionId: number;
+  empresaId: string;
+  nombre: string;
+  nit: string | null;
+  conexionId: number | null;
+  esquemaOrigen: string | null;
+  activo: boolean;
+  orden: number;
+}
+
+export interface CampoIngesta {
+  id: number;
+  organizacionId: number;
+  objeto: string;
+  tablaOrigen: string;
+  campoOrigen: string;
+  esUdf: boolean;
+  tipoOrigen: string | null;
+  descripcion: string | null;
+  canonicoEntidad: string | null;
+  campoCanonico: string | null;
+  transformacion: string;
+  sugerido: boolean;
+  incluido: boolean;
+  tieneDatos: boolean | null;
+  origen: string;
+}
+
+export interface CanonicoEntidad {
+  id: number;
+  clave: string;
+  nombre: string;
+  dominio: string;
+  tipo: string;
+  descripcion: string | null;
+  activo: boolean;
+}
+
+export interface CanonicoCampo {
+  id: number;
+  entidadClave: string;
+  nombre: string;
+  tipo: string;
+  requerido: boolean;
+  descripcion: string | null;
+  orden: number;
+  activo: boolean;
 }

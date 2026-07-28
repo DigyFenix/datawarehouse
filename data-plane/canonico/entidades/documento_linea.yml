@@ -1,0 +1,52 @@
+# Contrato canónico — documento_linea (EL GRANO DEL HECHO, §8)
+# Reemplaza `linea_documento_venta` del v1: ahora cubre venta y compra.
+entidad: documento_linea
+tipo: hecho_linea
+dominio: ventas_compras
+grano: una línea de documento comercial
+empresa_scoped: true
+clave_natural: [empresa_id, flujo, tipo_documento, documento_id, linea_numero]
+campos:
+  # --- identificación -------------------------------------------------------
+  - { nombre: empresa_id,      tipo: text,    requerido: true,  descripcion: "Empresa (RLS)" }
+  - { nombre: documento_id,    tipo: text,    requerido: true,  descripcion: "Documento padre" }
+  - { nombre: linea_numero,    tipo: integer, requerido: true,  descripcion: "Número de línea dentro del documento" }
+  - { nombre: flujo,           tipo: text,    requerido: true,  descripcion: "venta | compra (denormalizado)" }
+  - { nombre: tipo_documento,  tipo: text,    requerido: true,  descripcion: "factura | nota_credito (denormalizado)" }
+  # --- contexto denormalizado para el hecho --------------------------------
+  - { nombre: fecha_documento, tipo: date,    requerido: true,  descripcion: "Denormalizada de la cabecera" }
+  - { nombre: socio_codigo,    tipo: text,    requerido: true,  descripcion: "Cliente o proveedor (denormalizado)" }
+  - { nombre: vendedor_codigo, tipo: text,    requerido: false, descripcion: "Vendedor (denormalizado)" }
+  # --- dimensiones a nivel línea -------------------------------------------
+  - { nombre: producto_codigo,     tipo: text, requerido: false, descripcion: "Producto de la línea" }
+  - { nombre: descripcion_linea,   tipo: text, requerido: false, descripcion: "Descripción libre de la línea" }
+  - { nombre: almacen_codigo,      tipo: text, requerido: false, descripcion: "Bodega de la línea" }
+  - { nombre: centro_costo_codigo, tipo: text, requerido: false, descripcion: "Centro de costo ('MULTIPLE' si el origen reparte)" }
+  - { nombre: cuenta_codigo,       tipo: text, requerido: false, descripcion: "Cuenta contable de la línea" }
+  # --- cantidad y precio ---------------------------------------------------
+  - { nombre: cantidad,               tipo: numeric(18,4), requerido: true,  descripcion: "Cantidad de la línea" }
+  - { nombre: unidad_medida,          tipo: text,          requerido: false, descripcion: "Unidad de la línea" }
+  - { nombre: precio_unitario_doc,    tipo: numeric(18,4), requerido: false, descripcion: "Precio unitario, moneda del documento" }
+  - { nombre: precio_antes_descuento, tipo: numeric(18,4), requerido: false, descripcion: "Precio antes de descuento" }
+  - { nombre: descuento_pct,          tipo: numeric(18,6), requerido: false, descripcion: "Porcentaje de descuento del documento. NO se acota a 0-100 A PROPÓSITO: el negocio aplica descuentos muy grandes y casos especiales para llegar al monto pactado (hasta -260,073% en compras de Proavisa). Es dato legítimo, no un error de captura: se conserva tal cual y NO se marca en calidad." }
+  # --- montos: TODOS los ejes (decisión de Edwin) --------------------------
+  - { nombre: monto_sin_impuesto_doc,   tipo: numeric(18,4), requerido: true,  descripcion: "Base imponible, moneda del documento" }
+  - { nombre: monto_impuesto_doc,       tipo: numeric(18,4), requerido: false, descripcion: "Impuesto, moneda del documento" }
+  - { nombre: monto_con_impuesto_doc,   tipo: numeric(18,4), requerido: false, descripcion: "Total línea, moneda del documento" }
+  - { nombre: monto_sin_impuesto_local, tipo: numeric(18,4), requerido: true,  descripcion: "Base imponible, moneda local" }
+  - { nombre: monto_impuesto_local,     tipo: numeric(18,4), requerido: false, descripcion: "Impuesto, moneda local" }
+  - { nombre: monto_con_impuesto_local, tipo: numeric(18,4), requerido: false, descripcion: "Total línea, moneda local" }
+  - { nombre: monto_descuento_local,    tipo: numeric(18,4), requerido: false, descripcion: "Descuento de la línea, moneda local" }
+  - { nombre: costo_local,              tipo: numeric(18,4), requerido: false, descripcion: "Costo de la línea, moneda local (base del margen)" }
+  - { nombre: margen_local,             tipo: numeric(18,4), requerido: false, descripcion: "Margen de la línea, moneda local" }
+  # --- moneda --------------------------------------------------------------
+  - { nombre: moneda_documento, tipo: text, requerido: true, descripcion: "Moneda del documento (denormalizada)" }
+  - { nombre: moneda_local,     tipo: text, requerido: true, descripcion: "Moneda funcional (denormalizada)" }
+reglas:
+  - "monto_sin_impuesto_* es SIEMPRE base imponible (sin impuesto). Es el eje comparable
+     entre ERPs y el que alimenta las métricas 'sin IVA'."
+  - "SOLO líneas de producto/servicio. En Odoo hay que excluir las líneas de impuesto y de
+     plazo de pago: apenas el 44% de las líneas de factura son de producto (699 de 1,599)."
+  - "SIGNO: nota_credito ⇒ negativo, coherente con la cabecera."
+  - "IVA en Guatemala: va INCLUIDO en el precio (12% del total = 13.64% sobre la base). Por eso
+     se conservan las dos bases y las métricas se publican explícitas 'sin IVA' y 'con IVA'."

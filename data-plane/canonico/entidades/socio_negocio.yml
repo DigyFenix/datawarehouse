@@ -1,15 +1,26 @@
-# Contrato canónico — socio_negocio (cliente)
+# Contrato canónico — socio_negocio (cliente Y proveedor unificados)
+# Ambos ERPs los unifican de origen (SAP B1 `OCRD.CardType`, Odoo `res_partner`).
+# En Oro se exponen como dos dimensiones separadas (dim_cliente / dim_proveedor)
+# porque hay socios duales: 35 NIT en Cresta, 2 en Iron Network.
 entidad: socio_negocio
 tipo: dimension
 dominio: datos_maestros
-grano: un socio de negocio (cliente)
-empresa_scoped: true          # el maestro puede diferir por empresa; se homologa en Silver
-clave_natural: [empresa_id, socio_negocio_codigo]
-miembro_default: { socio_negocio_codigo: "DESCONOCIDO", nombre: "Cliente desconocido" }
+grano: un socio de negocio por empresa
+empresa_scoped: true
+clave_natural: [empresa_id, socio_codigo]
+miembro_default: { socio_codigo: "DESCONOCIDO", nombre: "Socio desconocido" }
 campos:
-  - { nombre: empresa_id,           tipo: text, requerido: true,  descripcion: "Empresa del grupo" }
-  - { nombre: socio_negocio_codigo, tipo: text, requerido: true,  descripcion: "Código de cliente en el origen" }
-  - { nombre: nombre,               tipo: text, requerido: true,  descripcion: "Razón social / nombre" }
-  - { nombre: nit,                  tipo: text, requerido: false, descripcion: "Identificación tributaria" }
-  - { nombre: region,               tipo: text, requerido: false, descripcion: "Región/zona (posible eje de RLS de cartera)" }
-  - { nombre: activo,               tipo: boolean, requerido: false, descripcion: "Cliente activo" }
+  - { nombre: empresa_id,             tipo: text,    requerido: true,  descripcion: "Empresa (clave de tenencia/RLS)" }
+  - { nombre: socio_codigo,           tipo: text,    requerido: true,  descripcion: "Código del socio en el origen" }
+  - { nombre: nombre,                 tipo: text,    requerido: true,  descripcion: "Razón social / nombre" }
+  - { nombre: nit,                    tipo: text,    requerido: false, descripcion: "Identificación tributaria" }
+  - { nombre: es_cliente,             tipo: boolean, requerido: true,  descripcion: "Actúa como cliente" }
+  - { nombre: es_proveedor,           tipo: boolean, requerido: true,  descripcion: "Actúa como proveedor" }
+  - { nombre: grupo_codigo,           tipo: text,    requerido: false, descripcion: "Grupo/categoría comercial" }
+  - { nombre: condicion_pago_codigo,  tipo: text,    requerido: false, descripcion: "Condición de pago pactada" }
+  - { nombre: moneda_codigo,          tipo: text,    requerido: false, descripcion: "Moneda habitual del socio" }
+  - { nombre: pais,                   tipo: text,    requerido: false, descripcion: "País" }
+  - { nombre: region,                 tipo: text,    requerido: false, descripcion: "Región/zona (posible eje de RLS de cartera)" }
+  - { nombre: activo,                 tipo: boolean, requerido: false, descripcion: "Socio activo en el origen" }
+notas:
+  - "El origen puede traer contactos y direcciones que NO son socios de negocio. Se filtran."

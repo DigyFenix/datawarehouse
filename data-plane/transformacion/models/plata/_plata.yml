@@ -1,0 +1,104 @@
+version: 2
+
+# Calidad en Plata ANTES de Oro (CLAUDE.md §10): completitud, validez, consistencia, unicidad.
+# Los tests son idénticos para los dos ERPs — es la prueba de que la costura agnóstica funciona.
+models:
+  - name: plata_socio_negocio
+    description: Cliente y proveedor unificados. En Oro se separan en dim_cliente/dim_proveedor.
+    columns:
+      - name: empresa_id
+        data_tests: [not_null]
+      - name: socio_codigo
+        data_tests: [not_null]
+      - name: nombre
+        data_tests: [not_null]
+
+  - name: plata_cuenta
+    description: >
+      Plan de cuentas con tipo normalizado. PIEZA OBLIGATORIA del pipeline de cartera.
+    columns:
+      - name: cuenta_codigo
+        data_tests: [not_null]
+      - name: tipo_cuenta
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [por_cobrar, por_pagar, banco, caja, ingreso, gasto, costo,
+                       inventario, activo, pasivo, patrimonio, orden, otro]
+
+  - name: plata_producto
+    columns:
+      - name: producto_codigo
+        data_tests: [not_null]
+
+  - name: plata_almacen
+    columns:
+      - name: almacen_codigo
+        data_tests: [not_null]
+
+  - name: plata_documento_comercial
+    description: Cabecera de venta y compra unificadas por `flujo`.
+    columns:
+      - name: documento_id
+        data_tests: [not_null]
+      - name: flujo
+        data_tests:
+          - not_null
+          - accepted_values: { values: [venta, compra] }
+      - name: tipo_documento
+        data_tests:
+          - not_null
+          - accepted_values: { values: [factura, nota_credito] }
+      - name: socio_codigo
+        data_tests: [not_null]
+      - name: total_con_impuesto_local
+        data_tests: [not_null]
+
+  - name: plata_documento_linea
+    description: El grano del hecho. Solo líneas de producto.
+    columns:
+      - name: documento_id
+        data_tests: [not_null]
+      - name: flujo
+        data_tests:
+          - accepted_values: { values: [venta, compra] }
+      - name: monto_sin_impuesto_local
+        data_tests: [not_null]
+
+  - name: plata_partida_cartera
+    description: CxC y CxP desde el mayor, filtradas por tipo de cuenta.
+    columns:
+      - name: partida_id
+        data_tests: [not_null, unique]
+      - name: tipo_cartera
+        data_tests:
+          - not_null
+          - accepted_values: { values: [cobrar, pagar] }
+      - name: cuenta_codigo
+        data_tests: [not_null]
+      - name: saldo_pendiente_local
+        data_tests: [not_null]
+      - name: origen_partida
+        data_tests:
+          - accepted_values: { values: [documento, asiento] }
+
+  - name: cuarentena_socio_negocio
+    description: >
+      Socios que violan una regla de calidad (§10). NO bloquean la corrida: quedan aquí con la
+      regla violada para que el Data Steward los corrija en el ERP. Que tenga filas es
+      información de gobierno, no un fallo del pipeline.
+    columns:
+      - name: regla_violada
+        data_tests: [not_null]
+      - name: detectado_en
+        data_tests: [not_null]
+
+  - name: plata_control_cuadre
+    description: >
+      Comparación canónico vs origen. El test `cuadre_sin_desvios` es de GOBERNANZA:
+      si un concepto no cuadra, la corrida falla y Oro no publica.
+    columns:
+      - name: concepto
+        data_tests: [not_null]
+      - name: cuadra
+        data_tests: [not_null]
