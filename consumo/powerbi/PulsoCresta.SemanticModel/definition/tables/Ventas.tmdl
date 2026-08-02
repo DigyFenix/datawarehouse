@@ -76,6 +76,21 @@ table Ventas
 		summarizeBy: none
 		sourceColumn: documento_numero
 
+	column serie_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: serie_codigo
+
+	column tipo_documento_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_documento_origen
+
+	column referencia_externa
+		dataType: string
+		summarizeBy: none
+		sourceColumn: referencia_externa
+
 	column linea_numero
 		dataType: int64
 		summarizeBy: none
@@ -159,6 +174,17 @@ table Ventas
 		sourceColumn: margen_local
 		formatString: #,0.00
 
+	column saldo_pendiente_local
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_local
+		formatString: #,0.00
+
+	column estado_pago
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado_pago
+
 	column proceso_transformacion
 		dataType: string
 		isHidden
@@ -173,40 +199,45 @@ table Ventas
 
 	/// Base de todo: venta sin impuestos, con la nota de crédito ya en negativo.
 	measure 'Ventas netas' = SUM(Ventas[monto_sin_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Ventas netas con IVA' = SUM(Ventas[monto_con_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Ventas brutas' = CALCULATE([Ventas netas], 'Tipo de documento'[tipo_documento] = "factura")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure Devoluciones = ABS(CALCULATE([Ventas netas], 'Tipo de documento'[tipo_documento] = "nota_credito"))
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Impuesto facturado' = SUM(Ventas[monto_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Descuento otorgado' = SUM(Ventas[monto_descuento_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure '% Descuento' = DIVIDE([Descuento otorgado], [Ventas netas] + [Descuento otorgado])
 		formatString: 0.0%
 		displayFolder: 01 Importes
 
+	/// Saldo pendiente de las facturas visibles, prorrateado por línea (suma = saldo del documento). INFORMATIVO: la cartera oficial sale del mayor.
+	measure 'Saldo de facturas' = SUM(Ventas[saldo_pendiente_local])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
 	/// El mercado real. La venta al grupo no compite por precio: mezclarla distorsiona todo indicador comercial.
 	measure 'Ventas a terceros' = CALCULATE([Ventas netas], Cliente[es_intercompania] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
 	measure 'Ventas al grupo' = CALCULATE([Ventas netas], Cliente[es_intercompania] = TRUE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
 	measure '% Venta al grupo' = DIVIDE([Ventas al grupo], [Ventas netas])
@@ -234,54 +265,115 @@ table Ventas
 		displayFolder: 03 Conteos
 
 	measure 'Ticket promedio' = DIVIDE([Ventas netas], [Documentos de venta])
-		formatString: #,0
-		displayFolder: 03 Conteos
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
 
 	measure 'Precio promedio unidad' = DIVIDE([Ventas netas], [Unidades vendidas])
-		formatString: #,0.00
-		displayFolder: 03 Conteos
+		formatString: "Q" #,0.00
+		displayFolder: 04 Promedios
+
+	measure 'Venta promedio por línea' = DIVIDE([Ventas netas], [Líneas de venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	/// Promedio sobre los días que SÍ hubo venta: no diluye con domingos y feriados.
+	measure 'Venta promedio diaria' = DIVIDE([Ventas netas], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Ventas))
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	measure 'Venta promedio por cliente' = DIVIDE([Ventas netas], [Clientes con venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
 
 	measure 'Costo de ventas' = SUM(Ventas[costo_local])
-		formatString: #,0
-		displayFolder: 04 Rentabilidad
+		formatString: "Q" #,0
+		displayFolder: 05 Rentabilidad
 
 	measure 'Margen bruto' = SUM(Ventas[margen_local])
-		formatString: #,0
-		displayFolder: 04 Rentabilidad
+		formatString: "Q" #,0
+		displayFolder: 05 Rentabilidad
 
 	measure '% Margen' = DIVIDE([Margen bruto], [Ventas netas])
 		formatString: 0.0%
-		displayFolder: 04 Rentabilidad
+		displayFolder: 05 Rentabilidad
 
 	/// El margen de mercado. Incluir la venta al grupo, que no compite por precio, infla el indicador.
 	measure '% Margen terceros' = DIVIDE(CALCULATE([Margen bruto], Cliente[es_intercompania] = FALSE), [Ventas a terceros])
 		formatString: 0.0%
-		displayFolder: 04 Rentabilidad
+		displayFolder: 05 Rentabilidad
 
+	/// Mismo período del mes anterior (respeta el filtro de fechas del visual).
 	measure 'Ventas mes anterior' = CALCULATE([Ventas netas], DATEADD(Calendario[fecha], -1, MONTH))
-		formatString: #,0
-		displayFolder: 05 Comparativos
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
 
 	measure 'Ventas año anterior' = CALCULATE([Ventas netas], DATEADD(Calendario[fecha], -1, YEAR))
-		formatString: #,0
-		displayFolder: 05 Comparativos
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Acumulado del mes en curso hasta el último día con datos del filtro.
+	measure 'Ventas acumuladas mes' = TOTALMTD([Ventas netas], Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	measure 'Ventas acumuladas trimestre' = TOTALQTD([Ventas netas], Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
 
 	measure 'Ventas acumuladas año' = TOTALYTD([Ventas netas], Calendario[fecha])
-		formatString: #,0
-		displayFolder: 05 Comparativos
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// El acumulado del año PASADO al mismo corte: el comparable correcto del YTD.
+	measure 'Ventas acumuladas año anterior' = CALCULATE(TOTALYTD([Ventas netas], Calendario[fecha]), DATEADD(Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
 
 	measure 'Variación vs mes anterior' = DIVIDE([Ventas netas] - [Ventas mes anterior], [Ventas mes anterior])
 		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 05 Comparativos
+		displayFolder: 06 Comparativos
 
 	measure 'Variación vs año anterior' = DIVIDE([Ventas netas] - [Ventas año anterior], [Ventas año anterior])
 		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 05 Comparativos
+		displayFolder: 06 Comparativos
 
-	/// Promedio de los últimos 3 meses: alisa el diente de sierra de la facturación diaria.
-	measure 'Media móvil 3 meses' = AVERAGEX(DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -3, MONTH), [Ventas netas])
+	measure 'Variación acumulada vs año anterior' = DIVIDE([Ventas acumuladas año] - [Ventas acumuladas año anterior], [Ventas acumuladas año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 06 Comparativos
+
+	/// Promedio MENSUAL de los últimos 3 meses: alisa el diente de sierra de la facturación. (Iterar días con DATESINPERIOD daba un promedio diario disfrazado de mensual.)
+	measure 'Media móvil 3 meses' = CALCULATE(AVERAGEX(VALUES(Calendario[anio_mes]), [Ventas netas]), DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -3, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Año móvil: los últimos 12 meses completos desde el corte. Quita la estacionalidad del calendario.
+	measure 'Ventas 12 meses móviles' = CALCULATE([Ventas netas], DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -12, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Venta de líneas sin artículo (servicios, fletes, gastos) — el miembro SERVICIO de Producto.
+	measure 'Ventas de servicios' = CALCULATE([Ventas netas], Producto[producto_codigo] = "SERVICIO")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Posición del cliente ordenado por venta a terceros, dentro del filtro vigente.
+	measure 'Ranking de cliente por venta' = RANKX(ALLSELECTED(Cliente), [Ventas a terceros])
 		formatString: #,0
-		displayFolder: 05 Comparativos
+		displayFolder: 07 Pareto
+
+	/// Curva de Pareto: % de la venta a terceros que acumulan este cliente y los mayores que él.
+	measure '% acumulado de venta clientes' = VAR actual = [Ventas a terceros] RETURN DIVIDE(SUMX(FILTER(ALLSELECTED(Cliente), [Ventas a terceros] >= actual), [Ventas a terceros]), CALCULATE([Ventas a terceros], ALLSELECTED(Cliente)))
+		formatString: 0.0%
+		displayFolder: 07 Pareto
+
+	measure 'Ranking de producto por venta' = RANKX(ALLSELECTED(Producto), [Ventas netas])
+		formatString: #,0
+		displayFolder: 07 Pareto
+
+	/// Curva de Pareto de productos sobre la venta neta.
+	measure '% acumulado de venta productos' = VAR actual = [Ventas netas] RETURN DIVIDE(SUMX(FILTER(ALLSELECTED(Producto), [Ventas netas] >= actual), [Ventas netas]), CALCULATE([Ventas netas], ALLSELECTED(Producto)))
+		formatString: 0.0%
+		displayFolder: 07 Pareto
 
 	partition Ventas = m
 		mode: import

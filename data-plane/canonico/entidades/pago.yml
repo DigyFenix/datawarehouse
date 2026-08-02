@@ -1,0 +1,28 @@
+# Contrato canónico — pago
+# NUEVO. Documento de pago: cobro a cliente (recibido) o pago a proveedor (efectuado).
+# INFORMATIVO para flujo de caja y comportamiento de cobro/pago — el saldo de cartera
+# sale del MAYOR (partida_cartera), nunca de aquí.
+# SAP B1: ORCT/OVPM (el monto es la suma de medios: ORCT no tiene DocTotal).
+# Odoo  : account_payment (su asiento contable llega aparte por account_move).
+entidad: pago
+tipo: hecho_cabecera
+dominio: tesoreria
+grano: un documento de pago
+empresa_scoped: true
+clave_natural: [empresa_id, pago_id, tipo_pago]
+campos:
+  - { nombre: empresa_id,       tipo: text,    requerido: true,  descripcion: "Empresa (RLS)" }
+  - { nombre: pago_id,          tipo: text,    requerido: true,  descripcion: "Llave interna del ERP (DocEntry / id)" }
+  - { nombre: pago_numero,      tipo: text,    requerido: false, descripcion: "Número visible (DocNum / name)" }
+  - { nombre: tipo_pago,        tipo: text,    requerido: true,  descripcion: "recibido | efectuado" }
+  - { nombre: socio_codigo,     tipo: text,    requerido: false, descripcion: "Cliente (recibido) o proveedor (efectuado); nulo en pagos a cuenta" }
+  - { nombre: fecha_pago,       tipo: date,    requerido: true,  descripcion: "Fecha del pago" }
+  - { nombre: fecha_registro,   tipo: date,    requerido: false, descripcion: "Fecha contable" }
+  - { nombre: moneda_documento, tipo: text,    requerido: false, descripcion: "Moneda del pago" }
+  - { nombre: moneda_local,     tipo: text,    requerido: true,  descripcion: "Moneda funcional de la empresa" }
+  - { nombre: tipo_cambio,      tipo: numeric, requerido: false, descripcion: "Tasa aplicada por el ERP" }
+  - { nombre: monto_doc,        tipo: numeric, requerido: false, descripcion: "Monto en moneda del documento" }
+  - { nombre: monto_local,      tipo: numeric, requerido: true,  descripcion: "Monto en moneda local. SIEMPRE positivo: el sentido lo da tipo_pago" }
+  - { nombre: medio_pago,       tipo: text,    requerido: false, descripcion: "efectivo | cheque | transferencia | tarjeta | mixto" }
+  - { nombre: referencia,       tipo: text,    requerido: false, descripcion: "Referencia externa" }
+  - { nombre: estado,           tipo: text,    requerido: false, descripcion: "Estado en el ERP" }

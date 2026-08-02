@@ -32,7 +32,11 @@ export class OrganizacionesService {
   }
 
   async crear(dto: CrearOrganizacionDto, actor: Actor) {
-    const [creada] = await this.db.insert(organizaciones).values(dto).returning();
+    // La base del plano de datos es obligatoria para el worker: si no viene, se deriva del
+    // código. Crear la BD física y sus esquemas sigue siendo un paso de infraestructura
+    // (createdb + schema/101), documentado en el runbook de onboarding.
+    const valores = { ...dto, baseDatosDw: dto.baseDatosDw ?? `dw_${dto.codigo}` };
+    const [creada] = await this.db.insert(organizaciones).values(valores).returning();
     await this.auditoria.registrar({
       usuarioId: actor.id,
       usuarioEmail: actor.email,

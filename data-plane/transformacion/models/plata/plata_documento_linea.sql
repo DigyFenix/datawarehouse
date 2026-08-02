@@ -35,8 +35,18 @@
       ('rpc1', 'orpc', 'compra', 'nota_credito')
    ] -%}
 
+-- Igual que en la cabecera: los campos FC de la línea (TotalFrgn/GTotalFC) van en 0 cuando el
+-- documento está en moneda local; el eje _doc cae al monto local en ese caso.
+with moneda_local_erp as (
+    select empresa_id, min(moneda_codigo) as moneda_codigo
+    from {{ ref('plata_moneda') }}
+    where es_local
+    group by empresa_id
+)
+
 {% for tabla_lin, tabla_cab, flujo, tipo in documentos %}
 {%- set signo = -1 if tipo == 'nota_credito' else 1 %}
+{%- set es_fc = "nullif(trim(c.datos->>'DocCur'), '') is distinct from ml.moneda_codigo" %}
 select
     l.empresa_id,
     l.datos->>'DocEntry'                                      as documento_id,
@@ -56,16 +66,31 @@ select
     (nullif(l.datos->>'Price', ''))::numeric(18,4)            as precio_unitario_doc,
     (nullif(l.datos->>'PriceBefDi', ''))::numeric(18,4)       as precio_antes_descuento,
     (nullif(l.datos->>'DiscPrcnt', ''))::numeric(18,6)        as descuento_pct,
-    {{ signo }} * (nullif(l.datos->>'TotalFrgn', ''))::numeric(18,4)  as monto_sin_impuesto_doc,
-    {{ signo }} * coalesce((nullif(l.datos->>'GTotalFC',''))::numeric(18,4), 0)
-                - {{ signo }} * coalesce((nullif(l.datos->>'TotalFrgn',''))::numeric(18,4), 0)
+    {{ signo }} * (case when {{ es_fc }}
+        then (nullif(l.datos->>'TotalFrgn',''))::numeric(18,4)
+        else (nullif(l.datos->>'LineTotal',''))::numeric(18,4) end)   as monto_sin_impuesto_doc,
+    {{ signo }} * (case when {{ es_fc }}
+        then coalesce((nullif(l.datos->>'GTotalFC',''))::numeric(18,4), 0)
+           - coalesce((nullif(l.datos->>'TotalFrgn',''))::numeric(18,4), 0)
+        else coalesce((nullif(l.datos->>'VatSum',''))::numeric(18,4), 0) end)
                                                               as monto_impuesto_doc,
-    {{ signo }} * (nullif(l.datos->>'GTotalFC', ''))::numeric(18,4)   as monto_con_impuesto_doc,
+    {{ signo }} * (case when {{ es_fc }}
+        then (nullif(l.datos->>'GTotalFC',''))::numeric(18,4)
+        else (nullif(l.datos->>'GTotal',''))::numeric(18,4) end)      as monto_con_impuesto_doc,
     {{ signo }} * (nullif(l.datos->>'LineTotal', ''))::numeric(18,4)  as monto_sin_impuesto_local,
     {{ signo }} * coalesce((nullif(l.datos->>'VatSum',''))::numeric(18,4), 0)
                                                               as monto_impuesto_local,
     {{ signo }} * (nullif(l.datos->>'GTotal', ''))::numeric(18,4)     as monto_con_impuesto_local,
-    0::numeric(18,4)                                          as monto_descuento_local,
+    -- Descuento de la línea: (precio antes de descuento − precio) × cantidad, en moneda del
+    -- documento; en moneda extranjera se convierte con la razón local/doc de la propia línea.
+    round({{ signo }}
+        * (coalesce((nullif(l.datos->>'PriceBefDi',''))::numeric, 0)
+         - coalesce((nullif(l.datos->>'Price',''))::numeric, 0))
+        * coalesce((nullif(l.datos->>'Quantity',''))::numeric, 0)
+        * (case when {{ es_fc }}
+             then coalesce(abs((nullif(l.datos->>'LineTotal',''))::numeric)
+                  / nullif(abs((nullif(l.datos->>'TotalFrgn',''))::numeric), 0), 0)
+             else 1 end), 4)::numeric(18,4)                   as monto_descuento_local,
     -- `StockPrice` de SAP B1 es el costo UNITARIO, no el de la línea: el costo de la línea es
     -- StockPrice × Quantity. Verificado contra GrssProfit del propio ERP (doc 1600345:
     -- 20,000 × 10.00 = 200,000 y 230,357.14 − 200,000 = 30,357.14 = GrssProfit). Mapearlo
@@ -84,6 +109,8 @@ from {{ source('bronce', tabla_lin) }} l
 join {{ source('bronce', tabla_cab) }} c
      on c.datos->>'DocEntry' = l.datos->>'DocEntry'
     and c.empresa_id         = l.empresa_id
+left join moneda_local_erp ml
+       on ml.empresa_id = l.empresa_id
 {% if not loop.last %}union all{% endif %}
 {% endfor %}
 
@@ -127,23 +154,52 @@ select
     {{ signo_odoo('m') }} * coalesce((nullif(l.datos->>'price_total',''))::numeric(18,4), 0)
                                                               as monto_con_impuesto_doc,
     -- `balance` (débito−crédito) ya está en moneda de la compañía y con el signo contable:
-    -- en una venta la línea de ingreso es crédito (negativa), así que se invierte para que
-    -- las ventas queden positivas como en SAP B1.
-    -1 * coalesce((nullif(l.datos->>'balance',''))::numeric(18,4), 0)
+    -- en una VENTA la línea de ingreso es crédito (negativa) → se invierte; en una COMPRA la
+    -- línea de gasto es débito (positiva) → se deja. Así factura queda positiva y NC negativa
+    -- en ambos flujos (la convención de SAP B1); las NC salen bien solas porque el asiento ya
+    -- viene invertido.
+    (case when m.datos->>'move_type' like 'out_%' then -1 else 1 end)
+        * coalesce((nullif(l.datos->>'balance',''))::numeric(18,4), 0)
                                                               as monto_sin_impuesto_local,
-    0::numeric(18,4)                                          as monto_impuesto_local,
-    -1 * coalesce((nullif(l.datos->>'balance',''))::numeric(18,4), 0)
+    -- El balance de la línea `product` EXCLUYE impuesto. El IVA local se deriva con la razón
+    -- impositiva de la propia línea (price_total/price_subtotal, en moneda del documento):
+    -- exacta por línea, y así "con IVA" deja de ser igual a "sin IVA" en el tenant Odoo.
+    coalesce(round((case when m.datos->>'move_type' like 'out_%' then -1 else 1 end)
+        * coalesce((nullif(l.datos->>'balance',''))::numeric(18,4), 0)
+        * (coalesce((nullif(l.datos->>'price_total',''))::numeric, 0)
+         - coalesce((nullif(l.datos->>'price_subtotal',''))::numeric, 0))
+        / nullif((nullif(l.datos->>'price_subtotal',''))::numeric, 0), 4), 0)::numeric(18,4)
+                                                              as monto_impuesto_local,
+    -- Línea con subtotal 0 (gratis): sin razón impositiva, el total cae al neto (0 + 0).
+    coalesce(round((case when m.datos->>'move_type' like 'out_%' then -1 else 1 end)
+        * coalesce((nullif(l.datos->>'balance',''))::numeric(18,4), 0)
+        * coalesce((nullif(l.datos->>'price_total',''))::numeric, 0)
+        / nullif((nullif(l.datos->>'price_subtotal',''))::numeric, 0), 4),
+        (case when m.datos->>'move_type' like 'out_%' then -1 else 1 end)
+        * coalesce((nullif(l.datos->>'balance',''))::numeric(18,4), 0))::numeric(18,4)
                                                               as monto_con_impuesto_local,
-    0::numeric(18,4)                                          as monto_descuento_local,
+    -- Descuento de la línea (discount %) convertido a moneda local con la misma razón.
+    round({{ signo_odoo('m') }}
+        * coalesce((nullif(l.datos->>'price_unit',''))::numeric, 0)
+        * coalesce((nullif(l.datos->>'quantity',''))::numeric, 0)
+        * coalesce((nullif(l.datos->>'discount',''))::numeric, 0) / 100
+        * coalesce(abs((nullif(l.datos->>'balance',''))::numeric)
+          / nullif(abs((nullif(l.datos->>'price_subtotal',''))::numeric), 0), 1), 4)::numeric(18,4)
+                                                              as monto_descuento_local,
     0::numeric(18,4)                                          as costo_local,
     0::numeric(18,4)                                          as margen_local,
-    nullif(l.datos->>'currency_id', '')                       as moneda_documento,
+    -- `currency_id` es un id numérico: se traduce al código con res_currency (ver cabecera).
+    coalesce(nullif(trim(rc.datos->>'name'), ''), l.datos->>'currency_id')
+                                                              as moneda_documento,
     '{{ var("moneda_local", "GTQ") }}'::text                  as moneda_local,
     {{ columnas_trazabilidad('l') }}
 from {{ source('bronce', 'account_move_line') }} l
 join {{ source('bronce', 'account_move') }} m
      on m.datos->>'id' = l.datos->>'move_id'
     and m.empresa_id   = l.empresa_id
+left join {{ source('bronce', 'res_currency') }} rc
+       on rc.datos->>'id' = l.datos->>'currency_id'
+      and rc.empresa_id   = l.empresa_id
 -- SOLO líneas de producto, y solo de documentos comerciales.
 where l.datos->>'display_type' = 'product'
   and m.datos->>'move_type' in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')

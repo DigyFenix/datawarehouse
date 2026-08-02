@@ -7,7 +7,8 @@ Un proyecto por organización, generado desde el esquema `oro` de su base:
 | `PulsoCresta.pbip` | `dw_grupocresta` | Grupo Cresta (SAP B1 / HANA) |
 | `PulsoIronNetwork.pbip` | `dw_ironnetwork` | Iron Network (Odoo 18) |
 
-Cada uno trae **18 tablas, 43 relaciones y 24 medidas DAX** ya definidas.
+Cada uno trae **23 tablas, 61 relaciones y 122 medidas DAX** ya definidas, más el grupo de
+cálculo **«Moneda de análisis»** (Quetzales ↔ moneda original del documento).
 
 ---
 
@@ -50,13 +51,21 @@ cambian en Transformar datos → Administrar parámetros, sin tocar las 17 consu
 
 ## Qué trae el modelo
 
-**Hechos:** Ventas · Compras · Cartera por cobrar · Cartera por pagar · los dos históricos diarios.
+**Hechos:** Ventas · Compras · Cartera por cobrar · Cartera por pagar · los dos históricos
+diarios · Pagos recibidos · Pagos efectuados · Inventario.
 
 **Dimensiones:** Calendario · Cliente · Proveedor · Producto · Vendedor · Empresa · Bodega ·
-Moneda · Cuenta contable · Centro de costo · Tipo de documento.
+Moneda · Cuenta contable · Centro de costo · Tipo de documento · Antigüedad · Clasificación ABC
+(clientes y proveedores).
 
-**Medidas** en la tabla `_ Métricas`, agrupadas en carpetas: `01 Ventas` · `02 Rentabilidad` ·
-`03 Compras` · `04 Cartera` · `05 Riesgo` · `06 Comparativos`.
+**Medidas** repartidas en su hecho (Ventas 36, Compras 22, Cartera 18+9, Pagos 6+7, Inventario 5,
+ABC 10+9), en carpetas `01 Importes` … `06 Comparativos`. Todas las de importe llevan formato
+**Q sin decimales**; los comparativos de tiempo (mes anterior, año anterior, acumulados MTD/QTD/YTD,
+acumulado del año anterior, 12 meses móviles) existen para ventas, compras y pagos.
+
+**«Moneda de análisis»** (grupo de cálculo, se usa como segmentación): *Quetzales (local)* deja
+todo como está; *Moneda original* conmuta las medidas base de importe a la moneda del documento —
+tiene sentido leyéndolo **con un filtro de Moneda activo** (sumar USD con GTQ no es un número).
 
 ### Decisiones que ya vienen aplicadas
 
@@ -134,6 +143,16 @@ hayas hecho (viven en la carpeta `.Report`).
 
 > Al agregar tablas o columnas en Oro, regenerar y volver a abrir. Power BI Desktop no detecta
 > cambios hechos por fuera mientras está abierto.
+
+---
+
+## Flujo recomendado: modelo publicado + tableros aparte
+
+El modelo semántico se **publica al servicio de Power BI** (abrir el PBIP en Desktop → Publicar)
+y los dashboards se construyen en **otro archivo** conectado en vivo a ese modelo publicado
+(Obtener datos → *Modelos semánticos de Power BI*). Así, cuando el modelo se regenere y se
+vuelva a publicar, los tableros toman las medidas nuevas **sin perder ningún análisis**: el
+análisis vive en un archivo que nadie regenera.
 
 ---
 

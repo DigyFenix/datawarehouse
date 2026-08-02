@@ -129,16 +129,16 @@ table 'Cartera por cobrar'
 
 	/// Saldo del MAYOR CONTABLE, no del documento: es el número que el contador reconoce.
 	measure 'Saldo por cobrar' = SUM('Cartera por cobrar'[saldo_pendiente_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	measure 'Saldo por cobrar terceros' = CALCULATE([Saldo por cobrar], Cliente[es_intercompania] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	/// Saldo entre empresas del propio grupo. Leerlo junto al de terceros hace parecer una crisis de cobranza que no existe.
 	measure 'Saldo por cobrar grupo' = CALCULATE([Saldo por cobrar], Cliente[es_intercompania] = TRUE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	measure 'Partidas por cobrar' = COUNTROWS('Cartera por cobrar')
@@ -150,20 +150,20 @@ table 'Cartera por cobrar'
 		displayFolder: 02 Conteos
 
 	measure 'Saldo promedio por cliente' = DIVIDE([Saldo por cobrar], [Clientes con saldo])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Conteos
 
 	measure 'Saldo corriente' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure 'Saldo vencido' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = TRUE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	/// La mora que de verdad hay que cobrar: vencida y fuera del grupo.
 	measure 'Saldo vencido terceros' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = TRUE, Cliente[es_intercompania] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure '% Vencido' = DIVIDE([Saldo vencido], [Saldo por cobrar])
@@ -175,19 +175,19 @@ table 'Cartera por cobrar'
 		displayFolder: 03 Antigüedad
 
 	measure 'Vencido 1 a 30' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "1-30")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure 'Vencido 31 a 60' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "31-60")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure 'Vencido 61 a 90' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "61-90")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure 'Vencido más de 90' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "+90")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	/// Riesgo alto: lo que pasó de 90 días pesa distinto en una provisión que lo que apenas venció.

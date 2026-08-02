@@ -46,6 +46,60 @@ models:
       - name: participacion_acumulada_anio
         data_tests: [not_null]
 
+  - name: clasificacion_abc_proveedor
+    description: >
+      Clasificación ABC (Pareto) de proveedores por compra neta a terceros. Espejo de
+      clasificacion_abc_cliente sin columnas de margen (el hecho de compras no lo lleva).
+    columns:
+      - name: proveedor_clave
+        description: Clave de la dimensión Proveedor. Única — la relación con Proveedor es 1:1.
+        data_tests: [not_null, unique]
+      - name: clase_abc_anio
+        data_tests:
+          - not_null
+          - accepted_values: { values: [A, B, C, S] }
+      - name: clase_abc_historico
+        data_tests:
+          - not_null
+          - accepted_values: { values: [A, B, C, S] }
+      - name: ranking_anio
+        data_tests: [not_null]
+      - name: participacion_acumulada_anio
+        data_tests: [not_null]
+
+  - name: campo_usuario
+    description: >
+      Campos de usuario (UDF) en formato largo: una fila por registro × campo × valor,
+      expandidos automáticamente del jsonb de Bronce (U_* en SAP, x_* en Odoo). Las claves
+      sustitutas resueltas permiten relacionar en Power BI sin tocar las tablas estándar.
+    columns:
+      - name: campo
+        data_tests: [not_null]
+      - name: valor
+        data_tests: [not_null]
+
+  - name: hecho_inventario
+    description: Existencias y valor por (empresa, almacén, producto). Foto a la fecha de corte.
+    columns:
+      - name: cantidad
+        data_tests: [not_null]
+
+  - name: hecho_pago_recibido
+    description: Documento de pago recibido (cobro). Grano documento; dominio tesorería.
+    columns:
+      - name: pago_id
+        data_tests: [not_null]
+      - name: monto_local
+        data_tests: [not_null]
+
+  - name: hecho_pago_efectuado
+    description: Documento de pago a proveedor. Grano documento; dominio tesorería.
+    columns:
+      - name: pago_id
+        data_tests: [not_null]
+      - name: monto_local
+        data_tests: [not_null]
+
   # Los hechos de cartera solo pueden producir etiquetas que existan en la dimensión: si el
   # `case` del hecho y el catálogo se desincronizan, el aging pierde filas al relacionar.
   - name: hecho_cartera_cobrar

@@ -18,7 +18,10 @@ select
     coalesce((to_char(l.fecha_documento, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
                                                       as tiempo_clave,
     {{ clave_o_no_definido('dc', 'cliente_clave') }}  as cliente_clave,
-    {{ clave_o_no_definido('dp', 'producto_clave') }} as producto_clave,
+    -- Línea sin código de artículo = servicio/flete/gasto → miembro SERVICIO (-2), no
+    -- "No definido": es una categoría de negocio real, no un dato faltante.
+    case when l.producto_codigo is null then -2
+         else {{ clave_o_no_definido('dp', 'producto_clave') }} end as producto_clave,
     {{ clave_o_no_definido('dv', 'vendedor_clave') }} as vendedor_clave,
     {{ clave_o_no_definido('dorg', 'organizacion_clave') }} as organizacion_clave,
     {{ clave_o_no_definido('da', 'almacen_clave') }}  as almacen_clave,
@@ -31,6 +34,9 @@ select
     l.empresa_id,
     l.documento_id,                                   -- llave de negocio interna (DocEntry / id)
     cab.documento_numero,                             -- NÚMERO VISIBLE (DocNum / name): el que ve el usuario
+    cab.serie_codigo,                                 -- serie de numeración: rastreo en el ERP
+    cab.tipo_documento_origen,                        -- ObjType / move_type del ERP
+    cab.referencia_externa,                           -- NumAtCard / ref
     l.linea_numero,
     l.tipo_documento,
     l.fecha_documento,
@@ -47,6 +53,22 @@ select
     l.descuento_pct,
     l.costo_local,
     l.margen_local,
+
+    -- Saldo del documento PRORRATEADO por el peso de la línea: así SUM(saldo) a cualquier
+    -- corte dimensional reproduce el saldo real del documento sin duplicarlo por línea.
+    -- INFORMATIVO — la cartera oficial sale del mayor (plata_partida_cartera); esto responde
+    -- "¿cuánto queda pendiente de ESTA factura?" al lado de su monto. Documentos con total 0
+    -- se reparten en partes iguales para no perder el saldo.
+    -- El peso lleva coalesce a 0: con una línea de monto nulo y otras con dato, la nula caía
+    -- al fallback de partes iguales Y las demás se repartían el 100% — el saldo sumaba de más.
+    coalesce(
+        cab.saldo_documento_local * coalesce(l.monto_con_impuesto_local, 0)
+            / nullif(sum(coalesce(l.monto_con_impuesto_local, 0))
+                     over (partition by l.empresa_id, l.documento_id, l.tipo_documento), 0),
+        cab.saldo_documento_local
+            / count(*) over (partition by l.empresa_id, l.documento_id, l.tipo_documento)
+    )::numeric(18,4)                                  as saldo_pendiente_local,
+    cab.estado_pago,
 
     l.proceso_transformacion,
     l.version_proceso

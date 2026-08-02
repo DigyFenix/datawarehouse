@@ -191,6 +191,83 @@ relationship rel_047
 	toColumn: Antigüedad.rango_aging
 
 relationship rel_048
+	fromColumn: 'Pagos recibidos'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_049
+	fromColumn: 'Pagos recibidos'.cliente_clave
+	toColumn: Cliente.cliente_clave
+
+relationship rel_050
+	fromColumn: 'Pagos recibidos'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_051
+	fromColumn: 'Pagos recibidos'.moneda_clave
+	toColumn: Moneda.moneda_clave
+
+relationship rel_052
+	fromColumn: 'Pagos efectuados'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_053
+	fromColumn: 'Pagos efectuados'.proveedor_clave
+	toColumn: Proveedor.proveedor_clave
+
+relationship rel_054
+	fromColumn: 'Pagos efectuados'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_055
+	fromColumn: 'Pagos efectuados'.moneda_clave
+	toColumn: Moneda.moneda_clave
+
+relationship rel_056
+	fromColumn: Inventario.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_057
+	fromColumn: Inventario.producto_clave
+	toColumn: Producto.producto_clave
+
+relationship rel_058
+	fromColumn: Inventario.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_059
+	fromColumn: Inventario.almacen_clave
+	toColumn: Bodega.almacen_clave
+
+relationship rel_060
+	fromColumn: 'Tipo de cambio'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_061
+	fromColumn: 'Tipo de cambio'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_062
+	fromColumn: 'Tipo de cambio'.moneda_clave
+	toColumn: Moneda.moneda_clave
+
+relationship rel_063
+	fromColumn: 'Campos de usuario'.cliente_clave
+	toColumn: Cliente.cliente_clave
+
+relationship rel_064
+	fromColumn: 'Campos de usuario'.proveedor_clave
+	toColumn: Proveedor.proveedor_clave
+
+relationship rel_065
+	fromColumn: 'Campos de usuario'.producto_clave
+	toColumn: Producto.producto_clave
+
+relationship rel_066
 	crossFilteringBehavior: bothDirections
 	fromColumn: 'Clasificación ABC'.cliente_clave
 	toColumn: Cliente.cliente_clave
+
+relationship rel_067
+	crossFilteringBehavior: bothDirections
+	fromColumn: 'Clasificación ABC Proveedor'.proveedor_clave
+	toColumn: Proveedor.proveedor_clave

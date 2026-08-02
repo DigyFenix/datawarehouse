@@ -100,76 +100,174 @@ relationship rel_025
 	toColumn: Calendario.tiempo_clave
 
 relationship rel_026
+	fromColumn: 'Cartera por cobrar'.rango_aging
+	toColumn: Antigüedad.rango_aging
+
+relationship rel_027
 	fromColumn: 'Cartera por pagar'.tiempo_clave
 	toColumn: Calendario.tiempo_clave
 
-relationship rel_027
+relationship rel_028
 	fromColumn: 'Cartera por pagar'.proveedor_clave
 	toColumn: Proveedor.proveedor_clave
 
-relationship rel_028
+relationship rel_029
 	fromColumn: 'Cartera por pagar'.organizacion_clave
 	toColumn: Empresa.organizacion_clave
 
-relationship rel_029
+relationship rel_030
 	fromColumn: 'Cartera por pagar'.moneda_clave
 	toColumn: Moneda.moneda_clave
 
-relationship rel_030
+relationship rel_031
 	fromColumn: 'Cartera por pagar'.cuenta_clave
 	toColumn: 'Cuenta contable'.cuenta_clave
 
-relationship rel_031
+relationship rel_032
 	isActive: false
 	fromColumn: 'Cartera por pagar'.tiempo_vencimiento_clave
 	toColumn: Calendario.tiempo_clave
 
-relationship rel_032
+relationship rel_033
+	fromColumn: 'Cartera por pagar'.rango_aging
+	toColumn: Antigüedad.rango_aging
+
+relationship rel_034
 	fromColumn: 'Cartera cobrar histórico'.cliente_clave
 	toColumn: Cliente.cliente_clave
 
-relationship rel_033
+relationship rel_035
 	fromColumn: 'Cartera cobrar histórico'.organizacion_clave
 	toColumn: Empresa.organizacion_clave
 
-relationship rel_034
+relationship rel_036
 	fromColumn: 'Cartera cobrar histórico'.moneda_clave
 	toColumn: Moneda.moneda_clave
 
-relationship rel_035
+relationship rel_037
 	fromColumn: 'Cartera cobrar histórico'.cuenta_clave
 	toColumn: 'Cuenta contable'.cuenta_clave
 
-relationship rel_036
+relationship rel_038
 	fromColumn: 'Cartera cobrar histórico'.fecha_corte_clave
 	toColumn: Calendario.tiempo_clave
 
-relationship rel_037
+relationship rel_039
 	isActive: false
 	fromColumn: 'Cartera cobrar histórico'.tiempo_vencimiento_clave
 	toColumn: Calendario.tiempo_clave
 
-relationship rel_038
+relationship rel_040
+	fromColumn: 'Cartera cobrar histórico'.rango_aging
+	toColumn: Antigüedad.rango_aging
+
+relationship rel_041
 	fromColumn: 'Cartera pagar histórico'.proveedor_clave
 	toColumn: Proveedor.proveedor_clave
 
-relationship rel_039
+relationship rel_042
 	fromColumn: 'Cartera pagar histórico'.organizacion_clave
 	toColumn: Empresa.organizacion_clave
 
-relationship rel_040
+relationship rel_043
 	fromColumn: 'Cartera pagar histórico'.moneda_clave
 	toColumn: Moneda.moneda_clave
 
-relationship rel_041
+relationship rel_044
 	fromColumn: 'Cartera pagar histórico'.cuenta_clave
 	toColumn: 'Cuenta contable'.cuenta_clave
 
-relationship rel_042
+relationship rel_045
 	fromColumn: 'Cartera pagar histórico'.fecha_corte_clave
 	toColumn: Calendario.tiempo_clave
 
-relationship rel_043
+relationship rel_046
 	isActive: false
 	fromColumn: 'Cartera pagar histórico'.tiempo_vencimiento_clave
 	toColumn: Calendario.tiempo_clave
+
+relationship rel_047
+	fromColumn: 'Cartera pagar histórico'.rango_aging
+	toColumn: Antigüedad.rango_aging
+
+relationship rel_048
+	fromColumn: 'Pagos recibidos'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_049
+	fromColumn: 'Pagos recibidos'.cliente_clave
+	toColumn: Cliente.cliente_clave
+
+relationship rel_050
+	fromColumn: 'Pagos recibidos'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_051
+	fromColumn: 'Pagos recibidos'.moneda_clave
+	toColumn: Moneda.moneda_clave
+
+relationship rel_052
+	fromColumn: 'Pagos efectuados'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_053
+	fromColumn: 'Pagos efectuados'.proveedor_clave
+	toColumn: Proveedor.proveedor_clave
+
+relationship rel_054
+	fromColumn: 'Pagos efectuados'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_055
+	fromColumn: 'Pagos efectuados'.moneda_clave
+	toColumn: Moneda.moneda_clave
+
+relationship rel_056
+	fromColumn: Inventario.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_057
+	fromColumn: Inventario.producto_clave
+	toColumn: Producto.producto_clave
+
+relationship rel_058
+	fromColumn: Inventario.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_059
+	fromColumn: Inventario.almacen_clave
+	toColumn: Bodega.almacen_clave
+
+relationship rel_060
+	fromColumn: 'Tipo de cambio'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_061
+	fromColumn: 'Tipo de cambio'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_062
+	fromColumn: 'Tipo de cambio'.moneda_clave
+	toColumn: Moneda.moneda_clave
+
+relationship rel_063
+	fromColumn: 'Campos de usuario'.cliente_clave
+	toColumn: Cliente.cliente_clave
+
+relationship rel_064
+	fromColumn: 'Campos de usuario'.proveedor_clave
+	toColumn: Proveedor.proveedor_clave
+
+relationship rel_065
+	fromColumn: 'Campos de usuario'.producto_clave
+	toColumn: Producto.producto_clave
+
+relationship rel_066
+	crossFilteringBehavior: bothDirections
+	fromColumn: 'Clasificación ABC'.cliente_clave
+	toColumn: Cliente.cliente_clave
+
+relationship rel_067
+	crossFilteringBehavior: bothDirections
+	fromColumn: 'Clasificación ABC Proveedor'.proveedor_clave
+	toColumn: Proveedor.proveedor_clave

@@ -133,6 +133,44 @@ table 'Cartera por pagar'
 		summarizeBy: none
 		sourceColumn: version_proceso
 
+	/// En positivo para poder compararlo con la cartera por cobrar sin invertir signos en cada visual.
+	measure 'Saldo por pagar' = SUM('Cartera por pagar'[saldo_pendiente_absoluto])
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	measure 'Saldo por pagar terceros' = CALCULATE([Saldo por pagar], Proveedor[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	measure 'Saldo por pagar grupo' = CALCULATE([Saldo por pagar], Proveedor[es_intercompania] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	/// Lo que se cobra menos lo que se debe: la liquidez estructural del negocio.
+	measure 'Posición neta' = [Saldo por cobrar] - [Saldo por pagar]
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	measure 'Partidas por pagar' = COUNTROWS('Cartera por pagar')
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Proveedores con saldo' = DISTINCTCOUNT('Cartera por pagar'[proveedor_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Por pagar vencido' = CALCULATE([Saldo por pagar], 'Antigüedad'[es_vencido] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	measure '% Por pagar vencido' = DIVIDE([Por pagar vencido], [Saldo por pagar])
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+
+	measure 'Por pagar más de 90' = CALCULATE([Saldo por pagar], 'Antigüedad'[rango_aging] = "+90")
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
 	partition 'Cartera por pagar' = m
 		mode: import
 		source =

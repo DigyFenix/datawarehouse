@@ -26,12 +26,20 @@ DIMENSIONES = [
     "dim_tiempo", "dim_cliente", "dim_proveedor", "dim_producto", "dim_vendedor",
     "dim_organizacion", "dim_almacen", "dim_moneda", "dim_cuenta", "dim_centro_costo",
     "dim_tipo_documento", "dim_rango_aging", "clasificacion_abc_cliente",
+    "clasificacion_abc_proveedor",
 ]
 HECHOS = [
     "hecho_venta_linea", "hecho_compra_linea",
     "hecho_cartera_cobrar", "hecho_cartera_pagar",
     "hecho_cartera_cobrar_diaria", "hecho_cartera_pagar_diaria",
+    "hecho_pago_recibido", "hecho_pago_efectuado", "hecho_inventario",
+    "tipo_cambio", "campo_usuario",
 ]
+
+# Formato de moneda local: quetzales sin decimales. Las medidas de importe lo llevan TODAS;
+# la conmutación a la moneda original del documento la hace el grupo de cálculo
+# 'Moneda de análisis' (ver gen_grupo_moneda), que quita la Q en ese modo.
+FMT_Q = '"Q" #,0'
 
 # Nombres amigables: el usuario de negocio no debería ver `hecho_` ni `dim_`.
 ETIQUETA = {
@@ -40,10 +48,14 @@ ETIQUETA = {
     "dim_almacen": "Bodega", "dim_moneda": "Moneda", "dim_cuenta": "Cuenta contable",
     "dim_centro_costo": "Centro de costo", "dim_tipo_documento": "Tipo de documento",
     "dim_rango_aging": "Antigüedad", "clasificacion_abc_cliente": "Clasificación ABC",
+    "clasificacion_abc_proveedor": "Clasificación ABC Proveedor",
     "hecho_venta_linea": "Ventas", "hecho_compra_linea": "Compras",
     "hecho_cartera_cobrar": "Cartera por cobrar", "hecho_cartera_pagar": "Cartera por pagar",
     "hecho_cartera_cobrar_diaria": "Cartera cobrar histórico",
     "hecho_cartera_pagar_diaria": "Cartera pagar histórico",
+    "hecho_pago_recibido": "Pagos recibidos", "hecho_pago_efectuado": "Pagos efectuados",
+    "hecho_inventario": "Inventario", "tipo_cambio": "Tipo de cambio",
+    "campo_usuario": "Campos de usuario",
 }
 
 TIPOS = {
@@ -203,40 +215,45 @@ MEDIDAS_POR_TABLA: dict[str, str] = {}
 MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 	/// Base de todo: venta sin impuestos, con la nota de crédito ya en negativo.
 	measure 'Ventas netas' = SUM(Ventas[monto_sin_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Ventas netas con IVA' = SUM(Ventas[monto_con_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Ventas brutas' = CALCULATE([Ventas netas], 'Tipo de documento'[tipo_documento] = "factura")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure Devoluciones = ABS(CALCULATE([Ventas netas], 'Tipo de documento'[tipo_documento] = "nota_credito"))
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Impuesto facturado' = SUM(Ventas[monto_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Descuento otorgado' = SUM(Ventas[monto_descuento_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure '% Descuento' = DIVIDE([Descuento otorgado], [Ventas netas] + [Descuento otorgado])
 		formatString: 0.0%
 		displayFolder: 01 Importes
 
+	/// Saldo pendiente de las facturas visibles, prorrateado por línea (suma = saldo del documento). INFORMATIVO: la cartera oficial sale del mayor.
+	measure 'Saldo de facturas' = SUM(Ventas[saldo_pendiente_local])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
 	/// El mercado real. La venta al grupo no compite por precio: mezclarla distorsiona todo indicador comercial.
 	measure 'Ventas a terceros' = CALCULATE([Ventas netas], Cliente[es_intercompania] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
 	measure 'Ventas al grupo' = CALCULATE([Ventas netas], Cliente[es_intercompania] = TRUE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
 	measure '% Venta al grupo' = DIVIDE([Ventas al grupo], [Ventas netas])
@@ -264,111 +281,236 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 		displayFolder: 03 Conteos
 
 	measure 'Ticket promedio' = DIVIDE([Ventas netas], [Documentos de venta])
-		formatString: #,0
-		displayFolder: 03 Conteos
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
 
 	measure 'Precio promedio unidad' = DIVIDE([Ventas netas], [Unidades vendidas])
-		formatString: #,0.00
-		displayFolder: 03 Conteos
+		formatString: "Q" #,0.00
+		displayFolder: 04 Promedios
+
+	measure 'Venta promedio por línea' = DIVIDE([Ventas netas], [Líneas de venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	/// Promedio sobre los días que SÍ hubo venta: no diluye con domingos y feriados.
+	measure 'Venta promedio diaria' = DIVIDE([Ventas netas], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Ventas))
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	measure 'Venta promedio por cliente' = DIVIDE([Ventas netas], [Clientes con venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
 
 	measure 'Costo de ventas' = SUM(Ventas[costo_local])
-		formatString: #,0
-		displayFolder: 04 Rentabilidad
+		formatString: "Q" #,0
+		displayFolder: 05 Rentabilidad
 
 	measure 'Margen bruto' = SUM(Ventas[margen_local])
-		formatString: #,0
-		displayFolder: 04 Rentabilidad
+		formatString: "Q" #,0
+		displayFolder: 05 Rentabilidad
 
 	measure '% Margen' = DIVIDE([Margen bruto], [Ventas netas])
 		formatString: 0.0%
-		displayFolder: 04 Rentabilidad
+		displayFolder: 05 Rentabilidad
 
 	/// El margen de mercado. Incluir la venta al grupo, que no compite por precio, infla el indicador.
 	measure '% Margen terceros' = DIVIDE(CALCULATE([Margen bruto], Cliente[es_intercompania] = FALSE), [Ventas a terceros])
 		formatString: 0.0%
-		displayFolder: 04 Rentabilidad
+		displayFolder: 05 Rentabilidad
 
+	/// Mismo período del mes anterior (respeta el filtro de fechas del visual).
 	measure 'Ventas mes anterior' = CALCULATE([Ventas netas], DATEADD(Calendario[fecha], -1, MONTH))
-		formatString: #,0
-		displayFolder: 05 Comparativos
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
 
 	measure 'Ventas año anterior' = CALCULATE([Ventas netas], DATEADD(Calendario[fecha], -1, YEAR))
-		formatString: #,0
-		displayFolder: 05 Comparativos
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Acumulado del mes en curso hasta el último día con datos del filtro.
+	measure 'Ventas acumuladas mes' = TOTALMTD([Ventas netas], Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	measure 'Ventas acumuladas trimestre' = TOTALQTD([Ventas netas], Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
 
 	measure 'Ventas acumuladas año' = TOTALYTD([Ventas netas], Calendario[fecha])
-		formatString: #,0
-		displayFolder: 05 Comparativos
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// El acumulado del año PASADO al mismo corte: el comparable correcto del YTD.
+	measure 'Ventas acumuladas año anterior' = CALCULATE(TOTALYTD([Ventas netas], Calendario[fecha]), DATEADD(Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
 
 	measure 'Variación vs mes anterior' = DIVIDE([Ventas netas] - [Ventas mes anterior], [Ventas mes anterior])
 		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 05 Comparativos
+		displayFolder: 06 Comparativos
 
 	measure 'Variación vs año anterior' = DIVIDE([Ventas netas] - [Ventas año anterior], [Ventas año anterior])
 		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 05 Comparativos
+		displayFolder: 06 Comparativos
 
-	/// Promedio de los últimos 3 meses: alisa el diente de sierra de la facturación diaria.
-	measure 'Media móvil 3 meses' = AVERAGEX(DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -3, MONTH), [Ventas netas])
+	measure 'Variación acumulada vs año anterior' = DIVIDE([Ventas acumuladas año] - [Ventas acumuladas año anterior], [Ventas acumuladas año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 06 Comparativos
+
+	/// Promedio MENSUAL de los últimos 3 meses: alisa el diente de sierra de la facturación. (Iterar días con DATESINPERIOD daba un promedio diario disfrazado de mensual.)
+	measure 'Media móvil 3 meses' = CALCULATE(AVERAGEX(VALUES(Calendario[anio_mes]), [Ventas netas]), DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -3, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Año móvil: los últimos 12 meses completos desde el corte. Quita la estacionalidad del calendario.
+	measure 'Ventas 12 meses móviles' = CALCULATE([Ventas netas], DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -12, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Venta de líneas sin artículo (servicios, fletes, gastos) — el miembro SERVICIO de Producto.
+	measure 'Ventas de servicios' = CALCULATE([Ventas netas], Producto[producto_codigo] = "SERVICIO")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Posición del cliente ordenado por venta a terceros, dentro del filtro vigente.
+	measure 'Ranking de cliente por venta' = RANKX(ALLSELECTED(Cliente), [Ventas a terceros])
 		formatString: #,0
-		displayFolder: 05 Comparativos
+		displayFolder: 07 Pareto
+
+	/// Curva de Pareto: % de la venta a terceros que acumulan este cliente y los mayores que él.
+	measure '% acumulado de venta clientes' = VAR actual = [Ventas a terceros] RETURN DIVIDE(SUMX(FILTER(ALLSELECTED(Cliente), [Ventas a terceros] >= actual), [Ventas a terceros]), CALCULATE([Ventas a terceros], ALLSELECTED(Cliente)))
+		formatString: 0.0%
+		displayFolder: 07 Pareto
+
+	measure 'Ranking de producto por venta' = RANKX(ALLSELECTED(Producto), [Ventas netas])
+		formatString: #,0
+		displayFolder: 07 Pareto
+
+	/// Curva de Pareto de productos sobre la venta neta.
+	measure '% acumulado de venta productos' = VAR actual = [Ventas netas] RETURN DIVIDE(SUMX(FILTER(ALLSELECTED(Producto), [Ventas netas] >= actual), [Ventas netas]), CALCULATE([Ventas netas], ALLSELECTED(Producto)))
+		formatString: 0.0%
+		displayFolder: 07 Pareto
 """
 
 MEDIDAS_POR_TABLA["hecho_compra_linea"] = r"""
 	measure 'Compras netas' = SUM(Compras[monto_sin_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Compras netas con IVA' = SUM(Compras[monto_con_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	measure 'Impuesto de compras' = SUM(Compras[monto_impuesto_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Importes
+
+	/// Saldo pendiente de pago de las facturas de compra, prorrateado por línea. INFORMATIVO: la cartera oficial sale del mayor.
+	measure 'Saldo de facturas de compra' = SUM(Compras[saldo_pendiente_local])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Compras a terceros' = CALCULATE([Compras netas], Proveedor[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 02 Terceros vs grupo
+
+	measure 'Compras al grupo' = CALCULATE([Compras netas], Proveedor[es_intercompania] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 02 Terceros vs grupo
+
+	measure '% Compra al grupo' = DIVIDE([Compras al grupo], [Compras netas])
+		formatString: 0.0%
+		displayFolder: 02 Terceros vs grupo
 
 	measure 'Unidades compradas' = SUM(Compras[cantidad])
 		formatString: #,0
-		displayFolder: 02 Conteos
+		displayFolder: 03 Conteos
 
 	measure 'Líneas de compra' = COUNTROWS(Compras)
 		formatString: #,0
-		displayFolder: 02 Conteos
+		displayFolder: 03 Conteos
 
 	measure 'Documentos de compra' = DISTINCTCOUNT(Compras[documento_id])
 		formatString: #,0
-		displayFolder: 02 Conteos
+		displayFolder: 03 Conteos
 
 	measure 'Proveedores con compra' = CALCULATE(DISTINCTCOUNT(Compras[proveedor_clave]), Compras[monto_sin_impuesto_local] <> 0)
 		formatString: #,0
-		displayFolder: 02 Conteos
+		displayFolder: 03 Conteos
 
 	measure 'Compra promedio por documento' = DIVIDE([Compras netas], [Documentos de compra])
-		formatString: #,0
-		displayFolder: 02 Conteos
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	measure 'Compra promedio por proveedor' = DIVIDE([Compras netas], [Proveedores con compra])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	/// Promedio sobre los días que SÍ hubo compra.
+	measure 'Compra promedio diaria' = DIVIDE([Compras netas], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Compras))
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
 
 	measure 'Compras mes anterior' = CALCULATE([Compras netas], DATEADD(Calendario[fecha], -1, MONTH))
-		formatString: #,0
-		displayFolder: 03 Comparativos
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	measure 'Compras año anterior' = CALCULATE([Compras netas], DATEADD(Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	measure 'Compras acumuladas mes' = TOTALMTD([Compras netas], Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
 
 	measure 'Compras acumuladas año' = TOTALYTD([Compras netas], Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	measure 'Compras acumuladas año anterior' = CALCULATE(TOTALYTD([Compras netas], Calendario[fecha]), DATEADD(Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	measure 'Variación compras vs mes anterior' = DIVIDE([Compras netas] - [Compras mes anterior], [Compras mes anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 05 Comparativos
+
+	measure 'Variación compras vs año anterior' = DIVIDE([Compras netas] - [Compras año anterior], [Compras año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 05 Comparativos
+
+	measure 'Media móvil 3 meses compras' = CALCULATE(AVERAGEX(VALUES(Calendario[anio_mes]), [Compras netas]), DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -3, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	/// Compra de líneas sin artículo (servicios, fletes, gastos) — en Cresta son el 60% de las líneas.
+	measure 'Compras de servicios' = CALCULATE([Compras netas], Producto[producto_codigo] = "SERVICIO")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Ranking de proveedor por compra' = RANKX(ALLSELECTED(Proveedor), [Compras a terceros])
 		formatString: #,0
-		displayFolder: 03 Comparativos
+		displayFolder: 06 Pareto
+
+	/// Curva de Pareto: % de la compra a terceros que acumulan este proveedor y los mayores que él.
+	measure '% acumulado de compra proveedores' = VAR actual = [Compras a terceros] RETURN DIVIDE(SUMX(FILTER(ALLSELECTED(Proveedor), [Compras a terceros] >= actual), [Compras a terceros]), CALCULATE([Compras a terceros], ALLSELECTED(Proveedor)))
+		formatString: 0.0%
+		displayFolder: 06 Pareto
 """
 
 MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
 	/// Saldo del MAYOR CONTABLE, no del documento: es el número que el contador reconoce.
 	measure 'Saldo por cobrar' = SUM('Cartera por cobrar'[saldo_pendiente_local])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	measure 'Saldo por cobrar terceros' = CALCULATE([Saldo por cobrar], Cliente[es_intercompania] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	/// Saldo entre empresas del propio grupo. Leerlo junto al de terceros hace parecer una crisis de cobranza que no existe.
 	measure 'Saldo por cobrar grupo' = CALCULATE([Saldo por cobrar], Cliente[es_intercompania] = TRUE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	measure 'Partidas por cobrar' = COUNTROWS('Cartera por cobrar')
@@ -380,20 +522,20 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
 		displayFolder: 02 Conteos
 
 	measure 'Saldo promedio por cliente' = DIVIDE([Saldo por cobrar], [Clientes con saldo])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Conteos
 
 	measure 'Saldo corriente' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure 'Saldo vencido' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = TRUE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	/// La mora que de verdad hay que cobrar: vencida y fuera del grupo.
 	measure 'Saldo vencido terceros' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = TRUE, Cliente[es_intercompania] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure '% Vencido' = DIVIDE([Saldo vencido], [Saldo por cobrar])
@@ -405,19 +547,19 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
 		displayFolder: 03 Antigüedad
 
 	measure 'Vencido 1 a 30' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "1-30")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure 'Vencido 31 a 60' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "31-60")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure 'Vencido 61 a 90' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "61-90")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure 'Vencido más de 90' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "+90")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	/// Riesgo alto: lo que pasó de 90 días pesa distinto en una provisión que lo que apenas venció.
@@ -439,20 +581,20 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
 MEDIDAS_POR_TABLA["hecho_cartera_pagar"] = r"""
 	/// En positivo para poder compararlo con la cartera por cobrar sin invertir signos en cada visual.
 	measure 'Saldo por pagar' = SUM('Cartera por pagar'[saldo_pendiente_absoluto])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	measure 'Saldo por pagar terceros' = CALCULATE([Saldo por pagar], Proveedor[es_intercompania] = FALSE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	measure 'Saldo por pagar grupo' = CALCULATE([Saldo por pagar], Proveedor[es_intercompania] = TRUE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	/// Lo que se cobra menos lo que se debe: la liquidez estructural del negocio.
 	measure 'Posición neta' = [Saldo por cobrar] - [Saldo por pagar]
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
 	measure 'Partidas por pagar' = COUNTROWS('Cartera por pagar')
@@ -464,7 +606,7 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] = r"""
 		displayFolder: 02 Conteos
 
 	measure 'Por pagar vencido' = CALCULATE([Saldo por pagar], 'Antigüedad'[es_vencido] = TRUE)
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	measure '% Por pagar vencido' = DIVIDE([Por pagar vencido], [Saldo por pagar])
@@ -472,7 +614,7 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] = r"""
 		displayFolder: 03 Antigüedad
 
 	measure 'Por pagar más de 90' = CALCULATE([Saldo por pagar], 'Antigüedad'[rango_aging] = "+90")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 """
 
@@ -509,22 +651,240 @@ MEDIDAS_POR_TABLA["clasificacion_abc_cliente"] = r"""
 		displayFolder: 02 Concentración
 
 	measure 'Venta del año clasificada' = SUM('Clasificación ABC'[venta_anio])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 
 	measure 'Venta promedio cliente A' = DIVIDE(CALCULATE(SUM('Clasificación ABC'[venta_anio]), 'Clasificación ABC'[clase_abc_anio] = "A"), [Clientes A])
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 
 	measure 'Margen de clientes A' = CALCULATE(SUM('Clasificación ABC'[margen_anio]), 'Clasificación ABC'[clase_abc_anio] = "A")
-		formatString: #,0
+		formatString: "Q" #,0
 		displayFolder: 02 Concentración
+"""
+
+
+MEDIDAS_POR_TABLA["clasificacion_abc_proveedor"] = r"""
+	/// Cuántos proveedores concentran el 80% de la compra del año: dependencia de suministro.
+	measure 'Proveedores A' = CALCULATE(COUNTROWS('Clasificación ABC Proveedor'), 'Clasificación ABC Proveedor'[clase_abc_anio] = "A")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Proveedores B' = CALCULATE(COUNTROWS('Clasificación ABC Proveedor'), 'Clasificación ABC Proveedor'[clase_abc_anio] = "B")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Proveedores C' = CALCULATE(COUNTROWS('Clasificación ABC Proveedor'), 'Clasificación ABC Proveedor'[clase_abc_anio] = "C")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Proveedores sin compra neta' = CALCULATE(COUNTROWS('Clasificación ABC Proveedor'), 'Clasificación ABC Proveedor'[clase_abc_anio] = "S")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Proveedores clasificados' = COUNTROWS('Clasificación ABC Proveedor')
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Proveedores a los que se les compró algún año anterior y nada en el año en curso.
+	measure 'Proveedores inactivos' = CALCULATE(COUNTROWS('Clasificación ABC Proveedor'), 'Clasificación ABC Proveedor'[inactivo_en_anio] = TRUE)
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Riesgo de dependencia: si los A concentran el 90% de la compra, perder uno para la operación.
+	measure '% Compra en proveedores A' = DIVIDE(CALCULATE(SUM('Clasificación ABC Proveedor'[compra_anio]), 'Clasificación ABC Proveedor'[clase_abc_anio] = "A"), SUM('Clasificación ABC Proveedor'[compra_anio]))
+		formatString: 0.0%
+		displayFolder: 02 Concentración
+
+	measure 'Compra del año clasificada' = SUM('Clasificación ABC Proveedor'[compra_anio])
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+
+	measure 'Compra promedio proveedor A' = DIVIDE(CALCULATE(SUM('Clasificación ABC Proveedor'[compra_anio]), 'Clasificación ABC Proveedor'[clase_abc_anio] = "A"), [Proveedores A])
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+"""
+
+MEDIDAS_POR_TABLA["hecho_pago_recibido"] = r"""
+	/// Flujo de cobros del período. INFORMATIVO para caja: el saldo de cartera sale del mayor.
+	measure 'Monto cobrado' = SUM('Pagos recibidos'[monto_local])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Solo cobranza de CLIENTES. En Cresta el 67% del monto de ORCT son operaciones de tesorería contra cuenta contable — sin este filtro la cobranza se triplica.
+	measure 'Cobros de clientes' = CALCULATE([Monto cobrado], 'Pagos recibidos'[contraparte] = "cliente")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Cobros de tesorería' = CALCULATE([Monto cobrado], 'Pagos recibidos'[contraparte] = "cuenta_contable")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Cobranza de clientes contra la venta con IVA del mismo período: el pulso de la recuperación.
+	measure '% Cobrado vs facturado' = DIVIDE([Cobros de clientes], [Ventas netas con IVA])
+		formatString: 0.0%
+		displayFolder: 01 Importes
+
+	measure 'Cantidad de cobros' = COUNTROWS('Pagos recibidos')
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Clientes que pagaron' = DISTINCTCOUNT('Pagos recibidos'[cliente_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Cobro promedio' = DIVIDE([Monto cobrado], [Cantidad de cobros])
+		formatString: "Q" #,0
+		displayFolder: 03 Promedios
+
+	measure 'Cobros mes anterior' = CALCULATE([Monto cobrado], DATEADD(Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Cobros acumulados año' = TOTALYTD([Monto cobrado], Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+"""
+
+MEDIDAS_POR_TABLA["hecho_pago_efectuado"] = r"""
+	measure 'Monto pagado' = SUM('Pagos efectuados'[monto_local])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Solo pagos a PROVEEDORES (excluye operaciones de tesorería contra cuenta contable).
+	measure 'Pagos a proveedores' = CALCULATE([Monto pagado], 'Pagos efectuados'[contraparte] = "proveedor")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Lo cobrado menos lo pagado en el período filtrado: el pulso de caja operativo.
+	measure 'Flujo neto de caja' = [Monto cobrado] - [Monto pagado]
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Cantidad de pagos' = COUNTROWS('Pagos efectuados')
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Proveedores pagados' = DISTINCTCOUNT('Pagos efectuados'[proveedor_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Pago promedio' = DIVIDE([Monto pagado], [Cantidad de pagos])
+		formatString: "Q" #,0
+		displayFolder: 03 Promedios
+
+	measure 'Pagos mes anterior' = CALCULATE([Monto pagado], DATEADD(Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Pagos acumulados año' = TOTALYTD([Monto pagado], Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+"""
+
+MEDIDAS_POR_TABLA["hecho_inventario"] = r"""
+	/// Valor del inventario a la fecha de corte (SAP: OnHand × costo promedio; Odoo: capas de valoración).
+	measure 'Valor de inventario' = SUM(Inventario[valor])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Unidades en existencia' = SUM(Inventario[cantidad])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Productos con existencia' = CALCULATE(DISTINCTCOUNT(Inventario[producto_clave]), Inventario[cantidad] <> 0)
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Bodegas con existencia' = CALCULATE(DISTINCTCOUNT(Inventario[almacen_clave]), Inventario[cantidad] <> 0)
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Costo promedio ponderado' = DIVIDE([Valor de inventario], [Unidades en existencia])
+		formatString: "Q" #,0.00
+		displayFolder: 03 Promedios
+
+	/// Veces que el inventario rota al año: costo de ventas de los últimos 12 meses sobre el valor actual.
+	measure 'Rotación de inventario 12M' = DIVIDE(CALCULATE([Costo de ventas], DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -12, MONTH)), [Valor de inventario])
+		formatString: #,0.0
+		displayFolder: 04 Rotación
+
+	measure 'Días de inventario' = DIVIDE(365, [Rotación de inventario 12M])
+		formatString: #,0
+		displayFolder: 04 Rotación
+"""
+
+MEDIDAS_POR_TABLA["campo_usuario"] = r"""
+	/// Cuántos valores de campos de usuario hay capturados en el filtro vigente.
+	measure 'Valores de usuario capturados' = COUNTROWS('Campos de usuario')
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Campos de usuario distintos' = DISTINCTCOUNT('Campos de usuario'[campo])
+		formatString: #,0
+		displayFolder: 01 Conteos
+"""
+
+MEDIDAS_POR_TABLA["tipo_cambio"] = r"""
+	/// Tasa promedio del período filtrado (moneda local por 1 unidad). Filtrar una moneda para leerla.
+	measure 'Tipo de cambio promedio' = AVERAGE('Tipo de cambio'[tasa])
+		formatString: #,0.0000
+		displayFolder: 01 Tasa
+
+	/// La tasa del último día con registro dentro del filtro.
+	measure 'Tipo de cambio de cierre' = CALCULATE(AVERAGE('Tipo de cambio'[tasa]), LASTDATE('Tipo de cambio'[fecha]))
+		formatString: #,0.0000
+		displayFolder: 01 Tasa
+"""
+
+
+# ---------------------------------------------------------------------------------------------
+# GRUPO DE CÁLCULO: Moneda de análisis
+#
+# El pedido de negocio: "ver todo el dato en una u otra moneda" desde un filtro. Un grupo de
+# cálculo hace exactamente eso: una tabla de un solo campo que, al filtrarse, cambia CÓMO se
+# evalúa la medida seleccionada.
+#   · 'Quetzales (local)'  → la medida tal cual (todos los importes _local ya vienen convertidos
+#     a moneda local por el ERP — decisión C1: no se recalcula con tasas propias).
+#   · 'Moneda original'    → conmuta las medidas base de importe a su columna *_doc (el importe
+#     en la moneda del documento). SOLO tiene sentido leyéndolo con un filtro de Moneda activo:
+#     sumar dólares con quetzales no es un número. Las medidas derivadas (variaciones, %, conteos)
+#     pasan sin conmutarse.
+# Requiere discourageImplicitMeasures (ya activo) y compatibilityLevel >= 1470 (estamos en 1567).
+# ---------------------------------------------------------------------------------------------
+GRUPO_MONEDA = r"""table 'Moneda de análisis'
+
+	calculationGroup
+		precedence: 1
+
+		calculationItem 'Quetzales (local)' = SELECTEDMEASURE()
+			ordinal: 0
+
+		calculationItem 'Moneda original' = SWITCH(TRUE(), ISSELECTEDMEASURE([Ventas netas]), SUM(Ventas[monto_sin_impuesto_doc]), ISSELECTEDMEASURE([Ventas netas con IVA]), SUM(Ventas[monto_con_impuesto_doc]), ISSELECTEDMEASURE([Impuesto facturado]), SUM(Ventas[monto_impuesto_doc]), ISSELECTEDMEASURE([Compras netas]), SUM(Compras[monto_sin_impuesto_doc]), ISSELECTEDMEASURE([Compras netas con IVA]), SUM(Compras[monto_con_impuesto_doc]), ISSELECTEDMEASURE([Impuesto de compras]), SUM(Compras[monto_impuesto_doc]), ISSELECTEDMEASURE([Saldo por cobrar]), SUM('Cartera por cobrar'[saldo_pendiente_doc]), ISSELECTEDMEASURE([Saldo por pagar]), ABS(SUM('Cartera por pagar'[saldo_pendiente_doc])), ISSELECTEDMEASURE([Monto cobrado]), SUM('Pagos recibidos'[monto_doc]), ISSELECTEDMEASURE([Monto pagado]), SUM('Pagos efectuados'[monto_doc]), SELECTEDMEASURE())
+			ordinal: 1
+			formatStringDefinition = IF(ISSELECTEDMEASURE([Ventas netas], [Ventas netas con IVA], [Impuesto facturado], [Compras netas], [Compras netas con IVA], [Impuesto de compras], [Saldo por cobrar], [Saldo por pagar], [Monto cobrado], [Monto pagado]), "#,0", SELECTEDMEASUREFORMATSTRING())
+
+	column 'Moneda de análisis'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: Name
+		sortByColumn: Ordinal
+
+	column Ordinal
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: Ordinal
+
+	partition 'Moneda de análisis' = calculationGroup
+		mode: import
 """
 
 
 PALABRAS = ("table", "column", "measure", "partition", "hierarchy", "level", "relationship",
             "annotation", "ref", "model", "database", "expression", "mode", "source",
-            "dataCategory", "culture")
+            "dataCategory", "culture", "calculationGroup", "calculationItem",
+            "formatStringDefinition")
 
 
 def validar_tmdl(ruta: Path) -> list[str]:
@@ -598,11 +958,11 @@ def validar_referencias(defi: Path) -> list[str]:
 
     fallos: list[str] = []
 
-    # Referencias a medidas dentro de expresiones DAX.
+    # Referencias a medidas dentro de expresiones DAX (medidas Y calculation items).
     for f in sorted((defi / "tables").glob("*.tmdl")):
         for i, linea in enumerate(f.read_text(encoding="utf-8").split("\n"), start=1):
             s = linea.strip()
-            if not s.startswith("measure "):
+            if not (s.startswith("measure ") or s.startswith("calculationItem ")):
                 continue
             for ref in re.findall(r"(?<![\w'\]])\[([^\]]+)\]", s.split("=", 1)[-1]):
                 if ref not in medidas:
@@ -612,7 +972,7 @@ def validar_referencias(defi: Path) -> list[str]:
     for f in sorted((defi / "tables").glob("*.tmdl")):
         for i, linea in enumerate(f.read_text(encoding="utf-8").split("\n"), start=1):
             s = linea.strip()
-            if not s.startswith("measure "):
+            if not (s.startswith("measure ") or s.startswith("calculationItem ")):
                 continue
             for m in re.finditer(r"(?:'([^']+)'|\b([A-Za-zÁÉÍÓÚÑáéíóúñ_]\w*))\[([^\]]+)\]", s):
                 tab = m.group(1) or m.group(2)
@@ -698,6 +1058,9 @@ def main() -> int:
     viejo = defi / "tables" / "_ Métricas.tmdl"
     if viejo.exists():
         viejo.unlink()
+
+    # Grupo de cálculo de moneda (no sale de oro: es puro modelo).
+    (defi / "tables" / "Moneda de análisis.tmdl").write_text(GRUPO_MONEDA, encoding="utf-8")
 
     # ---------------- limpieza de artefactos de Power BI Desktop ----------------
     # Al abrir el proyecto, Desktop crea una tabla de fechas oculta por cada columna de fecha
@@ -790,6 +1153,17 @@ def main() -> int:
             "",
         ]
 
+    # Mismo patrón para el ABC de proveedores (1:1 con la dimensión Proveedor).
+    if "clasificacion_abc_proveedor" in presentes and "dim_proveedor" in presentes:
+        n += 1
+        rels += [
+            f"relationship rel_{n:03d}",
+            "\tcrossFilteringBehavior: bothDirections",
+            f"\tfromColumn: {tmdl_nombre(ETIQUETA['clasificacion_abc_proveedor'])}.proveedor_clave",
+            f"\ttoColumn: {tmdl_nombre(ETIQUETA['dim_proveedor'])}.proveedor_clave",
+            "",
+        ]
+
     (defi / "relationships.tmdl").write_text("\n".join(rels), encoding="utf-8")
 
     # ---------------- parámetros de conexión ----------------
@@ -805,6 +1179,7 @@ def main() -> int:
         f"database {proyecto}\n\tcompatibilityLevel: 1567\n", encoding="utf-8")
 
     refs = "\n".join(f"ref table {tmdl_nombre(ETIQUETA.get(t, t))}" for t in presentes)
+    refs += f"\nref table {tmdl_nombre('Moneda de análisis')}"
     (defi / "model.tmdl").write_text(
         "model Model\n"
         "\tculture: es-GT\n"
@@ -828,24 +1203,28 @@ def main() -> int:
         "datasetReference": {"byPath": {"path": f"../{proyecto}.SemanticModel"}},
     }, indent=2), encoding="utf-8")
 
-    (rep / "report.json").write_text(json.dumps({
-        "config": json.dumps({
-            "version": "5.43",
-            "themeCollection": {"baseTheme": {"name": "CY24SU10", "version": "5.55", "type": 2}},
-        }),
-        "layoutOptimization": 0,
-        "resourcePackages": [{"resourcePackage": {
-            "disabled": False,
-            "items": [{"name": "CY24SU10", "path": "BaseThemes/CY24SU10.json", "type": 202}],
-            "name": "SharedResources", "type": 2}}],
-        "sections": [{
-            "config": "{}", "displayName": "Pulso", "displayOption": 1, "filters": "[]",
-            "height": 720.0, "name": "pagina_pulso", "ordinal": 0,
-            "visualContainers": [], "width": 1280.0,
-        }],
-        "filters": "[]",
-        "publicCustomVisuals": [],
-    }, indent=2, ensure_ascii=False), encoding="utf-8")
+    # SOLO si no existe: regenerar el modelo NUNCA debe pisar las páginas y visuales que el
+    # usuario haya construido (el stub anterior destruía el reporte en cada corrida — así es
+    # como Edwin va a trabajar: el modelo se regenera, sus dashboards se quedan).
+    if not (rep / "report.json").exists():
+        (rep / "report.json").write_text(json.dumps({
+            "config": json.dumps({
+                "version": "5.43",
+                "themeCollection": {"baseTheme": {"name": "CY24SU10", "version": "5.55", "type": 2}},
+            }),
+            "layoutOptimization": 0,
+            "resourcePackages": [{"resourcePackage": {
+                "disabled": False,
+                "items": [{"name": "CY24SU10", "path": "BaseThemes/CY24SU10.json", "type": 202}],
+                "name": "SharedResources", "type": 2}}],
+            "sections": [{
+                "config": "{}", "displayName": "Pulso", "displayOption": 1, "filters": "[]",
+                "height": 720.0, "name": "pagina_pulso", "ordinal": 0,
+                "visualContainers": [], "width": 1280.0,
+            }],
+            "filters": "[]",
+            "publicCustomVisuals": [],
+        }, indent=2, ensure_ascii=False), encoding="utf-8")
 
     (salida / f"{proyecto}.pbip").write_text(json.dumps({
         "version": "1.0",

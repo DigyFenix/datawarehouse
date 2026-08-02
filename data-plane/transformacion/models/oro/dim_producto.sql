@@ -23,3 +23,14 @@ select
     {{ clave_no_definido() }}, 'GLOBAL', {{ codigo_no_definido() }}, {{ nombre_no_definido() }},
     null, null, null, true,
     {{ columnas_vigencia() }}
+
+union all
+
+-- Miembro SERVICIO (-2): las líneas de documento SIN código de artículo son servicios,
+-- fletes y gastos (en Cresta son el 60% de las líneas de compra). Separarlas del miembro
+-- No definido permite analizarlas como categoría real en vez de como dato faltante.
+-- Mismo patrón que el miembro MULTIPLE (-2) de dim_centro_costo.
+select
+    -2, 'GLOBAL', 'SERVICIO', 'Servicio (sin artículo)',
+    null, null, 'servicio', true,
+    {{ columnas_vigencia() }}

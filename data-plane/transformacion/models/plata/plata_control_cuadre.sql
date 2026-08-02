@@ -60,6 +60,16 @@ canonico as (
       from {{ ref('plata_documento_linea') }}
      where flujo = 'venta'
      group by 1
+    union all
+    select empresa_id, 'pagos_recibidos', sum(monto_local), count(*)
+      from {{ ref('plata_pago') }}
+     where tipo_pago = 'recibido'
+     group by 1
+    union all
+    select empresa_id, 'pagos_efectuados', sum(monto_local), count(*)
+      from {{ ref('plata_pago') }}
+     where tipo_pago = 'efectuado'
+     group by 1
 ),
 
 -- ---------------- lo que dijo el ERP (Bronce) ----------------
@@ -118,6 +128,21 @@ origen as (
                -1 * ((datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0))
           from {{ source('bronce', 'orin') }}
     ) v group by 1
+    union all
+    -- Pagos: suma de medios de pago (ORCT/OVPM no tienen DocTotal), sin cancelados.
+    select empresa_id, 'pagos_recibidos',
+           sum(coalesce((datos->>'CashSum')::numeric, 0) + coalesce((datos->>'CheckSum')::numeric, 0)
+             + coalesce((datos->>'TrsfrSum')::numeric, 0) + coalesce((datos->>'CreditSum')::numeric, 0))
+      from {{ source('bronce', 'orct') }}
+     where coalesce(datos->>'CANCELED', datos->>'Canceled', 'N') = 'N'
+     group by 1
+    union all
+    select empresa_id, 'pagos_efectuados',
+           sum(coalesce((datos->>'CashSum')::numeric, 0) + coalesce((datos->>'CheckSum')::numeric, 0)
+             + coalesce((datos->>'TrsfrSum')::numeric, 0) + coalesce((datos->>'CreditSum')::numeric, 0))
+      from {{ source('bronce', 'ovpm') }}
+     where coalesce(datos->>'CANCELED', datos->>'Canceled', 'N') = 'N'
+     group by 1
 )
 {% else %}
 origen as (
@@ -145,8 +170,10 @@ origen as (
      where datos->>'move_type' in ('out_invoice', 'out_refund')
      group by 1
     union all
+    -- Invertido: los *_signed van en perspectiva de compañía (compra negativa) y el canónico
+    -- lleva factura positiva en ambos flujos (ver plata_documento_comercial).
     select empresa_id, 'compras_periodo',
-           sum((datos->>'amount_untaxed_signed')::numeric)
+           sum(-1 * (datos->>'amount_untaxed_signed')::numeric)
       from {{ source('bronce', 'account_move') }}
      where datos->>'move_type' in ('in_invoice', 'in_refund')
      group by 1
@@ -155,6 +182,20 @@ origen as (
            sum((datos->>'amount_untaxed_signed')::numeric)
       from {{ source('bronce', 'account_move') }}
      where datos->>'move_type' in ('out_invoice', 'out_refund')
+     group by 1
+    union all
+    select empresa_id, 'pagos_recibidos',
+           sum(abs(coalesce((datos->>'amount_company_currency_signed')::numeric, 0)))
+      from {{ source('bronce', 'account_payment') }}
+     where datos->>'payment_type' = 'inbound'
+       and coalesce(datos->>'state', '') not in ('draft', 'canceled', 'rejected')
+     group by 1
+    union all
+    select empresa_id, 'pagos_efectuados',
+           sum(abs(coalesce((datos->>'amount_company_currency_signed')::numeric, 0)))
+      from {{ source('bronce', 'account_payment') }}
+     where datos->>'payment_type' = 'outbound'
+       and coalesce(datos->>'state', '') not in ('draft', 'canceled', 'rejected')
      group by 1
 )
 {% endif %}

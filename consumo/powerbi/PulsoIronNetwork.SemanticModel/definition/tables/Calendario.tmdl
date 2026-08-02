@@ -256,30 +256,35 @@ table Calendario
 
 	column anio_mes_orden
 		dataType: int64
+		isHidden
 		summarizeBy: none
 		sourceColumn: anio_mes_orden
 		formatString: #,0
 
 	column anio_trimestre_orden
 		dataType: int64
+		isHidden
 		summarizeBy: none
 		sourceColumn: anio_trimestre_orden
 		formatString: #,0
 
 	column anio_semana_orden
 		dataType: int64
+		isHidden
 		summarizeBy: none
 		sourceColumn: anio_semana_orden
 		formatString: #,0
 
 	column mes_orden
 		dataType: int64
+		isHidden
 		summarizeBy: none
 		sourceColumn: mes_orden
 		formatString: #,0
 
 	column dia_semana_orden
 		dataType: int64
+		isHidden
 		summarizeBy: none
 		sourceColumn: dia_semana_orden
 		formatString: #,0

@@ -127,6 +127,84 @@ table 'Cartera por cobrar'
 		summarizeBy: none
 		sourceColumn: version_proceso
 
+	/// Saldo del MAYOR CONTABLE, no del documento: es el número que el contador reconoce.
+	measure 'Saldo por cobrar' = SUM('Cartera por cobrar'[saldo_pendiente_local])
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	measure 'Saldo por cobrar terceros' = CALCULATE([Saldo por cobrar], Cliente[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	/// Saldo entre empresas del propio grupo. Leerlo junto al de terceros hace parecer una crisis de cobranza que no existe.
+	measure 'Saldo por cobrar grupo' = CALCULATE([Saldo por cobrar], Cliente[es_intercompania] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	measure 'Partidas por cobrar' = COUNTROWS('Cartera por cobrar')
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Clientes con saldo' = DISTINCTCOUNT('Cartera por cobrar'[cliente_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Saldo promedio por cliente' = DIVIDE([Saldo por cobrar], [Clientes con saldo])
+		formatString: "Q" #,0
+		displayFolder: 02 Conteos
+
+	measure 'Saldo corriente' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	measure 'Saldo vencido' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	/// La mora que de verdad hay que cobrar: vencida y fuera del grupo.
+	measure 'Saldo vencido terceros' = CALCULATE([Saldo por cobrar], 'Antigüedad'[es_vencido] = TRUE, Cliente[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	measure '% Vencido' = DIVIDE([Saldo vencido], [Saldo por cobrar])
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+
+	measure '% Vencido terceros' = DIVIDE([Saldo vencido terceros], [Saldo por cobrar terceros])
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+
+	measure 'Vencido 1 a 30' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "1-30")
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	measure 'Vencido 31 a 60' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "31-60")
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	measure 'Vencido 61 a 90' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "61-90")
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	measure 'Vencido más de 90' = CALCULATE([Saldo por cobrar], 'Antigüedad'[rango_aging] = "+90")
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	/// Riesgo alto: lo que pasó de 90 días pesa distinto en una provisión que lo que apenas venció.
+	measure '% Crítico más de 90' = DIVIDE([Vencido más de 90], [Saldo por cobrar])
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+
+	/// Días vencidos promedio ponderados por saldo: un promedio simple deja que una partida chica de 400 días arruine el indicador.
+	measure 'Días vencido promedio' = DIVIDE(SUMX('Cartera por cobrar', 'Cartera por cobrar'[saldo_pendiente_local] * 'Cartera por cobrar'[dias_vencido]), [Saldo por cobrar])
+		formatString: #,0.0
+		displayFolder: 04 Riesgo
+
+	/// Días de venta a terceros pendientes de cobro. Mezclar el saldo del grupo lo triplica.
+	measure 'Días de cartera terceros' = DIVIDE([Saldo por cobrar terceros], DIVIDE([Ventas a terceros], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Ventas)))
+		formatString: #,0.0
+		displayFolder: 04 Riesgo
+
 	partition 'Cartera por cobrar' = m
 		mode: import
 		source =

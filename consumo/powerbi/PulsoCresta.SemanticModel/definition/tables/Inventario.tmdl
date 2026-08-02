@@ -1,0 +1,106 @@
+table Inventario
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column producto_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: producto_clave
+
+	column almacen_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: almacen_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column fecha_corte
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_corte
+		formatString: dd/MM/yyyy
+
+	column cantidad
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: cantidad
+		formatString: #,0.00
+
+	column costo_promedio
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: costo_promedio
+		formatString: #,0.00
+
+	column valor
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: valor
+		formatString: #,0.00
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Valor del inventario a la fecha de corte (SAP: OnHand × costo promedio; Odoo: capas de valoración).
+	measure 'Valor de inventario' = SUM(Inventario[valor])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Unidades en existencia' = SUM(Inventario[cantidad])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Productos con existencia' = CALCULATE(DISTINCTCOUNT(Inventario[producto_clave]), Inventario[cantidad] <> 0)
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Bodegas con existencia' = CALCULATE(DISTINCTCOUNT(Inventario[almacen_clave]), Inventario[cantidad] <> 0)
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Costo promedio ponderado' = DIVIDE([Valor de inventario], [Unidades en existencia])
+		formatString: "Q" #,0.00
+		displayFolder: 03 Promedios
+
+	/// Veces que el inventario rota al año: costo de ventas de los últimos 12 meses sobre el valor actual.
+	measure 'Rotación de inventario 12M' = DIVIDE(CALCULATE([Costo de ventas], DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -12, MONTH)), [Valor de inventario])
+		formatString: #,0.0
+		displayFolder: 04 Rotación
+
+	measure 'Días de inventario' = DIVIDE(365, [Rotación de inventario 12M])
+		formatString: #,0
+		displayFolder: 04 Rotación
+
+	partition Inventario = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_inventario"]}[Data]
+				in
+				    Tabla

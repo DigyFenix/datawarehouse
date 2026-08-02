@@ -23,6 +23,14 @@
 
 {%- set inicio_fiscal = var('mes_inicio_fiscal', 1) | int -%}
 
+{#- Nombres SIEMPRE en español y explícitos. `to_char(fecha,'TMMonth')` depende del lc_time
+    de la sesión de Postgres — en el contenedor (locale C) salía "January" aunque todas las
+    columnas se llamen en español. Con arreglos fijos el idioma no depende del servidor. -#}
+{%- set meses = "array['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']" -%}
+{%- set meses_cortos = "array['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']" -%}
+{%- set dias = "array['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']" -%}
+{%- set dias_cortos = "array['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']" -%}
+
 with fechas as (
     select generate_series(
         date '{{ var("calendario_desde", "2020-01-01") }}',
@@ -76,19 +84,19 @@ select
     mes,
     dia,
     'T' || trimestre                                          as trimestre_nombre,
-    initcap(to_char(fecha, 'TMMonth'))                        as mes_nombre,
-    initcap(left(to_char(fecha, 'TMMonth'), 3))               as mes_nombre_corto,
+    ({{ meses }})[mes]                                        as mes_nombre,
+    ({{ meses_cortos }})[mes]                                 as mes_nombre_corto,
     to_char(fecha, 'YYYY-MM')                                 as anio_mes,
     anio || '-T' || trimestre                                 as anio_trimestre,
-    initcap(left(to_char(fecha, 'TMMonth'), 3)) || ' ' || anio as mes_anio_etiqueta,
+    ({{ meses_cortos }})[mes] || ' ' || anio                  as mes_anio_etiqueta,
 
     -- ---------- jerarquía ISO (semanas comparables entre años) ----------
     anio_iso,
     semana_iso,
     anio_iso || '-S' || lpad(semana_iso::text, 2, '0')        as anio_semana,
     dia_semana_num,
-    initcap(to_char(fecha, 'TMDay'))                          as dia_semana_nombre,
-    initcap(left(to_char(fecha, 'TMDay'), 3))                 as dia_semana_corto,
+    ({{ dias }})[dia_semana_num]                              as dia_semana_nombre,
+    ({{ dias_cortos }})[dia_semana_num]                       as dia_semana_corto,
     dia_del_anio,
 
     -- ---------- año fiscal ----------

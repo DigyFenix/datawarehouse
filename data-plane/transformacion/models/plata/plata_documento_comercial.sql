@@ -23,54 +23,78 @@
       ('orpc', 'compra', 'nota_credito')
    ] -%}
 
+-- SAP B1 solo llena los campos FC (*FC) en documentos de moneda EXTRANJERA: en un documento
+-- QTZ vienen en 0. Como en moneda local el monto "en moneda del documento" ES el local, el
+-- eje _doc se resuelve con la moneda funcional del ERP — sin esto, el 99.9% de los documentos
+-- reportaba 0 en moneda original.
+with moneda_local_erp as (
+    select empresa_id, min(moneda_codigo) as moneda_codigo
+    from {{ ref('plata_moneda') }}
+    where es_local
+    group by empresa_id
+)
+
 {% for tabla, flujo, tipo in documentos %}
 {%- set signo = -1 if tipo == 'nota_credito' else 1 %}
+{%- set es_fc = "nullif(trim(d.datos->>'DocCur'), '') is distinct from ml.moneda_codigo" %}
 select
-    empresa_id,
-    datos->>'DocEntry'                                        as documento_id,
-    datos->>'DocNum'                                          as documento_numero,
+    d.empresa_id,
+    d.datos->>'DocEntry'                                      as documento_id,
+    d.datos->>'DocNum'                                        as documento_numero,
     '{{ flujo }}'::text                                       as flujo,
     '{{ tipo }}'::text                                        as tipo_documento,
-    datos->>'ObjType'                                         as tipo_documento_origen,
+    d.datos->>'ObjType'                                       as tipo_documento_origen,
+    -- Serie de numeración del ERP: con DocNum + Series + ObjType el documento se
+    -- rastrea sin ambigüedad en SAP B1 (el DocNum se repite entre series).
+    nullif(trim(d.datos->>'Series'), '')                      as serie_codigo,
     null::text                                                as documento_referencia,
-    nullif(trim(datos->>'NumAtCard'), '')                     as referencia_externa,
-    datos->>'CardCode'                                        as socio_codigo,
-    nullif(datos->>'SlpCode', '-1')                           as vendedor_codigo,
-    (nullif(datos->>'DocDate', ''))::date                     as fecha_documento,
-    (nullif(datos->>'DocDueDate', ''))::date                  as fecha_vencimiento,
-    (nullif(datos->>'TaxDate', ''))::date                     as fecha_registro,
-    nullif(trim(datos->>'DocCur'), '')                        as moneda_documento,
+    nullif(trim(d.datos->>'NumAtCard'), '')                   as referencia_externa,
+    d.datos->>'CardCode'                                      as socio_codigo,
+    nullif(d.datos->>'SlpCode', '-1')                         as vendedor_codigo,
+    (nullif(d.datos->>'DocDate', ''))::date                   as fecha_documento,
+    (nullif(d.datos->>'DocDueDate', ''))::date                as fecha_vencimiento,
+    (nullif(d.datos->>'TaxDate', ''))::date                   as fecha_registro,
+    nullif(trim(d.datos->>'DocCur'), '')                      as moneda_documento,
     '{{ var("moneda_local", "GTQ") }}'::text                  as moneda_local,
-    (nullif(datos->>'DocRate', ''))::numeric(18,6)            as tipo_cambio,
+    (nullif(d.datos->>'DocRate', ''))::numeric(18,6)          as tipo_cambio,
     -- Montos: TODOS los ejes. `DocTotal` de SAP B1 está en moneda LOCAL y `DocTotalFC` en
-    -- la del documento; la base sin impuesto se obtiene restando el IVA.
-    {{ signo }} * ((nullif(datos->>'DocTotalFC',''))::numeric(18,4)
-                 - coalesce((nullif(datos->>'VatSumFC',''))::numeric(18,4), 0))
+    -- la del documento (solo en moneda extranjera); la base sin impuesto resta el IVA.
+    {{ signo }} * (case when {{ es_fc }}
+        then (nullif(d.datos->>'DocTotalFC',''))::numeric(18,4)
+           - coalesce((nullif(d.datos->>'VatSumFC',''))::numeric(18,4), 0)
+        else (nullif(d.datos->>'DocTotal',''))::numeric(18,4)
+           - coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0) end)
                                                               as total_sin_impuesto_doc,
-    {{ signo }} * coalesce((nullif(datos->>'VatSumFC',''))::numeric(18,4), 0)
+    {{ signo }} * (case when {{ es_fc }}
+        then coalesce((nullif(d.datos->>'VatSumFC',''))::numeric(18,4), 0)
+        else coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0) end)
                                                               as total_impuesto_doc,
-    {{ signo }} * (nullif(datos->>'DocTotalFC',''))::numeric(18,4)
+    {{ signo }} * (case when {{ es_fc }}
+        then (nullif(d.datos->>'DocTotalFC',''))::numeric(18,4)
+        else (nullif(d.datos->>'DocTotal',''))::numeric(18,4) end)
                                                               as total_con_impuesto_doc,
-    {{ signo }} * ((nullif(datos->>'DocTotal',''))::numeric(18,4)
-                 - coalesce((nullif(datos->>'VatSum',''))::numeric(18,4), 0))
+    {{ signo }} * ((nullif(d.datos->>'DocTotal',''))::numeric(18,4)
+                 - coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0))
                                                               as total_sin_impuesto_local,
-    {{ signo }} * coalesce((nullif(datos->>'VatSum',''))::numeric(18,4), 0)
+    {{ signo }} * coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0)
                                                               as total_impuesto_local,
-    {{ signo }} * (nullif(datos->>'DocTotal',''))::numeric(18,4)
+    {{ signo }} * (nullif(d.datos->>'DocTotal',''))::numeric(18,4)
                                                               as total_con_impuesto_local,
-    {{ signo }} * coalesce((nullif(datos->>'DiscSum',''))::numeric(18,4), 0)
+    {{ signo }} * coalesce((nullif(d.datos->>'DiscSum',''))::numeric(18,4), 0)
                                                               as total_descuento_local,
     -- INFORMATIVO: la cartera NO se calcula de aquí (ver plata_partida_cartera).
-    {{ signo }} * ((nullif(datos->>'DocTotal',''))::numeric(18,4)
-                 - coalesce((nullif(datos->>'PaidToDate',''))::numeric(18,4), 0))
+    {{ signo }} * ((nullif(d.datos->>'DocTotal',''))::numeric(18,4)
+                 - coalesce((nullif(d.datos->>'PaidToDate',''))::numeric(18,4), 0))
                                                               as saldo_documento_local,
-    case datos->>'DocStatus' when 'O' then 'abierto' when 'C' then 'cerrado' else 'otro' end
+    case d.datos->>'DocStatus' when 'O' then 'abierto' when 'C' then 'cerrado' else 'otro' end
                                                               as estado,
-    case datos->>'DocStatus' when 'O' then 'no_pagado' else 'pagado' end as estado_pago,
-    datos->>'CreateDate'                                      as creado_en,
-    datos->>'UpdateDate'                                      as actualizado_en,
-    {{ columnas_trazabilidad() }}
-from {{ source('bronce', tabla) }}
+    case d.datos->>'DocStatus' when 'O' then 'no_pagado' else 'pagado' end as estado_pago,
+    d.datos->>'CreateDate'                                    as creado_en,
+    d.datos->>'UpdateDate'                                    as actualizado_en,
+    {{ columnas_trazabilidad('d') }}
+from {{ source('bronce', tabla) }} d
+left join moneda_local_erp ml
+       on ml.empresa_id = d.empresa_id
 {% if not loop.last %}union all{% endif %}
 {% endfor %}
 
@@ -80,48 +104,73 @@ from {{ source('bronce', tabla) }}
 -- documentos comerciales (no tienen líneas de producto ni total facturado) y se excluyen:
 -- entran a la cartera por el mayor, que es donde corresponde.
 select
-    empresa_id,
-    datos->>'id'                                              as documento_id,
-    datos->>'name'                                            as documento_numero,
-    case when datos->>'move_type' like 'out_%' then 'venta' else 'compra' end as flujo,
-    case when datos->>'move_type' like '%_refund' then 'nota_credito' else 'factura' end
+    m.empresa_id,
+    m.datos->>'id'                                            as documento_id,
+    m.datos->>'name'                                          as documento_numero,
+    case when m.datos->>'move_type' like 'out_%' then 'venta' else 'compra' end as flujo,
+    case when m.datos->>'move_type' like '%_refund' then 'nota_credito' else 'factura' end
                                                               as tipo_documento,
-    datos->>'move_type'                                       as tipo_documento_origen,
-    nullif(datos->>'reversed_entry_id', '')                   as documento_referencia,
-    nullif(trim(datos->>'ref'), '')                           as referencia_externa,
-    nullif(datos->>'partner_id', '')                          as socio_codigo,
-    nullif(datos->>'invoice_user_id', '')                     as vendedor_codigo,
-    (nullif(datos->>'invoice_date', ''))::date                as fecha_documento,
-    (nullif(datos->>'invoice_date_due', ''))::date            as fecha_vencimiento,
-    (nullif(datos->>'date', ''))::date                        as fecha_registro,
-    nullif(datos->>'currency_id', '')                         as moneda_documento,
+    m.datos->>'move_type'                                     as tipo_documento_origen,
+    -- Serie: el prefijo de numeración (INV/2026/...); si no se extrajo, se deduce del name.
+    coalesce(nullif(trim(m.datos->>'sequence_prefix'), ''),
+             nullif(split_part(m.datos->>'name', '/', 1), '')) as serie_codigo,
+    nullif(m.datos->>'reversed_entry_id', '')                 as documento_referencia,
+    nullif(trim(m.datos->>'ref'), '')                         as referencia_externa,
+    nullif(m.datos->>'partner_id', '')                        as socio_codigo,
+    nullif(m.datos->>'invoice_user_id', '')                   as vendedor_codigo,
+    (nullif(m.datos->>'invoice_date', ''))::date              as fecha_documento,
+    (nullif(m.datos->>'invoice_date_due', ''))::date          as fecha_vencimiento,
+    (nullif(m.datos->>'date', ''))::date                      as fecha_registro,
+    -- `currency_id` es un id numérico: se traduce al código ('GTQ') con res_currency.
+    -- Sin la traducción, el join a dim_moneda no casa nunca y todo cae al miembro -1.
+    coalesce(nullif(trim(rc.datos->>'name'), ''), m.datos->>'currency_id')
+                                                              as moneda_documento,
     '{{ var("moneda_local", "GTQ") }}'::text                  as moneda_local,
     -- Odoo no guarda la tasa: se deduce de local/documento cuando ambos existen.
-    case when coalesce((nullif(datos->>'amount_total',''))::numeric, 0) <> 0
-         then round(abs((nullif(datos->>'amount_total_signed',''))::numeric
-                      / (nullif(datos->>'amount_total',''))::numeric), 6)
+    case when coalesce((nullif(m.datos->>'amount_total',''))::numeric, 0) <> 0
+         then round(abs((nullif(m.datos->>'amount_total_signed',''))::numeric
+                      / (nullif(m.datos->>'amount_total',''))::numeric), 6)
     end::numeric(18,6)                                        as tipo_cambio,
     -- En Odoo los *_signed ya vienen con el signo correcto de la nota de crédito y en
     -- moneda de la compañía; los sin sufijo están en moneda del documento y en positivo.
-    case when datos->>'move_type' like '%_refund' then -1 else 1 end
-        * (nullif(datos->>'amount_untaxed', ''))::numeric(18,4)  as total_sin_impuesto_doc,
-    case when datos->>'move_type' like '%_refund' then -1 else 1 end
-        * (nullif(datos->>'amount_tax', ''))::numeric(18,4)      as total_impuesto_doc,
-    case when datos->>'move_type' like '%_refund' then -1 else 1 end
-        * (nullif(datos->>'amount_total', ''))::numeric(18,4)    as total_con_impuesto_doc,
-    (nullif(datos->>'amount_untaxed_signed', ''))::numeric(18,4) as total_sin_impuesto_local,
-    (nullif(datos->>'amount_total_signed', ''))::numeric(18,4)
-      - (nullif(datos->>'amount_untaxed_signed', ''))::numeric(18,4) as total_impuesto_local,
-    (nullif(datos->>'amount_total_signed', ''))::numeric(18,4)   as total_con_impuesto_local,
+    case when m.datos->>'move_type' like '%_refund' then -1 else 1 end
+        * (nullif(m.datos->>'amount_untaxed', ''))::numeric(18,4)  as total_sin_impuesto_doc,
+    case when m.datos->>'move_type' like '%_refund' then -1 else 1 end
+        * (nullif(m.datos->>'amount_tax', ''))::numeric(18,4)      as total_impuesto_doc,
+    case when m.datos->>'move_type' like '%_refund' then -1 else 1 end
+        * (nullif(m.datos->>'amount_total', ''))::numeric(18,4)    as total_con_impuesto_doc,
+    -- OJO con los *_signed: su signo es la PERSPECTIVA DE LA COMPAÑÍA (venta positiva, compra
+    -- negativa). La convención canónica es factura POSITIVA y NC negativa EN AMBOS FLUJOS —la
+    -- misma de SAP B1—, así que en compra se invierte. Sin esto, "Compras netas" del tenant
+    -- Odoo salía negativa y la de SAP positiva: el mismo indicador con signo distinto por ERP.
+    case when m.datos->>'move_type' like 'out_%' then 1 else -1 end
+        * (nullif(m.datos->>'amount_untaxed_signed', ''))::numeric(18,4) as total_sin_impuesto_local,
+    case when m.datos->>'move_type' like 'out_%' then 1 else -1 end
+        * ((nullif(m.datos->>'amount_total_signed', ''))::numeric(18,4)
+         - (nullif(m.datos->>'amount_untaxed_signed', ''))::numeric(18,4)) as total_impuesto_local,
+    case when m.datos->>'move_type' like 'out_%' then 1 else -1 end
+        * (nullif(m.datos->>'amount_total_signed', ''))::numeric(18,4) as total_con_impuesto_local,
     0::numeric(18,4)                                          as total_descuento_local,
-    (nullif(datos->>'amount_residual', ''))::numeric(18,4)     as saldo_documento_local,
-    case when coalesce((nullif(datos->>'amount_residual',''))::numeric, 0) <> 0
+    -- `amount_residual` está en MONEDA DEL DOCUMENTO y positivo incluso en NC; el local con
+    -- signo es `amount_residual_signed` (perspectiva compañía: compra negativa → se invierte
+    -- con el mismo factor que los totales). El fallback al residual crudo cubre bronce viejo
+    -- sin el campo — correcto solo en monomoneda.
+    case when m.datos ? 'amount_residual_signed'
+         then (case when m.datos->>'move_type' like 'out_%' then 1 else -1 end)
+            * (nullif(m.datos->>'amount_residual_signed', ''))::numeric(18,4)
+         else (case when m.datos->>'move_type' like '%_refund' then -1 else 1 end)
+            * (nullif(m.datos->>'amount_residual', ''))::numeric(18,4)
+    end                                                       as saldo_documento_local,
+    case when coalesce((nullif(m.datos->>'amount_residual',''))::numeric, 0) <> 0
          then 'abierto' else 'cerrado' end                    as estado,
-    datos->>'payment_state'                                   as estado_pago,
-    datos->>'create_date'                                     as creado_en,
-    datos->>'write_date'                                      as actualizado_en,
-    {{ columnas_trazabilidad() }}
-from {{ source('bronce', 'account_move') }}
-where datos->>'move_type' in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
+    m.datos->>'payment_state'                                 as estado_pago,
+    m.datos->>'create_date'                                   as creado_en,
+    m.datos->>'write_date'                                    as actualizado_en,
+    {{ columnas_trazabilidad('m') }}
+from {{ source('bronce', 'account_move') }} m
+left join {{ source('bronce', 'res_currency') }} rc
+       on rc.datos->>'id' = m.datos->>'currency_id'
+      and rc.empresa_id   = m.empresa_id
+where m.datos->>'move_type' in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')
 
 {% endif %}

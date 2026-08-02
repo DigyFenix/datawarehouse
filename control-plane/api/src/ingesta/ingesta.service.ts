@@ -289,6 +289,18 @@ export class IngestaService {
   async actualizarCampo(id: number, dto: ActualizarCampoDto, actor: Actor) {
     const [antes] = await this.db.select().from(campoIngesta).where(eq(campoIngesta.id, id));
     if (!antes) throw new NotFoundException(`Campo ${id} no encontrado`);
+    // REGLA DURA (decisión de Edwin, 2026-08-01): un UDF SIN DATOS no se incluye ni se mapea.
+    // Cada instalación trae decenas de U_* vacíos; incluirlos satura Bronce y oro.campo_usuario
+    // sin aportar nada. `tiene_datos` lo determina el perfilado de Descubrir: si el campo se
+    // empezó a usar en el ERP, se corre Descubrir de nuevo y queda habilitado.
+    const quiereActivar =
+      dto.incluido === true || (dto.campoCanonico != null && dto.campoCanonico !== '');
+    if (antes.esUdf && !antes.tieneDatos && quiereActivar) {
+      throw new BadRequestException(
+        `El campo de usuario '${antes.campoOrigen}' no tiene datos en el ERP: no se puede ` +
+          'incluir ni mapear. Si empezó a usarse, corre Descubrir de nuevo para actualizar el perfilado.',
+      );
+    }
     const [act] = await this.db
       .update(campoIngesta)
       .set({ ...dto, actualizadoEn: new Date() })

@@ -1,0 +1,80 @@
+table 'Campos de usuario'
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column entidad
+		dataType: string
+		summarizeBy: none
+		sourceColumn: entidad
+
+	column tabla_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tabla_origen
+
+	column registro_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: registro_id
+
+	column campo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: campo
+
+	column valor
+		dataType: string
+		summarizeBy: none
+		sourceColumn: valor
+
+	column cliente_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cliente_clave
+
+	column proveedor_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: proveedor_clave
+
+	column producto_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: producto_clave
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Cuántos valores de campos de usuario hay capturados en el filtro vigente.
+	measure 'Valores de usuario capturados' = COUNTROWS('Campos de usuario')
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Campos de usuario distintos' = DISTINCTCOUNT('Campos de usuario'[campo])
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	partition 'Campos de usuario' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="campo_usuario"]}[Data]
+				in
+				    Tabla

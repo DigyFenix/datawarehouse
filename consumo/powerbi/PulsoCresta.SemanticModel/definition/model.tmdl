@@ -24,9 +24,16 @@ ref table 'Centro de costo'
 ref table 'Tipo de documento'
 ref table Antigüedad
 ref table 'Clasificación ABC'
+ref table 'Clasificación ABC Proveedor'
 ref table Ventas
 ref table Compras
 ref table 'Cartera por cobrar'
 ref table 'Cartera por pagar'
 ref table 'Cartera cobrar histórico'
 ref table 'Cartera pagar histórico'
+ref table 'Pagos recibidos'
+ref table 'Pagos efectuados'
+ref table Inventario
+ref table 'Tipo de cambio'
+ref table 'Campos de usuario'
+ref table 'Moneda de análisis'

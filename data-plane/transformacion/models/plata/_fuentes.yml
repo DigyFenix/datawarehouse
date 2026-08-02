@@ -47,6 +47,18 @@ sources:
           (BalDueDeb − BalDueCred), no en las facturas.
       - name: ojdt
         description: Cabecera del asiento contable (da el tipo de documento origen)
+      - name: orct
+        description: >
+          Pagos recibidos (cobros). El monto es la suma de los medios de pago
+          (CashSum + CheckSum + TrsfrSum + CreditSum); ORCT no tiene DocTotal.
+      - name: ovpm
+        description: Pagos efectuados (a proveedores). Misma estructura de medios que ORCT.
+      - name: oitw
+        description: >
+          Existencias por bodega y artículo (OnHand, AvgPrice, StockValue). Foto al
+          momento de la extracción.
+      - name: ortt
+        description: Tipos de cambio (moneda local por 1 unidad de la moneda, por fecha).
 
       # ---------------- Odoo 18 ----------------
       - name: res_partner
@@ -75,3 +87,20 @@ sources:
         description: >
           Líneas del asiento. Alimenta TANTO las líneas de documento (display_type='product')
           COMO las partidas de cartera (cuenta receivable/payable con amount_residual).
+      - name: account_payment
+        description: >
+          Pagos. payment_type distingue inbound (recibido) / outbound (efectuado).
+          El asiento contable del pago ya llega por account_move ('entry'): esta tabla
+          aporta el documento de pago como tal (socio, medio, monto, estado).
+      - name: stock_quant
+        description: Existencias por producto y ubicación. Solo usage='internal' es stock propio.
+      - name: stock_location
+        description: Ubicaciones; complete_name arranca con el código del almacén (WH/Stock/...).
+      - name: stock_valuation_layer
+        description: >
+          Capas de valoración: el VALOR del inventario en Odoo vive aquí (sum(value) por
+          producto), no en las quants.
+      - name: res_currency_rate
+        description: >
+          Tipos de cambio. OJO: rate es unidades de la moneda por 1 de moneda de la
+          compañía — Plata lo invierte para igualar la convención de SAP B1.

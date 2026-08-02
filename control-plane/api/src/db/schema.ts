@@ -27,6 +27,9 @@ export const organizaciones = gobierno.table('organizaciones', {
   estado: text('estado').notNull().default('en_arranque'),
   secretoConexionRef: text('secreto_conexion_ref'),
   colorMarca: text('color_marca'),
+  // Base de datos del PLANO DE DATOS del tenant (dw_<codigo>). El worker la exige para
+  // extraer y transformar; sin ella la organización queda inextraíble (migración 100).
+  baseDatosDw: text('base_datos_dw'),
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
 });

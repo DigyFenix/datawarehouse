@@ -19,6 +19,12 @@ export const crearOrganizacionSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, 'Color hex #RRGGBB')
     .nullable()
     .optional(),
+  // Base del plano de datos del tenant. Si no se envía, el servicio la deriva (dw_<codigo>).
+  baseDatosDw: z
+    .string()
+    .max(63)
+    .regex(/^[a-z0-9_]+$/, 'solo minúsculas, números y guion bajo')
+    .optional(),
 });
 
 export const actualizarOrganizacionSchema = crearOrganizacionSchema.partial().omit({ codigo: true });

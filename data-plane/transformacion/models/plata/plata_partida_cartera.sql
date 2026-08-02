@@ -22,6 +22,16 @@ with cuentas_cartera as (
     select empresa_id, cuenta_codigo, tipo_cuenta, es_cartera_cobrar, es_cartera_pagar
     from {{ ref('plata_cuenta') }}
     where es_cartera_cobrar or es_cartera_pagar
+),
+
+-- Moneda funcional del tenant TAL COMO LA ESCRIBE SU ERP (en SAP B1 Guatemala es 'QTZ').
+-- JDT1.FCCurrency solo se llena en partidas en moneda extranjera: nulo SIGNIFICA moneda
+-- local, así que se resuelve aquí — sin esto el 98% de la cartera caía al miembro -1.
+moneda_local_erp as (
+    select empresa_id, min(moneda_codigo) as moneda_codigo
+    from {{ ref('plata_moneda') }}
+    where es_local
+    group by empresa_id
 )
 
 {% if erp == 'sap_b1' %}
@@ -40,16 +50,24 @@ select
          then 'documento' else 'asiento' end                  as origen_partida,
     (nullif(j.datos->>'RefDate', ''))::date                   as fecha_documento,
     (nullif(j.datos->>'DueDate', ''))::date                   as fecha_vencimiento,
-    nullif(trim(j.datos->>'FCCurrency'), '')                  as moneda_documento,
+    coalesce(nullif(trim(j.datos->>'FCCurrency'), ''), ml.moneda_codigo)
+                                                              as moneda_documento,
     '{{ var("moneda_local", "GTQ") }}'::text                  as moneda_local,
-    coalesce((nullif(j.datos->>'FCDebit',''))::numeric(18,4), 0)
-      - coalesce((nullif(j.datos->>'FCCredit',''))::numeric(18,4), 0)
+    -- Los FC* solo se llenan en moneda extranjera: en partida local el eje _doc es el local.
+    case when nullif(trim(j.datos->>'FCCurrency'), '') is not null
+         then coalesce((nullif(j.datos->>'FCDebit',''))::numeric(18,4), 0)
+            - coalesce((nullif(j.datos->>'FCCredit',''))::numeric(18,4), 0)
+         else coalesce((nullif(j.datos->>'Debit',''))::numeric(18,4), 0)
+            - coalesce((nullif(j.datos->>'Credit',''))::numeric(18,4), 0) end
                                                               as monto_original_doc,
     coalesce((nullif(j.datos->>'Debit',''))::numeric(18,4), 0)
       - coalesce((nullif(j.datos->>'Credit',''))::numeric(18,4), 0)
                                                               as monto_original_local,
-    coalesce((nullif(j.datos->>'BalFcDeb',''))::numeric(18,4), 0)
-      - coalesce((nullif(j.datos->>'BalFcCred',''))::numeric(18,4), 0)
+    case when nullif(trim(j.datos->>'FCCurrency'), '') is not null
+         then coalesce((nullif(j.datos->>'BalFcDeb',''))::numeric(18,4), 0)
+            - coalesce((nullif(j.datos->>'BalFcCred',''))::numeric(18,4), 0)
+         else coalesce((nullif(j.datos->>'BalDueDeb',''))::numeric(18,4), 0)
+            - coalesce((nullif(j.datos->>'BalDueCred',''))::numeric(18,4), 0) end
                                                               as saldo_pendiente_doc,
     -- LA MEDIDA DE LA CARTERA.
     coalesce((nullif(j.datos->>'BalDueDeb',''))::numeric(18,4), 0)
@@ -68,6 +86,8 @@ join cuentas_cartera c
 left join {{ source('bronce', 'ojdt') }} o
      on o.datos->>'TransId' = j.datos->>'TransId'
     and o.empresa_id        = j.empresa_id
+left join moneda_local_erp ml
+     on ml.empresa_id = j.empresa_id
 
 {% else %}
 
@@ -86,7 +106,9 @@ select
     coalesce((nullif(m.datos->>'invoice_date', ''))::date,
              (nullif(l.datos->>'date', ''))::date)            as fecha_documento,
     (nullif(l.datos->>'date_maturity', ''))::date             as fecha_vencimiento,
-    nullif(l.datos->>'currency_id', '')                       as moneda_documento,
+    -- `currency_id` es un id numérico: se traduce al código con res_currency (ver documentos).
+    coalesce(nullif(trim(rc.datos->>'name'), ''), l.datos->>'currency_id')
+                                                              as moneda_documento,
     '{{ var("moneda_local", "GTQ") }}'::text                  as moneda_local,
     coalesce((nullif(l.datos->>'amount_currency',''))::numeric(18,4), 0)
                                                               as monto_original_doc,
@@ -109,5 +131,8 @@ join cuentas_cartera c
 left join {{ source('bronce', 'account_move') }} m
      on m.datos->>'id' = l.datos->>'move_id'
     and m.empresa_id   = l.empresa_id
+left join {{ source('bronce', 'res_currency') }} rc
+       on rc.datos->>'id' = l.datos->>'currency_id'
+      and rc.empresa_id   = l.empresa_id
 
 {% endif %}

@@ -1,5 +1,274 @@
 # SESSION — datawarehouse
 
+## ══════ CIERRE DE SESIÓN 13 (2026-08-01, noche) — leer esto primero ══════
+
+**Foco: onboarding de organización nueva VALIDADO con un ensayo real de punta a punta, y la
+estrategia de campos de usuario (UDF) implementada — 2.6 millones de valores UDF de Cresta ya
+viven en `oro.campo_usuario`.**
+
+### Onboarding probado EN VIVO (org de prueba `demotest`, creada y eliminada)
+
+Camino completo: alta por el API del portal → `createdb dw_demotest` + esquemas → paquete base
+59 + extensión 65 → Descubrir/Extraer (6,632 filas) → primera carga completa → **cuadre 7/7 y
+oro idéntico a ironnetwork** (mismo origen) → PBIP generado y válido → segunda corrida POR
+OBJETO desde el portal (67 nodos OK) → limpieza total.
+
+**Huecos encontrados y corregidos:**
+1. **El portal no manejaba `base_datos_dw`** (el worker la exige): schema Drizzle + DTO +
+   servicio ahora la derivan (`dw_<codigo>`) al crear la organización. API reconstruida.
+2. **Los seeds 60–63 estaban clavados a grupocresta/ironnetwork**: una org nueva no recibía
+   pagos/inventario/TC. Nuevos **64_paquete_sap_b1_extension.sql** y
+   **65_paquete_odoo_extension.sql** parametrizados por `-v org=` (y `company=` en Odoo), con
+   los nombres VERIFICADOS (Canceled/Status/CredSumFC/StockValue). Son el camino de onboarding;
+   60–63 quedan como historia aplicada.
+3. **La PRIMERA corrida no puede ser por objeto** (los selectores `modelo+` cruzan dimensiones
+   de otros objetos que aún no existen → todo falla): primera vez = `correr.sh <org> <erp>
+   "plata oro"`; después el botón Transformar funciona por objeto en cualquier orden.
+4. **Runbook nuevo: `docs/ONBOARDING-nueva-organizacion.md`** con el paso a paso verificado.
+5. OJO operativo: el worker REESCRIBE `/tmp/dbt/profiles.yml` con un solo target en cada
+   /transformar → correr.sh puede fallar con "target no existe"; regenerar el profiles
+   multi-target antes de corridas manuales.
+
+### Campos de usuario (UDF) — estrategia de 3 niveles, implementada
+
+Pedido de Edwin: UDFs distintos por cliente, sin romper las tablas estándar, modelando solo
+a nivel visual en Power BI.
+
+1. **`oro.campo_usuario`** (nuevo): formato largo (registro × campo × valor), expande
+   AUTOMÁTICAMENTE el jsonb de Bronce (claves `U_%` en SAP, `x_%` en Odoo) — cero config por
+   tenant: todo UDF que la extracción incluya aparece solo. Cresta: **2,619,439 valores**
+   (facturas 2.1M/18 campos — incluye el documento fiscal U_FacSerie/U_FacNum/U_FacNit,
+   piloto y vehículo—, líneas 458k/3, productos 41k/11, socios 11k/11 —Segmento, Subcanal,
+   Afiliado—, pagos 2.8k/1). Iron: 0 (no usa campos de estudio; el mecanismo queda listo).
+2. **Claves sustitutas resueltas dentro de la tabla** (cliente_clave/proveedor_clave/
+   producto_clave — 0 sin resolver): en Power BI 'Campos de usuario' se relaciona directo a
+   Cliente/Proveedor/Producto y filtra las tablas estándar SIN tocarlas. Los UDF de documento
+   quedan como consulta/rastreo por entidad + registro_id (relacionarlos al grano línea sería
+   ambiguo).
+3. **Promoción gobernada**: cuando un UDF importa de verdad, se mapea a campo canónico en el
+   portal (columna real con contrato). Es la vía existente, nada nuevo que construir.
+
+Para activar UDFs: Descubrir el objeto → incluir los que tengan datos → re-extraer →
+transformar (campo_usuario está en los selectores de socios/productos/documentos/pagos).
+
+**REGLA DURA en el API (pedida por Edwin): un UDF SIN DATOS no se puede incluir NI mapear**
+(`ingesta.service.actualizarCampo` → 400 con mensaje que indica re-correr Descubrir).
+Probada en vivo: incluir sin datos = rechazado, con datos = aceptado, mapear sin datos =
+rechazado. Evita saturar Bronce/oro con las decenas de U_* vacíos de cada instalación.
+
+### Estado final
+
+- Descubrir corrido sobre OCRD/OITM/OINV+INV1 (diccionario completo con UDFs: 421/379/963
+  columnas); 49 UDFs con datos incluidos y re-extraídos.
+- dbt 125/125 PASS ambos tenants · cuadre 7/7 y 7/7 · PBIP **25 tablas · 67 relaciones ·
+  140 medidas** (nueva tabla 'Campos de usuario' con 2 medidas), validadores en verde.
+
+### Pendientes (sin cambios de fondo)
+
+- `nits_grupo` por el botón Transformar (runbook lo advierte).
+- Abrir PBIP en Desktop.
+- `medio_pago` Odoo null.
+
+---
+
+## ══════ CIERRE DE SESIÓN 12 (2026-08-01, tarde) — leer esto primero ══════
+
+**HANA volvió: Cresta quedó AL DÍA con todos los dominios nuevos, y se cerró una tercera ronda
+de validación (Descubrir contra HANA corrigió 3 supuestos; la lógica de negocio destapó y
+resolvió la mezcla cobranza/tesorería).**
+
+### Extracción HANA completa (proavisa, 2026-08-01)
+
+15 objetos extraídos: maestros + documentos (137,026 OINV / 217,851 INV1 — ventas hasta
+2026-08-03, facturas adelantadas normales) + cartera (9,092) + **pagos_recibidos 116,645 ORCT**
++ **pagos_efectuados 8,084 OVPM** + **inventario 2,213 OITW** + **tipos_cambio 313 ORTT**.
+dbt 122/122 PASS ambos tenants · cuadre CRESTA 7/7 AL CENTAVO (incluye pagos).
+
+### Lo que Descubrir corrigió (3 supuestos míos, 1 acierto del revisor)
+
+- **ORCT/OVPM usan `Canceled`**, no CANCELED (el revisor tenía razón). Config y filtro movidos.
+- **La columna FC de tarjeta es `CredSumFC`**, no CreditSumFC (que no existe). FC incluidos:
+  CashSumFC/CheckSumFC/TrsfrSumFC/CredSumFC/NoDocSumFC.
+- **ORCT/OVPM no tienen DocStatus** (tumbó la primera extracción con error ruidoso — el mejor
+  caso): el estado del pago es `Status`.
+- **`OITW.StockValue` EXISTE**: el valor de inventario ahora es el contable del ERP
+  (OnHand×AvgPrice queda de respaldo). Cresta: Q61.6M en 2,213 posiciones, 0 negativos.
+
+### Hallazgo de negocio: ORCT mezcla cobranza y TESORERÍA
+
+De Q728M "cobrados" en 2026, **Q487M son DocType 'A'** (operaciones contra cuenta contable:
+depósitos/traslados, sin cliente) y **Q241M son cobranza real de clientes** — 91% de la venta
+con IVA del período (lógico). Nueva columna **`contraparte`** (cliente | proveedor |
+cuenta_contable) en plata_pago y ambos hechos + medidas 'Cobros de clientes', 'Cobros de
+tesorería', 'Pagos a proveedores', '% Cobrado vs facturado'. Sin esto la "cobranza" del tablero
+se triplicaba.
+
+### Nuevo en el motor
+
+- **Miembro `SERVICIO` (-2) en dim_producto**: línea sin código de artículo = servicio/flete/
+  gasto (pedido de Edwin). Cresta: 15,104 líneas de compra = Q61.3M (59.5%) ahora son una
+  categoría real, no "No definido". producto_clave -1 restante: 0.
+- **`tipos_cambio`** end-to-end: ORTT (SAP, 313 tasas, USD≈7.62) y res_currency_rate (Odoo,
+  invertida 1/rate para igualar convención). plata_tipo_cambio + oro.tipo_cambio + seed 63.
+  INFORMATIVA: los hechos no se reconvierten (C1).
+
+### Power BI: 24 tablas · 64 relaciones · 138 medidas (validadores en verde)
+
+Nuevas: tabla **Tipo de cambio** (promedio/cierre) · **Pareto dinámico** (ranking y % acumulado
+para clientes, productos y proveedores — coherente con el ABC del warehouse: desvío máx 5e-7) ·
+Ventas/Compras de servicios · Rotación de inventario 12M y Días de inventario · cobranza vs
+tesorería. Con las 138 medidas el modelo cubre importes, conteos, promedios, rentabilidad,
+comparativos de tiempo, Pareto, aging, caja e inventario — suficiente para construir tableros
+sin DAX adicional; lo que falte ya es específico de un análisis.
+
+### Validaciones de esta ronda (todas en verde)
+
+Cuadre 7/7 y 7/7 · prorrateo de saldo = cabecera (4/4 combinaciones, 0.00) · metrica_valor
+cuadra al centavo con los hechos (ventas_netas_sin_iva 2026-06 = 32,935,084.74 = ERP) ·
+-1 en ventas Cresta: 0 en cliente/producto/moneda · **portal end-to-end probado**: login,
+políticas por organización, campos, y POST /ingesta/transformar (organizacionId numérico)
+corrió 53 nodos dbt OK.
+
+### Pendientes
+
+- `/transformar` del portal sigue sin pasar `nits_grupo` (gap conocido, solo afecta a Cresta si
+  se dispara desde el portal; registrar las 6 sociedades con NIT es el arreglo de fondo).
+- Abrir los PBIP en Desktop (calculation group + 138 medidas: si algo truena, agregar el caso
+  al validador).
+- `medio_pago` Odoo = null (no se extrae el diario).
+
+---
+
+## ══════ CIERRE DE SESIÓN 11 (2026-08-01) — leer esto primero ══════
+
+**Foco: dominio de tesorería (pagos) + inventario + trazabilidad de series + modelo Power BI
+"versión completa" (122 medidas, moneda conmutable, formato Q) para que Edwin publique el modelo
+al servicio y construya sus dashboards en un archivo aparte.**
+
+### Qué entró al motor (dbt, mismos modelos para ambos ERPs)
+
+- **`plata_pago` + `hecho_pago_recibido` / `hecho_pago_efectuado`.** SAP: ORCT/OVPM — el monto es
+  la SUMA DE MEDIOS (CashSum+CheckSum+TrsfrSum+CreditSum; ORCT no tiene DocTotal), filtro
+  `CANCELED='N'` (misma trampa que documentos). Odoo: `account_payment` (526 filas; se excluyen
+  draft/canceled/rejected; `amount_company_currency_signed` es negativo en outbound → abs()).
+  Ambos tipos POSITIVOS; el sentido lo da `tipo_pago`. Conceptos `pagos_recibidos` /
+  `pagos_efectuados` agregados a `plata_control_cuadre` (7/7 cuadran).
+- **`plata_inventario` + `hecho_inventario`** — foto por (empresa, almacén, producto). SAP: OITW
+  (valor = OnHand × AvgPrice, filtro `"OnHand" <> 0`). Odoo: stock_quant (solo ubicaciones
+  `internal`) + stock_location; el VALOR sale de `stock_valuation_layer` por producto y se
+  prorratea a almacenes por cantidad. El almacén Odoo se resuelve por el prefijo de
+  `complete_name` contra `stock_warehouse.code`.
+- **`clasificacion_abc_proveedor`** — espejo del ABC de clientes sobre compras (sin margen).
+- **Saldo en facturas:** `hecho_venta_linea` y `hecho_compra_linea` llevan
+  `saldo_pendiente_local` **prorrateado por línea** (SUM reproduce el saldo del documento;
+  documentos con total 0 se reparten en partes iguales) + `estado_pago`. INFORMATIVO — la
+  cartera oficial sigue saliendo del mayor.
+- **Trazabilidad:** `serie_codigo` (SAP `Series`; Odoo `sequence_prefix` con fallback al prefijo
+  del name), `tipo_documento_origen` y `referencia_externa` ahora llegan a los hechos de línea;
+  los pagos llevan `serie_codigo` también.
+- **Bugs corregidos:** (0) **Las compras del tenant Odoo salían NEGATIVAS** (−43,556.92): los
+  `*_signed` de Odoo van en perspectiva de compañía (compra negativa) mientras SAP las trae
+  positivas — el mismo indicador con signo distinto por ERP. La convención canónica es factura
+  positiva / NC negativa EN AMBOS FLUJOS; corregido en cabecera, línea (`balance` solo se
+  invierte en venta) y control de cuadre. (1) `dim_tiempo` emitía meses/días EN INGLÉS — `TMMonth` depende del
+  lc_time del contenedor; ahora arreglos explícitos en español. (2) `es_local` de moneda era
+  false para TODAS en Cresta: SAP usa **QTZ** (no GTQ); `plata_moneda` acepta alias
+  (`codigos_moneda_local`, default GTQ+QTZ). (3) En Odoo `moneda_documento` era el
+  **currency_id numérico** → el join a dim_moneda caía siempre al -1; ahora se traduce con
+  res_currency en documento/línea/cartera/pago.
+
+### Metadata-store (seeds 60 y 61, aplicados en vivo)
+
+Políticas nuevas — grupocresta: `pagos_recibidos` (ORCT), `pagos_efectuados` (OVPM),
+`inventario` (OITW); ironnetwork: `pagos` (account_payment), `inventario`
+(stock_quant+stock_location), `valor_inventario` (stock_valuation_layer). Entidades canónicas
+`pago` e `inventario` + contrato `data-plane/canonico/entidades/pago.yml`. Campos `Series` en los
+4 documentos SAP y en ORCT/OVPM; `sequence_prefix`/`journal_id` en account_move.
+**Los `*SumFC` de ORCT/OVPM quedaron sugeridos SIN incluir** — confirmar con Descubrir contra
+HANA antes de incluirlos (una columna inexistente tumba la extracción del objeto).
+
+### Estado de los datos
+
+- **Iron Network: TODO al día (2026-08-01).** Bronce re-extraído completo + pagos (526) +
+  inventario (82 quants, 717 capas). dbt 118/118 PASS. 380 cobros Q2.0M / 146 pagos.
+- **Grupo Cresta: recargado con el motor nuevo pero los datos siguen al 2026-07-28 — HANA
+  inaccesible toda la sesión (timeout: se necesita la red corporativa).** Al estar en la red:
+  extraer `pagos_recibidos`, `pagos_efectuados`, `inventario` y re-extraer los 4 documentos
+  (la ventana 2026 recarga todo y trae `Series`). `bronce.orct/ovpm/oitw` existen VACÍAS (se
+  crearon para que dbt compile); la extracción las llena.
+- El worker se recreó: `/tmp/dbt/profiles.yml` y `/tmp/correr.sh` se regeneraron. OJO: el compose
+  hay que levantarlo con `--env-file ../../.env` (el .env vive en la RAÍZ del repo, no junto al
+  compose; sin eso api/worker arrancan con credenciales vacías).
+
+### Power BI (regenerado, ambos proyectos idénticos salvo BaseDatos)
+
+**23 tablas · 61 relaciones · 122 medidas** (Ventas 36, Compras 22, CxC 18, CxP 9, Pagos 6+7,
+Inventario 5, ABC 10+9) · validadores en verde · 5 páginas/72 visuales regenerados en ambos.
+- **Toda medida de importe lleva formato `"Q" #,0`** (sin decimales).
+- **Grupo de cálculo «Moneda de análisis»** (pedido de Edwin): *Quetzales (local)* /
+  *Moneda original* — conmuta las medidas base a las columnas `*_doc` vía SWITCH +
+  ISSELECTEDMEASURE; las derivadas pasan sin conmutar. Solo tiene sentido con filtro de Moneda.
+- Comparativos completos para ventas/compras/pagos: mes anterior, año anterior, MTD, QTD, YTD,
+  **YTD año anterior**, variaciones, media móvil 3M, 12 meses móviles. Promedios: diario, por
+  documento, por línea, por cliente/proveedor.
+- ABC Proveedor ↔ Proveedor con bothDirections (1:1), igual que el ABC de clientes.
+- **`generar_pbip.py` ya NO pisa `report.json`** (solo lo crea si no existe) — el flujo de Edwin
+  es: regenerar modelo → publicar al servicio → dashboards en archivo aparte conectado en vivo
+  (documentado en el README de powerbi).
+- Validadores extendidos: PALABRAS acepta calculationGroup/calculationItem/formatStringDefinition
+  y las referencias DAX de los calculation items también se verifican.
+
+### Segunda ronda: validación adversarial (pedida por Edwin) — 9 hallazgos, todos corregidos
+
+Revisor adversarial sobre el código nuevo + batería de integridad (grano/duplicados 0, plata↔oro
+0 filas y 0 centavos de desvío en 6 dominios × 2 tenants, 0% de -1 inesperados, 123 medidas sin
+duplicados ni colisiones, portal API OK por organización). Correcciones aplicadas y recargadas:
+
+1. **Compras del tenant Odoo salían NEGATIVAS** (los `*_signed` van en perspectiva compañía) →
+   convención canónica factura+/NC− en ambos flujos, aplicada en cabecera/línea/cuadre.
+2. **"Con IVA" era igual a "sin IVA" en Odoo** (el balance de línea excluye impuesto) → IVA local
+   derivado con la razón price_total/price_subtotal de la propia línea. Verificación: da
+   exactamente 12% en Iron (el IVA guatemalteco).
+3. **`saldo_documento_local` Odoo estaba en moneda del documento y positivo en NC** → ahora usa
+   `amount_residual_signed` (extraído nuevo, seed 62) con el factor de flujo.
+4. **La cartera de Cresta caía 98.95% al miembro moneda -1**: JDT1.FCCurrency solo se llena en
+   moneda extranjera → nulo se resuelve a la moneda local del ERP (QTZ).
+5. **Los ejes `_doc` de SAP valían 0 en documentos de moneda local** (DocTotalFC/TotalFrgn/FC*
+   solo se llenan en extranjera) → en moneda local el eje _doc = local (cabecera, línea, cartera
+   y pagos). Sin esto la conmutación 'Moneda original' mostraba Q0 para el 99.9% de Cresta.
+6. **Prorrateo de saldo sobrecontaba con pesos nulos** → coalesce en peso y suma.
+7. **Valor de inventario Odoo se duplicaba si un producto sumaba cantidad 0 en ≥2 almacenes** →
+   reparto en partes iguales en ese caso.
+8. **'Media móvil 3 meses' promediaba DÍAS, no meses** (DATESINPERIOD itera fechas) → 
+   `AVERAGEX(VALUES(Calendario[anio_mes]), …)` dentro del período. Ambas (ventas y compras).
+9. **`formatStringDefinition` del item 'Moneda original' pisaba el formato de TODAS las medidas**
+   (los % salían como "0") → IF(ISSELECTEDMEASURE(las 10 conmutadas), "#,0",
+   SELECTEDMEASUREFORMATSTRING()).
+   Además: `CANCELED` de ORCT/OVPM puede llamarse `Canceled` según versión → plata y cuadre
+   aceptan ambas grafías; campo variante sembrado sin incluir (Descubrir confirma) — seed 62.
+   Y las medidas de descuento dejaron de ser 0: descuento por línea real en ambos ERPs
+   (SAP: (PriceBefDi−Price)×Qty; Odoo: discount%) — Cresta: Q256k en 53,986 líneas.
+
+Estado final: dbt 118/118 en ambos · cuadre 5/5 y 7/7 · saldo prorrateado = cabecera al centavo ·
+PBIP regenerado y validado (23 tablas, 61 relaciones, 122 medidas, 5 páginas/72 visuales).
+
+### Pendientes
+
+- **HANA (red corporativa):** extraer pagos+inventario+documentos de Cresta (arriba). Luego
+  `correr.sh grupocresta sap_b1 "plata oro" '<nits>'` y regenerar PulsoCresta.
+  **Antes de extraer pagos: correr Descubrir sobre ORCT/OVPM** y confirmar la grafía de
+  CANCELED/Canceled y la existencia de los *SumFC (hoy excluidos).
+- **`/transformar` del portal no pasa `nits_grupo`** — si Edwin dispara Transformar desde el
+  portal, `es_intercompania` se recalcula con lista vacía. Las corridas manuales lo pasan bien.
+  Arreglo correcto: registrar las 6 sociedades de Cresta con su NIT y que el worker arme la
+  lista desde `gobierno.sociedades`.
+- El PBIP **no se abrió en Desktop** esta sesión (calculation group nuevo: si Desktop reporta
+  error de TMDL, agregar el caso al validador — patrón establecido).
+- `medio_pago` en Odoo va null (el diario no se extrae); si se quiere, agregar `account_journal`.
+- Carpeta basura `metadata-store;C` (vacía, accidente del 22-jul) eliminada.
+
+---
+
 ## ══════ CIERRE DE SESIÓN 10 (2026-07-28) — leer esto primero ══════
 
 **Foco: el portal dejó de mezclar tenants, el pipeline se recargó con la regla de datos nueva

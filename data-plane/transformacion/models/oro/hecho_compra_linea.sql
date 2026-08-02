@@ -11,7 +11,9 @@ select
     coalesce((to_char(l.fecha_documento, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
                                                       as tiempo_clave,
     {{ clave_o_no_definido('dpr', 'proveedor_clave') }} as proveedor_clave,
-    {{ clave_o_no_definido('dp', 'producto_clave') }} as producto_clave,
+    -- Línea sin código de artículo = servicio/flete/gasto → miembro SERVICIO (-2).
+    case when l.producto_codigo is null then -2
+         else {{ clave_o_no_definido('dp', 'producto_clave') }} end as producto_clave,
     {{ clave_o_no_definido('dorg', 'organizacion_clave') }} as organizacion_clave,
     {{ clave_o_no_definido('da', 'almacen_clave') }}  as almacen_clave,
     {{ clave_o_no_definido('dm', 'moneda_clave') }}   as moneda_clave,
@@ -22,6 +24,9 @@ select
     l.empresa_id,
     l.documento_id,                                   -- llave de negocio interna (DocEntry / id)
     cab.documento_numero,                             -- NÚMERO VISIBLE (DocNum / name): el que ve el usuario
+    cab.serie_codigo,                                 -- serie de numeración: rastreo en el ERP
+    cab.tipo_documento_origen,                        -- ObjType / move_type del ERP
+    cab.referencia_externa,                           -- NumAtCard / ref (nº de factura del proveedor)
     l.linea_numero,
     l.tipo_documento,
     l.fecha_documento,
@@ -35,6 +40,18 @@ select
     l.monto_con_impuesto_doc,
     l.monto_descuento_local,
     l.descuento_pct,
+
+    -- Saldo prorrateado por línea, mismo criterio que hecho_venta_linea (informativo:
+    -- la cartera oficial sale del mayor).
+    -- Peso con coalesce a 0 — mismo motivo que en hecho_venta_linea.
+    coalesce(
+        cab.saldo_documento_local * coalesce(l.monto_con_impuesto_local, 0)
+            / nullif(sum(coalesce(l.monto_con_impuesto_local, 0))
+                     over (partition by l.empresa_id, l.documento_id, l.tipo_documento), 0),
+        cab.saldo_documento_local
+            / count(*) over (partition by l.empresa_id, l.documento_id, l.tipo_documento)
+    )::numeric(18,4)                                  as saldo_pendiente_local,
+    cab.estado_pago,
 
     l.proceso_transformacion,
     l.version_proceso

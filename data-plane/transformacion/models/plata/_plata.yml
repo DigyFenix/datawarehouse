@@ -82,6 +82,42 @@ models:
         data_tests:
           - accepted_values: { values: [documento, asiento] }
 
+  - name: plata_pago
+    description: >
+      Cobros (recibido) y pagos a proveedores (efectuado) unificados por `tipo_pago`.
+      Informativo para flujo de caja: el saldo de cartera sigue saliendo del mayor.
+    columns:
+      - name: pago_id
+        data_tests: [not_null]
+      - name: tipo_pago
+        data_tests:
+          - not_null
+          - accepted_values: { values: [recibido, efectuado] }
+      - name: fecha_pago
+        data_tests: [not_null]
+      - name: monto_local
+        data_tests: [not_null]
+
+  - name: plata_tipo_cambio
+    description: >
+      Tasa por (empresa, fecha, moneda) en "moneda local por 1 unidad". INFORMATIVA:
+      los hechos no se reconvierten (C1).
+    columns:
+      - name: fecha
+        data_tests: [not_null]
+      - name: tasa
+        data_tests: [not_null]
+
+  - name: plata_inventario
+    description: >
+      Existencias y valor por (empresa, almacén, producto). Foto al momento de la
+      extracción. En Odoo el valor se prorratea desde las capas de valoración.
+    columns:
+      - name: producto_codigo
+        data_tests: [not_null]
+      - name: cantidad
+        data_tests: [not_null]
+
   - name: cuarentena_socio_negocio
     description: >
       Socios que violan una regla de calidad (§10). NO bloquean la corrida: quedan aquí con la
