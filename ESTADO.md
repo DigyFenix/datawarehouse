@@ -82,13 +82,30 @@ sola vez** para los dos.
 | Fase | Nombre | Estado | Cerrada |
 |------|--------|--------|---------|
 | 0 | Fundación agnóstica | ✅ completada | 2026-07-19 |
-| 1 | Datos (Bronce/Plata/Oro) | ✅ **completada con DATOS REALES de DOS ERPs** — canónico v2, paquetes base SAP B1 y Odoo 18, Oro 13 dims + 6 hechos, cuadre 5/5 al centavo en ambos tenants sobre todo 2026 (215k líneas de venta en Cresta) | 2026-07-28 |
-| 2 | Semántica (métricas + catálogo) | 🔨 **14 métricas materializadas** + `clasificacion_abc_cliente` y `dim_rango_aging`; 74 medidas DAX en el modelo BI. Falta recablear el catálogo del portal al canónico v2 | — |
-| 3 | Gobernanza (linaje, roles, RLS, certificación) | ⏳ pendiente — trazabilidad, cuarentena y control de cuadre implementados; faltan RLS y certificación | — |
+| 1 | Datos (Bronce/Plata/Oro) | ✅ **completada — order-to-cash Y procure-to-pay con DATOS REALES de DOS ERPs**: ventas, compras, CxC, CxP, **pagos (cobranza vs tesorería), inventario con valor, tipos de cambio y campos de usuario (UDF, 2.6M de valores)**. Cuadre 7/7 al centavo en ambos tenants, datos al día (2026-08-01) | 2026-08-01 |
+| 2 | Semántica (métricas + catálogo) | 🔨 14 métricas materializadas + ABC clientes **y proveedores** + `dim_rango_aging` + `tipo_cambio`; 140 medidas DAX. Falta recablear el catálogo del portal al canónico v2 | — |
+| 3 | Gobernanza (linaje, roles, RLS, certificación) | ⏳ pendiente — trazabilidad (incl. serie/DocEntry para rastreo en el ERP), cuarentena, control de cuadre y regla dura de UDFs implementados; faltan RLS y certificación | — |
 | 4 | Agente (tools tipadas + 4 restricciones) | ⏸ **POSPUESTA** — hasta 3 clientes pagando (corrección de rumbo 2026-07-26) | — |
-| 5 | Portal Etapa A | 🔨 en curso — **aislamiento por organización cerrado** (selector global, API filtrada, `/transformar` cableado). Falta la UI del canónico v2 y el filtro por campo | — |
-| 6 | Consumo (Power BI) | 🔨 **modelo de 19 tablas / 48 relaciones / 74 medidas + 5 páginas y 72 visuales, un solo PBIP para ambos ERPs**; Edwin construye las visuales y el análisis | — |
-| 7 | Validación (4 criterios) | 🔨 consistencia y trazabilidad demostradas por el control de cuadre; faltan seguridad/RLS y explicabilidad | — |
+| 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos. Falta la UI del canónico v2, el filtro por campo y pasar `nits_grupo` en /transformar | — |
+| 6 | Consumo (Power BI) | ✅ **modelo "versión completa": 25 tablas / 67 relaciones / 140 medidas** (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis | 2026-08-01 |
+| 7 | Validación (4 criterios) | 🔨 consistencia demostrada 3 veces (cuadre al centavo, revisión adversarial con 9 hallazgos corregidos, ensayo de onboarding); faltan seguridad/RLS y explicabilidad | — |
+
+## Avance 2026-08-01 (sesiones 11–13) — commit `f652b39`
+
+- **Dominios nuevos end-to-end** (portal → bronce → plata → oro → Power BI, ambos ERPs):
+  pagos recibidos/efectuados (ORCT/OVPM · account_payment) con `contraparte` — en Cresta el
+  67% del monto de ORCT es tesorería contra cuenta contable, no cobranza —, inventario con
+  valor contable (OITW.StockValue · stock_valuation_layer), tipos de cambio (ORTT ·
+  res_currency_rate) y saldo pendiente prorrateado por línea en facturas.
+- **Campos de usuario (UDF)**: `oro.campo_usuario` en formato largo con expansión automática
+  del jsonb de Bronce y claves sustitutas resueltas; regla dura en el API (solo UDFs con
+  datos); promoción a campo canónico como vía gobernada. Miembro `SERVICIO` en producto.
+- **Tres rondas de validación**: cuadre al centavo en 7/7 conceptos × 2 tenants; revisión
+  adversarial (9 hallazgos reales corregidos: signos Odoo, ejes _doc de SAP, moneda de
+  cartera, media móvil, formato del calculation group…); ensayo de onboarding con
+  organización de prueba creada por el portal y eliminada al final (3 huecos corregidos:
+  `base_datos_dw`, seeds parametrizados 64/65, primera corrida = build completo).
+- **Runbook**: `docs/ONBOARDING-nueva-organizacion.md`.
 
 ## Regla de datos vigente (2026-07-28)
 
