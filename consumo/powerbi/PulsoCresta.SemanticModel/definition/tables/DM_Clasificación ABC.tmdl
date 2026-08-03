@@ -1,0 +1,175 @@
+table 'DM_Clasificación ABC'
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column cliente_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cliente_clave
+
+	column ranking_historico
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: ranking_historico
+		formatString: #,0
+
+	column venta_historico
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: venta_historico
+		formatString: #,0.00
+
+	column margen_historico
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: margen_historico
+		formatString: #,0.00
+
+	column lineas_historico
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: lineas_historico
+		formatString: #,0
+
+	column participacion_historico
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: participacion_historico
+		formatString: 0.0%
+
+	column participacion_acumulada_historico
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: participacion_acumulada_historico
+		formatString: 0.0%
+
+	column clase_abc_historico
+		dataType: string
+		summarizeBy: none
+		sourceColumn: clase_abc_historico
+
+	column ranking_anio
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: ranking_anio
+		formatString: #,0
+
+	column venta_anio
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: venta_anio
+		formatString: #,0.00
+
+	column margen_anio
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: margen_anio
+		formatString: #,0.00
+
+	column lineas_anio
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: lineas_anio
+		formatString: #,0
+
+	column participacion_anio
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: participacion_anio
+		formatString: 0.0%
+
+	column participacion_acumulada_anio
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: participacion_acumulada_anio
+		formatString: 0.0%
+
+	column clase_abc_anio
+		dataType: string
+		summarizeBy: none
+		sourceColumn: clase_abc_anio
+
+	column clase_abc_anio_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: clase_abc_anio_nombre
+
+	column ultimo_anio_compra
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: ultimo_anio_compra
+		formatString: #,0
+
+	column perdido_en_anio
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: perdido_en_anio
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Cuántos clientes concentran el 80% de la venta del año. En una cartera sana no son dos.
+	measure 'Clientes A' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[clase_abc_anio] = "A")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes B' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[clase_abc_anio] = "B")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes C' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[clase_abc_anio] = "C")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes sin venta neta' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[clase_abc_anio] = "S")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes clasificados' = COUNTROWS('DM_Clasificación ABC')
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Clientes que facturaron algún año anterior y nada en el año en curso: la lista de llamadas pendientes.
+	measure 'Clientes perdidos' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[perdido_en_anio] = TRUE)
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Riesgo de concentración: si los A son el 90% de la venta, perder uno duele de verdad.
+	measure '% Venta en clientes A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta_anio]), 'DM_Clasificación ABC'[clase_abc_anio] = "A"), SUM('DM_Clasificación ABC'[venta_anio]))
+		formatString: 0.0%
+		displayFolder: 02 Concentración
+
+	measure 'Venta del año clasificada' = SUM('DM_Clasificación ABC'[venta_anio])
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+
+	measure 'Venta promedio cliente A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta_anio]), 'DM_Clasificación ABC'[clase_abc_anio] = "A"), [Clientes A])
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+
+	measure 'Margen de clientes A' = CALCULATE(SUM('DM_Clasificación ABC'[margen_anio]), 'DM_Clasificación ABC'[clase_abc_anio] = "A")
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+
+	partition 'DM_Clasificación ABC' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="clasificacion_abc_cliente"]}[Data]
+				in
+				    Tabla

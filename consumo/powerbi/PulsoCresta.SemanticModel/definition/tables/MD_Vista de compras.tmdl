@@ -1,0 +1,37 @@
+table 'MD_Vista de compras'
+
+	column 'Vista de compras'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Vista de compras · orden'
+		relatedColumnDetails
+			groupByColumn: 'Vista de compras · campo'
+
+	column 'Vista de compras · campo'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value2]
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+	column 'Vista de compras · orden'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value3]
+
+	partition 'MD_Vista de compras' = calculated
+		mode: import
+		source =
+				{
+				  ("Compras netas", NAMEOF(FC_Compras[Compras netas]), 0),
+				  ("Compras a terceros", NAMEOF(FC_Compras[Compras a terceros]), 1),
+				  ("Documentos de compra", NAMEOF(FC_Compras[Documentos de compra]), 2),
+				  ("Compra promedio por documento", NAMEOF(FC_Compras[Compra promedio por documento]), 3),
+				  ("Proveedores con compra", NAMEOF(FC_Compras[Proveedores con compra]), 4)
+				}

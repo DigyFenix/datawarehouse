@@ -49,6 +49,8 @@ select
     nullif(trim(d.datos->>'Series'), '')                      as serie_codigo,
     null::text                                                as documento_referencia,
     nullif(trim(d.datos->>'NumAtCard'), '')                   as referencia_externa,
+    -- Dirección de ENTREGA del documento: referencia a CRD1 (CardCode+'S'+Address).
+    nullif(trim(d.datos->>'ShipToCode'), '')                  as direccion_entrega_codigo,
     d.datos->>'CardCode'                                      as socio_codigo,
     nullif(d.datos->>'SlpCode', '-1')                         as vendedor_codigo,
     (nullif(d.datos->>'DocDate', ''))::date                   as fecha_documento,
@@ -59,11 +61,17 @@ select
     (nullif(d.datos->>'DocRate', ''))::numeric(18,6)          as tipo_cambio,
     -- Montos: TODOS los ejes. `DocTotal` de SAP B1 está en moneda LOCAL y `DocTotalFC` en
     -- la del documento (solo en moneda extranjera); la base sin impuesto resta el IVA.
+    -- RETENCIÓN (WTSum): DocTotal llega NETO de retención (DocTotal = base + IVA − WTSum;
+    -- verificado al centavo en Proavisa El Salvador, retención del 1%). La retención es un
+    -- fenómeno de COBRO, no una reducción de la venta: la base y el "con impuesto" la suman
+    -- de vuelta para que cuadren con las líneas y con el negocio.
     {{ signo }} * (case when {{ es_fc }}
         then (nullif(d.datos->>'DocTotalFC',''))::numeric(18,4)
            - coalesce((nullif(d.datos->>'VatSumFC',''))::numeric(18,4), 0)
+           + coalesce((nullif(d.datos->>'WTSumFC',''))::numeric(18,4), 0)
         else (nullif(d.datos->>'DocTotal',''))::numeric(18,4)
-           - coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0) end)
+           - coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0)
+           + coalesce((nullif(d.datos->>'WTSum',''))::numeric(18,4), 0) end)
                                                               as total_sin_impuesto_doc,
     {{ signo }} * (case when {{ es_fc }}
         then coalesce((nullif(d.datos->>'VatSumFC',''))::numeric(18,4), 0)
@@ -71,14 +79,18 @@ select
                                                               as total_impuesto_doc,
     {{ signo }} * (case when {{ es_fc }}
         then (nullif(d.datos->>'DocTotalFC',''))::numeric(18,4)
-        else (nullif(d.datos->>'DocTotal',''))::numeric(18,4) end)
+           + coalesce((nullif(d.datos->>'WTSumFC',''))::numeric(18,4), 0)
+        else (nullif(d.datos->>'DocTotal',''))::numeric(18,4)
+           + coalesce((nullif(d.datos->>'WTSum',''))::numeric(18,4), 0) end)
                                                               as total_con_impuesto_doc,
     {{ signo }} * ((nullif(d.datos->>'DocTotal',''))::numeric(18,4)
-                 - coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0))
+                 - coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0)
+                 + coalesce((nullif(d.datos->>'WTSum',''))::numeric(18,4), 0))
                                                               as total_sin_impuesto_local,
     {{ signo }} * coalesce((nullif(d.datos->>'VatSum',''))::numeric(18,4), 0)
                                                               as total_impuesto_local,
-    {{ signo }} * (nullif(d.datos->>'DocTotal',''))::numeric(18,4)
+    {{ signo }} * ((nullif(d.datos->>'DocTotal',''))::numeric(18,4)
+                 + coalesce((nullif(d.datos->>'WTSum',''))::numeric(18,4), 0))
                                                               as total_con_impuesto_local,
     {{ signo }} * coalesce((nullif(d.datos->>'DiscSum',''))::numeric(18,4), 0)
                                                               as total_descuento_local,
@@ -116,6 +128,8 @@ select
              nullif(split_part(m.datos->>'name', '/', 1), '')) as serie_codigo,
     nullif(m.datos->>'reversed_entry_id', '')                 as documento_referencia,
     nullif(trim(m.datos->>'ref'), '')                         as referencia_externa,
+    -- Dirección de ENTREGA: en Odoo es un res_partner hijo (partner_shipping_id).
+    nullif(trim(m.datos->>'partner_shipping_id'), '')         as direccion_entrega_codigo,
     nullif(m.datos->>'partner_id', '')                        as socio_codigo,
     nullif(m.datos->>'invoice_user_id', '')                   as vendedor_codigo,
     (nullif(m.datos->>'invoice_date', ''))::date              as fecha_documento,

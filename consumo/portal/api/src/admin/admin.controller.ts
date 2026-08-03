@@ -1,0 +1,161 @@
+/** Autoadministración de la organización (/t/:hash/admin). Solo su admin. */
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  Req,
+} from '@nestjs/common';
+
+import { RequestPortal } from '../auth/jwt-auth.guard';
+import { SoloAdmin } from '../auth/solo-admin.decorator';
+import { UsuarioPortal } from '../auth/tipos';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import {
+  actualizarPerfilSchema,
+  ActualizarPerfilDto,
+  actualizarUsuarioSchema,
+  ActualizarUsuarioDto,
+  asignarAlcancesSchema,
+  AsignarAlcancesDto,
+  asignarPerfilesSchema,
+  AsignarPerfilesDto,
+  asignarTablerosSchema,
+  AsignarTablerosDto,
+  crearPerfilSchema,
+  CrearPerfilDto,
+  crearUsuarioSchema,
+  CrearUsuarioDto,
+  restablecerPasswordSchema,
+  RestablecerPasswordDto,
+} from './admin.dto';
+import { AdminService } from './admin.service';
+
+@SoloAdmin()
+@Controller('t/:hash/admin')
+export class AdminController {
+  constructor(private readonly servicio: AdminService) {}
+
+  private usuario(req: RequestPortal): UsuarioPortal {
+    if (!req.usuarioPortal) throw new Error('Request sin usuario autenticado');
+    return req.usuarioPortal;
+  }
+
+  // --- Usuarios ---
+
+  @Get('usuarios')
+  listarUsuarios(@Req() req: RequestPortal) {
+    return this.servicio.listarUsuarios(this.usuario(req));
+  }
+
+  @Post('usuarios')
+  crearUsuario(
+    @Body(new ZodValidationPipe(crearUsuarioSchema)) dto: CrearUsuarioDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.crearUsuario(this.usuario(req), dto, req.ip ?? null);
+  }
+
+  @Put('usuarios/:usuarioId')
+  actualizarUsuario(
+    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Body(new ZodValidationPipe(actualizarUsuarioSchema)) dto: ActualizarUsuarioDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.actualizarUsuario(this.usuario(req), usuarioId, dto, req.ip ?? null);
+  }
+
+  @Post('usuarios/:usuarioId/restablecer-password')
+  restablecerPassword(
+    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Body(new ZodValidationPipe(restablecerPasswordSchema)) dto: RestablecerPasswordDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.restablecerPassword(this.usuario(req), usuarioId, dto, req.ip ?? null);
+  }
+
+  @Put('usuarios/:usuarioId/perfiles')
+  asignarPerfiles(
+    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Body(new ZodValidationPipe(asignarPerfilesSchema)) dto: AsignarPerfilesDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.asignarPerfiles(this.usuario(req), usuarioId, dto, req.ip ?? null);
+  }
+
+  // --- Perfiles ---
+
+  @Get('perfiles')
+  listarPerfiles(@Req() req: RequestPortal) {
+    return this.servicio.listarPerfiles(this.usuario(req));
+  }
+
+  @Post('perfiles')
+  crearPerfil(
+    @Body(new ZodValidationPipe(crearPerfilSchema)) dto: CrearPerfilDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.crearPerfil(this.usuario(req), dto, req.ip ?? null);
+  }
+
+  @Put('perfiles/:perfilId')
+  actualizarPerfil(
+    @Param('perfilId', ParseIntPipe) perfilId: number,
+    @Body(new ZodValidationPipe(actualizarPerfilSchema)) dto: ActualizarPerfilDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.actualizarPerfil(this.usuario(req), perfilId, dto, req.ip ?? null);
+  }
+
+  @Delete('perfiles/:perfilId')
+  @HttpCode(204)
+  eliminarPerfil(@Param('perfilId', ParseIntPipe) perfilId: number, @Req() req: RequestPortal) {
+    return this.servicio.eliminarPerfil(this.usuario(req), perfilId, req.ip ?? null);
+  }
+
+  @Put('perfiles/:perfilId/tableros')
+  asignarTableros(
+    @Param('perfilId', ParseIntPipe) perfilId: number,
+    @Body(new ZodValidationPipe(asignarTablerosSchema)) dto: AsignarTablerosDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.asignarTableros(this.usuario(req), perfilId, dto, req.ip ?? null);
+  }
+
+  @Put('perfiles/:perfilId/alcances')
+  asignarAlcances(
+    @Param('perfilId', ParseIntPipe) perfilId: number,
+    @Body(new ZodValidationPipe(asignarAlcancesSchema)) dto: AsignarAlcancesDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.asignarAlcances(this.usuario(req), perfilId, dto, req.ip ?? null);
+  }
+
+  // --- Tableros (lectura) y auditoría ---
+
+  @Get('tableros')
+  listarTableros(@Req() req: RequestPortal) {
+    return this.servicio.listarTableros(this.usuario(req));
+  }
+
+  @Get('auditoria')
+  listarAuditoria(
+    @Req() req: RequestPortal,
+    @Query('limite') limite?: string,
+    @Query('desdeId') desdeId?: string,
+  ) {
+    const lim = Math.min(Math.max(Number(limite) || 200, 1), 500);
+    const desde = desdeId ? Number(desdeId) : undefined;
+    return this.servicio.listarAuditoria(
+      this.usuario(req),
+      lim,
+      Number.isFinite(desde) ? desde : undefined,
+    );
+  }
+}

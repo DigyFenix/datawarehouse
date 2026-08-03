@@ -24,7 +24,10 @@ select
     cuenta_clave,
     tiempo_vencimiento_clave,
     fecha_vencimiento,
-    saldo_pendiente_local,
+    -- El hecho ya expone el saldo en moneda de PRESENTACIÓN; se conserva el nombre histórico
+    -- de la columna porque esta tabla es INCREMENTAL (renombrarla exigiría full-refresh y
+    -- perder las fotos acumuladas). Para las 9 sociedades GTQ el valor es idéntico.
+    saldo_pendiente                                   as saldo_pendiente_local,
     saldo_pendiente_doc,
     dias_vencido,
     rango_aging,

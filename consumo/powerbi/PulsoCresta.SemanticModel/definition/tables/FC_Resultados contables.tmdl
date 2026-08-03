@@ -1,0 +1,136 @@
+table 'FC_Resultados contables'
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column cuenta_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cuenta_clave
+
+	column centro_costo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: centro_costo_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column partida_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: partida_id
+
+	column asiento_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: asiento_id
+
+	column fecha
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha
+		formatString: dd/MM/yyyy
+
+	column naturaleza
+		dataType: string
+		summarizeBy: none
+		sourceColumn: naturaleza
+
+	column documento_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: documento_origen
+
+	column tipo_documento_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_documento_origen
+
+	column origen_partida
+		dataType: string
+		summarizeBy: none
+		sourceColumn: origen_partida
+
+	column descripcion_partida
+		dataType: string
+		summarizeBy: none
+		sourceColumn: descripcion_partida
+
+	column debe
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: debe
+		formatString: #,0.00
+
+	column haber
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: haber
+		formatString: #,0.00
+
+	column monto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto
+		formatString: #,0.00
+
+	column monto_resultado
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_resultado
+		formatString: #,0.00
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Gasto operativo del MAYOR (cuentas de gasto), con jerarquía de cuenta y centro de costo.
+	measure 'Gasto operativo' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), 'FC_Resultados contables'[naturaleza] = "gasto")
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+
+	measure 'Costo (contable)' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), 'FC_Resultados contables'[naturaleza] = "costo")
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+
+	/// Ingresos según el LIBRO MAYOR. Cuadra al centavo con Ventas Netas cuando todo ingreso pasa por factura.
+	measure 'Ingresos contables' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), 'FC_Resultados contables'[naturaleza] = "ingreso")
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+
+	/// Ingresos − costos − gastos, todo desde el mayor: el resultado operativo contable.
+	measure 'Resultado contable' = [Ingresos contables] - [Costo (contable)] - [Gasto operativo]
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+
+	partition 'FC_Resultados contables' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_movimiento_contable"]}[Data]
+				in
+				    Tabla

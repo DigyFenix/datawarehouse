@@ -5,14 +5,16 @@ import {
   Delete,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
   Put,
   Req,
+  Res,
   UsePipes,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import {
@@ -20,6 +22,8 @@ import {
   ActualizarOrganizacionDto,
   crearOrganizacionSchema,
   CrearOrganizacionDto,
+  subirLogoSchema,
+  SubirLogoDto,
 } from './organizacion.dto';
 import { Actor, OrganizacionesService } from './organizaciones.service';
 
@@ -66,5 +70,37 @@ export class OrganizacionesController {
   @HttpCode(204)
   eliminar(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.servicio.eliminar(id, this.actor(req));
+  }
+
+  // --- Logo del tenant (white-label del portal de usuario) ---
+
+  @Put(':id/logo')
+  subirLogo(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(subirLogoSchema)) dto: SubirLogoDto,
+    @Req() req: Request,
+  ) {
+    return this.servicio.subirLogo(id, dto, this.actor(req));
+  }
+
+  @Delete(':id/logo')
+  @HttpCode(204)
+  eliminarLogo(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+    return this.servicio.eliminarLogo(id, this.actor(req));
+  }
+
+  /** Binario del logo. Respuesta cruda (no envuelta): se consume como imagen. */
+  @Get(':id/logo')
+  async obtenerLogo(@Param('id', ParseIntPipe) id: number, @Res() res: Response): Promise<void> {
+    const logo = await this.servicio.obtenerLogo(id);
+    if (!logo) throw new NotFoundException('La organización no tiene logo');
+    res.setHeader('Content-Type', logo.mime);
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    // Defensa en profundidad: aunque el upload valida MIME + magic bytes, este
+    // binario jamás debe ejecutarse como documento en nuestro origen.
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline; filename="logo"');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    res.send(logo.datos);
   }
 }

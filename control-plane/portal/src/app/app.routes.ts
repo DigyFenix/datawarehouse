@@ -64,6 +64,11 @@ export const routes: Routes = [
           import('./features/canonico/canonico-entidad.component').then((m) => m.CanonicoEntidadComponent),
       },
       {
+        path: 'portal-usuario',
+        loadComponent: () =>
+          import('./features/portal-usuario/portal-usuario.component').then((m) => m.PortalUsuarioComponent),
+      },
+      {
         path: 'auditoria',
         loadComponent: () =>
           import('./features/auditoria/auditoria.component').then((m) => m.AuditoriaComponent),

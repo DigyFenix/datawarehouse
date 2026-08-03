@@ -1,0 +1,130 @@
+table 'Clasificación RFM'
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column cliente_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cliente_clave
+
+	column primera_compra
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: primera_compra
+		formatString: dd/MM/yyyy
+
+	column ultima_compra
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: ultima_compra
+		formatString: dd/MM/yyyy
+
+	column recencia_dias
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: recencia_dias
+		formatString: #,0
+
+	column frecuencia_12m
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: frecuencia_12m
+		formatString: #,0
+
+	column monto_neto_12m
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_neto_12m
+		formatString: #,0.00
+
+	column fecha_referencia
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_referencia
+		formatString: dd/MM/yyyy
+
+	column puntaje_recencia
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: puntaje_recencia
+		formatString: #,0
+
+	column puntaje_frecuencia
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: puntaje_frecuencia
+		formatString: #,0
+
+	column puntaje_monto
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: puntaje_monto
+		formatString: #,0
+
+	column segmento_rfm
+		dataType: string
+		summarizeBy: none
+		sourceColumn: segmento_rfm
+
+	column segmento_rfm_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: segmento_rfm_nombre
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Clientes recientes y frecuentes: el núcleo que sostiene la venta. Cuidarlos es más barato que reemplazarlos.
+	measure 'Clientes campeones' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] = "campeon")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes leales' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] = "leal")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Compraban y dejaron de venir. La lista de reactivación con mayor retorno por llamada.
+	measure 'Clientes en riesgo' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// En riesgo Y de monto alto: si solo se va a llamar a alguien, que sea a estos.
+	measure 'Clientes en riesgo valiosos' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] = "en_riesgo_valioso")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes dormidos' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] = "dormido")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Venta de 12 meses que está en manos de clientes en riesgo: lo que se pierde si nadie los llama.
+	measure 'Venta 12m en riesgo' = CALCULATE(SUM('Clasificación RFM'[monto_neto_12m]), 'Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+
+	measure 'Venta 12m clasificada' = SUM('Clasificación RFM'[monto_neto_12m])
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+
+	partition 'Clasificación RFM' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="clasificacion_rfm_cliente"]}[Data]
+				in
+				    Tabla

@@ -15,7 +15,7 @@ with compras_terceros as (
         v.empresa_id,
         v.proveedor_clave,
         d.anio                                         as anio,
-        v.monto_sin_impuesto_local                     as monto
+        v.monto_sin_impuesto                     as monto
     from {{ ref('hecho_compra_linea') }} v
     join {{ ref('dim_tiempo') }} d on d.tiempo_clave = v.tiempo_clave
     join {{ ref('dim_proveedor') }} c on c.proveedor_clave = v.proveedor_clave

@@ -1,0 +1,40 @@
+table 'MD_Vista de ventas'
+
+	column 'Vista de ventas'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Vista de ventas · orden'
+		relatedColumnDetails
+			groupByColumn: 'Vista de ventas · campo'
+
+	column 'Vista de ventas · campo'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value2]
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+	column 'Vista de ventas · orden'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value3]
+
+	partition 'MD_Vista de ventas' = calculated
+		mode: import
+		source =
+				{
+				  ("Ventas netas", NAMEOF(FC_Ventas[Ventas netas]), 0),
+				  ("Ventas a terceros", NAMEOF(FC_Ventas[Ventas a terceros]), 1),
+				  ("Margen bruto", NAMEOF(FC_Ventas[Margen bruto]), 2),
+				  ("% Margen terceros", NAMEOF(FC_Ventas[% Margen terceros]), 3),
+				  ("Devoluciones", NAMEOF(FC_Ventas[Devoluciones]), 4),
+				  ("Unidades vendidas", NAMEOF(FC_Ventas[Unidades vendidas]), 5),
+				  ("Ticket promedio", NAMEOF(FC_Ventas[Ticket promedio]), 6),
+				  ("Documentos de venta", NAMEOF(FC_Ventas[Documentos de venta]), 7)
+				}

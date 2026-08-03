@@ -1,0 +1,19 @@
+# =====================================================================
+# Caddy — reverse proxy con TLS automático (Let's Encrypt, HTTP-01).
+# Reemplazar los dominios por los reales antes de levantar. El tenant del
+# portal de usuario va en el PATH (hash), así que dar de alta una organización
+# NO requiere tocar este archivo.
+# =====================================================================
+
+# Portal ADMIN (plano de control) — solo para el proveedor.
+admin.example.com {
+  reverse_proxy web-admin:80
+  encode gzip
+}
+
+# Portal de USUARIO (consumo) — un solo dominio para todos los tenants;
+# cada organización entra con su URL: https://portal.example.com/<hash>
+portal.example.com {
+  reverse_proxy web-usuario:80
+  encode gzip
+}

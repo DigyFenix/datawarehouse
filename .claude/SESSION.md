@@ -1,5 +1,315 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 16 (2026-08-02) — GRUPO COMPLETO EN EL DW — leer esto primero ══════
+
+**Foco: prefijos DM_/FC_/MD_ en el modelo PBI · dim_socio_negocio (360° por NIT) · NITs
+afiliados en el portal · LAS 10 SOCIEDADES de Cresta extraídas y transformadas · retención
+(WTSum) · multi-moneda con moneda de presentación. Cuadre 0/70 desvíos. PBIP 32 tablas /
+92 relaciones / 180 medidas, TMDL válido; el reporte de Edwin migró a formato PBIR
+(definition/) y sus visuales están intactos.**
+
+### Lo grande
+
+- **10 sociedades registradas** (portal → OADM: nombre/NIT/moneda) y cargadas: proavisa,
+  com502, inavisa, ingenieria, lacria, loreto, organicos, sepesa, seragro, svproavis (USD).
+  Extracción con intersección de columnas por sociedad (los UDF de Proavisa no existen en las
+  demás — fix en extraccion.py `columnas_existentes`).
+- **NITs afiliados** (migración 112): tabla + UI (Sociedades) + API auditada; worker los pasa
+  a dbt (`nits_grupo`) — gap de /transformar CERRADO. Matching por NIT normalizado
+  (`[0-9K]`, macro `es_nit_afiliado`); es_intercompania sin NULLs.
+- **dim_socio_negocio** + `socio_clave` en 7 hechos (llave_socio). Duales = 2 registros
+  CardCode con mismo NIT (37 en Cresta): el 360° unifica por `socio_unificado` (nombre por
+  NIT) + `es_cliente_y_proveedor`. Históricos diarios SIN socio_clave (incrementales).
+- **Retención WTSum**: DocTotal llega neto de retención (El Salvador 1%, Q18,232 en 1,372
+  facturas). base = DocTotal − VatSum + WTSum en documento canónico y cuadre; WTSum/WTSumFC
+  agregados a campo_ingesta. Tolerancia de cuadre ahora 0.0005/fila (redondeo por documento).
+- **Multi-moneda** (migraciones 113/114): sociedad declara moneda y moneda_presentacion; si
+  difieren se convierte con la serie de la PROPIA sociedad (`plata_tasa_presentacion`, guardas
+  de rango y reciprocidad; sin tasa válida → montos `_grupo` NULL = no consolida). Hechos con
+  `*_grupo`; medidas base del PBI ya consolidan en GTQ. **svproavis: serie QTZ capturada
+  INVERTIDA en SAP (7.63 en vez de 0.131) → estado_serie='invertida', NO consolida hasta que
+  corrijan la captura** (proavisa además tiene 1 tasa basura 765,176 el 2026-04-04, la guarda
+  la ignora).
+- **PBIR**: Desktop migró el reporte a `definition/`; generar_pbip ya no escribe stub si
+  existe; validar_reporte valida visual.json PBIR. **NUNCA correr generar_reporte.py** (los
+  visuales son de Edwin).
+
+### Cierre multi-moneda (decisión de Edwin, mismo día)
+
+- Serie invertida se **auto-corrige con 1/tasa** (reciprocidad la PRUEBA contra la serie
+  espejo del grupo; estado_serie='invertida_corregida'). svproavis YA CONSOLIDA:
+  USD 2,491,317 → Q19,042,344 (tasa implícita 7.643). Arrastre de tasa: 92 días (svproavis
+  estuvo 69 días sin capturar, ene→abr). Sin serie válida → montos _grupo NULL (solo moneda
+  local). Cuadre grupocresta 0/70.
+- **Iron Network: SOLO capa Oro actualizada** (168/168 PASS, cuadre 0/7, 76 socios/2 duales,
+  tasa 1). Su PBIP NO se regenera — PBI solo Cresta (instrucción explícita). plata_tipo_cambio
+  ya normaliza la convención de Odoo (invierte rate): reglas idénticas en ambos ERPs.
+- validar_reporte.py ahora valida TODOS los pares modelo/reporte de la carpeta.
+
+### Refactor 2 ejes de moneda (decisión de Edwin, mismo día)
+
+- ORO quedó con DOS ejes: columnas SIN SUFIJO = moneda de PRESENTACIÓN (rigen todo:
+  hechos, métricas certificadas, ABC/RFM/comportamiento, proyección, venta diaria) y `_doc`
+  = moneda del documento (referencia). El eje `_local` se ELIMINÓ de Oro (vive en Plata,
+  donde cuadra contra el ERP). Diarias incrementales conservan el nombre viejo con alias.
+- Serie invertida se auto-corrige (1/tasa, estado 'invertida_corregida'); arrastre 92 días;
+  svproavis consolida: USD 2.49M → Q19.04M (tasa implícita 7.643).
+- PBIP Cresta: medidas base sobre columnas de presentación + PARÁMETROS DE CAMPO
+  (MD_Vista de ventas/cartera/compras, generados en TMDL con extendedProperty).
+- ⚠ El PBIP de IronNetwork quedó DESINCRONIZADO de su warehouse (columnas renombradas en su
+  oro; su modelo PBI aún referencia _local). PBI solo Cresta por instrucción de Edwin — al
+  retomar Iron en PBI, REGENERAR su PBIP antes de refrescar.
+
+### Dimensión de DIRECCIONES (hecha, mismo día)
+
+- Ingesta: socios = 'OCRD+CRD1' (9 campos principal), objeto nuevo 'departamentos' (OCST),
+  OINV.ShipToCode incluido. plata_direccion (ramas SAP/Odoo) + llave_direccion +
+  dim_direccion (DM_Dirección de entrega) + direccion_clave en hecho_venta_linea (join por
+  cab.direccion_entrega_codigo, tipo entrega). PBIP Cresta: 33 tablas / 93 relaciones.
+- Cobertura Cresta: ~27% de líneas con ShipToCode; depto 21% / municipio 29% de las
+  direcciones (calidad de captura del ERP). Mejora futura: fallback a dirección default del
+  socio (OCRD.ShipToDef, no extraído aún).
+- Se detectó y corrigió una CARRERA de extracción: 10 facturas de proavisa quedaron con
+  cabecera sin líneas (posteadas durante la ventana) → re-extraer el objeto la resuelve;
+  el cuadre la atrapó (Q208k).
+- PBI de Iron: NO SE HACE — decisión de Edwin: cuando el de Cresta esté terminado, solo se
+  cambia la base de datos (parámetros Servidor/BaseDatos del PBIP).
+
+### Revisión de onboarding (cierre de sesión 16) — 3 roturas encontradas y reparadas
+
+1. **Seeds faltantes**: lo de direcciones/retención se había configurado solo para org 1 →
+   NUEVOS seeds de onboarding `68_paquete_sap_b1_direcciones_retencion.sql` y
+   `69_paquete_odoo_direcciones.sql` (probados idempotentes contra ambos tenants; sin el 68,
+   plata_direccion revienta el primer build de un tenant nuevo).
+2. **`/tmp/correr.sh` estaba PERDIDO** (se borró al recrear el worker) → reemplazado por
+   `data-plane/transformacion/herramientas/correr.py` (versionado, montado en /dbt): lee
+   erp/base/nits/sociedades de la base de control igual que el worker. Probado.
+3. **Init de instalación limpia**: aplicaba TODOS los seeds y los parametrizados con :'org'
+   (9 archivos) truenan sin la variable → 02_aplicar_catalogo.sh ahora los omite (son de
+   onboarding, no de init). Bug preexistente, agravado por 68/69.
+
+Validación final: cuadre 0/70 (cresta) y 0/7 (iron) · ERP en vivo vs warehouse ene-jul:
+loreto Q0.56 y proavisa Q0.67 de diferencia (redondeo), svproavis 0.00 · modelo PBI sin
+columnas _local residuales, 93 relaciones coherentes (Calendario 19, Empresa 14, Socio 7,
+Dirección 1), parámetros de campo apuntando a medidas existentes, reportes validados.
+
+### SAP sobre SQL SERVER — estructura montada (2026-08-03), PROBAR con credencial real
+
+- Fuente nueva `fuentes/sap_b1_mssql.py` (pymssql; espejo de sap_b1.py): [base].dbo.[tabla],
+  INFORMATION_SCHEMA, CUFD igual, SET QUOTED_IDENTIFIER ON (los filtros citan "columnas").
+- Despacho por motor 'sqlserver' en extracción/introspección; ERP_POR_MOTOR sqlserver→sap_b1
+  (dbt corre idéntico a HANA). Entorno `sap_b1_sqlserver` ya existía; driver → pymssql
+  (BD + seed 52). Compose/.env.example: MSSQL_USER/MSSQL_PASSWORD (secreto_ref=MSSQL).
+- Worker reconstruido: pymssql 2.3.13 importa, MOTORES = hana|sqlserver|postgres. Smoke OK.
+- MAÑANA (Edwin): crear conexión en el portal (entorno sap_b1_sqlserver, secreto MSSQL,
+  puerto 1433), credencial al .env, sociedad de prueba con Esquema de origen = nombre de la
+  BD (copia SAP de Cresta a nov-2025) → Descubrir → Extraer → correr.py → validar cuadre.
+
+### Pendientes / decisiones abiertas
+
+- IDOR conocido del portal admin (organizacionId por query en todos los controladores):
+  enforcement por usuario-org es trabajo de Etapa A.
+- Postgres en WSL2 tira "FileFallocate: Interrupted system call" esporádico —
+  hecho_pago_efectuado falla ~3 de cada 4 corridas y pasa al reintento (PG 16.14):
+  SUBIR imagen de Postgres pronto.
+- Guía de páginas del dashboard: consumo/powerbi/GUIA-PAGINAS.md (Edwin arma lo visual).
+
+## ══════ CIERRE DE SESIÓN 15 (2026-08-03) — leer esto primero ══════
+
+**Foco: analítica nueva en Oro (quick wins sin ingesta) + jerarquía contable multinivel +
+modelo Power BI actualizado. Todo con dbt build 35/35 PASS en ambos tenants y PBIP regenerado
+(29 tablas / 73 relaciones / TMDL válido / 72 visuales existentes intactos).**
+
+### Qué se construyó
+
+- **4 modelos oro nuevos**: `clasificacion_rfm_cliente` (quintiles por empresa, referencia =
+  última venta, 1:1 con Cliente como el ABC), `comportamiento_pago_cliente` (riesgo de cartera
+  ponderado por saldo + actividad de pagos con contraparte='cliente'),
+  `proyeccion_caja_semanal` (CxC/CxP por semana ISO de vencimiento, 'Vencido' anclado al
+  corte, etiqueta con año DD/MM/YY por el sortByColumn), `metrica_venta_diaria` (serie densa
+  sin huecos, `es_dia_sin_venta`). Los 2 últimos llevan `organizacion_clave` (join por
+  empresa_id a dim_organizacion, mismo patrón que los hechos).
+- **Feriados GT**: seed `feriados_guatemala` (2024–2028, jueves/viernes/sábado santo, medio
+  día 24/31 dic) + `dim_tiempo.es_feriado/feriado_nombre/es_medio_dia`; `es_dia_habil` ahora
+  descuenta feriados (es_fin_semana quedó por día de semana, ya no `not es_dia_habil`).
+- **Jerarquía contable** (pedido de Edwin): homologada EN PLATA (plata_cuenta) → dim_cuenta
+  expone `nivel`, `es_titulo`, `cuenta_padre_codigo`, `nivel_1..5_codigo/nombre` (relleno de
+  hoja = ragged aplanada, sin blancos) y `ruta_cuenta`. SAP B1 = recursivo por OACT.FatherNum
+  (Cresta: 5 niveles, 10 raíces→342 hojas, títulos = Postable='N'); Odoo = segmentos del
+  código visible (4 niveles; nombres intermedios = prefijo, los reales viven en account.group
+  no ingestado). VERIFICADO con datos reales de ambos tenants.
+- **generar_pbip.py**: +4 tablas (RFM/Comportamiento = extensiones 1:1 bothDirections de
+  Cliente; Venta diaria/Proyección = hechos con relación a Calendario y Empresa), jerarquía
+  'Jerarquía contable' en dim_cuenta, ORDENAR_POR de semana_etiqueta→semana_offset, **23
+  medidas nuevas** (163 total). Regenerados PulsoCresta y PulsoIronNetwork.
+
+### Cómo correr los modelos nuevos (targeted, sin build completo)
+
+El worker tiene `/tmp/dbt/profiles.yml` multi-target (grupocresta/ironnetwork, password por
+env_var — lo reescribe el botón /transformar del portal; regenerarlo si hace falta):
+`docker exec cresta-worker sh -c 'cd /dbt && DBT_PROFILES_DIR=/tmp/dbt dbt build --select <modelos> --vars "{erp: sap_b1}" --target grupocresta'`
+
+### Hallazgos de datos (sesión 15)
+
+- `hecho_venta_linea` de Cresta solo tiene **proavisa** (loreto sin ventas cargadas).
+- Pagos: contraparte 'cliente' 114,918 vs 'cuenta_contable' 1,727; estado siempre 'otro'.
+- Cartera se extrae SOLO con partidas abiertas → días reales factura→pago imposibles hoy
+  (documentado en el modelo); la ficha usa vencido ponderado + actividad de pagos.
+- RFM Cresta: 169 campeones = Q151M (12m); 46 en_riesgo_valioso = Q8.3M; 605 clientes sin saldo.
+
+### Ingesta nueva (misma sesión, continuación): PEDIDOS + MAYOR CONTABLE
+
+- **Seeds 66/67** aplicados a grupocresta e ironnetwork (política pedidos_venta + cartera→
+  mayor completo con filtro `(abiertas OR RefDate>=2026)` + JDT1.ProfitCode). DECISIÓN: no
+  se crea otro objeto sobre JDT1 — dos objetos con la misma fuente pisan el mismo bronce.
+- **Modelos**: plata_pedido_linea / hecho_pedido_linea (backlog: OpenQty · qty−qty_invoiced,
+  es_abierta, fecha entrega = relación inactiva) y plata_movimiento_contable /
+  hecho_movimiento_contable (solo resultados; monto_resultado en la naturaleza de la cuenta;
+  centro de costo: ProfitCode · primera clave de analytic_distribution). Fuentes nuevas en
+  _fuentes.yml (ordr/rdr1/sale_order/sale_order_line).
+- **Iron Network verificado en vivo**: extracción 200 pedidos/374 líneas → 13/13 PASS →
+  **cuadre al centavo ingresos contables = ventas facturadas (Q2,235,501.13)**. PBIP 31
+  tablas/85 relaciones/174 medidas; visuales intactos.
+- **HANA estaba INALCANZABLE (connection refused a 10.10.143.69:30015)**: la extracción SAP
+  quedó configurada pero NO corrida. PulsoCresta se regeneró con 30 tablas (sin Pedidos;
+  Resultados contables existe vacío).
+
+### Extracción SAP COMPLETADA (con HANA ya alcanzable, misma sesión)
+
+- **Pedidos proavisa**: 32,408 ORDR / 80,768 RDR1 → hecho_pedido_linea con **backlog vivo de
+  Q7.76M en 2,000 líneas abiertas** (fill rate ~96%). CORRECCIÓN: ORDR usa `DocCur` (una R),
+  no DocCurr — seed 66 y plata corregidos.
+- **Mayor completo proavisa**: 1,540,049 JDT1 / 394,296 OJDT. CORRECCIÓN IMPORTANTE: el
+  paquete base tenía filtro de CAMPO `Account IN (cuentas de control)` que se combinaba con
+  AND y anulaba el OR del período → el seed 66 ahora ABSORBE la lista dentro del
+  filtro_origen: `((Account IN (...) AND BalDue<>) OR RefDate>=2026)` y retira el filtro de
+  campo (con guardián de idempotencia).
+- **Cuadre 7/7 sigue al centavo** tras la ampliación (los saldos cambiaron vs 2026-08-01
+  porque el snapshot es más fresco — el control contra el ERP del día cuadra exacto).
+- **P&L Cresta vivo**: ingresos contables Q231.9M / gastos+costos Q238.9M (ene–ago 2026);
+  por mes y por centro de costo (mucho gasto con centro 'No definido' — los asientos sin
+  ProfitCode; normal). OJO: ingresos contables 231.9M vs ventas facturadas 236.6M (~2%) —
+  revisar la naturaleza de esa brecha con el contador (anticipos/ajustes/cuentas no-I).
+- **PulsoCresta regenerado: 31 tablas / 85 relaciones** (igual que Iron), visuales intactos.
+- Nota operativa: plata_partida_cartera falló 2 veces de forma TRANSITORIA con 1.5M filas
+  (dos modelos pesados en paralelo, threads 4); al reintentar pasó. Si se repite: bajar
+  threads o correr en serie.
+
+### Próximo paso concreto (SESIÓN 16 — plan dicho por Edwin al cierre)
+
+1. **Edwin hará una REVISIÓN del modelo de datos de PBI** (abrir PulsoCresta.pbip en Desktop:
+   31 tablas / 85 relaciones / 174 medidas), **lo publicará al servicio y empezará a crear sus
+   análisis** (dashboards en archivo aparte conectado en vivo, mismo workspace — reglas
+   Publish to Web en consumo/powerbi/README.md). Apoyarlo en lo que encuentre en la revisión.
+2. Montaje del VPS Hetzner (pendiente de sesión 14: contratar CPX31 Ashburn + dominio →
+   RUNBOOK.md).
+3. Posible siguiente dato: **saldos de apertura por cuenta** (al 31-dic-2025) para armar el
+   BALANCE GENERAL. Estado de resultados, libro mayor, cartera e inventario valorizado YA
+   funcionan; balance solo necesita la apertura. Revisar con el contador la brecha ingresos
+   contables (231.9M) vs ventas facturadas (236.6M) de Cresta (~2%).
+4. Backlog restante: metas desde el portal → kardex → lotes → aplicación de pagos.
+   **Listas de precios DESCARTADAS por Edwin**: el precio de venta y el costo se analizan
+   con lo grabado en cada documento (ya cubierto por hecho_venta_linea), no con la lista.
+5. Árbol sin commitear (sesiones 14 y 15 completas).
+
+## ══════ CIERRE DE SESIÓN 14 (2026-08-02) — leer esto primero ══════
+
+**Foco: PORTAL DE USUARIO nuevo (`consumo/portal/`) + camino a producción en VPS. Todo
+implementado y verificado E2E por curl en Docker local.**
+
+### Decisiones de Edwin (esta sesión)
+
+1. **Power BI vía Publish to Web, riesgo aceptado** (URLs públicas, sin RLS de PBI). Control de
+   acceso a nivel aplicación; la URL solo se entrega autenticada al abrir el visor + auditoría
+   `ver_tablero`. No se puede proteger del todo (vive en el DOM del iframe) — Edwin lo sabe.
+   Futuro real = Power BI Embedded (el modelo de perfiles ya quedaría compatible).
+2. **Tenant por HASH en la URL**: `gobierno.organizaciones.hash_tenant` (migración 111);
+   URL de ingreso `portal.<dominio>/<hash>`. Un solo dominio de usuario; onboarding no toca Caddy.
+3. **Producción: VPS único con Docker Compose** (Hetzner/DO/Contabo) + Caddy TLS, 2 dominios.
+4. **Mismo repo, app separada** (`consumo/portal/` = api NestJS :3002 + web Angular :8081).
+5. **Tablas de acceso en la BD del TENANT** (esquema `portal`, migración 110) — aísla errores.
+6. **Branding (color + logo) se carga en el portal admin** y el portal usuario lo toma.
+7. Frontend en **Angular + TS** (lo que Edwin domina).
+
+### Qué se construyó (compilado, contenedores corriendo, E2E verificado)
+
+- **Migraciones** (+rollbacks, probadas en BD efímera y aplicadas al stack local):
+  `110_portal_tenant.sql` (esquema `portal` por tenant: usuarios, perfiles, usuario_perfiles,
+  tableros, perfil_tableros, **perfil_alcances** (preparación chatbot), auditoria) y
+  `111_hash_tenant_branding.sql` (hash_tenant UNIQUE NOT NULL con backfill + logo bytea/mime).
+  OJO: `02_aplicar_catalogo.sh` ahora OMITE `*_tenant.sql` (solo van a bases dw_*).
+- **Portal admin**: `TenantDbService` (pools por `base_datos_dw`), módulo `portal-org`
+  (GET estado / POST admin siembra / CRUD tableros bajo `/api/organizaciones/:id/portal/*`),
+  logo por organización (PUT/GET/DELETE `:id/logo`, base64 JSON máx 300KB, body limit 2mb en
+  main.ts), hash generado al crear org, feature Angular **"Portal usuario"** (URL de ingreso
+  copiable + estado + sembrar admin + logo + CRUD tableros). `environment.portalUsuarioUrl`.
+- **API portal usuario** (`consumo/portal/api`): rutas `/api/t/:hash/...`; guard global con
+  JWT PROPIO (`PORTAL_JWT_SECRET`), token↔hash del path (cruzado → 401), usuario releído de la
+  BD en cada request (revocación inmediata), `@SoloAdmin()` con es_admin fresco. Branding/logo
+  públicos con 404 genérico. Tableros: listado SIN url_publica; detalle con URL + auditoría.
+  Admin org: usuarios (crear/editar/restablecer password/asignar perfiles — no puede
+  auto-quitarse admin), perfiles (CRUD + tableros + alcances), auditoría paginada.
+- **Web portal usuario** (`consumo/portal/web`): Angular 17 standalone bajo `/:hash`; login
+  white-label, cambio de contraseña forzado, inicio (tarjetas Tableros/Chatbot-próximamente),
+  grid de tableros, visor iframe (sandbox), admin (usuarios/perfiles con drawers de asignación
+  /auditoría), página neutra sin hash. Token en localStorage POR tenant (`portal_token_<hash>`).
+- **Compose local**: servicios `api-usuario` (:3002) y `web-usuario` (:8081), perfil portal.
+  `.env` raíz: PORTAL_USUARIO_PORT, WEB_USUARIO_PORT, PORTAL_JWT_SECRET, PORTAL_JWT_EXPIRA_EN
+  (agregados también a `.env.example`).
+- **Producción** (`infra/produccion/`): docker-compose (postgres+api/web admin+api/web usuario+
+  worker+caddy+respaldo diario pg_dump c/rotación), Caddyfile (2 dominios; REEMPLAZAR
+  example.com), `.env.produccion.example` (rol dedicado `portal_app` para el portal usuario),
+  `respaldo.sh`, **RUNBOOK.md** (ufw 5432 solo IP Cresta + advertencia iptables de Docker,
+  grants de portal_app, migración local→VPS SOLO por pg_dump/pg_restore, onboarding prod).
+- **Fix transversal**: parser pg de int8→Number en ambos APIs (los ids salían como string).
+
+### E2E verificado por curl (datos de prueba creados y LIMPIADOS al final)
+
+Alta tablero (admin) → fila en dw_grupocresta.portal.tableros ✔ · siembra admin (2º intento
+409) ✔ · login con temporal → cambio forzado ✔ · perfil+tablero+alcances+usuario final ✔ ·
+listado sin URL / visor con URL + auditoría ver_tablero ✔ · token cruzado a ironnetwork 401 ✔ ·
+no-admin a /admin 403 ✔ · dw_ironnetwork intacta ✔.
+
+### Reglas Publish to Web verificadas (documentadas en consumo/powerbi/README.md)
+
+Modelo y dashboards en el MISMO workspace · medidas SIEMPRE en el modelo (nunca en el archivo
+del dashboard) · sin RLS/DirectQuery/R/paginados · refresco programado del modelo requiere
+on-premises data gateway (Windows) hacia el Postgres · Pro + tenant setting Publish to web ·
+validar con un embed code de prueba ANTES de construir todos los dashboards.
+
+### Correcciones post-implementación (misma sesión)
+
+- **Seguridad (XSS almacenado por logo SVG)**: allowlist reducido a PNG/JPG/WebP (SVG excluido:
+  puede llevar script y se sirve same-origin), validación de **magic bytes** en el upload, y
+  cabeceras de defensa en ambos endpoints de logo (`nosniff`, `Content-Disposition: inline`,
+  `CSP default-src 'none'; sandbox`) — verificadas en vivo con un PNG temporal.
+- **Bug NG0600**: el feature "Portal usuario" del admin se quedaba en "Cargando estado…" —
+  `cargar()` escribe signals síncronamente dentro de `effect()`; corregido con
+  `allowSignalWrites: true`. OJO: `sociedades.component` tiene el mismo patrón latente (solo
+  dispara si no hay organización activa).
+- **Fix pg int8**: parser global int8→Number en ambos APIs (los ids salían como string).
+
+### Decisión de hosting (2026-08-02, cierre)
+
+**Hetzner Cloud, plan CPX31 (4 vCPU/8 GB/160 GB NVMe/20 TB) en Ashburn, ~US$17/mes** + 1 solo
+dominio (~$12/año) con subdominios `admin.` y `portal.`. Evaluados y descartados: Vultr Miami
+(mejor latencia, doble precio), DO (caro), Contabo (estabilidad/soporte mixtos). Hetzner: SLA
+99.9% (superado en la práctica), ISO 27001 + GDPR + BSI C5, DDoS incluido. Ver memoria
+`hosting-hetzner-produccion`.
+
+### Próximo paso concreto (SESIÓN 15 — mañana)
+
+1. **Edwin contrata**: cuenta Hetzner + CPX31 Ashburn + dominio → montamos producción con
+   `infra/produccion/RUNBOOK.md` paso a paso (secretos NUEVOS, ufw 5432 solo IP Cresta, rol
+   `portal_app`, dump/restore, Caddyfile con dominios reales, `portalUsuarioUrl` en el
+   environment del web admin antes del build).
+2. Edwin: probar la UI local (admin :8080 → Portal usuario → sembrar admin; usuario
+   :8081/<hash>), publicar un dashboard real con Publish to Web y pegar la URL.
+3. Power BI Service: tenant setting Publish to web + gateway en la oficina para el refresco.
+4. Pendientes vivos de sesiones anteriores: `nits_grupo` en /transformar, `medio_pago` Odoo
+   null, filtro_origen 2027, recablear catálogo del portal al canónico v2.
+5. **Árbol sin commitear** (toda la sesión 14): commitear al retomar si Edwin lo pide.
+
 ## ══════ CIERRE DE SESIÓN 13 (2026-08-01, noche) — leer esto primero ══════
 
 **Foco: onboarding de organización nueva VALIDADO con un ensayo real de punta a punta, y la

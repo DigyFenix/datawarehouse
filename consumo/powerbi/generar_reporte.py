@@ -14,8 +14,14 @@ DECISIONES DE DISEÑO (este reporte se muestra a un cliente que está decidiendo
     sobre un lienzo gris claro. Es lo que separa un tablero que parece terminado de uno que
     parece una prueba.
 
-  - Los KPI llevan el valor grande y, debajo, la variación contra el período anterior. Un número
-    solo no dice nada; el mismo número con su tendencia es una lectura.
+  - La página PULSO (portada) se construye en CAPAS con visuales nativos: panel blanco de fondo
+    + acento de color + etiqueta + tarjeta de valor + tarjeta de variación. Da el acabado de un
+    componente HTML sin depender de un custom visual de AppSource — un visual externo que no
+    resuelva al abrir (o que Publish to Web no soporte) rompe la demo justo donde más duele.
+
+  - Sin fechas quemadas: la portada abre en el trimestre en curso vía selección por defecto del
+    segmentador (se recalcula al regenerar). Las tarjetas de cartera usan las medidas "hoy"
+    (REMOVEFILTERS del calendario): el saldo es una foto, no un flujo del período.
 
   - Rejilla de 12 columnas sobre lienzo de 1280×720 con margen de 16 y separación de 12. Todo
     alineado a esa rejilla: la desalineación de unos pocos píxeles es lo que se percibe como
@@ -29,7 +35,20 @@ from __future__ import annotations
 import json
 import sys
 import uuid
+from datetime import date
 from pathlib import Path
+
+# ---------------------------------------------------------------------------------------------
+# Tablas del modelo (con los prefijos DM_/FC_/MD_ que aplica generar_pbip.py). Si cambia un
+# prefijo o una etiqueta allá, cambia aquí: validar_reporte.py cruza ambos y falla ruidosamente.
+# ---------------------------------------------------------------------------------------------
+VENTAS, COMPRAS = "FC_Ventas", "FC_Compras"
+CXC, CXP = "FC_Cartera por cobrar", "FC_Cartera por pagar"
+VDIARIA = "FC_Venta diaria"
+CAL, CLIENTE, PROVEEDOR = "DM_Calendario", "DM_Cliente", "DM_Proveedor"
+PRODUCTO, VENDEDOR, EMPRESA = "DM_Producto", "DM_Vendedor", "DM_Empresa"
+ANTIG, TIPODOC, CCOSTO = "DM_Antigüedad", "DM_Tipo de documento", "DM_Centro de costo"
+ABC = "DM_Clasificación ABC"
 
 # ---------------------------------------------------------------------------------------------
 # Las medidas viven en la tabla del hecho que miden (no en una tabla única de métricas), así que
@@ -37,10 +56,6 @@ from pathlib import Path
 # generar_pbip.py y no se actualiza aquí, el visual queda vacío sin dar error: por eso el
 # generador valida al final que toda medida usada esté en este mapa.
 # ---------------------------------------------------------------------------------------------
-VENTAS, COMPRAS = "Ventas", "Compras"
-CXC, CXP = "Cartera por cobrar", "Cartera por pagar"
-ABC = "Clasificación ABC"
-
 MEDIDA_EN_TABLA: dict[str, str] = {
     # Ventas
     "Ventas netas": VENTAS, "Ventas netas con IVA": VENTAS, "Ventas brutas": VENTAS,
@@ -52,7 +67,10 @@ MEDIDA_EN_TABLA: dict[str, str] = {
     "Margen bruto": VENTAS, "% Margen": VENTAS, "% Margen terceros": VENTAS,
     "Ventas mes anterior": VENTAS, "Ventas año anterior": VENTAS, "Ventas acumuladas año": VENTAS,
     "Variación vs mes anterior": VENTAS, "Variación vs año anterior": VENTAS,
-    "Media móvil 3 meses": VENTAS,
+    "Variación acumulada vs año anterior": VENTAS, "Media móvil 3 meses": VENTAS,
+    # Venta diaria (serie continua)
+    "Venta diaria neta": VDIARIA, "Venta media móvil 7d": VDIARIA,
+    "Venta media móvil 30d": VDIARIA,
     # Compras
     "Compras netas": COMPRAS, "Compras netas con IVA": COMPRAS, "Impuesto de compras": COMPRAS,
     "Unidades compradas": COMPRAS, "Líneas de compra": COMPRAS, "Documentos de compra": COMPRAS,
@@ -65,10 +83,13 @@ MEDIDA_EN_TABLA: dict[str, str] = {
     "% Vencido": CXC, "% Vencido terceros": CXC, "Vencido 1 a 30": CXC, "Vencido 31 a 60": CXC,
     "Vencido 61 a 90": CXC, "Vencido más de 90": CXC, "% Crítico más de 90": CXC,
     "Días vencido promedio": CXC, "Días de cartera terceros": CXC,
+    "Por cobrar terceros hoy": CXC, "Por cobrar grupo hoy": CXC,
+    "Vencido terceros hoy": CXC, "% Vencido terceros hoy": CXC,
     # Cartera por pagar
     "Saldo por pagar": CXP, "Saldo por pagar terceros": CXP, "Saldo por pagar grupo": CXP,
     "Posición neta": CXP, "Partidas por pagar": CXP, "Proveedores con saldo": CXP,
     "Por pagar vencido": CXP, "% Por pagar vencido": CXP, "Por pagar más de 90": CXP,
+    "Por pagar hoy": CXP, "Posición neta hoy": CXP,
     # ABC
     "Clientes A": ABC, "Clientes B": ABC, "Clientes C": ABC, "Clientes sin venta neta": ABC,
     "Clientes clasificados": ABC, "Clientes perdidos": ABC, "% Venta en clientes A": ABC,
@@ -89,8 +110,10 @@ TENUE = "#6B7684"
 BORDE = "#E3E7EC"
 LIENZO = "#F2F4F7"
 BLANCO = "#FFFFFF"
+MARINO = "#0E2A47"          # banda hero de la portada
+MARINO_TEXTO = "#9FB3C8"    # texto secundario sobre el marino
 
-# Rejilla: lienzo 1280×720, margen 16, separación 12 → 12 columnas de 99.67px
+# Rejilla: lienzo 1280×720, margen 16, separación 12 → 12 columnas de 93px
 MARGEN, SEP = 16, 12
 ANCHO_UTIL = 1280 - 2 * MARGEN
 
@@ -103,6 +126,13 @@ def col(n: int) -> int:
 def x_col(n: int) -> int:
     """Coordenada x donde empieza la columna n (0-based)."""
     return MARGEN + int(((ANCHO_UTIL - SEP * 11) / 12 + SEP) * n)
+
+
+def trimestre_actual() -> str:
+    """Etiqueta anio_trimestre del trimestre en curso, p. ej. '2026-T3'. Se calcula al generar:
+    el reporte abre siempre en el trimestre vigente sin fechas quemadas en los visuales."""
+    hoy = date.today()
+    return f"{hoy.year}-T{(hoy.month - 1) // 3 + 1}"
 
 
 def _id() -> str:
@@ -189,7 +219,7 @@ def visual(tipo: str, x: int, y: int, w: int, h: int, proyecciones: dict,
            select: list, desde: list, titulo: str | None = None,
            subtitulo: str | None = None, objetos: dict | None = None,
            orden: list | None = None, con_fondo: bool = True,
-           filtros: str | None = None) -> dict:
+           filtros: str | None = None, z: int = 0) -> dict:
     """Un visualContainer. `config` va como JSON escapado dentro del JSON — así lo espera Power BI."""
     single = {
         "visualType": tipo,
@@ -206,10 +236,10 @@ def visual(tipo: str, x: int, y: int, w: int, h: int, proyecciones: dict,
         single["vcObjects"] = vc
     cfg = {
         "name": _id(),
-        "layouts": [{"id": 0, "position": {"x": x, "y": y, "z": 0, "width": w, "height": h}}],
+        "layouts": [{"id": 0, "position": {"x": x, "y": y, "z": z, "width": w, "height": h}}],
         "singleVisual": single,
     }
-    contenedor = {"x": x, "y": y, "z": 0, "width": w, "height": h,
+    contenedor = {"x": x, "y": y, "z": z, "width": w, "height": h,
                   "config": json.dumps(cfg, ensure_ascii=False)}
     if filtros:
         contenedor["filters"] = filtros
@@ -219,30 +249,44 @@ def visual(tipo: str, x: int, y: int, w: int, h: int, proyecciones: dict,
 # ---------------------------------------------------------------------------------------------
 # Piezas de presentación
 # ---------------------------------------------------------------------------------------------
-def banda(x: int, y: int, w: int, h: int, color: str = AZUL) -> dict:
-    """Rectángulo de color. Da estructura al encabezado sin depender de una imagen."""
+def banda(x: int, y: int, w: int, h: int, color: str = AZUL, z: int = 0,
+          redondeo: int = 6, sombra: bool = False, borde: str | None = None) -> dict:
+    """Rectángulo de color. Da estructura (hero, paneles, acentos) sin depender de una imagen."""
+    objetos: dict = {
+        "shape": [{"properties": {"tileShape": _lit("'rectangle'"),
+                                  "roundEdge": _lit(f"{redondeo}D")}}],
+        "fill": [{"properties": {"show": _lit("true"),
+                                 "fillColor": _color(color),
+                                 "transparency": _lit("0D")}}],
+        "outline": [{"properties": {"show": _lit("false")}}],
+    }
+    if borde:
+        objetos["outline"] = [{"properties": {
+            "show": _lit("true"), "lineColor": _color(borde), "weight": _lit("1D")}}]
+    single: dict = {"visualType": "shape", "objects": objetos,
+                    "drillFilterOtherVisuals": True}
+    if sombra:
+        single["vcObjects"] = {"dropShadow": [{"properties": {
+            "show": _lit("true"), "color": _color("#0B1B2B"),
+            "position": _lit("'Outer'"), "preset": _lit("'BottomRight'"),
+            "shadowSpread": _lit("2D"), "transparency": _lit("92D"),
+        }}]}
     cfg = {
         "name": _id(),
-        "layouts": [{"id": 0, "position": {"x": x, "y": y, "z": 0, "width": w, "height": h}}],
-        "singleVisual": {
-            "visualType": "shape",
-            "objects": {
-                "shape": [{"properties": {"tileShape": _lit("'rectangle'"),
-                                          "roundEdge": _lit("6D")}}],
-                "fill": [{"properties": {"show": _lit("true"),
-                                         "fillColor": _color(color),
-                                         "transparency": _lit("0D")}}],
-                "outline": [{"properties": {"show": _lit("false")}}],
-            },
-            "drillFilterOtherVisuals": True,
-        },
+        "layouts": [{"id": 0, "position": {"x": x, "y": y, "z": z, "width": w, "height": h}}],
+        "singleVisual": single,
     }
-    return {"x": x, "y": y, "z": 0, "width": w, "height": h,
+    return {"x": x, "y": y, "z": z, "width": w, "height": h,
             "config": json.dumps(cfg, ensure_ascii=False)}
 
 
+def panel(x: int, y: int, w: int, h: int) -> dict:
+    """Panel blanco redondeado con sombra: el lienzo de una tarjeta compuesta (KPI en capas)."""
+    return banda(x, y, w, h, BLANCO, z=0, redondeo=8, sombra=True, borde=BORDE)
+
+
 def texto(x: int, y: int, w: int, h: int, partes: list[dict],
-          fondo: str | None = None) -> dict:
+          fondo: str | None = None, z: int = 0) -> dict:
     """Cuadro de texto. `partes` = [{'t': 'texto', 'size': 20, 'bold': True, 'color': '#...'}]"""
     runs = []
     for p in partes:
@@ -268,16 +312,16 @@ def texto(x: int, y: int, w: int, h: int, partes: list[dict],
         }
     cfg = {
         "name": _id(),
-        "layouts": [{"id": 0, "position": {"x": x, "y": y, "z": 0, "width": w, "height": h}}],
+        "layouts": [{"id": 0, "position": {"x": x, "y": y, "z": z, "width": w, "height": h}}],
         "singleVisual": single,
     }
-    return {"x": x, "y": y, "z": 0, "width": w, "height": h,
+    return {"x": x, "y": y, "z": z, "width": w, "height": h,
             "config": json.dumps(cfg, ensure_ascii=False)}
 
 
 def kpi(x: int, y: int, w: int, h: int, medida: str, etiqueta: str,
         color_valor: str = TINTA, tamano: int = 24) -> dict:
-    """Tarjeta de indicador: valor grande, etiqueta arriba en gris."""
+    """Tarjeta de indicador simple: valor grande, etiqueta arriba en gris."""
     t = tabla_de(medida)
     return visual(
         "card", x, y, w, h,
@@ -298,42 +342,46 @@ def kpi(x: int, y: int, w: int, h: int, medida: str, etiqueta: str,
     )
 
 
-def kpi_tendencia(x: int, y: int, w: int, h: int, medida: str, objetivo: str,
-                  etiqueta: str) -> dict:
-    """Indicador con comparativo: valor, tendencia en el tiempo y variación contra `objetivo`.
-
-    El visual `kpi` de Power BI muestra el valor, una línea de tendencia de fondo y la
-    desviación respecto al objetivo. Un número solo no dice nada; con su tendencia sí.
-    """
-    t, to = tabla_de(medida), tabla_de(objetivo)
-    desde = [("Calendario", "t0")]
-    alias = {t: "m"}
-    if to != t:
-        alias[to] = "m2"
-    desde += [(tab, al) for tab, al in alias.items()]
+def _card_pelado(x: int, y: int, w: int, h: int, medida: str, tamano: int,
+                 color_valor: str, z: int = 2) -> dict:
+    """Tarjeta de valor SIN fondo ni título: se apoya sobre un panel() para componer en capas."""
+    t = tabla_de(medida)
     return visual(
-        "kpi", x, y, w, h,
-        {"Values": [{"queryRef": f"{t}.{medida}"}],
-         "TrendLine": [{"queryRef": "Calendario.anio_mes"}],
-         "Goals": [{"queryRef": f"{to}.{objetivo}"}]},
-        [_campo(t, medida, True, alias[t]),
-         _campo("Calendario", "anio_mes", False, "t0"),
-         _campo(to, objetivo, True, alias[to])],
-        _from(desde),
-        titulo=etiqueta,
+        "card", x, y, w, h,
+        {"Values": [{"queryRef": f"{t}.{medida}"}]},
+        [_campo(t, medida, True, "m")],
+        _from([(t, "m")]),
+        con_fondo=False, z=z,
         objetos={
-            "indicator": [{"properties": {
-                "indicatorDisplayUnits": _lit("0D"),
-                "fontSize": _lit("22D"),
+            "labels": [{"properties": {
+                "fontSize": _lit(f"{tamano}D"),
+                "color": _color(color_valor),
+                "bold": _lit("true"),
+                "fontFamily": _lit("'Segoe UI'"),
             }}],
-            "trendline": [{"properties": {"show": _lit("true"),
-                                          "transparency": _lit("70D")}}],
-            "goals": [{"properties": {"showGoal": _lit("true"),
-                                      "showDistance": _lit("true")}}],
+            "categoryLabels": [{"properties": {"show": _lit("false")}}],
+            "wordWrap": [{"properties": {"show": _lit("false")}}],
         },
-        orden=[{"Direction": 1, "Expression": {"Column": {
-            "Expression": {"SourceRef": {"Source": "t0"}}, "Property": "anio_mes"}}}],
     )
+
+
+def kpi_compuesto(x: int, y: int, w: int, h: int, medida: str, etiqueta: str,
+                  delta: str, nota: str, acento: str,
+                  color_valor: str = TINTA, color_delta: str = TENUE) -> list[dict]:
+    """Indicador de portada en capas: panel blanco + barra de acento + etiqueta + valor grande +
+    variación con su nota. Es el acabado "componente HTML" hecho con visuales nativos: no
+    depende de custom visuals (que Publish to Web puede no resolver) y no puede fallar al abrir.
+    """
+    return [
+        panel(x, y, w, h),
+        banda(x, y + 12, 4, h - 24, acento, z=1, redondeo=2),
+        texto(x + 16, y + 10, w - 30, 18,
+              [{"t": etiqueta, "size": 8, "bold": True, "color": TENUE}], z=2),
+        _card_pelado(x + 10, y + 28, w - 20, 54, medida, 22, color_valor),
+        _card_pelado(x + 10, y + 82, 96, 28, delta, 10, color_delta),
+        texto(x + 110, y + 87, w - 120, 18,
+              [{"t": nota, "size": 8, "color": TENUE}], z=2),
+    ]
 
 
 def _dp_color(color: str) -> dict:
@@ -403,14 +451,46 @@ def barras(x: int, y: int, w: int, h: int, medida: str, tabla_cat: str, campo_ca
     )
 
 
+def columnas_multi(x: int, y: int, w: int, h: int, medidas: list[str], tabla_cat: str,
+                   campo_cat: str, titulo: str, subtitulo: str | None = None,
+                   colores: list[str] | None = None) -> dict:
+    """Columnas agrupadas con varias medidas: el visual del contraste (terceros vs grupo)."""
+    colores = colores or [AZUL, NARANJA]
+    alias, desde, select, valores = {}, [(tabla_cat, "d")], [], []
+    select.append(_campo(tabla_cat, campo_cat, False, "d"))
+    for i, med in enumerate(medidas):
+        t = tabla_de(med)
+        if t not in alias:
+            alias[t] = f"m{i}"
+            desde.append((t, alias[t]))
+        select.append(_campo(t, med, True, alias[t]))
+        valores.append({"queryRef": f"{t}.{med}"})
+    objetos = {
+        **_ejes_limpios(),
+        "dataPoint": [{"properties": {"fill": _color(colores[i % len(colores)])},
+                       "selector": {"metadata": f"{tabla_de(m)}.{m}"}}
+                      for i, m in enumerate(medidas)],
+        "legend": [{"properties": {
+            "show": _lit("true"), "position": _lit("'Top'"), "showTitle": _lit("false"),
+            "fontSize": _lit("9D"), "labelColor": _color(TENUE),
+        }}],
+    }
+    return visual(
+        "clusteredColumnChart", x, y, w, h,
+        {"Category": [{"queryRef": f"{tabla_cat}.{campo_cat}"}], "Y": valores},
+        select, _from(desde),
+        titulo=titulo, subtitulo=subtitulo, objetos=objetos,
+    )
+
+
 def linea_area(x: int, y: int, w: int, h: int, medidas: list[str], campo_tiempo: str,
                titulo: str, subtitulo: str | None = None,
                colores: list[str] | None = None, area: bool = True) -> dict:
     """Serie temporal. Área para una sola medida (da peso al volumen), líneas para comparar."""
     colores = colores or [AZUL, NARANJA, ROJO]
     tipo = "areaChart" if (area and len(medidas) == 1) else "lineChart"
-    alias, desde, select, valores = {}, [("Calendario", "t0")], [], []
-    select.append(_campo("Calendario", campo_tiempo, False, "t0"))
+    alias, desde, select, valores = {}, [(CAL, "t0")], [], []
+    select.append(_campo(CAL, campo_tiempo, False, "t0"))
     for i, med in enumerate(medidas):
         t = tabla_de(med)
         if t not in alias:
@@ -433,7 +513,7 @@ def linea_area(x: int, y: int, w: int, h: int, medidas: list[str], campo_tiempo:
     }
     return visual(
         tipo, x, y, w, h,
-        {"Category": [{"queryRef": f"Calendario.{campo_tiempo}"}], "Y": valores},
+        {"Category": [{"queryRef": f"{CAL}.{campo_tiempo}"}], "Y": valores},
         select, _from(desde),
         titulo=titulo, subtitulo=subtitulo, objetos=objetos,
         orden=[{"Direction": 1, "Expression": {"Column": {
@@ -462,6 +542,36 @@ def dona(x: int, y: int, w: int, h: int, medida: str, tabla_cat: str, campo_cat:
          "Y": [{"queryRef": f"{t}.{medida}"}]},
         [_campo(tabla_cat, campo_cat, False, "d"), _campo(t, medida, True, "m")],
         _from([(tabla_cat, "d"), (t, "m")]),
+        titulo=titulo, subtitulo=subtitulo, objetos=objetos,
+    )
+
+
+def dona_medidas(x: int, y: int, w: int, h: int, medidas: list[str], titulo: str,
+                 subtitulo: str | None = None, colores: list[str] | None = None) -> dict:
+    """Dona cuyas porciones son MEDIDAS (sin categoría): p. ej. venta a terceros vs al grupo."""
+    colores = colores or [AZUL, NARANJA]
+    alias, desde, select, valores = {}, [], [], []
+    for i, med in enumerate(medidas):
+        t = tabla_de(med)
+        if t not in alias:
+            alias[t] = f"m{i}"
+            desde.append((t, alias[t]))
+        select.append(_campo(t, med, True, alias[t]))
+        valores.append({"queryRef": f"{t}.{med}"})
+    objetos = {
+        "legend": [{"properties": {"show": _lit("true"), "position": _lit("'Bottom'"),
+                                   "showTitle": _lit("false"), "fontSize": _lit("9D"),
+                                   "labelColor": _color(TENUE)}}],
+        "labels": [{"properties": {"show": _lit("true"), "fontSize": _lit("9D"),
+                                   "labelStyle": _lit("'Percent of total'")}}],
+        "slices": [{"properties": {"innerRadiusRatio": _lit("60D")}}],
+        "dataPoint": [{"properties": {"fill": _color(colores[i % len(colores)])},
+                       "selector": {"metadata": f"{tabla_de(m)}.{m}"}}
+                      for i, m in enumerate(medidas)],
+    }
+    return visual(
+        "donutChart", x, y, w, h,
+        {"Y": valores}, select, _from(desde),
         titulo=titulo, subtitulo=subtitulo, objetos=objetos,
     )
 
@@ -560,8 +670,10 @@ def treemap(x: int, y: int, w: int, h: int, medida: str, tabla_cat: str, campo_c
 
 
 def filtro(x: int, y: int, w: int, h: int, tabla: str, campo: str, titulo: str,
-           modo_lista: bool = False) -> dict:
-    objetos = {
+           modo_lista: bool = False, defecto: str | None = None, z: int = 0) -> dict:
+    """Segmentador. `defecto` preselecciona un valor (p. ej. el trimestre en curso): el estado
+    del slicer se guarda en objects.general.filter, que es donde Desktop persiste la selección."""
+    objetos: dict = {
         "general": [{"properties": {
             "outlineColor": _color(BORDE), "outlineWeight": _lit("1D"),
         }}],
@@ -570,17 +682,27 @@ def filtro(x: int, y: int, w: int, h: int, tabla: str, campo: str, titulo: str,
     }
     if not modo_lista:
         objetos["data"] = [{"properties": {"mode": _lit("'Dropdown'")}}]
+    if defecto:
+        objetos["general"][0]["properties"]["filter"] = {"filter": {
+            "Version": 2,
+            "From": [{"Name": "s", "Entity": tabla, "Type": 0}],
+            "Where": [{"Condition": {"In": {
+                "Expressions": [{"Column": {
+                    "Expression": {"SourceRef": {"Source": "s"}}, "Property": campo}}],
+                "Values": [[{"Literal": {"Value": f"'{defecto}'"}}]],
+            }}}],
+        }}
     return visual(
         "slicer", x, y, w, h,
         {"Values": [{"queryRef": f"{tabla}.{campo}"}]},
         [_campo(tabla, campo, False, "d")],
         _from([(tabla, "d")]),
-        titulo=titulo, objetos=objetos,
+        titulo=titulo, objetos=objetos, z=z,
     )
 
 
 def encabezado(titulo: str, subtitulo: str, empresa: str) -> list[dict]:
-    """Banda superior común a todas las páginas: da identidad y evita el look de borrador.
+    """Banda superior común a las páginas interiores: da identidad y evita el look de borrador.
 
     El bloque de la derecha (x_col(9) en adelante) queda LIBRE para el filtro de la página, que
     cada página coloca en y=14 con 30 de alto. La nota de certificación va debajo, en y=48, para
@@ -616,40 +738,82 @@ def pagina(nombre: str, titulo: str, orden: int, visuales: list[dict]) -> dict:
 # ---------------------------------------------------------------------------------------------
 # Páginas
 # ---------------------------------------------------------------------------------------------
-def pagina_resumen(empresa: str) -> list[dict]:
-    """Lo que se ve en los primeros diez segundos. Solo lo que un gerente decide con ello."""
-    y_kpi, h_kpi = 72, 96
-    y_med, h_med = y_kpi + h_kpi + SEP, 250
-    y_baj = y_med + h_med + SEP
-    h_baj = 720 - y_baj - MARGEN
-    return [
-        *encabezado("Resumen ejecutivo",
-                    "Venta, margen y posición de caja del período. La cartera del grupo se "
-                    "muestra aparte: mezclarla con la de terceros distorsiona la lectura.",
-                    empresa),
-        filtro(x_col(9), 14, col(3), 30, "Calendario", "anio_mes", "Período"),
+def pagina_pulso(empresa: str) -> list[dict]:
+    """La portada. Un solo mensaje: así va el negocio este trimestre, y la cartera real se lee
+    separando al grupo. Abre en el trimestre en curso; los saldos de cartera son la foto de HOY
+    (medidas con REMOVEFILTERS), porque un saldo recortado al trimestre ocultaría la mora vieja.
+    """
+    trimestre = trimestre_actual()
 
-        kpi(x_col(0), y_kpi, col(3), h_kpi, "Ventas netas", "VENTAS NETAS (SIN IVA)"),
-        kpi(x_col(3), y_kpi, col(3), h_kpi, "Margen bruto", "MARGEN BRUTO", VERDE),
-        kpi(x_col(6), y_kpi, col(3), h_kpi, "Saldo por cobrar terceros",
-            "POR COBRAR A TERCEROS", AZUL),
-        kpi(x_col(9), y_kpi, col(3), h_kpi, "Saldo vencido terceros", "VENCIDO DE TERCEROS", ROJO),
-
-        linea_area(x_col(0), y_med, col(8), h_med, ["Ventas netas"], "anio_mes",
-                   "Evolución de la venta neta", "por mes de facturación"),
-        dona(x_col(8), y_med, col(4), h_med, "Ventas netas", "Tipo de documento", "nombre",
-             "Composición de la venta", "factura vs nota de crédito",
-             colores=[AZUL, NARANJA, AZUL_CLARO, ROJO]),
-
-        barras(x_col(0), y_baj, col(4), h_baj, "Ventas netas", "Cliente", "nombre",
-               "Clientes por venta", "los 10 mayores", AZUL, top=10),
-        barras(x_col(4), y_baj, col(4), h_baj, "Saldo por cobrar", "Antigüedad",
-               "rango_aging_nombre", "Cartera por antigüedad", "saldo pendiente", AZUL_CLARO),
-        matriz(x_col(8), y_baj, col(4), h_baj,
-               [("Empresa", "nombre")],
-               ["Ventas netas", "Margen bruto", "% Margen"],
-               "Resultado por empresa"),
+    # --- hero: banda marina con título y los dos segmentadores de la página ---
+    hero = [
+        banda(0, 0, 1280, 96, MARINO, redondeo=0),
+        banda(0, 96, 1280, 3, NARANJA, redondeo=0),
+        texto(24, 14, 640, 34,
+              [{"t": "Pulso ejecutivo", "size": 18, "bold": True, "color": BLANCO},
+               {"t": f"   ·   {empresa}", "size": 11, "color": MARINO_TEXTO}], z=1),
+        texto(24, 52, 700, 24,
+              [{"t": "Venta, rentabilidad y caja del trimestre en curso · la cartera es la "
+                     "foto de hoy · cifras cuadradas contra el ERP",
+                "size": 9, "color": MARINO_TEXTO}], z=1),
+        filtro(x_col(8), 22, col(2), 52, CAL, "anio_trimestre", "Trimestre",
+               defecto=trimestre, z=2),
+        filtro(x_col(10), 22, col(2), 52, EMPRESA, "nombre", "Empresa", z=2),
     ]
+
+    # --- fila de indicadores compuestos: 5 tarjetas de 240px ---
+    y_kpi, h_kpi = 112, 118
+    w5 = int((ANCHO_UTIL - 4 * SEP) / 5)          # 240
+    x5 = [MARGEN + i * (w5 + SEP) for i in range(5)]
+    tarjetas = [
+        *kpi_compuesto(x5[0], y_kpi, w5, h_kpi, "Ventas netas", "VENTA NETA DEL TRIMESTRE",
+                       "Variación vs año anterior", "vs año anterior", AZUL),
+        *kpi_compuesto(x5[1], y_kpi, w5, h_kpi, "Ventas acumuladas año", "ACUMULADO DEL AÑO",
+                       "Variación acumulada vs año anterior", "vs año anterior, mismo corte",
+                       AZUL_CLARO),
+        *kpi_compuesto(x5[2], y_kpi, w5, h_kpi, "% Margen terceros", "MARGEN DE TERCEROS",
+                       "Margen bruto", "margen bruto total", VERDE, color_valor=VERDE),
+        *kpi_compuesto(x5[3], y_kpi, w5, h_kpi, "Por cobrar terceros hoy",
+                       "POR COBRAR A TERCEROS · HOY",
+                       "% Vencido terceros hoy", "ya vencido", NARANJA,
+                       color_delta=ROJO),
+        *kpi_compuesto(x5[4], y_kpi, w5, h_kpi, "Posición neta hoy", "POSICIÓN NETA · HOY",
+                       "Por pagar hoy", "por pagar hoy", VERDE, color_valor=TINTA,
+                       color_delta=NARANJA),
+    ]
+
+    # --- fila central: el visual que vende (cartera partida) + el ritmo diario ---
+    y2, h2 = 242, 224
+    centro = [
+        columnas_multi(x_col(0), y2, col(7), h2,
+                       ["Por cobrar terceros hoy", "Por cobrar grupo hoy"],
+                       ANTIG, "rango_aging_nombre",
+                       "¿Quién debe la cartera?",
+                       "saldo de hoy por antigüedad · azul: clientes reales · naranja: "
+                       "empresas del propio grupo",
+                       colores=[AZUL, NARANJA]),
+        linea_area(x_col(7), y2, col(5), h2,
+                   ["Venta diaria neta", "Venta media móvil 30d"], "fecha",
+                   "El ritmo del trimestre",
+                   "venta por día y su media de 30 días",
+                   colores=[AZUL_CLARO, AZUL], area=False),
+    ]
+
+    # --- fila inferior: a quién se vende, quién mueve el trimestre y cómo va cada sociedad ---
+    y3, h3 = 478, 226
+    base = [
+        dona_medidas(x_col(0), y3, col(4), h3, ["Ventas a terceros", "Ventas al grupo"],
+                     "¿A quién le vendemos?", "terceros vs empresas del grupo",
+                     colores=[AZUL, NARANJA]),
+        barras(x_col(4), y3, col(4), h3, "Ventas a terceros", CLIENTE, "nombre",
+               "Los clientes del trimestre", "venta a terceros · los 7 mayores",
+               AZUL, top=7),
+        matriz(x_col(8), y3, col(4), h3,
+               [(EMPRESA, "nombre")],
+               ["Ventas netas", "% Margen", "Por cobrar terceros hoy"],
+               "Las empresas del grupo", "venta, margen y cartera por sociedad"),
+    ]
+    return [*hero, *tarjetas, *centro, *base]
 
 
 def pagina_ventas(empresa: str) -> list[dict]:
@@ -661,7 +825,7 @@ def pagina_ventas(empresa: str) -> list[dict]:
         *encabezado("Ventas y rentabilidad",
                     "El margen del grupo no es margen de mercado: la venta intercompañía no "
                     "compite por precio y se separa en todos los indicadores.", empresa),
-        filtro(x_col(9), 14, col(3), 30, "Calendario", "anio_mes", "Período"),
+        filtro(x_col(9), 14, col(3), 30, CAL, "anio_mes", "Período"),
 
         kpi(x_col(0), y_kpi, col(2), h_kpi, "Ventas a terceros", "A TERCEROS", AZUL, 20),
         kpi(x_col(2), y_kpi, col(2), h_kpi, "Ventas al grupo", "AL GRUPO", NARANJA, 20),
@@ -675,20 +839,20 @@ def pagina_ventas(empresa: str) -> list[dict]:
                    "Venta mensual y media móvil",
                    "la media alisa el diente de sierra de la facturación",
                    colores=[AZUL, NARANJA], area=False),
-        barras(x_col(8), y2, col(4), h2, "Ventas netas", "Calendario", "dia_semana_nombre",
+        barras(x_col(8), y2, col(4), h2, "Ventas netas", CAL, "dia_semana_nombre",
                "Venta por día de semana", None, NARANJA, horizontal=True),
 
-        treemap(x_col(0), y3, col(5), h3, "Ventas netas", "Producto", "nombre",
+        treemap(x_col(0), y3, col(5), h3, "Ventas netas", PRODUCTO, "nombre",
                 "Peso de cada producto", "tamaño = venta neta"),
         matriz(x_col(5), y3, col(7), h3,
-               [("Vendedor", "nombre")],
+               [(VENDEDOR, "nombre")],
                ["Ventas netas", "Margen bruto", "% Margen", "Documentos de venta"],
                "Desempeño por vendedor", "ordenado por venta neta", top=12),
     ]
 
 
 def pagina_clientes(empresa: str) -> list[dict]:
-    """Página nueva: catálogo ABC. Es la que convierte el tablero en una herramienta comercial."""
+    """Catálogo ABC: la página que convierte el tablero en una herramienta comercial."""
     y_kpi, h_kpi = 72, 92
     y2, h2 = y_kpi + h_kpi + SEP, 240
     y3 = y2 + h2 + SEP
@@ -698,7 +862,7 @@ def pagina_clientes(empresa: str) -> list[dict]:
                     "Pareto sobre la venta a terceros del año: A concentra el 80% de la venta, "
                     "B hasta el 95%, C el resto. Calculado en el warehouse, no en el reporte.",
                     empresa),
-        filtro(x_col(9), 14, col(3), 30, "Clasificación ABC", "clase_abc_anio_nombre", "Clase"),
+        filtro(x_col(9), 14, col(3), 30, ABC, "clase_abc_anio_nombre", "Clase"),
 
         kpi(x_col(0), y_kpi, col(2), h_kpi, "Clientes A", "CLIENTES A", AZUL, 20),
         kpi(x_col(2), y_kpi, col(2), h_kpi, "Clientes B", "CLIENTES B", AZUL_CLARO, 20),
@@ -709,15 +873,14 @@ def pagina_clientes(empresa: str) -> list[dict]:
             "VENTA MEDIA CLASE A", TINTA, 20),
         kpi(x_col(10), y_kpi, col(2), h_kpi, "Clientes perdidos", "PERDIDOS EN EL AÑO", ROJO, 20),
 
-        dona(x_col(0), y2, col(4), h2, "Venta del año clasificada", "Clasificación ABC",
+        dona(x_col(0), y2, col(4), h2, "Venta del año clasificada", ABC,
              "clase_abc_anio_nombre", "Venta por clase",
              "concentración de la cartera", colores=[AZUL, AZUL_CLARO, TENUE, ROJO]),
-        barras(x_col(4), y2, col(8), h2, "Ventas netas", "Cliente", "nombre",
+        barras(x_col(4), y2, col(8), h2, "Ventas netas", CLIENTE, "nombre",
                "Los 15 clientes que hacen el negocio", "venta neta del período", AZUL, top=15),
 
         matriz(x_col(0), y3, col(12), h3,
-               [("Clasificación ABC", "clase_abc_anio"), ("Cliente", "nombre"),
-                ("Cliente", "region")],
+               [(ABC, "clase_abc_anio"), (CLIENTE, "nombre"), (CLIENTE, "region")],
                ["Ventas netas", "Margen bruto", "% Margen", "Saldo por cobrar",
                 "Saldo vencido"],
                "Catálogo de clientes",
@@ -736,7 +899,7 @@ def pagina_cartera(empresa: str) -> list[dict]:
                     "Saldos tomados del mayor contable, no del documento: es el número que el "
                     "contador reconoce. La antigüedad se cuenta contra la fecha de vencimiento.",
                     empresa),
-        filtro(x_col(9), 14, col(3), 30, "Antigüedad", "rango_aging_nombre", "Antigüedad"),
+        filtro(x_col(9), 14, col(3), 30, ANTIG, "rango_aging_nombre", "Antigüedad"),
 
         kpi(x_col(0), y_kpi, col(2), h_kpi, "Saldo por cobrar terceros", "POR COBRAR", AZUL, 20),
         kpi(x_col(2), y_kpi, col(2), h_kpi, "Saldo vencido terceros", "VENCIDO", ROJO, 20),
@@ -746,22 +909,22 @@ def pagina_cartera(empresa: str) -> list[dict]:
         kpi(x_col(8), y_kpi, col(2), h_kpi, "Saldo por pagar", "POR PAGAR", NARANJA, 20),
         kpi(x_col(10), y_kpi, col(2), h_kpi, "Posición neta", "POSICIÓN NETA", VERDE, 20),
 
-        barras(x_col(0), y2, col(5), h2, "Saldo por cobrar", "Antigüedad", "rango_aging_nombre",
+        barras(x_col(0), y2, col(5), h2, "Saldo por cobrar", ANTIG, "rango_aging_nombre",
                "Antigüedad de lo por cobrar", "saldo pendiente por rango", AZUL),
-        barras(x_col(5), y2, col(4), h2, "Saldo por pagar", "Antigüedad", "rango_aging_nombre",
+        barras(x_col(5), y2, col(4), h2, "Saldo por pagar", ANTIG, "rango_aging_nombre",
                "Antigüedad de lo por pagar", None, NARANJA),
-        dona(x_col(9), y2, col(3), h2, "Saldo por cobrar", "Antigüedad", "severidad",
+        dona(x_col(9), y2, col(3), h2, "Saldo por cobrar", ANTIG, "severidad",
              "Riesgo", "por severidad",
              colores=[VERDE, AZUL_CLARO, NARANJA, ROJO, TENUE]),
 
         matriz(x_col(0), y3, col(7), h3,
-               [("Cliente", "nombre")],
+               [(CLIENTE, "nombre")],
                ["Saldo por cobrar", "Saldo vencido", "Vencido más de 90",
                 "Días vencido promedio"],
                "Deudores", "ordenado por saldo vencido", top=25,
                orden_por="Saldo vencido"),
         matriz(x_col(7), y3, col(5), h3,
-               [("Proveedor", "nombre")],
+               [(PROVEEDOR, "nombre")],
                ["Saldo por pagar", "Por pagar vencido"],
                "Acreedores", "ordenado por saldo", top=25, orden_por="Saldo por pagar"),
     ]
@@ -776,7 +939,7 @@ def pagina_compras(empresa: str) -> list[dict]:
         *encabezado("Compras y abastecimiento",
                     "Compra neta del período por proveedor, producto y centro de costo.",
                     empresa),
-        filtro(x_col(9), 14, col(3), 30, "Calendario", "anio_mes", "Período"),
+        filtro(x_col(9), 14, col(3), 30, CAL, "anio_mes", "Período"),
 
         kpi(x_col(0), y_kpi, col(3), h_kpi, "Compras netas", "COMPRAS NETAS (SIN IVA)"),
         kpi(x_col(3), y_kpi, col(3), h_kpi, "Documentos de compra", "DOCUMENTOS", TINTA),
@@ -786,13 +949,13 @@ def pagina_compras(empresa: str) -> list[dict]:
 
         linea_area(x_col(0), y2, col(8), h2, ["Compras netas"], "anio_mes",
                    "Evolución de la compra neta", "por mes"),
-        barras(x_col(8), y2, col(4), h2, "Compras netas", "Centro de costo", "nombre",
+        barras(x_col(8), y2, col(4), h2, "Compras netas", CCOSTO, "nombre",
                "Compra por centro de costo", None, NARANJA, top=10),
 
-        barras(x_col(0), y3, col(6), h3, "Compras netas", "Proveedor", "nombre",
+        barras(x_col(0), y3, col(6), h3, "Compras netas", PROVEEDOR, "nombre",
                "Proveedores por compra", "los 12 mayores", AZUL, top=12),
         matriz(x_col(6), y3, col(6), h3,
-               [("Producto", "nombre")],
+               [(PRODUCTO, "nombre")],
                ["Compras netas", "Unidades compradas", "Líneas de compra"],
                "Detalle por producto", "ordenado por compra neta", top=25),
     ]
@@ -803,7 +966,7 @@ def main() -> int:
     empresa = sys.argv[2] if len(sys.argv) > 2 else "Grupo Cresta"
 
     secciones = [
-        pagina("pagina_resumen", "Resumen", 0, pagina_resumen(empresa)),
+        pagina("pagina_pulso", "Pulso", 0, pagina_pulso(empresa)),
         pagina("pagina_ventas", "Ventas", 1, pagina_ventas(empresa)),
         pagina("pagina_clientes", "Clientes ABC", 2, pagina_clientes(empresa)),
         pagina("pagina_cartera", "Cartera", 3, pagina_cartera(empresa)),
@@ -835,7 +998,8 @@ def main() -> int:
         json.dumps(reporte, indent=2, ensure_ascii=False), encoding="utf-8")
 
     total = sum(len(s["visualContainers"]) for s in secciones)
-    print(f"OK · {len(secciones)} paginas · {total} visuales · {destino}")
+    print(f"OK · {len(secciones)} paginas · {total} visuales · portada en {trimestre_actual()} "
+          f"· {destino}")
     return 0
 
 

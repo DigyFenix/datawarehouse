@@ -59,6 +59,18 @@ sources:
           momento de la extracción.
       - name: ortt
         description: Tipos de cambio (moneda local por 1 unidad de la moneda, por fecha).
+      - name: ordr
+        description: Pedidos de venta (cabecera). Solo vigentes (CANCELED='N' en origen).
+      - name: rdr1
+        description: >
+          Pedidos de venta (líneas). OpenQty es el BACKLOG: lo pedido aún no copiado a
+          entrega/factura; LineStatus O/C marca la línea abierta/cerrada.
+      - name: crd1
+        description: >
+          Direcciones por socio (entrega 'S' y facturación 'B'). La llave natural es
+          CardCode + AdresType + Address; el documento la referencia con ShipToCode.
+      - name: ocst
+        description: Catálogo de departamentos/estados (Code → Name). Resuelve CRD1.State.
 
       # ---------------- Odoo 18 ----------------
       - name: res_partner
@@ -104,3 +116,9 @@ sources:
         description: >
           Tipos de cambio. OJO: rate es unidades de la moneda por 1 de moneda de la
           compañía — Plata lo invierte para igualar la convención de SAP B1.
+      - name: sale_order
+        description: Pedidos de venta (cabecera). Solo confirmados (state in sale/done).
+      - name: sale_order_line
+        description: >
+          Pedidos de venta (líneas). El backlog se deriva: product_uom_qty − qty_invoiced.
+          Solo líneas de producto (display_type IS NULL en origen).

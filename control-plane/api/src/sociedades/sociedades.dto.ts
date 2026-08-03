@@ -19,6 +19,10 @@ export const crearSociedadSchema = z.object({
     .regex(/^[a-z][a-z0-9_]*$/, 'Solo minúsculas, dígitos y guion bajo; empieza por letra'),
   nombre: z.string().min(1).max(150),
   nit: z.string().max(50).optional(),
+  // ISO 4217 (GTQ, USD). El grupo dejó de ser monomoneda: El Salvador opera en USD.
+  moneda: z.string().trim().toUpperCase().length(3).nullable().optional(),
+  // Moneda de consolidación; distinta de `moneda` = convertir con la serie de la sociedad.
+  monedaPresentacion: z.string().trim().toUpperCase().length(3).nullable().optional(),
   conexionId: z.number().int().positive().nullable().optional(),
   esquemaOrigen: z.string().max(100).optional(),
   activo: z.boolean().default(true),

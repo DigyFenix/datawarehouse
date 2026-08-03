@@ -40,8 +40,8 @@ with ventas_terceros as (
         v.empresa_id,
         v.cliente_clave,
         d.anio                                         as anio,
-        v.monto_sin_impuesto_local                     as monto,
-        v.margen_local                                 as margen
+        v.monto_sin_impuesto                     as monto,
+        v.margen                                 as margen
     from {{ ref('hecho_venta_linea') }} v
     join {{ ref('dim_tiempo') }} d on d.tiempo_clave = v.tiempo_clave
     join {{ ref('dim_cliente') }} c on c.cliente_clave = v.cliente_clave

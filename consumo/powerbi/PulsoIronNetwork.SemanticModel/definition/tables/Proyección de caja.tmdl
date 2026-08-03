@@ -1,0 +1,114 @@
+table 'Proyección de caja'
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column flujo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: flujo
+
+	column estado_vencimiento
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado_vencimiento
+
+	column semana_inicio
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: semana_inicio
+		formatString: dd/MM/yyyy
+
+	column semana_fin
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: semana_fin
+		formatString: dd/MM/yyyy
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column semana_offset
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: semana_offset
+		formatString: #,0
+
+	column semana_etiqueta
+		dataType: string
+		summarizeBy: none
+		sourceColumn: semana_etiqueta
+		sortByColumn: semana_offset
+
+	column partidas
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: partidas
+		formatString: #,0
+
+	column monto_local
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_local
+		formatString: #,0.00
+
+	column fecha_corte
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_corte
+		formatString: dd/MM/yyyy
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Proyección CONTRACTUAL: si cada partida abierta se paga en su vencimiento. No es un pronóstico.
+	measure 'Entradas proyectadas' = CALCULATE(SUM('Proyección de caja'[monto_local]), 'Proyección de caja'[flujo] = "entrada")
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	measure 'Salidas proyectadas' = CALCULATE(SUM('Proyección de caja'[monto_local]), 'Proyección de caja'[flujo] = "salida")
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	measure 'Flujo neto proyectado' = [Entradas proyectadas] - [Salidas proyectadas]
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	/// Ya venció y sigue abierto: en teoría es cobrable HOY. La brecha con lo programado mide la gestión de cobro.
+	measure 'Entradas vencidas (exigible)' = CALCULATE(SUM('Proyección de caja'[monto_local]), 'Proyección de caja'[flujo] = "entrada", 'Proyección de caja'[estado_vencimiento] = "vencido")
+		formatString: "Q" #,0
+		displayFolder: 02 Vencido
+
+	measure 'Salidas vencidas (exigible)' = CALCULATE(SUM('Proyección de caja'[monto_local]), 'Proyección de caja'[flujo] = "salida", 'Proyección de caja'[estado_vencimiento] = "vencido")
+		formatString: "Q" #,0
+		displayFolder: 02 Vencido
+
+	partition 'Proyección de caja' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="proyeccion_caja_semanal"]}[Data]
+				in
+				    Tabla

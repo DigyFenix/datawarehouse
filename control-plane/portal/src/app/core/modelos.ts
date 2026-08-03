@@ -14,8 +14,33 @@ export interface Organizacion {
   estado: string;
   secretoConexionRef: string | null;
   colorMarca: string | null;
+  baseDatosDw: string | null;
+  // Identificador opaco de la URL de ingreso del portal de usuario del tenant.
+  hashTenant: string;
+  logoMime: string | null;
   creadoEn: string;
   actualizadoEn: string;
+}
+
+/** Tablero del portal de usuario (URL de Publish to Web, alta del proveedor). */
+export interface TableroPortal {
+  id: number;
+  clave: string;
+  nombre: string;
+  descripcion: string | null;
+  modulo: string;
+  urlPublica: string;
+  orden: number;
+  activo: boolean;
+}
+
+/** Estado del portal de usuario en la base del tenant. */
+export interface EstadoPortalOrg {
+  baseDatos: string;
+  esquemaAplicado: boolean;
+  adminExiste: boolean;
+  usuarios: number;
+  tableros: number;
 }
 
 export interface Usuario {
@@ -175,10 +200,23 @@ export interface Sociedad {
   empresaId: string;
   nombre: string;
   nit: string | null;
+  moneda: string | null;
+  monedaPresentacion: string | null;
   conexionId: number | null;
   esquemaOrigen: string | null;
   activo: boolean;
   orden: number;
+}
+
+// NIT de compañía afiliada (intercompañía). nitNormalizado lo calcula la BD:
+// mayúsculas y solo [0-9K]; es la forma con la que Oro marca es_intercompania.
+export interface NitAfiliado {
+  id: number;
+  organizacionId: number;
+  nit: string;
+  nitNormalizado: string;
+  nombre: string | null;
+  activo: boolean;
 }
 
 export interface CampoIngesta {

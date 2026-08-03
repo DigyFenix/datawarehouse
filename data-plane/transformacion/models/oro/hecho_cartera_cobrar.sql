@@ -15,6 +15,7 @@ select
     coalesce((to_char(p.fecha_vencimiento, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
                                                       as tiempo_vencimiento_clave,
     {{ clave_o_no_definido('dc', 'cliente_clave') }}  as cliente_clave,
+    {{ clave_o_no_definido('ds', 'socio_clave') }}    as socio_clave,
     {{ clave_o_no_definido('dorg', 'organizacion_clave') }} as organizacion_clave,
     {{ clave_o_no_definido('dm', 'moneda_clave') }}   as moneda_clave,
     {{ clave_o_no_definido('dcu', 'cuenta_clave') }}  as cuenta_clave,
@@ -28,9 +29,12 @@ select
     p.fecha_vencimiento,
     {{ corte }}                                       as fecha_corte,
 
-    p.monto_original_local,
+    -- DOS ejes de moneda (decisión 2026-08-02): sin sufijo = moneda de PRESENTACIÓN (rige
+    -- todo análisis; el saldo es FOTO → tasa vigente hoy); `_doc` = moneda del documento,
+    -- solo referencia. El eje local vive en Plata (cuadre y trazabilidad).
+    (p.monto_original_local / tp.tasa)::numeric(18,4) as monto_original,
     p.monto_original_doc,
-    p.saldo_pendiente_local,
+    (p.saldo_pendiente_local / tp.tasa)::numeric(18,4) as saldo_pendiente,
     p.saldo_pendiente_doc,
 
     -- Aging a la fecha de corte. Negativo = aún no vence.
@@ -49,6 +53,10 @@ select
 from {{ ref('plata_partida_cartera') }} p
 left join {{ ref('dim_cliente') }} dc
        on dc.cliente_codigo = p.socio_codigo and dc.empresa_id = p.empresa_id
+left join {{ ref('dim_socio_negocio') }} ds
+       on ds.socio_codigo = p.socio_codigo and ds.empresa_id = p.empresa_id
+left join {{ ref('plata_tasa_presentacion') }} tp
+       on tp.empresa_id = p.empresa_id and tp.fecha = current_date
 left join {{ ref('dim_organizacion') }} dorg
        on dorg.empresa_id = p.empresa_id
 left join {{ ref('dim_moneda') }} dm

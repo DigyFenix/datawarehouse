@@ -60,6 +60,12 @@ def _columnas_nativas(conn, esquema: str, tabla: str) -> list[tuple[str, str]]:
         return [(r[0], r[1]) for r in cur.fetchall()]
 
 
+def columnas_existentes(conn, esquema: str, tabla: str) -> set[str]:
+    """Columnas reales de la tabla. Simétrico a sap_b1.columnas_existentes: la extracción
+    intersecta lo configurado con lo que la base de la sociedad de verdad tiene."""
+    return {c for c, _ in _columnas_nativas(conn, esquema, tabla)}
+
+
 def _perfilar_no_nulos(
     conn, esquema: str, tabla: str, columnas: list[tuple[str, str]], muestra: int = 100_000
 ) -> dict[str, bool]:

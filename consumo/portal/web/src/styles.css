@@ -1,0 +1,254 @@
+/* =====================================================================
+   Sistema de diseño — "Mesa de gobierno" · Portal Grupo Cresta
+   Instrumento de confianza en el dato: preciso, de archivo, no un SaaS blando.
+   · Color primario CONFIGURABLE por organización (--marca; los tonos derivan).
+   · Metales medallion (bronce/plata/oro) = firma, ligados a las capas de datos.
+   · Tipografía: Space Grotesk (display) · Inter (cuerpo) · JetBrains Mono (dato).
+   ===================================================================== */
+
+/* ---------- Fuentes self-hosted (sin dependencia de red en runtime) ---------- */
+@font-face { font-family:'Space Grotesk'; font-style:normal; font-weight:500; font-display:swap; src:url('/assets/fonts/space-grotesk-500.woff2') format('woff2'); }
+@font-face { font-family:'Space Grotesk'; font-style:normal; font-weight:600; font-display:swap; src:url('/assets/fonts/space-grotesk-600.woff2') format('woff2'); }
+@font-face { font-family:'Space Grotesk'; font-style:normal; font-weight:700; font-display:swap; src:url('/assets/fonts/space-grotesk-700.woff2') format('woff2'); }
+@font-face { font-family:'Inter'; font-style:normal; font-weight:400; font-display:swap; src:url('/assets/fonts/inter-400.woff2') format('woff2'); }
+@font-face { font-family:'Inter'; font-style:normal; font-weight:500; font-display:swap; src:url('/assets/fonts/inter-500.woff2') format('woff2'); }
+@font-face { font-family:'Inter'; font-style:normal; font-weight:600; font-display:swap; src:url('/assets/fonts/inter-600.woff2') format('woff2'); }
+@font-face { font-family:'JetBrains Mono'; font-style:normal; font-weight:400; font-display:swap; src:url('/assets/fonts/jetbrains-mono-400.woff2') format('woff2'); }
+@font-face { font-family:'JetBrains Mono'; font-style:normal; font-weight:500; font-display:swap; src:url('/assets/fonts/jetbrains-mono-500.woff2') format('woff2'); }
+
+:root {
+  /* === Marca configurable por organización (runtime sobre-escribe SOLO --marca) === */
+  --marca:        #2d5aa0;   /* azul profesional cálido — color primario del tenant */
+  --marca-fuerte: color-mix(in srgb, var(--marca) 66%, #0a1a30);  /* deriva de --marca (hover/énfasis) */
+
+  /* Familia de marca derivada (color-mix) — todos los componentes usan estos nombres */
+  --brand-50:  color-mix(in srgb, var(--marca) 9%,  #ffffff);
+  --brand-100: color-mix(in srgb, var(--marca) 15%, #ffffff);
+  --brand-300: color-mix(in srgb, var(--marca) 42%, #ffffff);
+  --brand-400: color-mix(in srgb, var(--marca) 60%, #ffffff);
+  --brand-500: color-mix(in srgb, var(--marca) 88%, #ffffff);
+  --brand-600: var(--marca);
+  --brand-700: var(--marca-fuerte);
+  --brand-800: color-mix(in srgb, var(--marca) 40%, #0e1712);
+  --brand-900: color-mix(in srgb, var(--marca) 26%, #0c1410);  /* tinta del chrome (sidebar) */
+
+  /* Acento (yema) — atención puntual */
+  --amber-600: #b9781a;
+  --amber-500: #e0a526;
+  --amber-100: #fbf0d6;
+  --amber-700: #8a5a00;
+
+  /* === Metales medallion (FIJOS — codifican las capas Bronze/Silver/Gold) === */
+  --bronce: #a9772f;  --bronce-bg: #f6ecda;  --bronce-bd: #e4cfa8;  --bronce-tx: #7a5417;
+  --plata:  #8b98a1;  --plata-bg:  #eef1f4;  --plata-bd:  #d4dbe1;  --plata-tx:  #47535d;
+  --oro:    #c9a63f;  --oro-bg:    #f8f0d3;  --oro-bd:    #e8d59a;  --oro-tx:    #7a5e12;
+
+  /* Neutros — papel cálido, superficies crispadas */
+  --bg:        #f2f4ee;
+  --surface:   #ffffff;
+  --surface-2: #f7f8f3;
+  --border:    #e4e7df;
+  --border-2:  #d2d8ca;
+  --text:      #16211b;
+  --muted:     #59645b;
+  --faint:     #8b9389;
+
+  /* Semánticos */
+  --ok:      #2f7d4f; --ok-bg:   #e6f2ea;
+  --warn:    #b9781a; --warn-bg: #fbf0d6;
+  --danger:  #b83f30; --danger-bg:#f9e7e4;
+  --info:    #3a5ba0; --info-bg: #e8eef8;
+
+  /* Tipografía */
+  --display: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --sans:    'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono:    'JetBrains Mono', ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+
+  /* Radios y sombras — de archivo: hairlines > sombras */
+  --r-sm: 7px; --r: 11px; --r-lg: 15px;
+  --sh-1: 0 1px 2px rgba(16,32,24,.05);
+  --sh-2: 0 6px 20px rgba(16,32,24,.07);
+  --sh-pop: 0 16px 44px rgba(12,20,16,.20);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv05" 1, "ss01" 1;  /* Inter afinada */
+}
+
+/* ---------- Tipografía ---------- */
+h1, h2, h3, h4 { margin: 0; font-family: var(--display); font-weight: 600; letter-spacing: -.02em; color: var(--text); }
+h1 { font-size: 30px; letter-spacing: -.03em; }
+h2 { font-size: 23px; letter-spacing: -.025em; }
+h3 { font-size: 16px; letter-spacing: -.01em; }
+h4 { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); font-weight: 500; }
+code, .mono { font-family: var(--mono); font-size: .9em; }
+a { color: var(--brand-600); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Eyebrow — etiqueta técnica en mono (firma tipográfica) */
+.eyebrow {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+/* ---------- Botones ---------- */
+button, .btn {
+  font-family: var(--sans);
+  font-size: 13.5px; font-weight: 600;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  padding: 9px 16px; cursor: pointer;
+  transition: background .14s, border-color .14s, box-shadow .14s, opacity .14s, transform .04s;
+  background: var(--brand-600); color: #fff;
+  letter-spacing: -.005em;
+}
+button:hover, .btn:hover { background: var(--brand-700); }
+button:active, .btn:active { transform: translateY(.5px); }
+button:focus-visible, .btn:focus-visible,
+a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--amber-500); outline-offset: 2px;
+}
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+button.secundario, .btn.secundario {
+  background: var(--surface); color: var(--brand-700); border-color: var(--border-2);
+}
+button.secundario:hover, .btn.secundario:hover { background: var(--surface-2); border-color: var(--brand-500); }
+button.peligro, .btn.peligro { background: var(--surface); color: var(--danger); border-color: #e6c4bf; }
+button.peligro:hover, .btn.peligro:hover { background: var(--danger-bg); }
+button.pequeno, .btn.pequeno { padding: 6px 12px; font-size: 12.5px; }
+a.secundario, a.btn { display: inline-block; text-decoration: none; }
+a.secundario:hover { text-decoration: none; }
+
+/* ---------- Campos ---------- */
+.campo { margin-bottom: 14px; }
+.campo label { display: block; font-size: 12.5px; font-weight: 550; margin-bottom: 5px; color: var(--muted); }
+input, select, textarea {
+  width: 100%; font-family: inherit; font-size: 14px;
+  padding: 9px 11px; border: 1px solid var(--border-2); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--text);
+  transition: border-color .12s, box-shadow .12s;
+}
+input::placeholder, textarea::placeholder { color: var(--faint); }
+input:focus, select:focus, textarea:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--marca) 14%, transparent);
+  outline: none;
+}
+
+/* ---------- Tarjetas ---------- */
+.tarjeta, .card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 20px; box-shadow: var(--sh-1);
+}
+.card__titulo { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+
+/* ---------- Tablas ---------- */
+.tabla-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 11px 15px; font-size: 13.5px; }
+th {
+  font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--muted); font-weight: 500;
+  border-bottom: 1px solid var(--border-2); background: var(--surface-2);
+}
+td { border-bottom: 1px solid var(--border); }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--surface-2); }
+td .mono, td code { color: var(--brand-700); }
+
+/* ---------- Medalla medallion (ELEMENTO FIRMA) ---------- */
+.medalla {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 10px 2px 8px; border-radius: 999px;
+  font-family: var(--display); font-size: 11px; font-weight: 600; letter-spacing: .01em;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.medalla::before { content: ""; width: 9px; height: 9px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.medalla--bronce { color: var(--bronce-tx); background: var(--bronce-bg); border-color: var(--bronce-bd); }
+.medalla--bronce::before { background: radial-gradient(circle at 34% 30%, #d9a24e, var(--bronce)); }
+.medalla--plata  { color: var(--plata-tx);  background: var(--plata-bg);  border-color: var(--plata-bd); }
+.medalla--plata::before  { background: radial-gradient(circle at 34% 30%, #cdd6dd, var(--plata)); }
+.medalla--oro    { color: var(--oro-tx);    background: var(--oro-bg);    border-color: var(--oro-bd); }
+.medalla--oro::before    { background: radial-gradient(circle at 34% 30%, #e6c766, var(--oro)); }
+
+/* ---------- Badges / sellos de estado ---------- */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  letter-spacing: .01em; border: 1px solid transparent; white-space: nowrap;
+}
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge--neutral    { color: #566; background: #eef1ee; border-color: #dde3dd; }
+.badge--borrador   { color: #6b756c; background: #eef1ee; border-color: #dde3dd; }
+.badge--en_revision{ color: var(--warn); background: var(--warn-bg); border-color: #f0dcae; }
+.badge--certificada{ color: var(--ok); background: var(--ok-bg); border-color: #bfe0cc; }
+.badge--deprecada  { color: var(--danger); background: var(--danger-bg); border-color: #eec9c4; }
+.badge--exploratoria{ color: var(--info); background: var(--info-bg); border-color: #cbd9f0; }
+.badge--aprobo     { color: var(--ok); background: var(--ok-bg); border-color: #bfe0cc; }
+.badge--rechazo    { color: var(--danger); background: var(--danger-bg); border-color: #eec9c4; }
+.badge--pendiente  { color: var(--muted); background: var(--surface-2); border-color: var(--border-2); }
+.badge--pill       { color: var(--brand-700); background: var(--amber-100); border-color: #f0dcae; }
+.badge--pill::before { display: none; }
+
+/* ---------- Encabezado de página ---------- */
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.page-header .titulo-grupo { display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- Rejilla contenido + panel ---------- */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+/* ---------- Estado vacío ---------- */
+.vacio { text-align: center; color: var(--muted); padding: 36px 16px; }
+.vacio strong { display: block; font-family: var(--display); color: var(--text); margin-bottom: 4px; font-size: 15px; }
+
+/* ---------- Mensajes ---------- */
+.error { color: var(--danger); font-size: 13px; margin: 6px 0 0; }
+
+/* ---------- Drawer ---------- */
+.overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--brand-900) 45%, transparent); z-index: 900; animation: fade-in .15s ease-out; }
+.drawer {
+  position: fixed; top: 0; right: 0; height: 100vh; width: 460px; max-width: 94vw;
+  background: var(--surface); box-shadow: var(--sh-pop); z-index: 910;
+  display: flex; flex-direction: column; animation: slide-in .22s cubic-bezier(.2,.8,.2,1);
+}
+.drawer--ancho { width: 680px; }
+.drawer__head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+.drawer__head .eyebrow { display: block; margin-bottom: 3px; }
+.drawer__body { padding: 22px; overflow-y: auto; flex: 1; }
+.drawer .icono { background: transparent; color: var(--muted); border: 0; padding: 4px 8px; font-size: 18px; line-height: 1; }
+.drawer .icono:hover { background: var(--surface-2); color: var(--text); }
+.acciones-fila { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-in { from { transform: translateX(28px); opacity: .4; } to { transform: none; opacity: 1; } }
+
+/* ---------- Toasts ---------- */
+.toast-host { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+.toast {
+  min-width: 260px; max-width: 380px; background: var(--surface);
+  border: 1px solid var(--border-2); border-left: 4px solid var(--brand-500);
+  border-radius: var(--r-sm); padding: 12px 14px; box-shadow: var(--sh-pop);
+  font-size: 13.5px; animation: toast-in .18s ease-out;
+}
+.toast--exito { border-left-color: var(--ok); }
+.toast--error { border-left-color: var(--danger); }
+.toast--info  { border-left-color: var(--info); }
+.toast strong { display: block; margin-bottom: 1px; font-family: var(--display); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}

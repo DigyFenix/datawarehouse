@@ -42,10 +42,81 @@ table 'Cuenta contable'
 		summarizeBy: none
 		sourceColumn: es_cartera_pagar
 
+	column es_titulo
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_titulo
+
 	column activa
 		dataType: boolean
 		summarizeBy: none
 		sourceColumn: activa
+
+	column cuenta_padre_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: cuenta_padre_codigo
+
+	column nivel
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: nivel
+		formatString: #,0
+
+	column nivel_1_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_1_codigo
+
+	column nivel_1_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_1_nombre
+
+	column nivel_2_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_2_codigo
+
+	column nivel_2_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_2_nombre
+
+	column nivel_3_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_3_codigo
+
+	column nivel_3_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_3_nombre
+
+	column nivel_4_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_4_codigo
+
+	column nivel_4_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_4_nombre
+
+	column nivel_5_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_5_codigo
+
+	column nivel_5_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nivel_5_nombre
+
+	column ruta_cuenta
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ruta_cuenta
 
 	column valido_desde
 		dataType: dateTime
@@ -66,6 +137,18 @@ table 'Cuenta contable'
 		isHidden
 		summarizeBy: none
 		sourceColumn: es_vigente
+
+	hierarchy 'Jerarquía contable'
+		level 'Nivel 1'
+			column: nivel_1_nombre
+		level 'Nivel 2'
+			column: nivel_2_nombre
+		level 'Nivel 3'
+			column: nivel_3_nombre
+		level 'Nivel 4'
+			column: nivel_4_nombre
+		level 'Nivel 5'
+			column: nivel_5_nombre
 
 	partition 'Cuenta contable' = m
 		mode: import

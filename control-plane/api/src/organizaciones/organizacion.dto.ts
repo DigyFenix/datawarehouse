@@ -29,5 +29,15 @@ export const crearOrganizacionSchema = z.object({
 
 export const actualizarOrganizacionSchema = crearOrganizacionSchema.partial().omit({ codigo: true });
 
+// Logo del tenant (white-label del portal de usuario). Se sube como base64 en JSON
+// (validable con Zod, sin multipart); el servicio verifica el tamaño real decodificado
+// Y los magic bytes. SVG queda EXCLUIDO a propósito: puede llevar <script> y se sirve
+// same-origin en el portal de usuario (XSS almacenado).
+export const subirLogoSchema = z.object({
+  mime: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+  datosBase64: z.string().min(1).max(600_000), // ~450 KB de binario máx. antes del límite duro
+});
+
 export type CrearOrganizacionDto = z.infer<typeof crearOrganizacionSchema>;
 export type ActualizarOrganizacionDto = z.infer<typeof actualizarOrganizacionSchema>;
+export type SubirLogoDto = z.infer<typeof subirLogoSchema>;

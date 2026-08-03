@@ -21,7 +21,7 @@ select
     dc.cliente_codigo                                 as socio_codigo,
     dc.nombre                                         as socio_nombre,
     count(*)                                          as partidas,
-    sum(c.saldo_pendiente_local)::numeric(18,4)       as saldo_local,
+    sum(c.saldo_pendiente)::numeric(18,4)             as saldo_local,
     sum(c.saldo_pendiente_doc)::numeric(18,4)         as saldo_doc
 from {{ ref('hecho_cartera_cobrar') }} c
 join {{ ref('dim_cliente') }} dc on dc.cliente_clave = c.cliente_clave
@@ -40,7 +40,7 @@ select
     count(*),
     -- El mayor deja la deuda en negativo (acreedor); para el reporte de aging se muestra el
     -- valor absoluto, que es cómo lo lee tesorería.
-    abs(sum(p.saldo_pendiente_local))::numeric(18,4),
+    abs(sum(p.saldo_pendiente))::numeric(18,4),
     abs(sum(p.saldo_pendiente_doc))::numeric(18,4)
 from {{ ref('hecho_cartera_pagar') }} p
 join {{ ref('dim_proveedor') }} dp on dp.proveedor_clave = p.proveedor_clave

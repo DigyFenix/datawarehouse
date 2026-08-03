@@ -28,49 +28,55 @@ with ventas as (
     select
         empresa_id,
         to_char(fecha_documento, 'YYYY-MM')                                as periodo,
-        sum(monto_sin_impuesto_local) filter (where tipo_documento = 'factura')      as brutas_sin_iva,
-        sum(monto_sin_impuesto_local) filter (where tipo_documento = 'nota_credito') as devol_sin_iva,
-        sum(monto_sin_impuesto_local)                                      as netas_sin_iva,
-        sum(costo_local)                                                   as costo,
-        sum(margen_local)                                                  as margen
+        -- En moneda de PRESENTACIÓN (los hechos ya la traen): las métricas certificadas
+        -- rigen en el idioma del grupo; el cuadre contra el ERP en local vive en Plata.
+        sum(monto_sin_impuesto) filter (where tipo_documento = 'factura')  as brutas_sin_iva,
+        sum(monto_sin_impuesto) filter (where tipo_documento = 'nota_credito') as devol_sin_iva,
+        sum(monto_sin_impuesto)                                            as netas_sin_iva,
+        sum(costo)                                                         as costo,
+        sum(margen)                                                        as margen
     from {{ ref('hecho_venta_linea') }}
     group by 1, 2
 ),
 ventas_doc as (
     select
-        empresa_id,
-        to_char(fecha_documento, 'YYYY-MM')                                as periodo,
-        sum(total_con_impuesto_local) filter (where tipo_documento = 'factura')      as brutas_con_iva,
-        sum(total_con_impuesto_local) filter (where tipo_documento = 'nota_credito') as devol_con_iva,
-        sum(total_con_impuesto_local)                                      as netas_con_iva
-    from {{ ref('plata_documento_comercial') }}
-    where flujo = 'venta'
+        d.empresa_id,
+        to_char(d.fecha_documento, 'YYYY-MM')                              as periodo,
+        sum(d.total_con_impuesto_local / tp.tasa) filter (where d.tipo_documento = 'factura')      as brutas_con_iva,
+        sum(d.total_con_impuesto_local / tp.tasa) filter (where d.tipo_documento = 'nota_credito') as devol_con_iva,
+        sum(d.total_con_impuesto_local / tp.tasa)                          as netas_con_iva
+    from {{ ref('plata_documento_comercial') }} d
+    left join {{ ref('plata_tasa_presentacion') }} tp
+           on tp.empresa_id = d.empresa_id and tp.fecha = d.fecha_documento
+    where d.flujo = 'venta'
     group by 1, 2
 ),
 compras as (
     select
         empresa_id,
         to_char(fecha_documento, 'YYYY-MM')                                as periodo,
-        sum(monto_sin_impuesto_local) filter (where tipo_documento = 'factura')      as brutas_sin_iva,
-        sum(monto_sin_impuesto_local) filter (where tipo_documento = 'nota_credito') as nc_sin_iva,
-        sum(monto_sin_impuesto_local)                                      as netas_sin_iva
+        sum(monto_sin_impuesto) filter (where tipo_documento = 'factura') as brutas_sin_iva,
+        sum(monto_sin_impuesto) filter (where tipo_documento = 'nota_credito') as nc_sin_iva,
+        sum(monto_sin_impuesto)                                            as netas_sin_iva
     from {{ ref('hecho_compra_linea') }}
     group by 1, 2
 ),
 compras_doc as (
     select
-        empresa_id,
-        to_char(fecha_documento, 'YYYY-MM')                                as periodo,
-        sum(total_con_impuesto_local)                                      as netas_con_iva
-    from {{ ref('plata_documento_comercial') }}
-    where flujo = 'compra'
+        d.empresa_id,
+        to_char(d.fecha_documento, 'YYYY-MM')                              as periodo,
+        sum(d.total_con_impuesto_local / tp.tasa)                          as netas_con_iva
+    from {{ ref('plata_documento_comercial') }} d
+    left join {{ ref('plata_tasa_presentacion') }} tp
+           on tp.empresa_id = d.empresa_id and tp.fecha = d.fecha_documento
+    where d.flujo = 'compra'
     group by 1, 2
 ),
 cartera as (
-    select empresa_id, 'cobrar' as tipo, sum(saldo_pendiente_local) as saldo, max(fecha_corte) as corte
+    select empresa_id, 'cobrar' as tipo, sum(saldo_pendiente) as saldo, max(fecha_corte) as corte
       from {{ ref('hecho_cartera_cobrar') }} group by 1, 2
     union all
-    select empresa_id, 'pagar', sum(saldo_pendiente_local), max(fecha_corte)
+    select empresa_id, 'pagar', sum(saldo_pendiente), max(fecha_corte)
       from {{ ref('hecho_cartera_pagar') }} group by 1, 2
 )
 

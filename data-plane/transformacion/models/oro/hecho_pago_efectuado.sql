@@ -8,6 +8,7 @@ select
     coalesce((to_char(p.fecha_pago, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
                                                       as tiempo_clave,
     {{ clave_o_no_definido('dpr', 'proveedor_clave') }} as proveedor_clave,
+    {{ clave_o_no_definido('ds', 'socio_clave') }}    as socio_clave,
     {{ clave_o_no_definido('dorg', 'organizacion_clave') }} as organizacion_clave,
     {{ clave_o_no_definido('dm', 'moneda_clave') }}   as moneda_clave,
 
@@ -21,7 +22,8 @@ select
     p.referencia,
     p.estado,
 
-    p.monto_local,
+    -- Sin sufijo = moneda de PRESENTACIÓN (local ÷ tasa del día del pago); _doc = referencia.
+    (p.monto_local / tp.tasa)::numeric(18,4)          as monto,
     p.monto_doc,
     p.tipo_cambio,
 
@@ -30,6 +32,10 @@ select
 from {{ ref('plata_pago') }} p
 left join {{ ref('dim_proveedor') }} dpr
        on dpr.proveedor_codigo = p.socio_codigo and dpr.empresa_id = p.empresa_id
+left join {{ ref('dim_socio_negocio') }} ds
+       on ds.socio_codigo = p.socio_codigo and ds.empresa_id = p.empresa_id
+left join {{ ref('plata_tasa_presentacion') }} tp
+       on tp.empresa_id = p.empresa_id and tp.fecha = p.fecha_pago
 left join {{ ref('dim_organizacion') }} dorg
        on dorg.empresa_id = p.empresa_id
 left join {{ ref('dim_moneda') }} dm

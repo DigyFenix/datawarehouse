@@ -1,0 +1,57 @@
+table DM_Vendedor
+
+	column vendedor_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: vendedor_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column vendedor_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: vendedor_codigo
+
+	column nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nombre
+
+	column activo
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: activo
+
+	column valido_desde
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_desde
+		formatString: dd/MM/yyyy
+
+	column valido_hasta
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_hasta
+		formatString: dd/MM/yyyy
+
+	column es_vigente
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+		sourceColumn: es_vigente
+
+	partition DM_Vendedor = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="dim_vendedor"]}[Data]
+				in
+				    Tabla

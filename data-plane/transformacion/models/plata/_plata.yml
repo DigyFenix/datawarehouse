@@ -67,9 +67,16 @@ models:
 
   - name: plata_partida_cartera
     description: CxC y CxP desde el mayor, filtradas por tipo de cuenta.
+    data_tests:
+      # La partida del mayor es única POR EMPRESA: TransId-Line_ID se repite entre las
+      # sociedades del grupo (verificado al cargar las 10 de Cresta). El contrato río abajo
+      # ya es compuesto (los históricos usan empresa_id + partida_id + fecha_corte).
+      - unique:
+          name: unique_plata_partida_cartera_empresa_partida
+          column_name: "(empresa_id || '·' || partida_id)"
     columns:
       - name: partida_id
-        data_tests: [not_null, unique]
+        data_tests: [not_null]
       - name: tipo_cartera
         data_tests:
           - not_null

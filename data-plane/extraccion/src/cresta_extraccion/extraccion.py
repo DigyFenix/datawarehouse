@@ -25,11 +25,11 @@ from .catalogo import (
 )
 from .config import credenciales_origen
 from .destino_bronze import escribir
-from .fuentes import odoo_postgres, sap_b1
+from .fuentes import odoo_postgres, sap_b1, sap_b1_mssql
 
 log = structlog.get_logger()
 
-MOTORES = {"hana", "postgres"}
+MOTORES = {"hana", "sqlserver", "postgres"}
 
 # Tamaño del lote al encadenar la tabla hija por la clave del padre. Evita un IN
 # con decenas de miles de literales, que algunos motores rechazan o resuelven mal.
@@ -127,6 +127,11 @@ def extraer_objeto(
     if origen.motor == "hana":
         fuente = sap_b1
         conn = sap_b1.conectar(origen.host, origen.puerto, usuario, clave_acceso)
+    elif origen.motor == "sqlserver":
+        # SAP sobre SQL Server: mismo ERP, otro motor. esquema_origen = BASE de la sociedad
+        # (SBO_XXX) y se consulta [base].dbo.[tabla]; los nombres SAP son canónicos.
+        fuente = sap_b1_mssql
+        conn = sap_b1_mssql.conectar(origen.host, origen.puerto, usuario, clave_acceso)
     else:
         fuente = odoo_postgres
         conn = odoo_postgres.conectar(
@@ -151,6 +156,21 @@ def extraer_objeto(
 
         for indice, tabla in enumerate(tablas):
             cols = [campo for (t, campo) in incluidos if t.lower() == tabla.lower()]
+            if not cols:
+                continue
+
+            # Los campos se configuran por ORGANIZACIÓN, pero las columnas reales varían por
+            # SOCIEDAD (los UDF de Proavisa no existen en los schemas de las demás empresas).
+            # Se extrae la intersección; lo ausente llega NULL al canónico (Bronce es jsonb),
+            # que es exactamente lo que significa "esta sociedad no captura ese campo".
+            existentes = fuente.columnas_existentes(conn, origen.esquema_origen, tabla)
+            ausentes = [c for c in cols if c not in existentes]
+            if ausentes:
+                log.warning(
+                    "extraer.columnas_ausentes", sociedad=empresa_id, tabla=tabla,
+                    columnas=ausentes,
+                )
+                cols = [c for c in cols if c in existentes]
             if not cols:
                 continue
 

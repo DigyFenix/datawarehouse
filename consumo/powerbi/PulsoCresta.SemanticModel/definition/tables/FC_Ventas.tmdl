@@ -1,0 +1,397 @@
+table FC_Ventas
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column cliente_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cliente_clave
+
+	column socio_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: socio_clave
+
+	column direccion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: direccion_clave
+
+	column producto_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: producto_clave
+
+	column vendedor_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: vendedor_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column almacen_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: almacen_clave
+
+	column moneda_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: moneda_clave
+
+	column cuenta_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cuenta_clave
+
+	column centro_costo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: centro_costo_clave
+
+	column tipo_documento_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tipo_documento_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column documento_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: documento_id
+
+	column documento_numero
+		dataType: string
+		summarizeBy: none
+		sourceColumn: documento_numero
+
+	column serie_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: serie_codigo
+
+	column tipo_documento_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_documento_origen
+
+	column referencia_externa
+		dataType: string
+		summarizeBy: none
+		sourceColumn: referencia_externa
+
+	column linea_numero
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: linea_numero
+		formatString: #,0
+
+	column tipo_documento
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_documento
+
+	column fecha_documento
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_documento
+		formatString: dd/MM/yyyy
+
+	column cantidad
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: cantidad
+		formatString: #,0.00
+
+	column monto_sin_impuesto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_sin_impuesto
+		formatString: #,0.00
+
+	column monto_impuesto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_impuesto
+		formatString: #,0.00
+
+	column monto_con_impuesto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_con_impuesto
+		formatString: #,0.00
+
+	column monto_sin_impuesto_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_sin_impuesto_doc
+		formatString: #,0.00
+
+	column monto_impuesto_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_impuesto_doc
+		formatString: #,0.00
+
+	column monto_con_impuesto_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_con_impuesto_doc
+		formatString: #,0.00
+
+	column monto_descuento
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_descuento
+		formatString: #,0.00
+
+	column descuento_pct
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: descuento_pct
+		formatString: 0.0"%"
+
+	column costo
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: costo
+		formatString: #,0.00
+
+	column margen
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: margen
+		formatString: #,0.00
+
+	column saldo_pendiente
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente
+		formatString: #,0.00
+
+	column estado_pago
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado_pago
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Base de todo: venta sin impuestos en MONEDA DE PRESENTACIÓN (consolidable entre sociedades), con la nota de crédito ya en negativo. Una sociedad sin tasa válida no suma aquí (regla: sin tipo de cambio, no se consolida).
+	measure 'Ventas netas' = SUM(FC_Ventas[monto_sin_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Ventas netas con IVA' = SUM(FC_Ventas[monto_con_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Ventas brutas' = CALCULATE([Ventas netas], 'DM_Tipo de documento'[tipo_documento] = "factura")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure Devoluciones = ABS(CALCULATE([Ventas netas], 'DM_Tipo de documento'[tipo_documento] = "nota_credito"))
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Impuesto facturado' = SUM(FC_Ventas[monto_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Descuento otorgado' = SUM(FC_Ventas[monto_descuento])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure '% Descuento' = DIVIDE([Descuento otorgado], [Ventas netas] + [Descuento otorgado])
+		formatString: 0.0%
+		displayFolder: 01 Importes
+
+	/// Saldo pendiente de las facturas visibles, prorrateado por línea (suma = saldo del documento). INFORMATIVO: la cartera oficial sale del mayor.
+	measure 'Saldo de facturas' = SUM(FC_Ventas[saldo_pendiente])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// El mercado real. La venta al grupo no compite por precio: mezclarla distorsiona todo indicador comercial.
+	measure 'Ventas a terceros' = CALCULATE([Ventas netas], DM_Cliente[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 02 Terceros vs grupo
+
+	measure 'Ventas al grupo' = CALCULATE([Ventas netas], DM_Cliente[es_intercompania] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 02 Terceros vs grupo
+
+	measure '% Venta al grupo' = DIVIDE([Ventas al grupo], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 02 Terceros vs grupo
+
+	measure 'Unidades vendidas' = SUM(FC_Ventas[cantidad])
+		formatString: #,0
+		displayFolder: 03 Conteos
+
+	measure 'Líneas de venta' = COUNTROWS(FC_Ventas)
+		formatString: #,0
+		displayFolder: 03 Conteos
+
+	measure 'Documentos de venta' = DISTINCTCOUNT(FC_Ventas[documento_id])
+		formatString: #,0
+		displayFolder: 03 Conteos
+
+	measure 'Clientes con venta' = CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), FC_Ventas[monto_sin_impuesto] <> 0)
+		formatString: #,0
+		displayFolder: 03 Conteos
+
+	measure 'Productos vendidos' = DISTINCTCOUNT(FC_Ventas[producto_clave])
+		formatString: #,0
+		displayFolder: 03 Conteos
+
+	measure 'Ticket promedio' = DIVIDE([Ventas netas], [Documentos de venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	measure 'Precio promedio unidad' = DIVIDE([Ventas netas], [Unidades vendidas])
+		formatString: "Q" #,0.00
+		displayFolder: 04 Promedios
+
+	measure 'Venta promedio por línea' = DIVIDE([Ventas netas], [Líneas de venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	/// Promedio sobre los días que SÍ hubo venta: no diluye con domingos y feriados.
+	measure 'Venta promedio diaria' = DIVIDE([Ventas netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas))
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	measure 'Venta promedio por cliente' = DIVIDE([Ventas netas], [Clientes con venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	measure 'Costo de ventas' = SUM(FC_Ventas[costo])
+		formatString: "Q" #,0
+		displayFolder: 05 Rentabilidad
+
+	measure 'Margen bruto' = SUM(FC_Ventas[margen])
+		formatString: "Q" #,0
+		displayFolder: 05 Rentabilidad
+
+	measure '% Margen' = DIVIDE([Margen bruto], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 05 Rentabilidad
+
+	/// El margen de mercado. Incluir la venta al grupo, que no compite por precio, infla el indicador.
+	measure '% Margen terceros' = DIVIDE(CALCULATE([Margen bruto], DM_Cliente[es_intercompania] = FALSE), [Ventas a terceros])
+		formatString: 0.0%
+		displayFolder: 05 Rentabilidad
+
+	/// Mismo período del mes anterior (respeta el filtro de fechas del visual).
+	measure 'Ventas mes anterior' = CALCULATE([Ventas netas], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	measure 'Ventas año anterior' = CALCULATE([Ventas netas], DATEADD(DM_Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Acumulado del mes en curso hasta el último día con datos del filtro.
+	measure 'Ventas acumuladas mes' = TOTALMTD([Ventas netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	measure 'Ventas acumuladas trimestre' = TOTALQTD([Ventas netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	measure 'Ventas acumuladas año' = TOTALYTD([Ventas netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// El acumulado del año PASADO al mismo corte: el comparable correcto del YTD.
+	measure 'Ventas acumuladas año anterior' = CALCULATE(TOTALYTD([Ventas netas], DM_Calendario[fecha]), DATEADD(DM_Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	measure 'Variación vs mes anterior' = DIVIDE([Ventas netas] - [Ventas mes anterior], [Ventas mes anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 06 Comparativos
+
+	measure 'Variación vs año anterior' = DIVIDE([Ventas netas] - [Ventas año anterior], [Ventas año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 06 Comparativos
+
+	measure 'Variación acumulada vs año anterior' = DIVIDE([Ventas acumuladas año] - [Ventas acumuladas año anterior], [Ventas acumuladas año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 06 Comparativos
+
+	/// Promedio MENSUAL de los últimos 3 meses: alisa el diente de sierra de la facturación. (Iterar días con DATESINPERIOD daba un promedio diario disfrazado de mensual.)
+	measure 'Media móvil 3 meses' = CALCULATE(AVERAGEX(VALUES(DM_Calendario[anio_mes]), [Ventas netas]), DATESINPERIOD(DM_Calendario[fecha], MAX(DM_Calendario[fecha]), -3, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Año móvil: los últimos 12 meses completos desde el corte. Quita la estacionalidad del calendario.
+	measure 'Ventas 12 meses móviles' = CALCULATE([Ventas netas], DATESINPERIOD(DM_Calendario[fecha], MAX(DM_Calendario[fecha]), -12, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+
+	/// Venta de líneas sin artículo (servicios, fletes, gastos) — el miembro SERVICIO de Producto.
+	measure 'Ventas de servicios' = CALCULATE([Ventas netas], DM_Producto[producto_codigo] = "SERVICIO")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Posición del cliente ordenado por venta a terceros, dentro del filtro vigente.
+	measure 'Ranking de cliente por venta' = RANKX(ALLSELECTED(DM_Cliente), [Ventas a terceros])
+		formatString: #,0
+		displayFolder: 07 Pareto
+
+	/// Curva de Pareto: % de la venta a terceros que acumulan este cliente y los mayores que él.
+	measure '% acumulado de venta clientes' = VAR actual = [Ventas a terceros] RETURN DIVIDE(SUMX(FILTER(ALLSELECTED(DM_Cliente), [Ventas a terceros] >= actual), [Ventas a terceros]), CALCULATE([Ventas a terceros], ALLSELECTED(DM_Cliente)))
+		formatString: 0.0%
+		displayFolder: 07 Pareto
+
+	measure 'Ranking de producto por venta' = RANKX(ALLSELECTED(DM_Producto), [Ventas netas])
+		formatString: #,0
+		displayFolder: 07 Pareto
+
+	/// Curva de Pareto de productos sobre la venta neta.
+	measure '% acumulado de venta productos' = VAR actual = [Ventas netas] RETURN DIVIDE(SUMX(FILTER(ALLSELECTED(DM_Producto), [Ventas netas] >= actual), [Ventas netas]), CALCULATE([Ventas netas], ALLSELECTED(DM_Producto)))
+		formatString: 0.0%
+		displayFolder: 07 Pareto
+
+	partition FC_Ventas = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_venta_linea"]}[Data]
+				in
+				    Tabla

@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.produccion.example
 *.pem
 *.key
 secrets.*
@@ -32,6 +33,10 @@ logs/
 # Docker (datos persistentes locales)
 infra/local/data/
 pgdata/
+
+# Producción: respaldos y datos de Caddy — nunca versionar
+infra/produccion/backups/
+infra/produccion/caddy_data/
 
 # Power BI: el PBIP (TMDL en texto) SÍ se versiona; lo demás no.
 # - .pbix es binario propietario y se regenera abriendo el PBIP en Desktop.

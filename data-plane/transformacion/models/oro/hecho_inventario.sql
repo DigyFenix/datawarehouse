@@ -16,12 +16,16 @@ select
     current_date                                      as fecha_corte,
 
     i.cantidad,
-    i.costo_promedio,
-    i.valor,
+    -- Moneda de PRESENTACIÓN (la existencia es FOTO → tasa vigente hoy). El inventario no
+    -- tiene eje de moneda de documento; el eje local vive en Plata.
+    (i.costo_promedio / tp.tasa)::numeric(18,6)       as costo_promedio,
+    (i.valor / tp.tasa)::numeric(18,4)                as valor,
 
     i.proceso_transformacion,
     i.version_proceso
 from {{ ref('plata_inventario') }} i
+left join {{ ref('plata_tasa_presentacion') }} tp
+       on tp.empresa_id = i.empresa_id and tp.fecha = current_date
 left join {{ ref('dim_producto') }} dp
        on dp.producto_codigo = i.producto_codigo and dp.empresa_id = i.empresa_id
 left join {{ ref('dim_almacen') }} da

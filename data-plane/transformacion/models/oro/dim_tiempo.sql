@@ -67,10 +67,15 @@ enriquecido as (
              else b.anio end                                  as anio_fiscal,
         case when {{ inicio_fiscal }} = 1 then b.mes
              else ((b.mes - {{ inicio_fiscal }} + 12) % 12) + 1 end as mes_fiscal,
-        -- Día hábil = lunes a viernes. (Los feriados de Guatemala se añaden después, cuando
-        -- exista el calendario oficial del cliente.)
-        b.dia_semana_num <= 5                                 as es_dia_habil
+        f.nombre                                              as feriado_nombre,
+        f.fecha is not null and not coalesce(f.es_medio_dia, false) as es_feriado,
+        coalesce(f.es_medio_dia, false)                       as es_medio_dia,
+        -- Día hábil = lunes a viernes que no es feriado completo (seed feriados_guatemala).
+        -- El medio día (24/31 dic) cuenta como hábil: se opera, aunque menos horas.
+        b.dia_semana_num <= 5
+          and not (f.fecha is not null and not coalesce(f.es_medio_dia, false)) as es_dia_habil
     from base b
+    left join {{ ref('feriados_guatemala') }} f on f.fecha = b.fecha
 )
 
 select
@@ -106,7 +111,10 @@ select
 
     -- ---------- banderas de tipo de día ----------
     es_dia_habil,
-    not es_dia_habil                                          as es_fin_semana,
+    dia_semana_num > 5                                        as es_fin_semana,
+    es_feriado,
+    feriado_nombre,
+    es_medio_dia,
 
     -- ---------- límites de período (para acumulados y cierres) ----------
     primer_dia_mes,
@@ -123,6 +131,8 @@ select
     fecha = current_date                                      as es_hoy,
     fecha < current_date                                      as es_pasado,
     date_trunc('month', fecha) = date_trunc('month', current_date)   as es_mes_actual,
+    date_trunc('quarter', fecha)
+        = date_trunc('quarter', current_date)                 as es_trimestre_actual,
     anio = extract(year from current_date)::int               as es_anio_actual,
     date_trunc('month', fecha)
         = date_trunc('month', current_date - interval '1 month')     as es_mes_anterior,

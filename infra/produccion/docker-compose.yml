@@ -1,0 +1,165 @@
+# =====================================================================
+# Producción — VPS único con Docker Compose
+# Postgres (control + tenants) + portal admin + portal de usuario + worker
+# + Caddy (TLS automático, 2 dominios) + respaldos diarios.
+#
+# Valores sensibles en .env JUNTO A ESTE ARCHIVO (copiar de
+# .env.produccion.example). Ver RUNBOOK.md para aprovisionamiento,
+# firewall (5432) y migración de datos local → VPS.
+# =====================================================================
+name: pulso-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # scram-sha-256 para todas las conexiones (RUNBOOK: pg_hba y contraseñas fuertes).
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    # 5432 expuesto SOLO para la ingesta on-prem de Cresta: el firewall del VPS
+    # (ufw) debe limitarlo a su IP pública. Ver RUNBOOK §4.
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Sin scripts de init: en producción las bases llegan por pg_restore
+      # (RUNBOOK §6). El metadata-store queda montado para aplicar DDL nuevo.
+      - ../../metadata-store:/opt/metadata-store:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Portal ADMIN (plano de control) ---
+  api-admin:
+    build:
+      context: ../../control-plane/api
+    container_name: prod-api-admin
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_PORT: 3001
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRA_EN: ${JWT_EXPIRA_EN:-8h}
+      PORTAL_ADMIN_EMAIL: ${PORTAL_ADMIN_EMAIL}
+      PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD}
+      WORKER_URL: http://worker:3010
+      WORKER_TIMEOUT_MS: ${WORKER_TIMEOUT_MS:-1800000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web-admin:
+    build:
+      context: ../../control-plane/portal
+    container_name: prod-web-admin
+    restart: unless-stopped
+    depends_on:
+      - api-admin
+
+  # --- Portal de USUARIO (consumo) ---
+  api-usuario:
+    build:
+      context: ../../consumo/portal/api
+    container_name: prod-api-usuario
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORTAL_USUARIO_PORT: 3002
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Rol DEDICADO del portal de usuario (RUNBOOK §5): SELECT sobre
+      # gobierno.organizaciones + permisos sobre el esquema portal de cada tenant.
+      POSTGRES_USER: ${PORTAL_DB_USER}
+      POSTGRES_PASSWORD: ${PORTAL_DB_PASSWORD}
+      PORTAL_JWT_SECRET: ${PORTAL_JWT_SECRET}
+      PORTAL_JWT_EXPIRA_EN: ${PORTAL_JWT_EXPIRA_EN:-8h}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web-usuario:
+    build:
+      context: ../../consumo/portal/web
+    container_name: prod-web-usuario
+    restart: unless-stopped
+    depends_on:
+      - api-usuario
+
+  # --- Worker del plano de datos ---
+  # En el VPS solo extrae orígenes alcanzables por internet (Iron Network).
+  # La ingesta de Cresta corre ON-PREM en su red, apuntando al Postgres del VPS.
+  worker:
+    build:
+      context: ../../data-plane/extraccion
+    container_name: prod-worker
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      HANA_USER: ${HANA_USER:-}
+      HANA_PASSWORD: ${HANA_PASSWORD:-}
+      ODOO_USER: ${ODOO_USER:-}
+      ODOO_PASSWORD: ${ODOO_PASSWORD:-}
+      DBT_PROJECT_DIR: /dbt
+      DBT_PROFILES_DIR: /tmp/dbt
+    volumes:
+      - ../../data-plane/transformacion:/dbt
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # --- Reverse proxy con TLS automático (Let's Encrypt) ---
+  caddy:
+    image: caddy:2-alpine
+    container_name: prod-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web-admin
+      - web-usuario
+
+  # --- Respaldos diarios (pg_dump -Fc de la base de control y cada dw_*) ---
+  respaldo:
+    image: postgres:16-alpine
+    container_name: prod-respaldo
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BASE_CONTROL: ${POSTGRES_DB}
+      RETENCION_DIAS: ${RESPALDO_RETENCION_DIAS:-14}
+    volumes:
+      - ./backups:/backups
+      - ./respaldo.sh:/usr/local/bin/respaldo.sh:ro
+    # `sh <script>` en vez de ejecutarlo directo: el bind mount no garantiza el bit de ejecución.
+    entrypoint: ["/bin/sh", "-c", "while true; do sh /usr/local/bin/respaldo.sh; sleep 86400; done"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

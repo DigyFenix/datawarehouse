@@ -15,6 +15,7 @@ import { HealthController } from './health/health.controller';
 import { IngestaModule } from './ingesta/ingesta.module';
 import { MetricasModule } from './metricas/metricas.module';
 import { OrganizacionesModule } from './organizaciones/organizaciones.module';
+import { PortalOrgModule } from './portal-org/portal-org.module';
 import { SociedadesModule } from './sociedades/sociedades.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
@@ -32,6 +33,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     UsuariosModule,
     AccesoModule,
     OrganizacionesModule,
+    PortalOrgModule,
     GlosarioModule,
     MetricasModule,
     IngestaModule,

@@ -5,6 +5,7 @@ description = "Extracción read-only SAP Business One / HANA -> Bronze (Postgres
 requires-python = ">=3.10"
 dependencies = [
   "hdbcli>=2.19",           # driver oficial SAP HANA (read-only)
+  "pymssql>=2.2",           # SAP B1 sobre SQL Server (read-only)
   "psycopg[binary]>=3.1",   # escritura a Bronze (Postgres)
   "pydantic>=2.6",
   "pydantic-settings>=2.2", # config desde .env (equivalente a Zod para entradas externas)

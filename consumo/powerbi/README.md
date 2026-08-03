@@ -7,8 +7,18 @@ Un proyecto por organización, generado desde el esquema `oro` de su base:
 | `PulsoCresta.pbip` | `dw_grupocresta` | Grupo Cresta (SAP B1 / HANA) |
 | `PulsoIronNetwork.pbip` | `dw_ironnetwork` | Iron Network (Odoo 18) |
 
-Cada uno trae **23 tablas, 61 relaciones y 122 medidas DAX** ya definidas, más el grupo de
-cálculo **«Moneda de análisis»** (Quetzales ↔ moneda original del documento).
+Cada uno trae **32 tablas, 92 relaciones y 180 medidas DAX** ya definidas, más el grupo de
+cálculo **«Moneda de análisis»** (Quetzales ↔ moneda original del documento). Además de las
+dimensiones por rol (Cliente / Proveedor), el modelo incluye **`DM_Socio de negocio`**: la
+vista consolidada de la maestra (unificada por NIT vía `socio_unificado`) relacionada a los
+hechos por `socio_clave`, para el análisis 360° de un socio sin perder los rieles del rol.
+
+Las tablas llevan **prefijo de rol** para que el usuario identifique en el panel de campos qué
+tabla filtra y qué tabla mide: `DM_` dimensión · `FC_` hecho · `MD_` solo medidas (el grupo de
+cálculo). Los prefijos los aplica `generar_pbip.py`; las expresiones DAX del generador se
+mantienen con los nombres legibles y las referencias se renombran al generar.
+*PulsoCresta ya está regenerado con esta convención; PulsoIronNetwork la toma en su próxima
+regeneración.*
 
 ---
 
@@ -90,32 +100,29 @@ Por eso hay pares de medidas — `Saldo por cobrar` / `Saldo por cobrar terceros
 
 ## Las páginas
 
-Tres páginas, 35 visuales. El hilo es el mismo del análisis: **la cartera no se puede leer sin
+Cinco páginas, 99 visuales. El hilo es el mismo del análisis: **la cartera no se puede leer sin
 separar el saldo del grupo**.
 
-### 1 · Pulso
+### 1 · Pulso (portada)
 
-Ocho tarjetas y dos gráficos. Arriba las cifras del período (ventas, margen, compras, posición
-neta); debajo la fila que importa: **por cobrar a terceros** contra **por cobrar al grupo**, los
-días de cartera reales y el margen de terceros.
+La página de venta. Banda hero marina con los segmentadores de **Trimestre** (abre
+preseleccionado en el **trimestre en curso** — la selección se recalcula al regenerar, sin
+fechas quemadas) y **Empresa**. Debajo, cinco tarjetas compuestas construidas en capas con
+visuales nativos (panel + acento de color + valor + variación): venta del trimestre vs año
+anterior, acumulado del año, margen de terceros, por cobrar a terceros y posición neta.
 
-- **Antigüedad de la cartera** — barras agrupadas por rango, partidas en azul (terceros) y naranja
-  (grupo). Es el visual que hace evidente de un golpe que la mora se concentra en el saldo de casa.
-- **Venta neta por día** — deja ver el patrón semanal y el disparo del cierre de mes.
+- Las tarjetas de cartera usan las medidas **«hoy»** (`REMOVEFILTERS` del calendario): el saldo
+  es una **foto**, no un flujo — recortarlo al trimestre ocultaría la mora vieja.
+- **¿Quién debe la cartera?** — columnas agrupadas por antigüedad, azul (terceros) vs naranja
+  (grupo): el visual que revela de un golpe que la mora se concentra en el saldo de casa.
+- **El ritmo del trimestre** — venta por día con su media móvil de 30 días.
+- Abajo: dona terceros vs grupo, top 7 clientes del trimestre y resultado por sociedad.
 
-### 2 · Cartera
+### 2 · Ventas y rentabilidad — 3 · Clientes ABC — 4 · Cartera — 5 · Compras
 
-Quién debe y desde cuándo. Tabla de saldo por cliente ordenada de mayor a menor (con la columna
-que dice si es del grupo), saldo por antigüedad, y **mayor saldo vencido por cliente en rojo** —
-ahí aparecen los dos clientes con el saldo íntegramente vencido.
-
-### 3 · Ventas y rentabilidad
-
-Ventas a terceros contra ventas al grupo, y los dos márgenes lado a lado: el total y el de
-terceros. Abajo, venta por producto, margen por cliente y venta por día de semana.
-
-**Segmentadores** en las tres páginas: período (`anio_mes`) y **¿Es empresa del grupo?**. Ese
-segundo filtro es el que permite ver el negocio con y sin intercompañía en un clic.
+Las páginas de análisis: venta mensual con media móvil y desempeño por vendedor; el catálogo
+ABC con el Pareto de clientes; antigüedad de cobrar/pagar con deudores y acreedores; y compras
+por proveedor, producto y centro de costo.
 
 > Las páginas se generan con `generar_reporte.py`. Un `report.json` son miles de líneas de JSON
 > anidado y escapado (el `config` de cada visual es un JSON *dentro* del JSON): escribirlo a mano
@@ -153,6 +160,25 @@ y los dashboards se construyen en **otro archivo** conectado en vivo a ese model
 (Obtener datos → *Modelos semánticos de Power BI*). Así, cuando el modelo se regenere y se
 vuelva a publicar, los tableros toman las medidas nuevas **sin perder ningún análisis**: el
 análisis vive en un archivo que nadie regenera.
+
+## Publish to Web (portal de usuario) — reglas verificadas
+
+Los dashboards se publican con **Publish to Web** y se dan de alta en el portal admin
+(módulo Portal usuario) para que el portal de usuario los muestre por perfil. **Riesgo
+aceptado:** la URL es pública y sin RLS; el portal solo controla quién la ve y audita cada
+apertura. Restricciones de Microsoft que condicionan el flujo:
+
+1. **Modelo y dashboards en el MISMO workspace.** Un informe conectado a un modelo semántico
+   de otro workspace NO se puede publicar a la web.
+2. **Toda medida vive en el MODELO** (regenerar PBIP), nunca en el archivo del dashboard —
+   los informes con medidas a nivel de informe no son compatibles con Publish to Web.
+3. No usar: RLS, DirectQuery, visuales R/Python, informes paginados.
+4. **Validar con un embed code de prueba** antes de construir todos los dashboards.
+5. Requisitos: licencia **Pro** de quien publica + tenant setting *Publish to web* habilitado
+   (admin de Fabric). Un embed code por informe.
+6. **Refresco:** el modelo importado contra Postgres requiere un **on-premises data gateway**
+   (Windows, gratuito, con salida al Postgres del VPS) para el refresco programado; al
+   refrescar, el caché público (~1 h) se limpia solo. No abusar de la frecuencia.
 
 ---
 

@@ -13,11 +13,11 @@ import structlog
 from . import diccionario
 from .catalogo import ConfigPostgres, resolver_origen, tablas_de_objeto, upsert_campos
 from .config import credenciales_origen
-from .fuentes import odoo_postgres, sap_b1
+from .fuentes import odoo_postgres, sap_b1, sap_b1_mssql
 
 log = structlog.get_logger()
 
-MOTORES = {"hana", "postgres"}
+MOTORES = {"hana", "sqlserver", "postgres"}
 
 
 def descubrir(
@@ -47,6 +47,10 @@ def descubrir(
     if origen.motor == "hana":
         fuente = sap_b1
         conn = sap_b1.conectar(origen.host, origen.puerto, usuario, clave)
+    elif origen.motor == "sqlserver":
+        # SAP sobre SQL Server: mismo ERP, otro motor. esquema_origen = BASE de la sociedad.
+        fuente = sap_b1_mssql
+        conn = sap_b1_mssql.conectar(origen.host, origen.puerto, usuario, clave)
     else:
         fuente = odoo_postgres
         conn = odoo_postgres.conectar(

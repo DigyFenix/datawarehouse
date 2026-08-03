@@ -143,6 +143,21 @@ table Calendario
 		summarizeBy: none
 		sourceColumn: es_fin_semana
 
+	column es_feriado
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_feriado
+
+	column feriado_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: feriado_nombre
+
+	column es_medio_dia
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_medio_dia
+
 	column primer_dia_mes
 		dataType: dateTime
 		summarizeBy: none

@@ -187,6 +187,7 @@ export class LayoutComponent implements OnInit {
     { ruta: '/sociedades', etiqueta: 'Sociedades', icono: 'M3 21h18M9 8h1m-1 4h1m4-4h1m-1 4h1M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16' },
     { ruta: '/ingesta', etiqueta: 'Ingesta', icono: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96 12 12.01l8.73-5.05 M12 22.08V12' },
     { ruta: '/canonico', etiqueta: 'Modelo canónico', icono: 'M4 7V4h16v3M9 20h6M12 4v16' },
+    { ruta: '/portal-usuario', etiqueta: 'Portal usuario', icono: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5zM8 21h8M12 17v4' },
     { ruta: '/auditoria', etiqueta: 'Auditoría', icono: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
   ];
 

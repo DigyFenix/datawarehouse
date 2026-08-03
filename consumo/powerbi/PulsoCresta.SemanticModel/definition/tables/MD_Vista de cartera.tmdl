@@ -1,0 +1,39 @@
+table 'MD_Vista de cartera'
+
+	column 'Vista de cartera'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Vista de cartera · orden'
+		relatedColumnDetails
+			groupByColumn: 'Vista de cartera · campo'
+
+	column 'Vista de cartera · campo'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value2]
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+	column 'Vista de cartera · orden'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value3]
+
+	partition 'MD_Vista de cartera' = calculated
+		mode: import
+		source =
+				{
+				  ("Saldo por cobrar", NAMEOF('FC_Cartera por cobrar'[Saldo por cobrar]), 0),
+				  ("Saldo por cobrar terceros", NAMEOF('FC_Cartera por cobrar'[Saldo por cobrar terceros]), 1),
+				  ("Saldo vencido terceros", NAMEOF('FC_Cartera por cobrar'[Saldo vencido terceros]), 2),
+				  ("% Vencido terceros", NAMEOF('FC_Cartera por cobrar'[% Vencido terceros]), 3),
+				  ("Días de cartera terceros", NAMEOF('FC_Cartera por cobrar'[Días de cartera terceros]), 4),
+				  ("Saldo por pagar", NAMEOF('FC_Cartera por pagar'[Saldo por pagar]), 5),
+				  ("Posición neta", NAMEOF('FC_Cartera por pagar'[Posición neta]), 6)
+				}

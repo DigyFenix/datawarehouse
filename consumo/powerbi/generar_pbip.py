@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -23,10 +24,12 @@ for _p in [Path.cwd(), *Path.cwd().parents]:
 
 # ---------------------------------------------------------------- qué entra al modelo
 DIMENSIONES = [
-    "dim_tiempo", "dim_cliente", "dim_proveedor", "dim_producto", "dim_vendedor",
+    "dim_tiempo", "dim_cliente", "dim_proveedor", "dim_socio_negocio", "dim_direccion",
+    "dim_producto", "dim_vendedor",
     "dim_organizacion", "dim_almacen", "dim_moneda", "dim_cuenta", "dim_centro_costo",
     "dim_tipo_documento", "dim_rango_aging", "clasificacion_abc_cliente",
-    "clasificacion_abc_proveedor",
+    "clasificacion_abc_proveedor", "clasificacion_rfm_cliente",
+    "comportamiento_pago_cliente",
 ]
 HECHOS = [
     "hecho_venta_linea", "hecho_compra_linea",
@@ -34,6 +37,8 @@ HECHOS = [
     "hecho_cartera_cobrar_diaria", "hecho_cartera_pagar_diaria",
     "hecho_pago_recibido", "hecho_pago_efectuado", "hecho_inventario",
     "tipo_cambio", "campo_usuario",
+    "metrica_venta_diaria", "proyeccion_caja_semanal",
+    "hecho_pedido_linea", "hecho_movimiento_contable",
 ]
 
 # Formato de moneda local: quetzales sin decimales. Las medidas de importe lo llevan TODAS;
@@ -44,11 +49,19 @@ FMT_Q = '"Q" #,0'
 # Nombres amigables: el usuario de negocio no debería ver `hecho_` ni `dim_`.
 ETIQUETA = {
     "dim_tiempo": "Calendario", "dim_cliente": "Cliente", "dim_proveedor": "Proveedor",
+    "dim_socio_negocio": "Socio de negocio",
+    "dim_direccion": "Dirección de entrega",
     "dim_producto": "Producto", "dim_vendedor": "Vendedor", "dim_organizacion": "Empresa",
     "dim_almacen": "Bodega", "dim_moneda": "Moneda", "dim_cuenta": "Cuenta contable",
     "dim_centro_costo": "Centro de costo", "dim_tipo_documento": "Tipo de documento",
     "dim_rango_aging": "Antigüedad", "clasificacion_abc_cliente": "Clasificación ABC",
     "clasificacion_abc_proveedor": "Clasificación ABC Proveedor",
+    "clasificacion_rfm_cliente": "Clasificación RFM",
+    "comportamiento_pago_cliente": "Comportamiento de pago",
+    "metrica_venta_diaria": "Venta diaria",
+    "proyeccion_caja_semanal": "Proyección de caja",
+    "hecho_pedido_linea": "Pedidos",
+    "hecho_movimiento_contable": "Resultados contables",
     "hecho_venta_linea": "Ventas", "hecho_compra_linea": "Compras",
     "hecho_cartera_cobrar": "Cartera por cobrar", "hecho_cartera_pagar": "Cartera por pagar",
     "hecho_cartera_cobrar_diaria": "Cartera cobrar histórico",
@@ -57,6 +70,71 @@ ETIQUETA = {
     "hecho_inventario": "Inventario", "tipo_cambio": "Tipo de cambio",
     "campo_usuario": "Campos de usuario",
 }
+
+# Prefijo de rol en el nombre visible: DM_ dimensión, FC_ hecho, MD_ tablas de solo medidas
+# (el grupo de cálculo). Así el usuario distingue en el panel de campos qué tabla filtra (DM_)
+# y qué tabla mide (FC_) sin abrir el modelo.
+ETIQUETA_BASE = dict(ETIQUETA)
+ETIQUETA = {t: ("DM_" if t in DIMENSIONES else "FC_") + e for t, e in ETIQUETA_BASE.items()}
+GRUPO_MONEDA_NOMBRE = "MD_Moneda de análisis"
+
+# Las expresiones DAX de MEDIDAS_POR_TABLA y del grupo de cálculo están escritas con los
+# nombres SIN prefijo (legibles al mantenerlas); las referencias de tabla se renombran al
+# generar. El renombrado es consciente de la sintaxis: no toca el interior de [medidas],
+# "cadenas" ni nombres entre comillas que no sean exactamente una tabla del modelo.
+RENOMBRES_TABLA = {e: ETIQUETA[t] for t, e in ETIQUETA_BASE.items()}
+_RENOMBRES_SIMPLES = [e for e in RENOMBRES_TABLA if " " not in e]
+
+
+def _token_dax(nombre: str) -> str:
+    return f"'{nombre}'" if any(not (c.isalnum() or c == "_") for c in nombre) else nombre
+
+
+def _renombra_segmento(seg: str) -> str:
+    for viejo in _RENOMBRES_SIMPLES:
+        seg = re.sub(rf"\b{viejo}\b", _token_dax(RENOMBRES_TABLA[viejo]), seg)
+    return seg
+
+
+def _renombra_linea(linea: str) -> str:
+    out: list[str] = []
+    seg: list[str] = []
+    i, n = 0, len(linea)
+    while i < n:
+        c = linea[i]
+        cierre = {"'": "'", '"': '"', "[": "]"}.get(c)
+        if cierre:
+            j = linea.find(cierre, i + 1)
+            if j < 0:
+                seg.append(c)
+                i += 1
+                continue
+            out.append(_renombra_segmento("".join(seg)))
+            seg = []
+            if c == "'":
+                contenido = linea[i + 1:j]
+                out.append(f"'{RENOMBRES_TABLA.get(contenido, contenido)}'")
+            else:
+                out.append(linea[i:j + 1])
+            i = j + 1
+        else:
+            seg.append(c)
+            i += 1
+    out.append(_renombra_segmento("".join(seg)))
+    return "".join(out)
+
+
+def renombrar_dax(bloque: str) -> str:
+    """Aplica los prefijos DM_/FC_ a las referencias de tabla dentro de expresiones DAX."""
+    listo = []
+    for linea in bloque.split("\n"):
+        s = linea.strip()
+        # Comentarios /// y propiedades de formato no llevan referencias de tabla.
+        if s.startswith("///") or s.startswith("displayFolder") or s.startswith("formatString"):
+            listo.append(linea)
+        else:
+            listo.append(_renombra_linea(linea))
+    return "\n".join(listo)
 
 TIPOS = {
     "text": "string", "character varying": "string", "character": "string",
@@ -113,6 +191,8 @@ ORDENAR_POR = {
         "dia_semana_corto": "dia_semana_orden", "anio_trimestre": "anio_trimestre_orden",
         "anio_semana": "anio_semana_orden", "mes_anio_etiqueta": "anio_mes_orden",
     },
+    # 'Vencido' debe salir antes que las semanas futuras; el offset relativo al corte lo da.
+    "proyeccion_caja_semanal": {"semana_etiqueta": "semana_offset"},
 }
 
 
@@ -155,6 +235,15 @@ def gen_tabla(tabla: str, cols: list[tuple[str, str]], base: str) -> str:
             L.append(f"\t\tsortByColumn: {orden}")
         L.append("")
 
+    # Jerarquía contable: los 5 niveles homologados de Oro (árbol B1 / segmentos Odoo).
+    # Permite el drill-down "Activo → Corriente → Caja y Bancos → ..." sin que el usuario
+    # arrastre cinco columnas sueltas.
+    if tabla == "dim_cuenta" and "nivel_1_nombre" in {c for c, _ in cols}:
+        L += ["\thierarchy 'Jerarquía contable'"]
+        for niv in range(1, 6):
+            L += [f"\t\tlevel 'Nivel {niv}'", f"\t\t\tcolumn: nivel_{niv}_nombre"]
+        L += [""]
+
     if es_tiempo:
         L += [
             "\thierarchy 'Jerarquía natural'",
@@ -181,7 +270,7 @@ def gen_tabla(tabla: str, cols: list[tuple[str, str]], base: str) -> str:
     # pero agruparlas aquí mantiene el archivo legible al revisarlo en un diff.
     medidas = MEDIDAS_POR_TABLA.get(tabla)
     if medidas:
-        L.append(medidas.strip("\n"))
+        L.append(renombrar_dax(medidas).strip("\n"))
         L.append("")
 
     L += [
@@ -213,12 +302,12 @@ def gen_tabla(tabla: str, cols: list[tuple[str, str]], base: str) -> str:
 MEDIDAS_POR_TABLA: dict[str, str] = {}
 
 MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
-	/// Base de todo: venta sin impuestos, con la nota de crédito ya en negativo.
-	measure 'Ventas netas' = SUM(Ventas[monto_sin_impuesto_local])
+	/// Base de todo: venta sin impuestos en MONEDA DE PRESENTACIÓN (consolidable entre sociedades), con la nota de crédito ya en negativo. Una sociedad sin tasa válida no suma aquí (regla: sin tipo de cambio, no se consolida).
+	measure 'Ventas netas' = SUM(Ventas[monto_sin_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
-	measure 'Ventas netas con IVA' = SUM(Ventas[monto_con_impuesto_local])
+	measure 'Ventas netas con IVA' = SUM(Ventas[monto_con_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -230,11 +319,11 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
-	measure 'Impuesto facturado' = SUM(Ventas[monto_impuesto_local])
+	measure 'Impuesto facturado' = SUM(Ventas[monto_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
-	measure 'Descuento otorgado' = SUM(Ventas[monto_descuento_local])
+	measure 'Descuento otorgado' = SUM(Ventas[monto_descuento])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -243,7 +332,7 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 		displayFolder: 01 Importes
 
 	/// Saldo pendiente de las facturas visibles, prorrateado por línea (suma = saldo del documento). INFORMATIVO: la cartera oficial sale del mayor.
-	measure 'Saldo de facturas' = SUM(Ventas[saldo_pendiente_local])
+	measure 'Saldo de facturas' = SUM(Ventas[saldo_pendiente])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -272,7 +361,7 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 		formatString: #,0
 		displayFolder: 03 Conteos
 
-	measure 'Clientes con venta' = CALCULATE(DISTINCTCOUNT(Ventas[cliente_clave]), Ventas[monto_sin_impuesto_local] <> 0)
+	measure 'Clientes con venta' = CALCULATE(DISTINCTCOUNT(Ventas[cliente_clave]), Ventas[monto_sin_impuesto] <> 0)
 		formatString: #,0
 		displayFolder: 03 Conteos
 
@@ -301,11 +390,11 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
 
-	measure 'Costo de ventas' = SUM(Ventas[costo_local])
+	measure 'Costo de ventas' = SUM(Ventas[costo])
 		formatString: "Q" #,0
 		displayFolder: 05 Rentabilidad
 
-	measure 'Margen bruto' = SUM(Ventas[margen_local])
+	measure 'Margen bruto' = SUM(Ventas[margen])
 		formatString: "Q" #,0
 		displayFolder: 05 Rentabilidad
 
@@ -393,20 +482,21 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 """
 
 MEDIDAS_POR_TABLA["hecho_compra_linea"] = r"""
-	measure 'Compras netas' = SUM(Compras[monto_sin_impuesto_local])
+	/// Compra sin impuestos en MONEDA DE PRESENTACIÓN (consolidable entre sociedades).
+	measure 'Compras netas' = SUM(Compras[monto_sin_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
-	measure 'Compras netas con IVA' = SUM(Compras[monto_con_impuesto_local])
+	measure 'Compras netas con IVA' = SUM(Compras[monto_con_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
-	measure 'Impuesto de compras' = SUM(Compras[monto_impuesto_local])
+	measure 'Impuesto de compras' = SUM(Compras[monto_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
 	/// Saldo pendiente de pago de las facturas de compra, prorrateado por línea. INFORMATIVO: la cartera oficial sale del mayor.
-	measure 'Saldo de facturas de compra' = SUM(Compras[saldo_pendiente_local])
+	measure 'Saldo de facturas de compra' = SUM(Compras[saldo_pendiente])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -434,7 +524,7 @@ MEDIDAS_POR_TABLA["hecho_compra_linea"] = r"""
 		formatString: #,0
 		displayFolder: 03 Conteos
 
-	measure 'Proveedores con compra' = CALCULATE(DISTINCTCOUNT(Compras[proveedor_clave]), Compras[monto_sin_impuesto_local] <> 0)
+	measure 'Proveedores con compra' = CALCULATE(DISTINCTCOUNT(Compras[proveedor_clave]), Compras[monto_sin_impuesto] <> 0)
 		formatString: #,0
 		displayFolder: 03 Conteos
 
@@ -499,8 +589,8 @@ MEDIDAS_POR_TABLA["hecho_compra_linea"] = r"""
 """
 
 MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
-	/// Saldo del MAYOR CONTABLE, no del documento: es el número que el contador reconoce.
-	measure 'Saldo por cobrar' = SUM('Cartera por cobrar'[saldo_pendiente_local])
+	/// Saldo del MAYOR CONTABLE, no del documento, en MONEDA DE PRESENTACIÓN (foto convertida a la tasa vigente).
+	measure 'Saldo por cobrar' = SUM('Cartera por cobrar'[saldo_pendiente])
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
@@ -568,7 +658,7 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
 		displayFolder: 03 Antigüedad
 
 	/// Días vencidos promedio ponderados por saldo: un promedio simple deja que una partida chica de 400 días arruine el indicador.
-	measure 'Días vencido promedio' = DIVIDE(SUMX('Cartera por cobrar', 'Cartera por cobrar'[saldo_pendiente_local] * 'Cartera por cobrar'[dias_vencido]), [Saldo por cobrar])
+	measure 'Días vencido promedio' = DIVIDE(SUMX('Cartera por cobrar', 'Cartera por cobrar'[saldo_pendiente] * 'Cartera por cobrar'[dias_vencido]), [Saldo por cobrar])
 		formatString: #,0.0
 		displayFolder: 04 Riesgo
 
@@ -576,10 +666,27 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
 	measure 'Días de cartera terceros' = DIVIDE([Saldo por cobrar terceros], DIVIDE([Ventas a terceros], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Ventas)))
 		formatString: #,0.0
 		displayFolder: 04 Riesgo
+
+	/// Foto de HOY: ignora el filtro de fechas de la página. El saldo es una foto, no un flujo — recortarlo al trimestre ocultaría las facturas viejas abiertas.
+	measure 'Por cobrar terceros hoy' = CALCULATE([Saldo por cobrar terceros], REMOVEFILTERS(Calendario))
+		formatString: "Q" #,0
+		displayFolder: 05 Foto de hoy
+
+	measure 'Por cobrar grupo hoy' = CALCULATE([Saldo por cobrar grupo], REMOVEFILTERS(Calendario))
+		formatString: "Q" #,0
+		displayFolder: 05 Foto de hoy
+
+	measure 'Vencido terceros hoy' = CALCULATE([Saldo vencido terceros], REMOVEFILTERS(Calendario))
+		formatString: "Q" #,0
+		displayFolder: 05 Foto de hoy
+
+	measure '% Vencido terceros hoy' = DIVIDE([Vencido terceros hoy], [Por cobrar terceros hoy])
+		formatString: 0.0%
+		displayFolder: 05 Foto de hoy
 """
 
 MEDIDAS_POR_TABLA["hecho_cartera_pagar"] = r"""
-	/// En positivo para poder compararlo con la cartera por cobrar sin invertir signos en cada visual.
+	/// En positivo para poder compararlo con la cartera por cobrar sin invertir signos en cada visual. MONEDA DE PRESENTACIÓN.
 	measure 'Saldo por pagar' = SUM('Cartera por pagar'[saldo_pendiente_absoluto])
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
@@ -616,6 +723,15 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] = r"""
 	measure 'Por pagar más de 90' = CALCULATE([Saldo por pagar], 'Antigüedad'[rango_aging] = "+90")
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
+
+	/// Foto de HOY: ignora el filtro de fechas de la página (el saldo es una foto, no un flujo).
+	measure 'Por pagar hoy' = CALCULATE([Saldo por pagar], REMOVEFILTERS(Calendario))
+		formatString: "Q" #,0
+		displayFolder: 04 Foto de hoy
+
+	measure 'Posición neta hoy' = CALCULATE([Posición neta], REMOVEFILTERS(Calendario))
+		formatString: "Q" #,0
+		displayFolder: 04 Foto de hoy
 """
 
 MEDIDAS_POR_TABLA["clasificacion_abc_cliente"] = r"""
@@ -705,9 +821,173 @@ MEDIDAS_POR_TABLA["clasificacion_abc_proveedor"] = r"""
 		displayFolder: 02 Concentración
 """
 
+MEDIDAS_POR_TABLA["clasificacion_rfm_cliente"] = r"""
+	/// Clientes recientes y frecuentes: el núcleo que sostiene la venta. Cuidarlos es más barato que reemplazarlos.
+	measure 'Clientes campeones' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] = "campeon")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes leales' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] = "leal")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Compraban y dejaron de venir. La lista de reactivación con mayor retorno por llamada.
+	measure 'Clientes en riesgo' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// En riesgo Y de monto alto: si solo se va a llamar a alguien, que sea a estos.
+	measure 'Clientes en riesgo valiosos' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] = "en_riesgo_valioso")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes dormidos' = CALCULATE(COUNTROWS('Clasificación RFM'), 'Clasificación RFM'[segmento_rfm] = "dormido")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Venta de 12 meses que está en manos de clientes en riesgo: lo que se pierde si nadie los llama.
+	measure 'Venta 12m en riesgo' = CALCULATE(SUM('Clasificación RFM'[monto_neto_12m]), 'Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+
+	measure 'Venta 12m clasificada' = SUM('Clasificación RFM'[monto_neto_12m])
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+"""
+
+MEDIDAS_POR_TABLA["comportamiento_pago_cliente"] = r"""
+	measure 'Clientes al día' = CALCULATE(COUNTROWS('Comportamiento de pago'), 'Comportamiento de pago'[perfil_riesgo] = "al_dia")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Más de 90 días vencido o más de la mitad del saldo vencido: revisar antes de despachar.
+	measure 'Clientes en vencido crítico' = CALCULATE(COUNTROWS('Comportamiento de pago'), 'Comportamiento de pago'[perfil_riesgo] = "vencido_critico")
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Clientes con saldo vencido' = CALCULATE(COUNTROWS('Comportamiento de pago'), 'Comportamiento de pago'[perfil_riesgo] IN {"vencido_leve", "vencido_moderado", "vencido_critico"})
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	measure 'Saldo en clientes críticos' = CALCULATE(SUM('Comportamiento de pago'[saldo_total]), 'Comportamiento de pago'[perfil_riesgo] = "vencido_critico")
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+
+	/// Del saldo total abierto, cuánto ya venció. El termómetro de la salud de la cartera.
+	measure '% cartera vencida (clientes)' = DIVIDE(SUM('Comportamiento de pago'[saldo_vencido]), SUM('Comportamiento de pago'[saldo_total]))
+		formatString: 0.0%
+		displayFolder: 02 Montos
+"""
+
+MEDIDAS_POR_TABLA["metrica_venta_diaria"] = r"""
+	/// Serie continua (un día sin ventas es un CERO, no un hueco): la única base correcta para tendencias.
+	measure 'Venta diaria neta' = SUM('Venta diaria'[ventas_netas])
+		formatString: "Q" #,0
+		displayFolder: 01 Serie
+
+	measure 'Venta media móvil 7d' = AVERAGEX(DATESINPERIOD('Calendario'[fecha], MAX('Calendario'[fecha]), -7, DAY), CALCULATE(SUM('Venta diaria'[ventas_netas])))
+		formatString: "Q" #,0
+		displayFolder: 01 Serie
+
+	measure 'Venta media móvil 30d' = AVERAGEX(DATESINPERIOD('Calendario'[fecha], MAX('Calendario'[fecha]), -30, DAY), CALCULATE(SUM('Venta diaria'[ventas_netas])))
+		formatString: "Q" #,0
+		displayFolder: 01 Serie
+
+	/// Promedio solo de los días que SÍ se vendió (excluye ceros): el ritmo real de un día operado.
+	measure 'Venta promedio día operado' = AVERAGEX(FILTER('Venta diaria', 'Venta diaria'[es_dia_sin_venta] = FALSE), 'Venta diaria'[ventas_netas])
+		formatString: "Q" #,0
+		displayFolder: 01 Serie
+
+	measure 'Días sin venta' = CALCULATE(COUNTROWS('Venta diaria'), 'Venta diaria'[es_dia_sin_venta] = TRUE)
+		formatString: #,0
+		displayFolder: 02 Actividad
+
+	measure 'Clientes activos por día' = AVERAGEX(FILTER('Venta diaria', 'Venta diaria'[es_dia_sin_venta] = FALSE), 'Venta diaria'[clientes_activos])
+		formatString: #,0
+		displayFolder: 02 Actividad
+"""
+
+MEDIDAS_POR_TABLA["proyeccion_caja_semanal"] = r"""
+	/// Proyección CONTRACTUAL: si cada partida abierta se paga en su vencimiento. No es un pronóstico.
+	measure 'Entradas proyectadas' = CALCULATE(SUM('Proyección de caja'[monto]), 'Proyección de caja'[flujo] = "entrada")
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	measure 'Salidas proyectadas' = CALCULATE(SUM('Proyección de caja'[monto]), 'Proyección de caja'[flujo] = "salida")
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	measure 'Flujo neto proyectado' = [Entradas proyectadas] - [Salidas proyectadas]
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	/// Ya venció y sigue abierto: en teoría es cobrable HOY. La brecha con lo programado mide la gestión de cobro.
+	measure 'Entradas vencidas (exigible)' = CALCULATE(SUM('Proyección de caja'[monto]), 'Proyección de caja'[flujo] = "entrada", 'Proyección de caja'[estado_vencimiento] = "vencido")
+		formatString: "Q" #,0
+		displayFolder: 02 Vencido
+
+	measure 'Salidas vencidas (exigible)' = CALCULATE(SUM('Proyección de caja'[monto]), 'Proyección de caja'[flujo] = "salida", 'Proyección de caja'[estado_vencimiento] = "vencido")
+		formatString: "Q" #,0
+		displayFolder: 02 Vencido
+"""
+
+MEDIDAS_POR_TABLA["hecho_pedido_linea"] = r"""
+	/// Base SIN impuesto de lo pedido en el período. El COMPROMISO, no el resultado (eso es Ventas).
+	measure 'Monto pedido' = SUM(Pedidos[monto_sin_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Pedido
+
+	measure 'Cantidad pedida' = SUM(Pedidos[cantidad])
+		formatString: #,0
+		displayFolder: 01 Pedido
+
+	measure 'Pedidos del período' = DISTINCTCOUNT(Pedidos[pedido_id])
+		formatString: #,0
+		displayFolder: 01 Pedido
+
+	/// Pedido y AÚN no cumplido (líneas abiertas): lo que la operación debe entregar/facturar.
+	measure 'Backlog' = CALCULATE(SUM(Pedidos[monto_abierto]), Pedidos[es_abierta] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 02 Backlog
+
+	measure 'Cantidad pendiente' = CALCULATE(SUM(Pedidos[cantidad_abierta]), Pedidos[es_abierta] = TRUE)
+		formatString: #,0
+		displayFolder: 02 Backlog
+
+	measure 'Líneas abiertas' = CALCULATE(COUNTROWS(Pedidos), Pedidos[es_abierta] = TRUE)
+		formatString: #,0
+		displayFolder: 02 Backlog
+
+	/// De lo pedido, cuánto ya se cumplió (1 − backlog/pedido). El pulso de la operación.
+	measure 'Fill rate' = 1 - DIVIDE([Backlog], [Monto pedido], 0)
+		formatString: 0.0%
+		displayFolder: 02 Backlog
+"""
+
+MEDIDAS_POR_TABLA["hecho_movimiento_contable"] = r"""
+	/// Gasto operativo del MAYOR (cuentas de gasto), con jerarquía de cuenta y centro de costo.
+	measure 'Gasto operativo' = CALCULATE(SUM('Resultados contables'[monto_resultado]), 'Resultados contables'[naturaleza] = "gasto")
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+
+	measure 'Costo (contable)' = CALCULATE(SUM('Resultados contables'[monto_resultado]), 'Resultados contables'[naturaleza] = "costo")
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+
+	/// Ingresos según el LIBRO MAYOR. Cuadra al centavo con Ventas Netas cuando todo ingreso pasa por factura.
+	measure 'Ingresos contables' = CALCULATE(SUM('Resultados contables'[monto_resultado]), 'Resultados contables'[naturaleza] = "ingreso")
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+
+	/// Ingresos − costos − gastos, todo desde el mayor: el resultado operativo contable.
+	measure 'Resultado contable' = [Ingresos contables] - [Costo (contable)] - [Gasto operativo]
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+"""
+
 MEDIDAS_POR_TABLA["hecho_pago_recibido"] = r"""
-	/// Flujo de cobros del período. INFORMATIVO para caja: el saldo de cartera sale del mayor.
-	measure 'Monto cobrado' = SUM('Pagos recibidos'[monto_local])
+	/// Flujo de cobros del período en MONEDA DE PRESENTACIÓN. INFORMATIVO para caja: el saldo de cartera sale del mayor.
+	measure 'Monto cobrado' = SUM('Pagos recibidos'[monto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -747,7 +1027,7 @@ MEDIDAS_POR_TABLA["hecho_pago_recibido"] = r"""
 """
 
 MEDIDAS_POR_TABLA["hecho_pago_efectuado"] = r"""
-	measure 'Monto pagado' = SUM('Pagos efectuados'[monto_local])
+	measure 'Monto pagado' = SUM('Pagos efectuados'[monto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -783,7 +1063,7 @@ MEDIDAS_POR_TABLA["hecho_pago_efectuado"] = r"""
 """
 
 MEDIDAS_POR_TABLA["hecho_inventario"] = r"""
-	/// Valor del inventario a la fecha de corte (SAP: OnHand × costo promedio; Odoo: capas de valoración).
+	/// Valor del inventario a la fecha de corte en MONEDA DE PRESENTACIÓN (SAP: OnHand × costo promedio; Odoo: capas de valoración).
 	measure 'Valor de inventario' = SUM(Inventario[valor])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
@@ -852,7 +1132,7 @@ MEDIDAS_POR_TABLA["tipo_cambio"] = r"""
 #     pasan sin conmutarse.
 # Requiere discourageImplicitMeasures (ya activo) y compatibilityLevel >= 1470 (estamos en 1567).
 # ---------------------------------------------------------------------------------------------
-GRUPO_MONEDA = r"""table 'Moneda de análisis'
+GRUPO_MONEDA = r"""table 'MD_Moneda de análisis'
 
 	calculationGroup
 		precedence: 1
@@ -876,15 +1156,99 @@ GRUPO_MONEDA = r"""table 'Moneda de análisis'
 		summarizeBy: none
 		sourceColumn: Ordinal
 
-	partition 'Moneda de análisis' = calculationGroup
+	partition 'MD_Moneda de análisis' = calculationGroup
 		mode: import
+"""
+
+
+# ---------------------------------------------------------------------------------------------
+# PARÁMETROS DE CAMPO (field parameters): tablas MD_* que se usan como segmentador para que un
+# mismo visual cambie de métrica con un clic (pedido de Edwin: centralizar vistas por montos /
+# % / conteos sin multiplicar visuales). Cada entrada: (nombre sin prefijo, [(medida, tabla
+# física donde vive)]). El orden de la lista es el orden del segmentador.
+# ---------------------------------------------------------------------------------------------
+PARAMETROS_CAMPO: list[tuple[str, list[tuple[str, str]]]] = [
+    ("Vista de ventas", [
+        ("Ventas netas", "hecho_venta_linea"),
+        ("Ventas a terceros", "hecho_venta_linea"),
+        ("Margen bruto", "hecho_venta_linea"),
+        ("% Margen terceros", "hecho_venta_linea"),
+        ("Devoluciones", "hecho_venta_linea"),
+        ("Unidades vendidas", "hecho_venta_linea"),
+        ("Ticket promedio", "hecho_venta_linea"),
+        ("Documentos de venta", "hecho_venta_linea"),
+    ]),
+    ("Vista de cartera", [
+        ("Saldo por cobrar", "hecho_cartera_cobrar"),
+        ("Saldo por cobrar terceros", "hecho_cartera_cobrar"),
+        ("Saldo vencido terceros", "hecho_cartera_cobrar"),
+        ("% Vencido terceros", "hecho_cartera_cobrar"),
+        ("Días de cartera terceros", "hecho_cartera_cobrar"),
+        ("Saldo por pagar", "hecho_cartera_pagar"),
+        ("Posición neta", "hecho_cartera_pagar"),
+    ]),
+    ("Vista de compras", [
+        ("Compras netas", "hecho_compra_linea"),
+        ("Compras a terceros", "hecho_compra_linea"),
+        ("Documentos de compra", "hecho_compra_linea"),
+        ("Compra promedio por documento", "hecho_compra_linea"),
+        ("Proveedores con compra", "hecho_compra_linea"),
+    ]),
+]
+
+
+def gen_parametro_campo(nombre: str, campos: list[tuple[str, str]]) -> str:
+    """TMDL de un parámetro de campo. La estructura (columna visible + columna NAMEOF oculta
+    con extendedProperty ParameterMetadata + columna de orden) es exactamente la que Desktop
+    genera con Modelado → Nuevo parámetro; se produce aquí para que viva en el modelo
+    versionado y no en el archivo de dashboards."""
+    tabla = f"MD_{nombre}"
+    col_campo = f"{nombre} · campo"
+    col_orden = f"{nombre} · orden"
+    filas = ",\n".join(
+        f'\t\t\t\t  ("{medida}", NAMEOF({tmdl_nombre(ETIQUETA[t])}[{medida}]), {i})'
+        for i, (medida, t) in enumerate(campos)
+    )
+    return f"""table '{tabla}'
+
+\tcolumn '{nombre}'
+\t\tdataType: string
+\t\tsummarizeBy: none
+\t\tsourceColumn: [Value1]
+\t\tsortByColumn: '{col_orden}'
+\t\trelatedColumnDetails
+\t\t\tgroupByColumn: '{col_campo}'
+
+\tcolumn '{col_campo}'
+\t\tdataType: string
+\t\tisHidden
+\t\tsummarizeBy: none
+\t\tsourceColumn: [Value2]
+\t\textendedProperty ParameterMetadata =
+\t\t\t\t{{
+\t\t\t\t  "version": 3,
+\t\t\t\t  "kind": 2
+\t\t\t\t}}
+
+\tcolumn '{col_orden}'
+\t\tdataType: int64
+\t\tisHidden
+\t\tsummarizeBy: none
+\t\tsourceColumn: [Value3]
+
+\tpartition '{tabla}' = calculated
+\t\tmode: import
+\t\tsource =
+\t\t\t\t{{
+{filas}
+\t\t\t\t}}
 """
 
 
 PALABRAS = ("table", "column", "measure", "partition", "hierarchy", "level", "relationship",
             "annotation", "ref", "model", "database", "expression", "mode", "source",
             "dataCategory", "culture", "calculationGroup", "calculationItem",
-            "formatStringDefinition")
+            "formatStringDefinition", "relatedColumnDetails")
 
 
 def validar_tmdl(ruta: Path) -> list[str]:
@@ -912,7 +1276,10 @@ def validar_tmdl(ruta: Path) -> list[str]:
             if s.startswith("///") or s.startswith("//"):
                 continue
             primera = s.split()[0].rstrip(":")
-            if primera == "source" or s.startswith("source ="):
+            # Bloques de contenido libre: código M (source), DAX de tabla calculada (los
+            # parámetros de campo) y el JSON de extendedProperty. Cualquier línea vale
+            # mientras esté más indentada que la declaración.
+            if primera in ("source", "extendedProperty") or s.startswith("source ="):
                 en_source, sangria_source = True, sangria
                 continue
             if primera in PALABRAS:
@@ -1043,6 +1410,11 @@ def main() -> int:
 
     problemas_datos = validar_calendario(cur)
 
+    # Se limpian los .tmdl de la corrida anterior: tras el renombrado con prefijos DM_/FC_/MD_,
+    # dejar los archivos con el nombre viejo haría que Desktop cargara cada tabla dos veces.
+    for p in (defi / "tables").glob("*.tmdl"):
+        p.unlink()
+
     presentes, rel_cols = [], {}
     for tabla in DIMENSIONES + HECHOS:
         cols = columnas(cur, tabla)
@@ -1060,7 +1432,19 @@ def main() -> int:
         viejo.unlink()
 
     # Grupo de cálculo de moneda (no sale de oro: es puro modelo).
-    (defi / "tables" / "Moneda de análisis.tmdl").write_text(GRUPO_MONEDA, encoding="utf-8")
+    (defi / "tables" / f"{GRUPO_MONEDA_NOMBRE}.tmdl").write_text(
+        renombrar_dax(GRUPO_MONEDA), encoding="utf-8")
+
+    # Parámetros de campo (segmentador que conmuta la métrica del visual). Solo con medidas
+    # de tablas presentes en esta base.
+    parametros_escritos: list[str] = []
+    for nombre_par, campos_par in PARAMETROS_CAMPO:
+        vivos = [(m, t) for m, t in campos_par if t in presentes]
+        if not vivos:
+            continue
+        (defi / "tables" / f"MD_{nombre_par}.tmdl").write_text(
+            gen_parametro_campo(nombre_par, vivos), encoding="utf-8")
+        parametros_escritos.append(f"MD_{nombre_par}")
 
     # ---------------- limpieza de artefactos de Power BI Desktop ----------------
     # Al abrir el proyecto, Desktop crea una tabla de fechas oculta por cada columna de fecha
@@ -1086,7 +1470,8 @@ def main() -> int:
     # ---------------- relaciones: dimensión 1 → N hecho, dirección simple ----------------
     mapa = [
         ("dim_tiempo", "tiempo_clave"), ("dim_cliente", "cliente_clave"),
-        ("dim_proveedor", "proveedor_clave"), ("dim_producto", "producto_clave"),
+        ("dim_proveedor", "proveedor_clave"), ("dim_socio_negocio", "socio_clave"),
+        ("dim_direccion", "direccion_clave"), ("dim_producto", "producto_clave"),
         ("dim_vendedor", "vendedor_clave"), ("dim_organizacion", "organizacion_clave"),
         ("dim_almacen", "almacen_clave"), ("dim_moneda", "moneda_clave"),
         ("dim_cuenta", "cuenta_clave"), ("dim_centro_costo", "centro_costo_clave"),
@@ -1164,6 +1549,18 @@ def main() -> int:
             "",
         ]
 
+    # RFM y Comportamiento de pago: extensiones 1:1 de la dimensión Cliente, igual que el ABC.
+    for ext in ("clasificacion_rfm_cliente", "comportamiento_pago_cliente"):
+        if ext in presentes and "dim_cliente" in presentes:
+            n += 1
+            rels += [
+                f"relationship rel_{n:03d}",
+                "\tcrossFilteringBehavior: bothDirections",
+                f"\tfromColumn: {tmdl_nombre(ETIQUETA[ext])}.cliente_clave",
+                f"\ttoColumn: {tmdl_nombre(ETIQUETA['dim_cliente'])}.cliente_clave",
+                "",
+            ]
+
     (defi / "relationships.tmdl").write_text("\n".join(rels), encoding="utf-8")
 
     # ---------------- parámetros de conexión ----------------
@@ -1179,7 +1576,9 @@ def main() -> int:
         f"database {proyecto}\n\tcompatibilityLevel: 1567\n", encoding="utf-8")
 
     refs = "\n".join(f"ref table {tmdl_nombre(ETIQUETA.get(t, t))}" for t in presentes)
-    refs += f"\nref table {tmdl_nombre('Moneda de análisis')}"
+    refs += f"\nref table {tmdl_nombre(GRUPO_MONEDA_NOMBRE)}"
+    for nombre_par in parametros_escritos:
+        refs += f"\nref table {tmdl_nombre(nombre_par)}"
     (defi / "model.tmdl").write_text(
         "model Model\n"
         "\tculture: es-GT\n"
@@ -1203,10 +1602,12 @@ def main() -> int:
         "datasetReference": {"byPath": {"path": f"../{proyecto}.SemanticModel"}},
     }, indent=2), encoding="utf-8")
 
-    # SOLO si no existe: regenerar el modelo NUNCA debe pisar las páginas y visuales que el
-    # usuario haya construido (el stub anterior destruía el reporte en cada corrida — así es
-    # como Edwin va a trabajar: el modelo se regenera, sus dashboards se quedan).
-    if not (rep / "report.json").exists():
+    # SOLO si no existe NINGÚN formato de reporte: regenerar el modelo NUNCA debe pisar las
+    # páginas y visuales que el usuario haya construido. OJO: al guardar desde Desktop, el
+    # reporte migra al formato PBIR (carpeta definition/) y el report.json legado DESAPARECE —
+    # si aquí solo se comprobara report.json, se escribiría un stub que rompe el proyecto
+    # (Desktop no admite ambos formatos a la vez). Pasó el 2026-08-02; no repetirlo.
+    if not (rep / "report.json").exists() and not (rep / "definition").exists():
         (rep / "report.json").write_text(json.dumps({
             "config": json.dumps({
                 "version": "5.43",

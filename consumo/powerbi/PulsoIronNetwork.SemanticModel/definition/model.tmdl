@@ -25,6 +25,8 @@ ref table 'Tipo de documento'
 ref table Antigüedad
 ref table 'Clasificación ABC'
 ref table 'Clasificación ABC Proveedor'
+ref table 'Clasificación RFM'
+ref table 'Comportamiento de pago'
 ref table Ventas
 ref table Compras
 ref table 'Cartera por cobrar'
@@ -36,4 +38,8 @@ ref table 'Pagos efectuados'
 ref table Inventario
 ref table 'Tipo de cambio'
 ref table 'Campos de usuario'
+ref table 'Venta diaria'
+ref table 'Proyección de caja'
+ref table Pedidos
+ref table 'Resultados contables'
 ref table 'Moneda de análisis'

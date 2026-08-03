@@ -4,6 +4,7 @@
  * del schema es ese DDL SQL (versionado + rollback); aquí solo se declara para
  * tipado y queries. No usar drizzle-kit para migrar: el schema lo gobierna el DDL.
  */
+import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
@@ -30,6 +31,11 @@ export const organizaciones = gobierno.table('organizaciones', {
   // Base de datos del PLANO DE DATOS del tenant (dw_<codigo>). El worker la exige para
   // extraer y transformar; sin ella la organización queda inextraíble (migración 100).
   baseDatosDw: text('base_datos_dw'),
+  // Identificador opaco del tenant en la URL del portal de usuario (migración 111).
+  hashTenant: text('hash_tenant').notNull().unique(),
+  // El binario del logo NO se mapea aquí: los select() lo arrastrarían en cada listado.
+  // Se lee/escribe con SQL directo (PG_POOL); logo_mime indica presencia y tipo.
+  logoMime: text('logo_mime'),
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -231,6 +237,11 @@ export const sociedades = gobierno.table('sociedades', {
   empresaId: text('empresa_id').notNull().unique(),
   nombre: text('nombre').notNull(),
   nit: text('nit'),
+  // Moneda local de la sociedad (ISO 4217; migración 113). NULL = default de la organización.
+  moneda: text('moneda'),
+  // A qué moneda consolidan sus cifras (migración 114). Igual a moneda = sin conversión;
+  // distinta = convertir con la serie de tipo de cambio de la PROPIA sociedad.
+  monedaPresentacion: text('moneda_presentacion'),
   conexionId: bigint('conexion_id', { mode: 'number' }),
   esquemaOrigen: text('esquema_origen'),
   activo: boolean('activo').notNull().default(true),
@@ -238,6 +249,27 @@ export const sociedades = gobierno.table('sociedades', {
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// NIT de compañías afiliadas por organización (migración 112). El portal administra;
+// el worker los pasa a dbt como var `nits_grupo` y Oro marca es_intercompania.
+// `nit_normalizado` es columna GENERADA en la BD (upper + solo [0-9K]): se lee, nunca
+// se escribe — la normalización tiene una sola definición y vive en el DDL.
+export const nitsAfiliados = gobierno.table(
+  'nits_afiliados',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    organizacionId: bigint('organizacion_id', { mode: 'number' }).notNull(),
+    nit: text('nit').notNull(),
+    nitNormalizado: text('nit_normalizado')
+      .notNull()
+      .generatedAlwaysAs(sql`regexp_replace(upper(nit), '[^0-9K]', '', 'g')`),
+    nombre: text('nombre'),
+    activo: boolean('activo').notNull().default(true),
+    creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+    actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('uq_nits_afiliados_org_nit').on(t.organizacionId, t.nitNormalizado)],
+);
 
 export const campoIngesta = metadatos.table(
   'campo_ingesta',
@@ -342,6 +374,7 @@ export const schema = {
   entornosEjecucion,
   conexiones,
   sociedades,
+  nitsAfiliados,
   campoIngesta,
   canonicoEntidad,
   canonicoCampo,

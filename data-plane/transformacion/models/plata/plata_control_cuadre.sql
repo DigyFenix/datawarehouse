@@ -22,12 +22,17 @@
   → 0.03; 187k líneas → 0.62. Un umbral fijo de 0.05 vuelve el control imposible de cumplir
   al ampliar la ventana de extracción, y un control que siempre falla deja de ser un control.
 
-  El componente variable es 1 centavo por cada 1.000 filas (187k filas → 1.87). Sigue siendo
-  tres órdenes de magnitud menor que cualquier error de lógica: el caso real que este control
-  atrapó (cancelados de SAP B1 mal filtrados) desviaba Q1,634,294.22.
+  El componente variable es MEDIO CENTAVO POR FILA. La medición con las 10 sociedades de
+  Cresta mostró que el residuo escala por DOCUMENTO, no por línea: SAP redondea DocTotal en
+  cabecera y LineTotal por línea, y cada documento puede diferir hasta ~0.06 (inavisa: 2,203
+  filas → 0.31 de residuo legítimo; la tolerancia anterior de 1 centavo por mil filas lo
+  marcaba como error). Con 187k filas la tolerancia queda en ~Q94: sigue siendo cuatro
+  órdenes de magnitud menor que cualquier error de lógica — el caso real que este control
+  atrapó (cancelados de SAP B1 mal filtrados) desviaba Q1,634,294.22, y el de retención de
+  El Salvador (WTSum) Q17,813.83.
 #}
 {%- set tolerancia_base = var('tolerancia_cuadre', 0.05) -%}
-{%- set tolerancia_por_fila = var('tolerancia_cuadre_por_fila', 0.00001) -%}
+{%- set tolerancia_por_fila = var('tolerancia_cuadre_por_fila', 0.0005) -%}
 
 with
 -- ---------------- lo que dice el canónico ----------------
@@ -100,32 +105,38 @@ origen as (
     -- Ventas = facturas − notas de crédito, sin impuesto, moneda local.
     select empresa_id, 'ventas_periodo', sum(base) from (
         select empresa_id,
-               (datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0) as base
+               (datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0)
+                 + coalesce((datos->>'WTSum')::numeric, 0) as base
           from {{ source('bronce', 'oinv') }}
         union all
         select empresa_id,
-               -1 * ((datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0))
+               -1 * ((datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0)
+                   + coalesce((datos->>'WTSum')::numeric, 0))
           from {{ source('bronce', 'orin') }}
     ) v group by 1
     union all
     select empresa_id, 'compras_periodo', sum(base) from (
         select empresa_id,
-               (datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0) as base
+               (datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0)
+                 + coalesce((datos->>'WTSum')::numeric, 0) as base
           from {{ source('bronce', 'opch') }}
         union all
         select empresa_id,
-               -1 * ((datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0))
+               -1 * ((datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0)
+                   + coalesce((datos->>'WTSum')::numeric, 0))
           from {{ source('bronce', 'orpc') }}
     ) c group by 1
     union all
     -- Referencia del cuadre interno: total de cabeceras de venta.
     select empresa_id, 'lineas_vs_cabecera_venta', sum(base) from (
         select empresa_id,
-               (datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0) as base
+               (datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0)
+                 + coalesce((datos->>'WTSum')::numeric, 0) as base
           from {{ source('bronce', 'oinv') }}
         union all
         select empresa_id,
-               -1 * ((datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0))
+               -1 * ((datos->>'DocTotal')::numeric - coalesce((datos->>'VatSum')::numeric, 0)
+                   + coalesce((datos->>'WTSum')::numeric, 0))
           from {{ source('bronce', 'orin') }}
     ) v group by 1
     union all

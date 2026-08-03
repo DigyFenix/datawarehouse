@@ -67,6 +67,113 @@ models:
       - name: participacion_acumulada_anio
         data_tests: [not_null]
 
+  - name: clasificacion_rfm_cliente
+    description: >
+      Clasificación RFM (recencia · frecuencia · monto) de clientes, calculada en el warehouse
+      con fecha de referencia = última venta por empresa (reproducible). Quintiles por empresa;
+      ventana de 12 meses para F y M. Grano: una fila por (empresa, cliente), 1:1 con Cliente.
+    columns:
+      - name: cliente_clave
+        data_tests: [not_null, unique]
+      - name: segmento_rfm
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [campeon, leal, reciente, regular, en_riesgo, en_riesgo_valioso, dormido, sin_historial]
+      - name: frecuencia_12m
+        data_tests: [not_null]
+      - name: monto_neto_12m
+        data_tests: [not_null]
+
+  - name: comportamiento_pago_cliente
+    description: >
+      Perfil de riesgo de cartera + actividad de pagos por cliente. Vencimiento ponderado por
+      saldo sobre partidas ABIERTAS; pagos solo con contraparte 'cliente'. Los días reales
+      factura→pago requieren la aplicación de pagos (no ingestada aún) — límite documentado.
+    columns:
+      - name: cliente_clave
+        data_tests: [not_null, unique]
+      - name: perfil_riesgo
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [sin_saldo, al_dia, vencido_leve, vencido_moderado, vencido_critico]
+      - name: saldo_total
+        data_tests: [not_null]
+
+  - name: proyeccion_caja_semanal
+    description: >
+      Entradas (CxC) y salidas (CxP) por semana ISO de vencimiento de las partidas abiertas.
+      Proyección contractual, no pronóstico. Lo vencido/sin fecha se ancla a la semana del corte.
+    columns:
+      - name: flujo
+        data_tests:
+          - not_null
+          - accepted_values: { values: [entrada, salida] }
+      - name: estado_vencimiento
+        data_tests:
+          - not_null
+          - accepted_values: { values: [vencido, programado, sin_vencimiento] }
+      - name: monto
+        data_tests: [not_null]
+      - name: semana_inicio
+        data_tests: [not_null]
+
+  - name: metrica_venta_diaria
+    description: >
+      Serie diaria de ventas SIN huecos por empresa (un día sin ventas es un cero, no una fila
+      ausente): base única para tendencias, medias móviles y forecasting.
+    columns:
+      - name: ventas_netas
+        data_tests: [not_null]
+      - name: tiempo_clave
+        data_tests: [not_null]
+
+  - name: dim_cuenta
+    description: >
+      Plan de cuentas con jerarquía multinivel homologada (nivel_1..nivel_5, código y nombre):
+      árbol real por FatherNum en SAP B1 (hasta 5 niveles), segmentos del código en Odoo. Los
+      niveles bajo la profundidad real repiten la hoja (ragged aplanada, sin blancos en PBI).
+    columns:
+      - name: cuenta_clave
+        data_tests: [not_null, unique]
+      - name: nivel
+        data_tests: [not_null]
+      - name: nivel_1_nombre
+        data_tests: [not_null]
+
+  - name: hecho_pedido_linea
+    description: >
+      Línea de pedido de venta confirmado (ORDR/RDR1 · sale_order). El compromiso antes del
+      resultado: backlog (es_abierta, cantidad_abierta, monto_abierto_local) y fill rate.
+      Solo vigentes: SAP excluye cancelados en origen; Odoo solo state sale/done.
+    columns:
+      - name: pedido_id
+        data_tests: [not_null]
+      - name: cantidad
+        data_tests: [not_null]
+      - name: monto_sin_impuesto
+        data_tests: [not_null]
+      - name: estado_linea
+        data_tests:
+          - not_null
+          - accepted_values: { values: [abierta, cerrada] }
+
+  - name: hecho_movimiento_contable
+    description: >
+      Partida del mayor en cuenta de RESULTADOS (ingreso/gasto/costo): el P&L operativo por
+      cuenta (con jerarquía de 5 niveles) y centro de costo. monto_resultado va en la
+      naturaleza de la cuenta (ingreso positivo al abonar, gasto positivo al cargar).
+    columns:
+      - name: partida_id
+        data_tests: [not_null]
+      - name: naturaleza
+        data_tests:
+          - not_null
+          - accepted_values: { values: [ingreso, gasto, costo] }
+      - name: monto_resultado
+        data_tests: [not_null]
+
   - name: campo_usuario
     description: >
       Campos de usuario (UDF) en formato largo: una fila por registro × campo × valor,
@@ -89,7 +196,7 @@ models:
     columns:
       - name: pago_id
         data_tests: [not_null]
-      - name: monto_local
+      - name: monto
         data_tests: [not_null]
 
   - name: hecho_pago_efectuado
@@ -97,7 +204,7 @@ models:
     columns:
       - name: pago_id
         data_tests: [not_null]
-      - name: monto_local
+      - name: monto
         data_tests: [not_null]
 
   # Los hechos de cartera solo pueden producir etiquetas que existan en la dimensión: si el

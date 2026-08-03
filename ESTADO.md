@@ -86,9 +86,121 @@ sola vez** para los dos.
 | 2 | Semántica (métricas + catálogo) | 🔨 14 métricas materializadas + ABC clientes **y proveedores** + `dim_rango_aging` + `tipo_cambio`; 140 medidas DAX. Falta recablear el catálogo del portal al canónico v2 | — |
 | 3 | Gobernanza (linaje, roles, RLS, certificación) | ⏳ pendiente — trazabilidad (incl. serie/DocEntry para rastreo en el ERP), cuarentena, control de cuadre y regla dura de UDFs implementados; faltan RLS y certificación | — |
 | 4 | Agente (tools tipadas + 4 restricciones) | ⏸ **POSPUESTA** — hasta 3 clientes pagando (corrección de rumbo 2026-07-26) | — |
-| 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos. Falta la UI del canónico v2, el filtro por campo y pasar `nits_grupo` en /transformar | — |
-| 6 | Consumo (Power BI) | ✅ **modelo "versión completa": 25 tablas / 67 relaciones / 140 medidas** (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis | 2026-08-01 |
+| 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos; **NITs afiliados en el portal** (migración 112: Sociedades → NITs afiliados, normalización `[0-9K]`, el worker los pasa solo en /transformar). Falta la UI del canónico v2 y el filtro por campo | — |
+| 6 | Consumo (Power BI) | ✅ **modelo "versión completa": 25 tablas / 67 relaciones / 140 medidas** (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
 | 7 | Validación (4 criterios) | 🔨 consistencia demostrada 3 veces (cuadre al centavo, revisión adversarial con 9 hallazgos corregidos, ensayo de onboarding); faltan seguridad/RLS y explicabilidad | — |
+
+## Avance 2026-08-02/03 (sesión 16) — GRUPO COMPLETO + multi-moneda + SQL Server
+
+**Las 10 sociedades de Grupo Cresta cargadas y cuadradas (0/70 conceptos)**, incluida
+Proavisa de El Salvador (USD). Lo estructural, todo regla estándar del producto:
+
+- **NITs afiliados en el portal** (migración 112) + matching normalizado `[0-9K]`; el worker
+  pasa `nits_grupo` y `sociedades` solo (gap de /transformar cerrado). `correr.py` versionado
+  reemplaza al correr.sh perdido.
+- **Retención (WTSum)**: el cuadre detectó el 1% de El Salvador (Q18k); base =
+  DocTotal − IVA + retención en canónico y cuadre; seed 68.
+- **Multi-moneda (migraciones 113/114)**: Oro con 2 ejes (presentación sin sufijo + `_doc`);
+  conversión con la serie del propio ERP, guardas de rango/reciprocidad (serie invertida de SV
+  auto-corregida 1/tasa), arrastre 92 días; sin tasa = solo moneda local.
+- **dim_socio_negocio** (360° por NIT, 37 duales) + **dim_direccion** (CRD1/OCST + ShipToCode;
+  seed 68/69) + `es_trimestre_actual` en calendario.
+- **PBIP Cresta: 33 tablas / 93 relaciones / 180 medidas** con prefijos DM_/FC_/MD_ y
+  **parámetros de campo** (Vista de ventas/cartera/compras). Reporte de Edwin en formato PBIR
+  (definition/), generadores y validadores adaptados; **generar_reporte.py no se corre más**.
+- **Onboarding revisado y reparado**: seeds 68/69, init omite seeds parametrizados, runbook al
+  día. Validado contra ERP EN VIVO (ene–jul): loreto Q0.56 y proavisa Q0.67 de diferencia
+  (redondeo), svproavis exacto.
+- **SAP sobre SQL SERVER montado** (fuente pymssql, motor `sqlserver`, base por sociedad):
+  smoke test OK; prueba real pendiente con la copia SQL Server de Cresta (datos a nov-2025).
+
+## Avance 2026-08-03 (sesión 15) — Analítica nueva en Oro + jerarquía contable
+
+Revisión "equipo completo de analistas" sobre la capa oro → implementados los **quick wins**
+(cero ingesta nueva) y la **jerarquía de cuentas**, validados con dbt build 35/35 PASS × 2 tenants:
+
+- **`clasificacion_rfm_cliente`** — recencia/frecuencia/monto con quintiles por empresa, fecha
+  de referencia = última venta (reproducible), 8 segmentos (campeón → dormido). En Cresta: 169
+  campeones concentran Q151M de venta 12m; 46 "en riesgo VALIOSO" con Q8.3M en juego.
+- **`comportamiento_pago_cliente`** — perfil de riesgo de cartera (vencido ponderado por saldo)
+  + actividad de pagos (solo contraparte 'cliente'). Límite documentado: los días reales
+  factura→pago requieren la aplicación de pagos (RCT2/reconciliación), no ingestada aún.
+- **`proyeccion_caja_semanal`** — entradas (CxC) y salidas (CxP) por semana ISO de vencimiento;
+  proyección contractual con bucket "Vencido" anclado al corte.
+- **`metrica_venta_diaria`** — serie diaria SIN huecos por empresa (un día sin venta = cero):
+  base única para tendencias, medias móviles y forecasting futuro.
+- **Feriados de Guatemala** (seed 2024–2028) en `dim_tiempo`: `es_feriado`, `feriado_nombre`,
+  `es_medio_dia`, y `es_dia_habil` ahora descuenta feriados.
+- **Jerarquía contable multinivel en `dim_cuenta`** (homologada en Plata): SAP B1 = árbol real
+  vía OACT.FatherNum (Cresta: 5 niveles exactos, 471 cuentas, títulos marcados con
+  `es_titulo`); Odoo = segmentos del código ('1.0.01.01' → 4 niveles). Columnas
+  `nivel_1..nivel_5` (código+nombre) con relleno de hoja (sin blancos en drill-down) + `ruta_cuenta`.
+- **Power BI**: `generar_pbip.py` extendido — 4 tablas nuevas (RFM y Comportamiento como
+  extensiones 1:1 de Cliente; Venta diaria y Proyección como hechos), jerarquía 'Jerarquía
+  contable' en Cuenta contable, **23 medidas nuevas** (163 total). Ambos PBIP regenerados:
+  **29 tablas / 73 relaciones / TMDL válido**; reportes existentes intactos (72 visuales OK).
+
+**Backlog priorizado que quedó del análisis** (requiere ingesta nueva; en orden de valor):
+1) ~~Pedidos/backlog~~ ✅ 2) ~~Gastos del mayor → P&L~~ ✅ (ambos implementados 2026-08-02,
+ver abajo). 3) Saldos de apertura por cuenta (31-dic-2025) → BALANCE GENERAL. 4) Metas de
+venta administradas desde el portal. 5) Kardex de movimientos (OINM · stock.move) →
+mermas/rotación real. 6) Lotes y vencimientos (OBTN · stock.lot) — diferenciador
+avícola/alimentos. 7) Aplicación de pagos (RCT2) → días reales de pago.
+**DESCARTADO por Edwin (2026-08-02): listas de precios (OPLN/ITM1)** — el análisis de
+precio/costo se hace con lo GRABADO en cada documento (precio de venta y costo por línea, ya
+al 99.5% de cobertura), que es lo que cuadra con contabilidad. No se ingesta la lista teórica.
+
+### Ingesta nueva 2026-08-02: PEDIDOS + MAYOR CONTABLE (P&L)
+
+- **Seeds 66 (SAP B1) y 67 (Odoo)** — paquetes de extensión parametrizados (onboarding):
+  política `pedidos_venta` (ORDR+RDR1 · sale_order+sale_order_line, ventana 2026, solo
+  vigentes/confirmados) y **ampliación del objeto `cartera`/`movimientos` a mayor completo**
+  (abiertas de cualquier fecha + todo 2026) — mismo destino bronce: dos objetos sobre JDT1 se
+  pisarían. `JDT1.ProfitCode` agregado para P&L por centro de costo.
+- **Modelos**: `plata_pedido_linea` (backlog homologado: OpenQty · qty−qty_invoiced; Odoo
+  convierte a local con tipo de cambio del día) + `oro.hecho_pedido_linea` (es_abierta,
+  monto_abierto_local, fecha entrega como relación inactiva); `plata_movimiento_contable`
+  (mayor canónico con centro de costo) + `oro.hecho_movimiento_contable` (solo RESULTADOS:
+  naturaleza ingreso/gasto/costo, `monto_resultado` en la naturaleza de la cuenta).
+- **Verificado en Iron Network** (extraído en vivo: 200 pedidos / 374 líneas): dbt 13/13
+  PASS; backlog Q22.9K en 9 líneas abiertas; **CUADRE AL CENTAVO ingresos contables =
+  ventas netas facturadas (Q2,235,501.13)**.
+- **Power BI**: PulsoIronNetwork **31 tablas / 85 relaciones / 174 medidas** (Pedidos: Monto
+  pedido, Backlog, Fill rate…; Resultados contables: Gasto operativo, Resultado contable…).
+- **SAP (proavisa) COMPLETADO al recuperar acceso a HANA (mismo 2026-08-02)**: 32,408 pedidos /
+  80,768 líneas (**backlog Q7.76M**, fill rate ~96%) y mayor completo 1,540,049 partidas →
+  **P&L Cresta vivo** (ingresos Q231.9M / gastos+costos Q238.9M ene–ago, por mes/cuenta/centro
+  de costo) con **cuadre 7/7 al centavo intacto**. Correcciones en el camino: ORDR usa `DocCur`;
+  el filtro de campo `Account IN` se absorbió al filtro_origen (AND anulaba el OR del período).
+  **PulsoCresta regenerado: 31 tablas / 85 relaciones / 174 medidas** (idéntico a Iron).
+  Hallazgo de costos: 33,013 líneas a terceros vendidas BAJO COSTO = Q5.36M margen negativo.
+
+## Avance 2026-08-02 (sesión 14) — Portal de USUARIO + camino a producción
+
+- **Portal de usuario nuevo** (`consumo/portal/`, API NestJS :3002 + web Angular :8081, mismo
+  stack del admin): cada organización entra por su **URL con hash de tenant**
+  (`portal/<hash>/...`, migración 111), con **white-label completo** (color + **logo** subido
+  desde el portal admin). Módulos: **Tableros** (Power BI vía **Publish to Web**, riesgo
+  aceptado por Edwin — la URL solo se entrega autenticada al abrir el visor y cada apertura se
+  audita) y **Chatbot** (placeholder; los **alcances por perfil** ya se administran →
+  `portal.perfil_alcances`).
+- **La organización se auto-administra**: su admin (sembrado desde el portal admin) crea
+  usuarios, perfiles, asigna tableros y alcances; contraseñas temporales con cambio forzado.
+  Todo en el **esquema `portal` de la BD del tenant** (migración 110) — aislamiento real:
+  token cruzado entre tenants → 401 (verificado).
+- **Portal admin**: módulo "Portal usuario" (estado, sembrar admin, CRUD de tableros por
+  organización vía `TenantDbService`), logo por organización y URL de ingreso copiable.
+- **Producción**: `infra/produccion/` (compose con Caddy TLS automático 2 dominios, respaldos
+  diarios `pg_dump` con rotación, `.env.produccion.example`, **RUNBOOK.md** con firewall 5432
+  solo-IP-Cresta, rol `portal_app`, migración local→VPS por dump/restore).
+- **Reglas Publish to Web verificadas** (documentadas en `consumo/powerbi/README.md`): modelo y
+  dashboards en el MISMO workspace; medidas SIEMPRE en el modelo; refresco vía on-premises data
+  gateway; Pro + tenant setting. **E2E completo verificado por curl** (alta tablero → siembra →
+  login → perfil → visor → auditoría → aislamiento).
+- **Hosting decidido: Hetzner Cloud CPX31 (Ashburn, ~US$17/mes) + 1 dominio** con subdominios
+  `admin.` / `portal.` (SLA 99.9%, ISO 27001, DDoS incluido). Endurecimiento aplicado al logo
+  (allowlist PNG/JPG/WebP + magic bytes + cabeceras nosniff/CSP). Siguiente: montar el VPS con
+  `infra/produccion/RUNBOOK.md`.
 
 ## Avance 2026-08-01 (sesiones 11–13) — commit `f652b39`
 

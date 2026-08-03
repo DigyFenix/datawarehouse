@@ -42,3 +42,11 @@ models:
 seeds:
   cresta_dw:
     +schema: bronce
+    # Calendario oficial de feriados (referencia del motor, no dato del ERP). dim_tiempo lo
+    # cruza para es_feriado/es_dia_habil. Al entrar un tenant fuera de Guatemala, se agrega
+    # su calendario como otro seed y una columna de país.
+    feriados_guatemala:
+      +column_types:
+        fecha: date
+        nombre: text
+        es_medio_dia: boolean

@@ -60,6 +60,13 @@ def _columnas_nativas(conn, esquema: str, tabla: str) -> list[tuple[str, str]]:
         return [(r[0], r[1]) for r in cur.fetchall()]
 
 
+def columnas_existentes(conn, esquema: str, tabla: str) -> set[str]:
+    """Columnas reales de la tabla en ESTE esquema. Los campos se configuran por organización,
+    pero los UDF varían por sociedad (U_* de Proavisa no existen en Loreto): la extracción
+    intersecta lo configurado con lo que el schema de la sociedad de verdad tiene."""
+    return {c for c, _ in _columnas_nativas(conn, esquema, tabla)}
+
+
 def _descripciones_udf(conn, esquema: str, tabla: str) -> dict[str, str]:
     """{ 'U_'+AliasID : Descr } de los campos de usuario definidos para la tabla (CUFD)."""
     sql = f'SELECT "AliasID", "Descr" FROM "{esquema}"."CUFD" WHERE "TableID" = ?'

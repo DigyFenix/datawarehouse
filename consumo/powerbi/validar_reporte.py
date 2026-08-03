@@ -46,15 +46,77 @@ def leer_modelo(defi: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
     return tablas, columnas, medidas
 
 
+def _refs_pbir(nodo, tablas: set[str], columnas: dict[str, set[str]],
+               medidas: set[str], etq: str, fallos: list[str]) -> None:
+    """Recorre un visual.json PBIR buscando referencias {Expression: SourceRef.Entity, Property}
+    y valida que existan en el modelo. Una referencia rota no da error en Desktop: el visual
+    simplemente aparece vacío."""
+    if isinstance(nodo, dict):
+        ent = (nodo.get("Expression", {}).get("SourceRef", {}) or {}).get("Entity")
+        prop = nodo.get("Property")
+        if ent and prop:
+            if ent not in tablas:
+                fallos.append(f"{etq}: tabla '{ent}' no existe en el modelo")
+            elif prop not in columnas.get(ent, set()) and prop not in medidas:
+                fallos.append(f"{etq}: {ent}[{prop}] no existe en el modelo")
+        for v in nodo.values():
+            _refs_pbir(v, tablas, columnas, medidas, etq, fallos)
+    elif isinstance(nodo, list):
+        for v in nodo:
+            _refs_pbir(v, tablas, columnas, medidas, etq, fallos)
+
+
+def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
+    """Valida el reporte en formato PBIR (carpeta definition/, el formato al que Desktop migra
+    el proyecto al guardarlo). Solo referencias: la geometría la gobierna Desktop."""
+    fallos: list[str] = []
+    paginas = sorted(defi_rep.glob("pages/*/page.json"))
+    n_vis = 0
+    for pj in paginas:
+        nombre = json.loads(pj.read_text(encoding="utf-8")).get("displayName", pj.parent.name)
+        for vj in sorted(pj.parent.glob("visuals/*/visual.json")):
+            n_vis += 1
+            cfg = json.loads(vj.read_text(encoding="utf-8"))
+            tipo = cfg.get("visual", {}).get("visualType", "?")
+            _refs_pbir(cfg, tablas, columnas, medidas, f"{nombre}/{tipo}", fallos)
+    if fallos:
+        print(f"FALLO · {len(fallos)} problema(s) [PBIR]:")
+        for f in fallos:
+            print(f"   {f}")
+        return 1
+    print(f"OK · PBIR · {len(paginas)} paginas · {n_vis} visuales · "
+          f"todas las referencias existen en el modelo")
+    return 0
+
+
 def main() -> int:
+    """Valida TODOS los pares <Proyecto>.SemanticModel / <Proyecto>.Report de la carpeta
+    (PulsoCresta y PulsoIronNetwork). Antes tomaba solo el primero y el segundo tenant
+    quedaba sin validar en silencio."""
     proyecto = Path(sys.argv[1])
-    sm = next(proyecto.glob("*.SemanticModel"), None)
-    rep = next(proyecto.glob("*.Report"), None)
-    if not sm or not rep:
-        print(f"FALLO · no encuentro .SemanticModel o .Report en {proyecto}")
+    pares = [(sm, sm.with_name(sm.name.replace(".SemanticModel", ".Report")))
+             for sm in sorted(proyecto.glob("*.SemanticModel"))]
+    pares = [(sm, rep) for sm, rep in pares if rep.exists()]
+    if not pares:
+        print(f"FALLO · no encuentro pares .SemanticModel/.Report en {proyecto}")
+        return 1
+    peor = 0
+    for sm, rep in pares:
+        print(f"— {sm.stem}:")
+        peor = max(peor, _validar_par(sm, rep))
+    return peor
+
+
+def _validar_par(sm: Path, rep: Path) -> int:
+    tablas, columnas, medidas = leer_modelo(sm / "definition")
+
+    # Formato PBIR (Desktop migra a definition/ al guardar; el report.json legado desaparece).
+    if not (rep / "report.json").exists():
+        if (rep / "definition").exists():
+            return validar_pbir(rep / "definition", tablas, columnas, medidas)
+        print(f"FALLO · {rep.name} no tiene report.json ni definition/")
         return 1
 
-    tablas, columnas, medidas = leer_modelo(sm / "definition")
     reporte = json.loads((rep / "report.json").read_text(encoding="utf-8"))
 
     fallos: list[str] = []

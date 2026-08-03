@@ -31,7 +31,7 @@ PROYECTO_DBT = os.environ.get("DBT_PROJECT_DIR", "/dbt")
 PROFILES_DIR = os.environ.get("DBT_PROFILES_DIR", "/tmp/dbt")
 
 # ERP del tenant → forma de leer Bronce en los modelos de Plata.
-ERP_POR_MOTOR = {"hana": "sap_b1", "postgres": "odoo"}
+ERP_POR_MOTOR = {"hana": "sap_b1", "sqlserver": "sap_b1", "postgres": "odoo"}
 
 
 def _selector_de_objeto(cfg: ConfigPostgres, objeto: str, organizacion: str) -> str | None:
@@ -86,6 +86,49 @@ def _destino_organizacion(cfg: ConfigPostgres, organizacion: str) -> tuple[str, 
     return base, erp
 
 
+def _nits_afiliados(cfg: ConfigPostgres, organizacion: str) -> list[str]:
+    """NIT normalizados de las compañías afiliadas de la organización (portal: Sociedades →
+    NITs afiliados). Van a dbt como var `nits_grupo`; los modelos de Oro marcan
+    es_intercompania comparando por la MISMA forma normalizada (columna generada de la BD:
+    mayúsculas y solo [0-9K]). Lista vacía = ningún socio se marca, que es el comportamiento
+    correcto para un tenant sin intercompañía.
+    """
+    consulta = """
+        select n.nit_normalizado
+          from gobierno.nits_afiliados n
+          join gobierno.organizaciones o on o.id = n.organizacion_id
+         where o.codigo = %s and n.activo
+         order by n.nit_normalizado
+    """
+    with psycopg.connect(cfg.dsn()) as conn, conn.cursor() as cur:
+        cur.execute(consulta, (organizacion,))
+        return [fila[0] for fila in cur.fetchall()]
+
+
+def _sociedades(cfg: ConfigPostgres, organizacion: str) -> list[dict]:
+    """Sociedades activas de la organización (portal). Van a dbt como var `sociedades` para
+    que la maestra de empresas del tenant (plata_organizacion → dim_organizacion) lleve el
+    nombre, NIT y moneda local REALES de cada sociedad, en vez de un valor único por var.
+    """
+    consulta = """
+        select s.empresa_id, s.nombre, coalesce(s.nit, ''), coalesce(s.moneda, ''),
+               coalesce(s.moneda_presentacion, s.moneda, '')
+          from gobierno.sociedades s
+          join gobierno.organizaciones o on o.id = s.organizacion_id
+         where o.codigo = %s and s.activo
+         order by s.orden, s.id
+    """
+    with psycopg.connect(cfg.dsn()) as conn, conn.cursor() as cur:
+        cur.execute(consulta, (organizacion,))
+        return [
+            {
+                "empresa_id": f[0], "nombre": f[1], "nit": f[2], "moneda": f[3],
+                "moneda_presentacion": f[4],
+            }
+            for f in cur.fetchall()
+        ]
+
+
 def _escribir_profiles(cfg: ConfigPostgres, base_datos: str, target: str) -> None:
     """Genera el profiles.yml de dbt desde el entorno (sin secretos en repo).
 
@@ -121,6 +164,8 @@ def transformar_objeto(cfg: ConfigPostgres, objeto: str, organizacion: str) -> d
         )
 
     base_datos, erp = _destino_organizacion(cfg, organizacion)
+    nits_grupo = _nits_afiliados(cfg, organizacion)
+    sociedades = _sociedades(cfg, organizacion)
     target = organizacion
     _escribir_profiles(cfg, base_datos, target)
 
@@ -133,11 +178,19 @@ def transformar_objeto(cfg: ConfigPostgres, objeto: str, organizacion: str) -> d
         "--project-dir", PROYECTO_DBT,
         "--profiles-dir", PROFILES_DIR,
         "--target", target,
-        "--vars", json.dumps({"erp": erp, "organizacion": organizacion}),
+        "--vars", json.dumps(
+            {
+                "erp": erp,
+                "organizacion": organizacion,
+                "nits_grupo": nits_grupo,
+                "sociedades": sociedades,
+            }
+        ),
     ]
     log.info(
         "transformar.inicio", objeto=objeto, selector=selector,
         organizacion=organizacion, base=base_datos, erp=erp,
+        nits_grupo=len(nits_grupo),
     )
     resultado = dbtRunner().invoke(argumentos)
 

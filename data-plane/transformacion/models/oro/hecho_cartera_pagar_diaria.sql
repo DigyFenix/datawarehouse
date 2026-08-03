@@ -19,7 +19,9 @@ select
     cuenta_clave,
     tiempo_vencimiento_clave,
     fecha_vencimiento,
-    saldo_pendiente_local,
+    -- El hecho ya expone el saldo en moneda de PRESENTACIÓN; nombre histórico conservado
+    -- (tabla INCREMENTAL — renombrar exigiría full-refresh y perder las fotos acumuladas).
+    saldo_pendiente                                   as saldo_pendiente_local,
     saldo_pendiente_doc,
     saldo_pendiente_absoluto,
     dias_vencido,

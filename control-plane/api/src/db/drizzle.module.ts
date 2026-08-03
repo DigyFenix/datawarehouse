@@ -5,10 +5,15 @@
 import { Global, Module, OnModuleDestroy, Provider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
+
+// Los bigint (int8) llegan como string por default; los ids del portal caben en
+// Number sin pérdida. Aplica a TODOS los pools del proceso (incluye tenants).
+types.setTypeParser(types.builtins.INT8, (valor) => Number(valor));
 
 import type { Env } from '../config/env';
 import { schema } from './schema';
+import { TenantDbService } from './tenant-db.service';
 
 export const DRIZZLE = Symbol('DRIZZLE');
 export const PG_POOL = Symbol('PG_POOL');
@@ -37,8 +42,8 @@ const drizzleProvider: Provider = {
 
 @Global()
 @Module({
-  providers: [poolProvider, drizzleProvider],
-  exports: [DRIZZLE, PG_POOL],
+  providers: [poolProvider, drizzleProvider, TenantDbService],
+  exports: [DRIZZLE, PG_POOL, TenantDbService],
 })
 export class DrizzleModule implements OnModuleDestroy {
   constructor() {}

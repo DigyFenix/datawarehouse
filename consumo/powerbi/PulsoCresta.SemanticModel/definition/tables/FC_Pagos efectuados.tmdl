@@ -1,0 +1,151 @@
+table 'FC_Pagos efectuados'
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column proveedor_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: proveedor_clave
+
+	column socio_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: socio_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column moneda_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: moneda_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column pago_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: pago_id
+
+	column pago_numero
+		dataType: string
+		summarizeBy: none
+		sourceColumn: pago_numero
+
+	column serie_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: serie_codigo
+
+	column contraparte
+		dataType: string
+		summarizeBy: none
+		sourceColumn: contraparte
+
+	column fecha_pago
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_pago
+		formatString: dd/MM/yyyy
+
+	column medio_pago
+		dataType: string
+		summarizeBy: none
+		sourceColumn: medio_pago
+
+	column referencia
+		dataType: string
+		summarizeBy: none
+		sourceColumn: referencia
+
+	column estado
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado
+
+	column monto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto
+		formatString: #,0.00
+
+	column monto_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_doc
+		formatString: #,0.00
+
+	column tipo_cambio
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: tipo_cambio
+		formatString: #,0.00
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	measure 'Monto pagado' = SUM('FC_Pagos efectuados'[monto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Solo pagos a PROVEEDORES (excluye operaciones de tesorería contra cuenta contable).
+	measure 'Pagos a proveedores' = CALCULATE([Monto pagado], 'FC_Pagos efectuados'[contraparte] = "proveedor")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Lo cobrado menos lo pagado en el período filtrado: el pulso de caja operativo.
+	measure 'Flujo neto de caja' = [Monto cobrado] - [Monto pagado]
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Cantidad de pagos' = COUNTROWS('FC_Pagos efectuados')
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Proveedores pagados' = DISTINCTCOUNT('FC_Pagos efectuados'[proveedor_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Pago promedio' = DIVIDE([Monto pagado], [Cantidad de pagos])
+		formatString: "Q" #,0
+		displayFolder: 03 Promedios
+
+	measure 'Pagos mes anterior' = CALCULATE([Monto pagado], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Pagos acumulados año' = TOTALYTD([Monto pagado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	partition 'FC_Pagos efectuados' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_pago_efectuado"]}[Data]
+				in
+				    Tabla

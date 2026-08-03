@@ -263,11 +263,86 @@ relationship rel_065
 	toColumn: Producto.producto_clave
 
 relationship rel_066
+	fromColumn: 'Venta diaria'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_067
+	fromColumn: 'Venta diaria'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_068
+	fromColumn: 'Proyección de caja'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_069
+	fromColumn: 'Proyección de caja'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_070
+	fromColumn: Pedidos.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_071
+	fromColumn: Pedidos.cliente_clave
+	toColumn: Cliente.cliente_clave
+
+relationship rel_072
+	fromColumn: Pedidos.producto_clave
+	toColumn: Producto.producto_clave
+
+relationship rel_073
+	fromColumn: Pedidos.vendedor_clave
+	toColumn: Vendedor.vendedor_clave
+
+relationship rel_074
+	fromColumn: Pedidos.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_075
+	fromColumn: Pedidos.almacen_clave
+	toColumn: Bodega.almacen_clave
+
+relationship rel_076
+	fromColumn: Pedidos.moneda_clave
+	toColumn: Moneda.moneda_clave
+
+relationship rel_077
+	isActive: false
+	fromColumn: Pedidos.tiempo_vencimiento_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_078
+	fromColumn: 'Resultados contables'.tiempo_clave
+	toColumn: Calendario.tiempo_clave
+
+relationship rel_079
+	fromColumn: 'Resultados contables'.organizacion_clave
+	toColumn: Empresa.organizacion_clave
+
+relationship rel_080
+	fromColumn: 'Resultados contables'.cuenta_clave
+	toColumn: 'Cuenta contable'.cuenta_clave
+
+relationship rel_081
+	fromColumn: 'Resultados contables'.centro_costo_clave
+	toColumn: 'Centro de costo'.centro_costo_clave
+
+relationship rel_082
 	crossFilteringBehavior: bothDirections
 	fromColumn: 'Clasificación ABC'.cliente_clave
 	toColumn: Cliente.cliente_clave
 
-relationship rel_067
+relationship rel_083
 	crossFilteringBehavior: bothDirections
 	fromColumn: 'Clasificación ABC Proveedor'.proveedor_clave
 	toColumn: Proveedor.proveedor_clave
+
+relationship rel_084
+	crossFilteringBehavior: bothDirections
+	fromColumn: 'Clasificación RFM'.cliente_clave
+	toColumn: Cliente.cliente_clave
+
+relationship rel_085
+	crossFilteringBehavior: bothDirections
+	fromColumn: 'Comportamiento de pago'.cliente_clave
+	toColumn: Cliente.cliente_clave

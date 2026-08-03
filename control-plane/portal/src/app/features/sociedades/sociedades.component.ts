@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
-import { Conexion, Sociedad } from '../../core/modelos';
+import { Conexion, NitAfiliado, Sociedad } from '../../core/modelos';
 import { OrganizacionService } from '../../core/organizacion.service';
 import { ToastService } from '../../core/toast.service';
 
@@ -11,6 +11,8 @@ interface FormSociedad {
   empresaId: string;
   nombre: string;
   nit: string;
+  moneda: string;
+  monedaPresentacion: string;
   conexionId: number | null;
   esquemaOrigen: string;
   activo: boolean;
@@ -52,6 +54,57 @@ interface FormSociedad {
       </div>
     </div>
 
+    <div class="page-header" style="margin-top:28px;">
+      <div class="titulo-grupo">
+        <span class="eyebrow">Plano de datos · configuración</span>
+        <h2>NITs de compañías afiliadas</h2>
+      </div>
+    </div>
+    <p class="ayuda">
+      Clientes y proveedores cuyo NIT esté aquí se marcan como <strong>intercompañía</strong> al
+      transformar (es_intercompania en Oro). La coincidencia usa la forma normalizada — se
+      ignoran guiones, espacios y prefijos: <code>0501-1105 181019</code> y
+      <code>P05011105181019</code> son el mismo NIT. Aplica en la próxima transformación de
+      socios de negocio.
+    </p>
+
+    <div class="tarjeta" style="padding:0;">
+      <div class="tabla-wrap">
+        <table>
+          <thead><tr><th>NIT</th><th>Forma normalizada</th><th>Nombre</th><th>Activo</th><th></th></tr></thead>
+          <tbody>
+            @for (n of nits(); track n.id) {
+              <tr>
+                <td><code>{{ n.nit }}</code></td>
+                <td><code class="sutil">{{ n.nitNormalizado }}</code></td>
+                <td>@if (n.nombre) { {{ n.nombre }} } @else { <span style="color:var(--faint);">—</span> }</td>
+                <td>
+                  <label class="check" style="margin:0;">
+                    <input type="checkbox" [checked]="n.activo" (change)="alternarActivo(n)" />
+                  </label>
+                </td>
+                <td style="text-align:right;">
+                  <button class="secundario pequeno" (click)="eliminarNit(n)">Eliminar</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5"><div class="vacio"><strong>Sin NITs afiliados</strong>Sin esta lista, ningún socio se marca como intercompañía.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="lote">
+        <label>Agregar NITs (uno por línea, o separados por coma)</label>
+        <textarea name="nitsNuevos" rows="3" [(ngModel)]="nitsNuevos"
+                  placeholder="1230263&#10;109967739"></textarea>
+        <div class="acciones-fila">
+          <button (click)="agregarNits()" [disabled]="agregando() || !nitsNuevos.trim()">
+            {{ agregando() ? 'Agregando…' : 'Agregar a la lista' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     @if (abierto()) {
       <app-drawer [titulo]="edicionId() ? 'Editar sociedad' : 'Nueva sociedad'" eyebrow="Sociedades" (cerrar)="abierto.set(false)">
         <form (ngSubmit)="guardar()">
@@ -64,6 +117,14 @@ interface FormSociedad {
             <div class="campo"><label>NIT</label><input name="nit" [(ngModel)]="form.nit" /></div>
           </div>
           <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="form.nombre" required placeholder="Productos Avícolas, S.A." /></div>
+          <div class="grid2">
+            <div class="campo"><label>Moneda local (ISO)</label><input name="moneda" [(ngModel)]="form.moneda" maxlength="3" placeholder="GTQ" style="max-width:120px;" />
+              <span class="sutil">GTQ, USD… La moneda en la que opera ESTA sociedad.</span>
+            </div>
+            <div class="campo"><label>Moneda de presentación</label><input name="monedaPresentacion" [(ngModel)]="form.monedaPresentacion" maxlength="3" placeholder="= moneda local" style="max-width:120px;" />
+              <span class="sutil">Si difiere, sus cifras se convierten con el tipo de cambio de la PROPIA sociedad; sin tasa válida no se consolida.</span>
+            </div>
+          </div>
           <div class="grid2">
             <div class="campo"><label>Conexión</label>
               <select name="conexionId" [(ngModel)]="form.conexionId">
@@ -88,6 +149,9 @@ interface FormSociedad {
     .sutil { font-size:11.5px; color:var(--faint); }
     .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .check { display:flex; align-items:center; gap:8px; font-size:13.5px; margin:8px 0; color:var(--muted); }
+    .lote { padding:14px 16px; border-top:1px solid var(--border); }
+    .lote label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    .lote textarea { width:100%; resize:vertical; }
   `],
 })
 export class SociedadesComponent {
@@ -101,8 +165,11 @@ export class SociedadesComponent {
   readonly edicionId = signal<number | null>(null);
   readonly errorForm = signal<string | null>(null);
   readonly guardando = signal(false);
+  readonly nits = signal<NitAfiliado[]>([]);
+  readonly agregando = signal(false);
 
   form: FormSociedad = this.vacio();
+  nitsNuevos = '';
 
   constructor() {
     // Sigue a la organización activa de la barra superior.
@@ -113,7 +180,7 @@ export class SociedadesComponent {
   }
 
   private vacio(): FormSociedad {
-    return { empresaId: '', nombre: '', nit: '', conexionId: null, esquemaOrigen: '', activo: true, orden: 0 };
+    return { empresaId: '', nombre: '', nit: '', moneda: '', monedaPresentacion: '', conexionId: null, esquemaOrigen: '', activo: true, orden: 0 };
   }
 
   cargar(): void {
@@ -129,6 +196,54 @@ export class SociedadesComponent {
     this.api.get<Conexion[]>('/conexiones').subscribe({
       next: (d) => this.conexiones.set(d),
       error: () => {},
+    });
+    this.api.get<NitAfiliado[]>('/nits-afiliados', { organizacionId }).subscribe({
+      next: (d) => this.nits.set(d),
+      error: (e: Error) => this.toast.error('No se pudieron cargar los NITs afiliados', e.message),
+    });
+  }
+
+  agregarNits(): void {
+    const lista = this.nitsNuevos
+      .split(/[\n,;]+/)
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0);
+    if (!lista.length) return;
+    this.agregando.set(true);
+    this.api
+      .post<{ creados: NitAfiliado[]; omitidos: number }>('/nits-afiliados', {
+        organizacionId: this.orgs.exigirId(),
+        nits: lista,
+      })
+      .subscribe({
+        next: (r) => {
+          const detalle = r.omitidos ? `${r.creados.length} nuevos · ${r.omitidos} ya existían` : `${r.creados.length} nuevos`;
+          this.toast.exito('NITs afiliados actualizados', detalle);
+          this.nitsNuevos = '';
+          this.agregando.set(false);
+          this.cargar();
+        },
+        error: (e: Error) => {
+          this.toast.error('No se pudieron agregar los NITs', e.message);
+          this.agregando.set(false);
+        },
+      });
+  }
+
+  alternarActivo(n: NitAfiliado): void {
+    this.api.put<NitAfiliado>(`/nits-afiliados/${n.id}`, { activo: !n.activo }).subscribe({
+      next: () => this.cargar(),
+      error: (e: Error) => this.toast.error('No se pudo actualizar el NIT', e.message),
+    });
+  }
+
+  eliminarNit(n: NitAfiliado): void {
+    this.api.delete(`/nits-afiliados/${n.id}`).subscribe({
+      next: () => {
+        this.toast.exito('NIT eliminado', n.nit);
+        this.cargar();
+      },
+      error: (e: Error) => this.toast.error('No se pudo eliminar el NIT', e.message),
     });
   }
 
@@ -146,7 +261,8 @@ export class SociedadesComponent {
 
   editar(s: Sociedad): void {
     this.form = {
-      empresaId: s.empresaId, nombre: s.nombre, nit: s.nit ?? '', conexionId: s.conexionId,
+      empresaId: s.empresaId, nombre: s.nombre, nit: s.nit ?? '', moneda: s.moneda ?? '',
+      monedaPresentacion: s.monedaPresentacion ?? '', conexionId: s.conexionId,
       esquemaOrigen: s.esquemaOrigen ?? '', activo: s.activo, orden: s.orden,
     };
     this.edicionId.set(s.id);
@@ -161,6 +277,8 @@ export class SociedadesComponent {
     const cuerpo = {
       nombre: this.form.nombre,
       nit: this.form.nit || undefined,
+      moneda: this.form.moneda ? this.form.moneda.toUpperCase() : null,
+      monedaPresentacion: this.form.monedaPresentacion ? this.form.monedaPresentacion.toUpperCase() : null,
       conexionId: this.form.conexionId,
       esquemaOrigen: this.form.esquemaOrigen || undefined,
       activo: this.form.activo,

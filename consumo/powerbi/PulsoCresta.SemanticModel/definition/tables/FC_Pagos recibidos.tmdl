@@ -1,0 +1,156 @@
+table 'FC_Pagos recibidos'
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column cliente_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cliente_clave
+
+	column socio_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: socio_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column moneda_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: moneda_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column pago_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: pago_id
+
+	column pago_numero
+		dataType: string
+		summarizeBy: none
+		sourceColumn: pago_numero
+
+	column serie_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: serie_codigo
+
+	column contraparte
+		dataType: string
+		summarizeBy: none
+		sourceColumn: contraparte
+
+	column fecha_pago
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_pago
+		formatString: dd/MM/yyyy
+
+	column medio_pago
+		dataType: string
+		summarizeBy: none
+		sourceColumn: medio_pago
+
+	column referencia
+		dataType: string
+		summarizeBy: none
+		sourceColumn: referencia
+
+	column estado
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado
+
+	column monto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto
+		formatString: #,0.00
+
+	column monto_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_doc
+		formatString: #,0.00
+
+	column tipo_cambio
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: tipo_cambio
+		formatString: #,0.00
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Flujo de cobros del período en MONEDA DE PRESENTACIÓN. INFORMATIVO para caja: el saldo de cartera sale del mayor.
+	measure 'Monto cobrado' = SUM('FC_Pagos recibidos'[monto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Solo cobranza de CLIENTES. En Cresta el 67% del monto de ORCT son operaciones de tesorería contra cuenta contable — sin este filtro la cobranza se triplica.
+	measure 'Cobros de clientes' = CALCULATE([Monto cobrado], 'FC_Pagos recibidos'[contraparte] = "cliente")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	measure 'Cobros de tesorería' = CALCULATE([Monto cobrado], 'FC_Pagos recibidos'[contraparte] = "cuenta_contable")
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+
+	/// Cobranza de clientes contra la venta con IVA del mismo período: el pulso de la recuperación.
+	measure '% Cobrado vs facturado' = DIVIDE([Cobros de clientes], [Ventas netas con IVA])
+		formatString: 0.0%
+		displayFolder: 01 Importes
+
+	measure 'Cantidad de cobros' = COUNTROWS('FC_Pagos recibidos')
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Clientes que pagaron' = DISTINCTCOUNT('FC_Pagos recibidos'[cliente_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Cobro promedio' = DIVIDE([Monto cobrado], [Cantidad de cobros])
+		formatString: "Q" #,0
+		displayFolder: 03 Promedios
+
+	measure 'Cobros mes anterior' = CALCULATE([Monto cobrado], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Cobros acumulados año' = TOTALYTD([Monto cobrado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	partition 'FC_Pagos recibidos' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_pago_recibido"]}[Data]
+				in
+				    Tabla
