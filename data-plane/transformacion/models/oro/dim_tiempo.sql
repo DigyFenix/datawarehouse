@@ -125,6 +125,16 @@ select
     fecha = primer_dia_mes                                    as es_primer_dia_mes,
     (date_part('day', ultimo_dia_mes))::int                   as dias_del_mes,
 
+    -- Días hábiles del mes al que pertenece la fecha, y cuántos van transcurridos HASTA ella
+    -- (inclusive). El par habilita el ritmo real de venta y la proyección de cierre de mes:
+    -- dividir entre días naturales castiga a los meses con muchos feriados y da una proyección
+    -- pesimista. Se calculan por ventana sobre el propio calendario para no depender del hecho.
+    sum(case when es_dia_habil then 1 else 0 end)
+        over (partition by primer_dia_mes)::int               as dias_habiles_del_mes,
+    sum(case when es_dia_habil then 1 else 0 end)
+        over (partition by primer_dia_mes order by fecha
+              rows between unbounded preceding and current row)::int as dias_habiles_transcurridos,
+
     -- ---------- perspectivas RELATIVAS a hoy ----------
     -- Permiten filtros como "últimos 3 meses" o "año en curso" sin escribir fechas fijas en
     -- cada visual, que es la causa habitual de reportes que se rompen al pasar el mes.

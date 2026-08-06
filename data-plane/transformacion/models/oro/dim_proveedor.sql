@@ -23,6 +23,12 @@ select
     -- var; la comparación normaliza NIT en ambos lados (ver macro es_nit_afiliado).
     {{ es_nit_afiliado('d.nit') }}                    as es_intercompania,
     d.activo,
+
+    -- Clase ABC VIGENTE (año en curso). Se declara vacía y la rellena
+    -- `clasificacion_abc_proveedor` con un post_hook; ver la nota extensa en dim_cliente sobre
+    -- por qué no puede resolverse con un join.
+    null::text                                        as clase_abc_actual,
+    null::text                                        as clase_abc_actual_nombre,
     {{ columnas_vigencia() }}
 from {{ ref('plata_socio_negocio') }} d
 join {{ ref('llave_proveedor') }} k
@@ -34,4 +40,5 @@ union all
 select
     {{ clave_no_definido() }}, 'GLOBAL', {{ codigo_no_definido() }}, {{ nombre_no_definido() }},
     null, null, null, null, null, false, false, true,
+    null, null,
     {{ columnas_vigencia() }}

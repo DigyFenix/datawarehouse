@@ -141,10 +141,11 @@ compras, ambas carteras, ambos pagos y pedidos. Elegir un socio muestra todo a l
 
 ## Transversales
 
-- **Parámetros de campo (`MD_Vista de ventas` / `de cartera` / `de compras`):** ponlos como
-  segmentador y el visual cambia de métrica con un clic (montos, %, conteos) — un solo
-  gráfico de tendencia o ranking en vez de uno por métrica. Arrastra la columna del
-  parámetro al eje de valores del visual y el segmentador manda.
+- **Parámetros de campo (`MD_Vista de ventas` / `de cartera` / `de compras` / `de liquidez` /
+  `de inventario` / `de rentabilidad`):** ponlos como segmentador y el visual cambia de
+  métrica con un clic (montos, %, conteos) — un solo gráfico de tendencia o ranking en vez de
+  uno por métrica. Arrastra la columna del parámetro al eje de valores del visual y el
+  segmentador manda.
 - **Dos ejes de moneda y nada más:** columnas sin sufijo = moneda de PRESENTACIÓN (GTQ —
   rigen TODOS los cálculos); columnas `_doc` = moneda del documento, solo referencia (vía
   «Moneda de análisis»). El eje local ya no existe en Oro: vive en Plata para el cuadre.
@@ -177,5 +178,42 @@ compras, ambas carteras, ambos pagos y pedidos. Elegir un socio muestra todo a l
   medidas: **no toca los visuales**. Regla: cerrar Desktop antes de regenerar y reabrir.
 - Cambios **aditivos** (medida nueva, columna nueva, tabla nueva) son siempre seguros.
   **Renombrar o borrar** algo que un visual ya usa lo deja en blanco — avisar antes.
-- Si falta una medida (aging por vencimiento, variaciones de cobros, participaciones…):
-  pedirla; se agrega al modelo y aparece al regenerar.
+- Si falta una medida (aging por vencimiento, participaciones…): pedirla; se agrega al modelo
+  y aparece al regenerar.
+
+## Familias nuevas (2026-08-06) — 293 medidas
+
+Se amplió la capa semántica de 180 a 293 medidas para cubrir las áreas donde una empresa toma
+decisiones y el modelo callaba. Lo que hay que saber para usarlas:
+
+- **Ciclo de conversión de efectivo** (`FC_Cartera por pagar` › 05): `Días de pago terceros`
+  (DPO) usa la MISMA convención que `Días de cartera terceros` (DSO), y el `Ciclo de conversión
+  de efectivo` los suma con `Días de inventario`. Los tres se pueden abrir por separado para
+  saber en cuál de las tres patas está atrapado el dinero. En Cresta: DSO 20 + DIO 128 − DPO 59
+  = **89 días**.
+- **Fugas de margen** (`FC_Ventas` › 08): `Ventas bajo costo` y `Margen perdido bajo costo`
+  vigilan la venta por debajo del costo de línea. **Solo funcionan en SAP B1**: en Odoo la línea
+  no trae costo y salen en cero. En Cresta es el 11.7% de la venta.
+- **Precio-Volumen-Mezcla** (`FC_Ventas` › 09): `Efecto precio` + `Efecto volumen` +
+  `Efecto mezcla` suman exactamente la variación contra el año anterior. Responde si la venta
+  se movió por precio o por unidades. Úsalos en un gráfico de cascada.
+- **Inventario ocioso** (`DM_Análisis de producto`): la ficha distingue dos cosas que no son lo
+  mismo. `Valor de inventario ocioso` = artículos que SÍ se vendieron y llevan +90 días
+  parados: dinero muerto accionable. `Valor sin rotación comercial` = artículos que nunca se
+  facturaron; en una productora eso es alimento, medicina y empaque que se consumen sin pasar
+  por factura, no mercadería estancada. Mezclarlos pondría el 95% del inventario de Cresta en
+  rojo. `Productos en quiebre` y `Venta anual en riesgo por quiebre` son el lado contrario:
+  demanda reciente sin existencia.
+- **Ritmo y proyección** (`FC_Venta diaria` › 03): `Venta por día hábil` y `Proyección de cierre
+  de mes` usan los días hábiles del calendario (descuentan feriados de Guatemala). La proyección
+  **solo tiene sentido con UN mes filtrado y mientras el mes está en curso**.
+- **Efectividad de cobranza** (`FC_Cartera cobrar histórico` › 02): necesita al menos dos cortes
+  diarios dentro del período filtrado. Hoy hay pocos cortes acumulados; la medida es correcta
+  pero gana sentido conforme se acumule historia.
+- **Frescura del dato** (`FC_Estado de carga`): `Días desde última extracción` y `Último dato del
+  ERP` son dos relojes distintos — el pipeline puede estar sano y la operación detenida. Vale la
+  pena ponerlos en una esquina de la página de Pulso: un tablero que muestra un número viejo sin
+  decirlo es peor que uno vacío.
+- **Control contable** (`FC_Resultados contables` › 04): `Brecha contable vs facturado` compara
+  el mayor con la facturación. Es un control, no un KPI: debería rondar cero y cuando se despega
+  hay que ir a buscar por qué.

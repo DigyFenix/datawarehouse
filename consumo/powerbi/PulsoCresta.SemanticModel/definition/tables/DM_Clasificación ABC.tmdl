@@ -6,98 +6,75 @@ table 'DM_Clasificación ABC'
 		summarizeBy: none
 		sourceColumn: empresa_id
 
+	column anio
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio
+		formatString: #,0
+
+	column anio_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: anio_clave
+
 	column cliente_clave
 		dataType: int64
 		isHidden
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
-	column ranking_historico
+	column ranking
 		dataType: int64
 		summarizeBy: none
-		sourceColumn: ranking_historico
+		sourceColumn: ranking
 		formatString: #,0
 
-	column venta_historico
+	column venta
 		dataType: decimal
 		summarizeBy: none
-		sourceColumn: venta_historico
+		sourceColumn: venta
 		formatString: #,0.00
 
-	column margen_historico
+	column margen
 		dataType: decimal
 		summarizeBy: none
-		sourceColumn: margen_historico
+		sourceColumn: margen
 		formatString: #,0.00
 
-	column lineas_historico
+	column lineas
 		dataType: int64
 		summarizeBy: none
-		sourceColumn: lineas_historico
+		sourceColumn: lineas
 		formatString: #,0
 
-	column participacion_historico
+	column participacion
 		dataType: decimal
 		summarizeBy: none
-		sourceColumn: participacion_historico
+		sourceColumn: participacion
 		formatString: 0.0%
 
-	column participacion_acumulada_historico
+	column participacion_acumulada
 		dataType: decimal
 		summarizeBy: none
-		sourceColumn: participacion_acumulada_historico
+		sourceColumn: participacion_acumulada
 		formatString: 0.0%
 
-	column clase_abc_historico
+	column clase_abc
 		dataType: string
 		summarizeBy: none
-		sourceColumn: clase_abc_historico
+		sourceColumn: clase_abc
 
-	column ranking_anio
-		dataType: int64
-		summarizeBy: none
-		sourceColumn: ranking_anio
-		formatString: #,0
-
-	column venta_anio
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: venta_anio
-		formatString: #,0.00
-
-	column margen_anio
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: margen_anio
-		formatString: #,0.00
-
-	column lineas_anio
-		dataType: int64
-		summarizeBy: none
-		sourceColumn: lineas_anio
-		formatString: #,0
-
-	column participacion_anio
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: participacion_anio
-		formatString: 0.0%
-
-	column participacion_acumulada_anio
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: participacion_acumulada_anio
-		formatString: 0.0%
-
-	column clase_abc_anio
+	column clase_abc_nombre
 		dataType: string
 		summarizeBy: none
-		sourceColumn: clase_abc_anio
+		sourceColumn: clase_abc_nombre
 
-	column clase_abc_anio_nombre
-		dataType: string
+	column primer_anio_compra
+		dataType: int64
 		summarizeBy: none
-		sourceColumn: clase_abc_anio_nombre
+		sourceColumn: primer_anio_compra
+		formatString: #,0
 
 	column ultimo_anio_compra
 		dataType: int64
@@ -105,10 +82,15 @@ table 'DM_Clasificación ABC'
 		sourceColumn: ultimo_anio_compra
 		formatString: #,0
 
-	column perdido_en_anio
+	column es_perdido
 		dataType: boolean
 		summarizeBy: none
-		sourceColumn: perdido_en_anio
+		sourceColumn: es_perdido
+
+	column es_nuevo
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_nuevo
 
 	column proceso_transformacion
 		dataType: string
@@ -122,46 +104,52 @@ table 'DM_Clasificación ABC'
 		summarizeBy: none
 		sourceColumn: version_proceso
 
-	/// Cuántos clientes concentran el 80% de la venta del año. En una cartera sana no son dos.
-	measure 'Clientes A' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[clase_abc_anio] = "A")
+	/// Cuántos clientes concentran el 80% de la venta. En una cartera sana no son dos. Cuenta clientes DISTINTOS: la tabla tiene una fila por cliente y año, así que sin acotar el año un COUNTROWS contaría cliente-años.
+	measure 'Clientes A' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Clientes B' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[clase_abc_anio] = "B")
+	measure 'Clientes B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "B"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Clientes C' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[clase_abc_anio] = "C")
+	measure 'Clientes C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "C"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Clientes sin venta neta' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[clase_abc_anio] = "S")
+	measure 'Clientes sin venta neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "S"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Clientes clasificados' = COUNTROWS('DM_Clasificación ABC')
+	measure 'Clientes clasificados' = DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave])
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	/// Clientes que facturaron algún año anterior y nada en el año en curso: la lista de llamadas pendientes.
-	measure 'Clientes perdidos' = CALCULATE(COUNTROWS('DM_Clasificación ABC'), 'DM_Clasificación ABC'[perdido_en_anio] = TRUE)
+	/// Clientes que facturaron algún año anterior y nada en el año seleccionado: la lista de llamadas pendientes.
+	measure 'Clientes perdidos' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[es_perdido] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Clientes cuya PRIMERA factura cae en el año seleccionado.
+	measure 'Clientes estrenados en el año' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[es_nuevo] = TRUE))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
 	/// Riesgo de concentración: si los A son el 90% de la venta, perder uno duele de verdad.
-	measure '% Venta en clientes A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta_anio]), 'DM_Clasificación ABC'[clase_abc_anio] = "A"), SUM('DM_Clasificación ABC'[venta_anio]))
+	measure '% Venta en clientes A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), SUM('DM_Clasificación ABC'[venta]))
 		formatString: 0.0%
 		displayFolder: 02 Concentración
 
-	measure 'Venta del año clasificada' = SUM('DM_Clasificación ABC'[venta_anio])
+	/// Venta a terceros del año según el catálogo ABC. Sin filtrar un año en 'Año de clasificación' suma TODOS los años cargados.
+	measure 'Venta del año clasificada' = SUM('DM_Clasificación ABC'[venta])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 
-	measure 'Venta promedio cliente A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta_anio]), 'DM_Clasificación ABC'[clase_abc_anio] = "A"), [Clientes A])
+	measure 'Venta promedio cliente A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), [Clientes A])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 
-	measure 'Margen de clientes A' = CALCULATE(SUM('DM_Clasificación ABC'[margen_anio]), 'DM_Clasificación ABC'[clase_abc_anio] = "A")
+	measure 'Margen de clientes A' = CALCULATE(SUM('DM_Clasificación ABC'[margen]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 

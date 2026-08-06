@@ -113,11 +113,11 @@ table 'FC_Pagos recibidos'
 		displayFolder: 01 Importes
 
 	/// Solo cobranza de CLIENTES. En Cresta el 67% del monto de ORCT son operaciones de tesorería contra cuenta contable — sin este filtro la cobranza se triplica.
-	measure 'Cobros de clientes' = CALCULATE([Monto cobrado], 'FC_Pagos recibidos'[contraparte] = "cliente")
+	measure 'Cobros de clientes' = CALCULATE([Monto cobrado], KEEPFILTERS('FC_Pagos recibidos'[contraparte] = "cliente"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
-	measure 'Cobros de tesorería' = CALCULATE([Monto cobrado], 'FC_Pagos recibidos'[contraparte] = "cuenta_contable")
+	measure 'Cobros de tesorería' = CALCULATE([Monto cobrado], KEEPFILTERS('FC_Pagos recibidos'[contraparte] = "cuenta_contable"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -145,6 +145,23 @@ table 'FC_Pagos recibidos'
 	measure 'Cobros acumulados año' = TOTALYTD([Monto cobrado], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
+
+	measure 'Cobros año anterior' = CALCULATE([Monto cobrado], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Cobros acumulados mes' = TOTALMTD([Monto cobrado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Variación de cobros vs año anterior' = DIVIDE([Monto cobrado] - [Cobros año anterior], [Cobros año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 04 Comparativos
+
+	/// Reparto del cobro por instrumento. Un salto del efectivo o una caída de la transferencia cambia el riesgo operativo y el costo bancario.
+	measure '% Cobro en el medio principal' = DIVIDE(MAXX(ALLSELECTED('FC_Pagos recibidos'[medio_pago]), [Cobros de clientes]), CALCULATE([Cobros de clientes], ALLSELECTED('FC_Pagos recibidos'[medio_pago])))
+		formatString: 0.0%
+		displayFolder: 05 Mix de cobro
 
 	partition 'FC_Pagos recibidos' = m
 		mode: import

@@ -103,17 +103,40 @@ table 'FC_Venta diaria'
 		displayFolder: 01 Serie
 
 	/// Promedio solo de los días que SÍ se vendió (excluye ceros): el ritmo real de un día operado.
-	measure 'Venta promedio día operado' = AVERAGEX(FILTER('FC_Venta diaria', 'FC_Venta diaria'[es_dia_sin_venta] = FALSE), 'FC_Venta diaria'[ventas_netas])
+	measure 'Venta promedio día operado' = CALCULATE(AVERAGE('FC_Venta diaria'[ventas_netas]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
 
-	measure 'Días sin venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), 'FC_Venta diaria'[es_dia_sin_venta] = TRUE)
+	measure 'Días sin venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Actividad
 
-	measure 'Clientes activos por día' = AVERAGEX(FILTER('FC_Venta diaria', 'FC_Venta diaria'[es_dia_sin_venta] = FALSE), 'FC_Venta diaria'[clientes_activos])
+	measure 'Clientes activos por día' = CALCULATE(AVERAGE('FC_Venta diaria'[clientes_activos]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
 		formatString: #,0
 		displayFolder: 02 Actividad
+
+	measure 'Días con venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
+		formatString: #,0
+		displayFolder: 02 Actividad
+
+	/// Ritmo real: dividir entre días NATURALES castiga a los meses con muchos feriados y hace parecer que la operación cayó cuando solo hubo menos días de trabajo.
+	measure 'Venta por día hábil' = DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE)))
+		formatString: "Q" #,0
+		displayFolder: 03 Ritmo
+
+	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado, y solo mientras el mes está en curso.
+	measure 'Proyección de cierre de mes' = DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE), KEEPFILTERS(DM_Calendario[fecha] <= TODAY()))) * MAX(DM_Calendario[dias_habiles_del_mes])
+		formatString: "Q" #,0
+		displayFolder: 03 Ritmo
+
+	/// Cuánto se despega el período del promedio mensual de su propio año. 1.0 es un mes normal; 1.3 es un pico estacional.
+	measure 'Índice de estacionalidad' = DIVIDE([Venta diaria neta], DIVIDE(CALCULATE([Venta diaria neta], ALLEXCEPT(DM_Calendario, DM_Calendario[anio])), 12))
+		formatString: #,0.00
+		displayFolder: 03 Ritmo
+
+	measure 'Venta acumulada semana' = CALCULATE([Venta diaria neta], FILTER(ALL(DM_Calendario), DM_Calendario[anio_semana_orden] = MAX(DM_Calendario[anio_semana_orden]) && DM_Calendario[fecha] <= MAX(DM_Calendario[fecha])))
+		formatString: "Q" #,0
+		displayFolder: 03 Ritmo
 
 	partition 'FC_Venta diaria' = m
 		mode: import

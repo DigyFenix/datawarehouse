@@ -23,50 +23,45 @@ models:
     description: >
       Clasificación ABC (Pareto) de clientes por venta neta a terceros, calculada en el
       warehouse para que Power BI, los reportes y el futuro agente usen la MISMA definición.
-      Grano: una fila por (empresa, cliente); los dos ámbitos temporales —año en curso e
-      histórico— van como columnas para que la clase pueda filtrar el hecho de ventas sin
-      relaciones bidireccionales.
+      Grano: una fila por (empresa, AÑO, cliente). Antes era una fila por cliente con los
+      ámbitos en columnas y sin relación con el tiempo: al filtrar un año pasado se devolvía
+      la clasificación del último año procesado. La clase vigente se desnormaliza en
+      `dim_cliente.clase_abc_actual` mediante post_hook.
     columns:
+      - name: anio_clave
+        description: Clave de la dimensión Año. Es la vía por la que la clasificación se acota en el tiempo.
+        data_tests: [not_null]
       - name: cliente_clave
-        description: Clave de la dimensión Cliente. Única — la relación con Cliente es 1:1.
-        data_tests: [not_null, unique]
-      - name: clase_abc_anio
-        description: A hasta el 80% acumulado del año en curso, B hasta 95%, C el resto, S sin ventas.
+        data_tests: [not_null]
+      - name: clase_abc
+        description: A hasta el 80% acumulado del año, B hasta 95%, C el resto, S sin ventas.
         data_tests:
           - not_null
           - accepted_values: { values: [A, B, C, S] }
-      - name: clase_abc_historico
-        data_tests:
-          - not_null
-          - accepted_values: { values: [A, B, C, S] }
-      - name: ranking_anio
+      - name: ranking
         data_tests: [not_null]
-      - name: ranking_historico
+      - name: participacion_acumulada
         data_tests: [not_null]
-      - name: participacion_acumulada_anio
+      - name: es_perdido
         data_tests: [not_null]
-
   - name: clasificacion_abc_proveedor
     description: >
-      Clasificación ABC (Pareto) de proveedores por compra neta a terceros. Espejo de
-      clasificacion_abc_cliente sin columnas de margen (el hecho de compras no lo lleva).
+      Espejo del ABC de clientes sobre compras, con grano (empresa, AÑO, proveedor). Sin margen
+      —la compra no lo tiene— y con `es_inactivo` en lugar de `es_perdido`. La clase vigente se
+      desnormaliza en `dim_proveedor.clase_abc_actual` mediante post_hook.
     columns:
+      - name: anio_clave
+        data_tests: [not_null]
       - name: proveedor_clave
-        description: Clave de la dimensión Proveedor. Única — la relación con Proveedor es 1:1.
-        data_tests: [not_null, unique]
-      - name: clase_abc_anio
+        data_tests: [not_null]
+      - name: clase_abc
         data_tests:
           - not_null
           - accepted_values: { values: [A, B, C, S] }
-      - name: clase_abc_historico
-        data_tests:
-          - not_null
-          - accepted_values: { values: [A, B, C, S] }
-      - name: ranking_anio
+      - name: ranking
         data_tests: [not_null]
-      - name: participacion_acumulada_anio
+      - name: es_inactivo
         data_tests: [not_null]
-
   - name: clasificacion_rfm_cliente
     description: >
       Clasificación RFM (recencia · frecuencia · monto) de clientes, calculada en el warehouse
@@ -224,3 +219,56 @@ models:
           - relationships:
               to: ref('dim_rango_aging')
               field: rango_aging
+
+  - name: analisis_producto
+    description: >
+      Ficha analítica del producto: cruza demanda (12 meses de venta) contra existencia actual
+      para encontrar inventario muerto y quiebres de stock. Grano: una fila por (empresa,
+      producto), 1:1 con la dimensión Producto. `es_ocioso` exige historia de venta previa;
+      el producto con existencia que nunca se facturó va en `es_sin_rotacion_comercial`,
+      porque en una empresa productora es insumo normal, no mercadería estancada.
+    columns:
+      - name: producto_clave
+        description: Clave de la dimensión Producto. Única — la relación es 1:1.
+        data_tests: [not_null, unique]
+      - name: clase_abc_producto
+        description: >
+          Pareto sobre la venta de 12 meses. A diferencia del ABC de clientes, se calcula sobre
+          la venta TOTAL: un producto vendido al grupo consume bodega y rota igual.
+        data_tests:
+          - not_null
+          - accepted_values: { values: [A, B, C, S] }
+      - name: estado_producto
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [Servicio, Quiebre, 'Sin existencia', 'Sin rotación comercial', Ocioso, Sano, Lento]
+      - name: es_ocioso
+        data_tests: [not_null]
+      - name: es_quiebre
+        data_tests: [not_null]
+
+  - name: estado_carga
+    description: >
+      Frescura del dato por (empresa, dominio). Separa dos relojes que no significan lo mismo:
+      `ultima_extraccion` dice si el pipeline está vivo y `fecha_dato_mas_reciente` si el ERP
+      tiene operación al día. Se lee de Plata porque Oro no arrastra `extraido_en`.
+    columns:
+      - name: dominio
+        data_tests: [not_null]
+      - name: ultima_extraccion
+        data_tests: [not_null]
+      - name: estado_frescura
+        data_tests:
+          - not_null
+          - accepted_values: { values: ['Al día', Atrasado, Desactualizado] }
+
+  - name: dim_anio
+    description: >
+      Dimensión Año: el puente entre lo que se mide por día y lo que se clasifica por año.
+      Evita un muchos-a-muchos contra el calendario, que Power BI resuelve filtrando en ambas
+      direcciones. Filtrar aquí acota a la vez las clasificaciones y —vía el calendario— los
+      hechos; al revés no propaga, que es lo correcto para una clase anual.
+    columns:
+      - name: anio_clave
+        data_tests: [not_null, unique]

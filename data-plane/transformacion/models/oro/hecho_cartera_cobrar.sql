@@ -39,14 +39,11 @@ select
 
     -- Aging a la fecha de corte. Negativo = aún no vence.
     ({{ corte }} - p.fecha_vencimiento)               as dias_vencido,
-    case
-        when p.fecha_vencimiento is null                    then 'sin_vencimiento'
-        when {{ corte }} <= p.fecha_vencimiento            then 'corriente'
-        when {{ corte }} - p.fecha_vencimiento <= 30       then '1-30'
-        when {{ corte }} - p.fecha_vencimiento <= 60       then '31-60'
-        when {{ corte }} - p.fecha_vencimiento <= 90       then '61-90'
-        else '+90'
-    end                                               as rango_aging,
+    -- La etiqueta y la clave salen del MISMO bloque (macro `aging_rango`) para que no puedan
+    -- desincronizarse. La clave entera es la que relaciona con la dimensión en Power BI: una
+    -- relación por texto sobre las tablas más grandes del modelo cuesta memoria y velocidad.
+    {{ aging_rango(corte, 'p.fecha_vencimiento', 'codigo') }} as rango_aging,
+    {{ aging_rango(corte, 'p.fecha_vencimiento', 'clave') }}  as rango_aging_clave,
 
     p.proceso_transformacion,
     p.version_proceso

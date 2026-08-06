@@ -1,0 +1,101 @@
+table 'FC_Estado de carga'
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column dominio
+		dataType: string
+		summarizeBy: none
+		sourceColumn: dominio
+
+	column dominio_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: dominio_nombre
+
+	column filas
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: filas
+		formatString: #,0
+
+	column ultima_extraccion
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: ultima_extraccion
+		formatString: dd/MM/yyyy
+
+	column fecha_dato_mas_reciente
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_dato_mas_reciente
+		formatString: dd/MM/yyyy
+
+	column dias_desde_extraccion
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_desde_extraccion
+		formatString: #,0
+
+	column dias_desde_ultimo_dato
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_desde_ultimo_dato
+		formatString: #,0
+
+	column estado_frescura
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado_frescura
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Días desde la última extracción del dominio más rezagado. Es el aviso de que el tablero está viejo antes de que alguien tome una decisión con él.
+	measure 'Días desde última extracción' = MAX('FC_Estado de carga'[dias_desde_extraccion])
+		formatString: #,0
+		displayFolder: 01 Frescura
+
+	measure 'Última extracción' = MAX('FC_Estado de carga'[ultima_extraccion])
+		formatString: dd/MM/yyyy HH:mm
+		displayFolder: 01 Frescura
+
+	/// Fecha del dato más reciente que hay en el ERP. Es un reloj distinto al de la extracción: el pipeline puede estar sano y la operación detenida.
+	measure 'Último dato del ERP' = MAX('FC_Estado de carga'[fecha_dato_mas_reciente])
+		formatString: dd/MM/yyyy
+		displayFolder: 01 Frescura
+
+	measure 'Dominios desactualizados' = CALCULATE(COUNTROWS('FC_Estado de carga'), KEEPFILTERS('FC_Estado de carga'[estado_frescura] = "Desactualizado"))
+		formatString: #,0
+		displayFolder: 01 Frescura
+
+	measure 'Filas cargadas' = SUM('FC_Estado de carga'[filas])
+		formatString: #,0
+		displayFolder: 02 Volumen
+
+	partition 'FC_Estado de carga' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="estado_carga"]}[Data]
+				in
+				    Tabla

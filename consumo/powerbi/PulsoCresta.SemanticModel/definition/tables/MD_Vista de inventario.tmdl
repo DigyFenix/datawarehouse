@@ -1,0 +1,40 @@
+table 'MD_Vista de inventario'
+
+	column 'Vista de inventario'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Vista de inventario · orden'
+		relatedColumnDetails
+			groupByColumn: 'Vista de inventario · campo'
+
+	column 'Vista de inventario · campo'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value2]
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+	column 'Vista de inventario · orden'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value3]
+
+	partition 'MD_Vista de inventario' = calculated
+		mode: import
+		source =
+				{
+				  ("Valor de inventario", NAMEOF(FC_Inventario[Valor de inventario]), 0),
+				  ("Valor de inventario ocioso", NAMEOF('DM_Análisis de producto'[Valor de inventario ocioso]), 1),
+				  ("% Inventario ocioso", NAMEOF('DM_Análisis de producto'[% Inventario ocioso]), 2),
+				  ("Valor sin rotación comercial", NAMEOF('DM_Análisis de producto'[Valor sin rotación comercial]), 3),
+				  ("Productos en quiebre", NAMEOF('DM_Análisis de producto'[Productos en quiebre]), 4),
+				  ("Venta anual en riesgo por quiebre", NAMEOF('DM_Análisis de producto'[Venta anual en riesgo por quiebre]), 5),
+				  ("Rotación de inventario 12M", NAMEOF(FC_Inventario[Rotación de inventario 12M]), 6),
+				  ("Cobertura promedio en días", NAMEOF('DM_Análisis de producto'[Cobertura promedio en días]), 7)
+				}

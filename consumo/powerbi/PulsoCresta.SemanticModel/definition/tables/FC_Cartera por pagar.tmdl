@@ -124,8 +124,15 @@ table 'FC_Cartera por pagar'
 
 	column rango_aging
 		dataType: string
+		isHidden
 		summarizeBy: none
 		sourceColumn: rango_aging
+
+	column rango_aging_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_aging_clave
 
 	column proceso_transformacion
 		dataType: string
@@ -165,7 +172,7 @@ table 'FC_Cartera por pagar'
 		formatString: #,0
 		displayFolder: 02 Conteos
 
-	measure 'Por pagar vencido' = CALCULATE([Saldo por pagar], 'DM_Antigüedad'[es_vencido] = TRUE)
+	measure 'Por pagar vencido' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
@@ -173,7 +180,7 @@ table 'FC_Cartera por pagar'
 		formatString: 0.0%
 		displayFolder: 03 Antigüedad
 
-	measure 'Por pagar más de 90' = CALCULATE([Saldo por pagar], 'DM_Antigüedad'[rango_aging] = "+90")
+	measure 'Por pagar más de 90' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "+90"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
@@ -185,6 +192,33 @@ table 'FC_Cartera por pagar'
 	measure 'Posición neta hoy' = CALCULATE([Posición neta], REMOVEFILTERS(DM_Calendario))
 		formatString: "Q" #,0
 		displayFolder: 04 Foto de hoy
+
+	/// DPO: días que tardamos en pagar a proveedores. Misma convención que 'Días de cartera terceros' para que el ciclo de efectivo cuadre.
+	measure 'Días de pago terceros' = DIVIDE([Saldo por pagar terceros], DIVIDE([Compras a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Compras)))
+		formatString: #,0.0
+		displayFolder: 05 Ciclo de efectivo
+
+	measure 'Rotación de cuentas por pagar' = DIVIDE(365, [Días de pago terceros])
+		formatString: #,0.0
+		displayFolder: 05 Ciclo de efectivo
+
+	/// CICLO DE CONVERSIÓN DE EFECTIVO: días que el dinero pasa atrapado en el negocio antes de volver a caja. Cobrar + inventario − pagar. Bajarlo libera capital de trabajo sin pedir un préstamo; es la métrica de liquidez que más mueve la aguja en una PyME. Negativo significa que los proveedores financian la operación.
+	measure 'Ciclo de conversión de efectivo' = [Días de cartera terceros] + [Días de inventario] - [Días de pago terceros]
+		formatString: #,0.0
+		displayFolder: 05 Ciclo de efectivo
+
+	measure 'Proveedores con saldo vencido' = CALCULATE(DISTINCTCOUNT('FC_Cartera por pagar'[proveedor_clave]), KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	measure 'Por pagar sin vencimiento' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "sin_vencimiento"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	/// Concentración de la deuda: cuánto pesa el acreedor más grande sobre el total por pagar.
+	measure '% Deuda en el mayor acreedor' = DIVIDE(MAXX(ALLSELECTED(DM_Proveedor), [Saldo por pagar terceros]), CALCULATE([Saldo por pagar terceros], ALLSELECTED(DM_Proveedor)))
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
 
 	partition 'FC_Cartera por pagar' = m
 		mode: import

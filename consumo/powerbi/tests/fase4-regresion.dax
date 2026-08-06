@@ -1,0 +1,131 @@
+// =============================================================================
+// Fase 4 — regresión de las medidas optimizadas.
+//
+// Objetivo: demostrar que la optimización NO cambió ningún valor. Las versiones "_viejo"
+// reproducen el DAX anterior al cambio; las nuevas ya viven en el modelo.
+//
+// Cómo correrlo: DAX Studio conectado a PulsoCresta (Desktop abierto), pestaña Query,
+// ejecutar cada bloque por separado. La columna `dif` debe ser 0 en TODAS las filas.
+// Si alguna se desvía, revertir esa medida y avisar antes de seguir.
+//
+// Contexto de prueba: sin filtros externos. Repetir con un filtro de Empresa y otro de
+// Período activos para cubrir el caso real de un visual.
+// =============================================================================
+
+
+// -----------------------------------------------------------------------------
+// 4a.1 — % acumulado de venta clientes
+// Antes: FILTER reevaluaba [Ventas a terceros] una vez por cliente, dentro de una iteración
+// que ya recorría todos los clientes → O(n²).
+// Ahora: la venta por cliente se materializa una sola vez en `base`.
+// -----------------------------------------------------------------------------
+DEFINE
+    MEASURE 'FC_Ventas'[_pareto_cliente_viejo] =
+        VAR actual = [Ventas a terceros]
+        RETURN DIVIDE(
+            SUMX(FILTER(ALLSELECTED(DM_Cliente), [Ventas a terceros] >= actual), [Ventas a terceros]),
+            CALCULATE([Ventas a terceros], ALLSELECTED(DM_Cliente))
+        )
+EVALUATE
+    TOPN(
+        50,
+        ADDCOLUMNS(
+            FILTER(VALUES(DM_Cliente[nombre]), [Ventas a terceros] > 0),
+            "viejo", [_pareto_cliente_viejo],
+            "nuevo", [% acumulado de venta clientes],
+            "dif",   [_pareto_cliente_viejo] - [% acumulado de venta clientes]
+        ),
+        [dif], DESC
+    )
+ORDER BY [dif] DESC
+
+
+// -----------------------------------------------------------------------------
+// 4a.2 — % acumulado de venta productos
+// -----------------------------------------------------------------------------
+DEFINE
+    MEASURE 'FC_Ventas'[_pareto_producto_viejo] =
+        VAR actual = [Ventas netas]
+        RETURN DIVIDE(
+            SUMX(FILTER(ALLSELECTED(DM_Producto), [Ventas netas] >= actual), [Ventas netas]),
+            CALCULATE([Ventas netas], ALLSELECTED(DM_Producto))
+        )
+EVALUATE
+    TOPN(
+        50,
+        ADDCOLUMNS(
+            FILTER(VALUES(DM_Producto[nombre]), [Ventas netas] > 0),
+            "viejo", [_pareto_producto_viejo],
+            "nuevo", [% acumulado de venta productos],
+            "dif",   [_pareto_producto_viejo] - [% acumulado de venta productos]
+        ),
+        [dif], DESC
+    )
+ORDER BY [dif] DESC
+
+
+// -----------------------------------------------------------------------------
+// 4a.3 — % acumulado de compra proveedores
+// -----------------------------------------------------------------------------
+DEFINE
+    MEASURE 'FC_Compras'[_pareto_proveedor_viejo] =
+        VAR actual = [Compras a terceros]
+        RETURN DIVIDE(
+            SUMX(FILTER(ALLSELECTED(DM_Proveedor), [Compras a terceros] >= actual), [Compras a terceros]),
+            CALCULATE([Compras a terceros], ALLSELECTED(DM_Proveedor))
+        )
+EVALUATE
+    TOPN(
+        50,
+        ADDCOLUMNS(
+            FILTER(VALUES(DM_Proveedor[nombre]), [Compras a terceros] > 0),
+            "viejo", [_pareto_proveedor_viejo],
+            "nuevo", [% acumulado de compra proveedores],
+            "dif",   [_pareto_proveedor_viejo] - [% acumulado de compra proveedores]
+        ),
+        [dif], DESC
+    )
+ORDER BY [dif] DESC
+
+
+// -----------------------------------------------------------------------------
+// 4b — FILTER sobre tabla de hechos → predicado en CALCULATE
+// AVERAGEX(FILTER(tabla, p), col) materializa la tabla filtrada en memoria;
+// CALCULATE(AVERAGE(col), p) deja que el motor de almacenamiento aplique el filtro.
+// Mismo resultado, mucho menos trabajo.
+// -----------------------------------------------------------------------------
+DEFINE
+    MEASURE 'FC_Venta diaria'[_venta_dia_viejo] =
+        AVERAGEX(FILTER('FC_Venta diaria', 'FC_Venta diaria'[es_dia_sin_venta] = FALSE),
+                 'FC_Venta diaria'[ventas_netas])
+    MEASURE 'FC_Venta diaria'[_clientes_dia_viejo] =
+        AVERAGEX(FILTER('FC_Venta diaria', 'FC_Venta diaria'[es_dia_sin_venta] = FALSE),
+                 'FC_Venta diaria'[clientes_activos])
+EVALUATE
+    ADDCOLUMNS(
+        VALUES(DM_Calendario[anio_mes]),
+        "venta_viejo",    [_venta_dia_viejo],
+        "venta_nuevo",    [Venta promedio día operado],
+        "venta_dif",      [_venta_dia_viejo] - [Venta promedio día operado],
+        "clientes_viejo", [_clientes_dia_viejo],
+        "clientes_nuevo", [Clientes activos por día],
+        "clientes_dif",   [_clientes_dia_viejo] - [Clientes activos por día]
+    )
+ORDER BY DM_Calendario[anio_mes]
+
+
+// -----------------------------------------------------------------------------
+// EXTRA — Fase 2: las medidas de la ficha de producto con TREATAS.
+// Al quitar el filtrado bidireccional, estas tres pasaron a filtrar por TREATAS explícito.
+// Comprobación de que siguen acotando el inventario y no devuelven el total.
+// El total NO debe coincidir con [Valor de inventario] salvo que todo esté ocioso.
+// -----------------------------------------------------------------------------
+EVALUATE
+    ROW(
+        "Valor de inventario",          [Valor de inventario],
+        "Ocioso",                       [Valor de inventario ocioso],
+        "Sin rotación comercial",       [Valor sin rotación comercial],
+        "En productos C",               [Inventario en productos C],
+        "Ocioso + sin rotación <= total", IF([Valor de inventario ocioso] + [Valor sin rotación comercial]
+                                             <= [Valor de inventario], "OK", "REVISAR")
+    )

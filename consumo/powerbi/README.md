@@ -7,7 +7,8 @@ Un proyecto por organización, generado desde el esquema `oro` de su base:
 | `PulsoCresta.pbip` | `dw_grupocresta` | Grupo Cresta (SAP B1 / HANA) |
 | `PulsoIronNetwork.pbip` | `dw_ironnetwork` | Iron Network (Odoo 18) |
 
-Cada uno trae **32 tablas, 92 relaciones y 180 medidas DAX** ya definidas, más el grupo de
+Cada uno trae **35 tablas de datos, 95 relaciones y 293 medidas DAX** ya definidas (más el
+grupo de cálculo y 6 parámetros de campo: 42 archivos de tabla en total), con el grupo de
 cálculo **«Moneda de análisis»** (Quetzales ↔ moneda original del documento). Además de las
 dimensiones por rol (Cliente / Proveedor), el modelo incluye **`DM_Socio de negocio`**: la
 vista consolidada de la maestra (unificada por NIT vía `socio_unificado`) relacionada a los

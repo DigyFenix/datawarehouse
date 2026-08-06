@@ -85,6 +85,7 @@ table 'FC_Cartera pagar histórico'
 
 	column rango_aging
 		dataType: string
+		isHidden
 		summarizeBy: none
 		sourceColumn: rango_aging
 
@@ -99,6 +100,26 @@ table 'FC_Cartera pagar histórico'
 		isHidden
 		summarizeBy: none
 		sourceColumn: version_proceso
+
+	column rango_aging_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_aging_clave
+
+	/// Saldo por pagar a la fecha de corte de la foto, en positivo. MONEDA DE PRESENTACIÓN.
+	measure 'Saldo histórico por pagar' = SUM('FC_Cartera pagar histórico'[saldo_pendiente_absoluto])
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	measure 'Vencido histórico por pagar' = CALCULATE([Saldo histórico por pagar], KEEPFILTERS('FC_Cartera pagar histórico'[dias_vencido] > 0))
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	/// Posición neta a lo largo del tiempo: la serie que muestra si la liquidez estructural mejora o se deteriora.
+	measure 'Posición neta histórica' = [Saldo histórico por cobrar] - [Saldo histórico por pagar]
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
 
 	partition 'FC_Cartera pagar histórico' = m
 		mode: import

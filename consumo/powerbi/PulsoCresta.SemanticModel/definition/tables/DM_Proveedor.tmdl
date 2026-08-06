@@ -62,6 +62,16 @@ table DM_Proveedor
 		summarizeBy: none
 		sourceColumn: activo
 
+	column clase_abc_actual
+		dataType: string
+		summarizeBy: none
+		sourceColumn: clase_abc_actual
+
+	column clase_abc_actual_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: clase_abc_actual_nombre
+
 	column valido_desde
 		dataType: dateTime
 		isHidden

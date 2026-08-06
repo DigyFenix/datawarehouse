@@ -20,7 +20,13 @@
   - Solo FACTURAS para recencia/frecuencia (una nota de crédito no es actividad de compra);
     el monto sí es NETO (facturas − notas) para no premiar al que compra y devuelve.
 #}
-{{ config(materialized='table') }}
+{#- El post_hook desnormaliza la clasificación vigente sobre la dimensión. No puede
+    ser un join dentro de la dimensión: los hechos leen la dimensión y esta tabla lee
+    los hechos, así que un `ref` desde dim_cliente cerraría un ciclo. -#}
+{{ config(
+    materialized='table',
+    post_hook="update {{ ref('dim_cliente') }} d set segmento_rfm_actual = c.segmento_rfm from {{ this }} c where c.cliente_clave = d.cliente_clave"
+) }}
 
 with referencia as (
     select empresa_id, max(fecha_documento) as fecha_ref
@@ -38,7 +44,7 @@ ventas as (
         v.tipo_documento,
         v.monto_sin_impuesto
     from {{ ref('hecho_venta_linea') }} v
-    join {{ ref('dim_cliente') }} c on c.cliente_clave = v.cliente_clave
+    join {{ ref('maestra_cliente') }} c on c.cliente_clave = v.cliente_clave
     where coalesce(c.es_intercompania, false) = false
 ),
 
@@ -71,11 +77,10 @@ universo as (
         coalesce(g.frecuencia_12m, 0)::int               as frecuencia_12m,
         coalesce(g.monto_neto_12m, 0)::numeric(18,4)     as monto_neto_12m,
         g.fecha_ref
-    from {{ ref('dim_cliente') }} c
+    from {{ ref('maestra_cliente') }} c
     left join agregado g
            on g.empresa_id = c.empresa_id and g.cliente_clave = c.cliente_clave
-    where c.es_vigente
-      and coalesce(c.es_intercompania, false) = false
+    where coalesce(c.es_intercompania, false) = false
       and c.cliente_clave <> {{ clave_no_definido() }}
 ),
 

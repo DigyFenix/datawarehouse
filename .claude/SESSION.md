@@ -1,6 +1,99 @@
 # SESSION — datawarehouse
 
-## ══════ SESIÓN 16 (2026-08-02) — GRUPO COMPLETO EN EL DW — leer esto primero ══════
+## ══════ SESIÓN 17 (2026-08-06) — CAPA SEMÁNTICA AMPLIADA — leer esto primero ══════
+
+**Foco: pasar la capa semántica de 180 a 293 medidas cubriendo las áreas donde una empresa
+decide y el modelo callaba, y reparar el catálogo de gobierno, que estaba ROTO. Todo local
+(Edwin pidió explícitamente nada de VPS ni publicación). Power BI solo Cresta.**
+
+### El hallazgo que cambió el planteamiento
+
+`metadatos.catalogo_hechos` solo conocía `fct_ventas_facturacion` y `fct_cobros_cxc`, nombres
+de la Fase 0 que **nunca se materializaron** como modelo dbt. Como `catalogo_metricas.hecho_origen`
+es FK a esa tabla, **el portal era incapaz de registrar una métrica sobre un hecho real**: el
+desplegable de `GET /api/hechos` solo ofrecía dos claves fantasma. Y había tres definiciones
+paralelas de "Ventas Netas" que no se referenciaban: la ficha del portal (sin fórmula, hecho
+inexistente), `metrica_valor` (14 claves hardcodeadas) y la medida DAX.
+
+### Habilitadores nuevos en el warehouse
+
+- **`dim_tiempo.dias_habiles_del_mes` + `dias_habiles_transcurridos`** — la primera estaba
+  prometida en el comentario del modelo desde siempre y nunca se emitía. Habilitan ritmo real
+  y proyección de cierre. Verificado 2026: 21/20/22/20/20/21/23/21 hábiles por mes.
+- **`oro.analisis_producto`** (nuevo, 1:1 con `dim_producto`, bothDirections en PBI) — cruza
+  demanda 12m contra existencia: última venta, cobertura, rotación, clase ABC de producto,
+  `es_ocioso`, `es_sin_rotacion_comercial`, `es_quiebre`, `estado_producto`.
+- **`oro.estado_carga`** (nuevo) — frescura por (empresa, dominio) leída de Plata, con DOS
+  relojes: `ultima_extraccion` (¿vive el pipeline?) y `fecha_dato_mas_reciente` (¿opera el ERP?).
+
+### DECISIÓN DE DISEÑO IMPORTANTE — ocioso ≠ sin rotación comercial
+
+La primera versión marcaba como ocioso todo lo que tuviera stock y no se vendiera. Resultado:
+**Q94.5M de Q99.4M (95%) en rojo** — inútil. La causa: **35,568 artículos con existencia que
+NUNCA se facturaron**, porque en una avícola el inventario grande es alimento, medicina y
+materia prima que se CONSUME en producción y jamás pasa por una factura.
+
+Se separaron en dos banderas: `es_ocioso` exige historia de venta previa (se compró para
+vender, se vendió, dejó de venderse → accionable) y `es_sin_rotacion_comercial` para lo que
+nunca se facturó (en comercializadora es alarma; en productora es normal). Con eso Cresta queda
+en **18 productos ociosos por Q251k** y —el hallazgo de verdad— **94 productos en QUIEBRE que
+movieron Q54M en 12 meses**.
+
+### Medidas: 180 → 293 (113 nuevas)
+
+Familias nuevas, todas en `MEDIDAS_POR_TABLA` de `generar_pbip.py`:
+ciclo de efectivo (DPO + **CCC**, reutilizando el DSO y los días de inventario existentes, sin
+redefinirlos) · fugas de margen · precio-volumen-mezcla · rotación de clientes (nuevos, activos,
+antigüedad) · ritmo y proyección de cierre · inventario ocioso/quiebre · inflación de insumos ·
+cumplimiento de pedidos · caja proyectada acumulada · estructura de P&L · frescura del dato.
+Las tablas de cartera histórica diaria, que no tenían NI UNA medida, ahora sostienen la
+efectividad de cobranza.
+
+3 parámetros de campo nuevos: Vista de liquidez / de inventario / de rentabilidad.
+
+### Hueco cerrado en el validador
+
+`validar_referencias` no detectaba **nombres de medida duplicados**. El nombre es global en el
+modelo: dos homónimas en tablas distintas producen TMDL válido, el generador termina en verde y
+**Desktop revienta al abrir**. Se agregó el chequeo — y atrapó de inmediato una colisión real
+que yo había introducido (`Clientes con saldo vencido` ya existía en Comportamiento de pago;
+se eliminó la duplicada en vez de renombrarla, porque era la misma definición).
+
+### Gobierno: catálogo reparado
+
+- `seeds/10_hechos.sql` y `seeds/20_metricas.sql` **reescritos**: 15 hechos reales con
+  `tabla_oro`, y 28 métricas cuyas claves son EXACTAMENTE las que emite `oro.metrica_valor`,
+  cada una con fórmula en lenguaje de negocio. Todas en `borrador`.
+- **Migración `115_catalogo_hechos_reales.sql` + rollback** para bases ya instaladas: inserta
+  los reales, reapunta las 5 métricas v1 (conservando su historia de versiones y votos) y
+  retira los fantasma. **Probada en base efímera**: aplicada, verificada, revertida al estado
+  exacto original, y reaplicada dos veces (idempotente). Seed 20 también idempotente.
+- `oro.metrica_valor` pasó de 14 a **28 métricas** en 6 dominios (se sumaron rentabilidad,
+  inventario y pedidos).
+
+### Contraste SQL de las métricas nuevas (Cresta)
+
+| Métrica | Valor |
+|---|---|
+| Ciclo de conversión de efectivo | **89.1 días** (DSO 20 + DIO 128 − DPO 59) |
+| Ventas bajo costo | **Q45.8M en 65,175 líneas** · margen perdido Q18.2M · **11.74% de la venta** |
+| Brecha contable vs facturado | −Q4.29M (Q385.5M contable vs Q389.8M facturado) = **−1.1%** |
+| Inventario ocioso | Q251,660 en 18 productos (0.25%) |
+| Sin rotación comercial | Q94.3M en 4,360 artículos (insumos de producción) |
+| Quiebre de stock | 94 productos · **Q54.1M de venta anual en riesgo** |
+| Backlog | Q12.2M, de los cuales **Q9.0M VENCIDOS** (2,033 líneas) · lead time 3.4 días |
+
+### Pendientes / avisos
+
+- **Efectividad de cobranza** necesita historia: solo hay **4 cortes** de cartera diaria
+  (2026-07-27 a 08-02). La medida es correcta; gana sentido conforme se acumulen cortes.
+- `costo`/`margen` son 0 en Odoo → las medidas de fuga de margen salen en 0 ahí. Degradan, no
+  rompen. Documentado en la guía y en la ficha del catálogo.
+- El PBIP debe abrirse en Desktop para confirmar las 113 medidas nuevas: el validador comprueba
+  referencias y duplicados, no evalúa DAX.
+- Sigue vigente: PBIP de Iron desincronizado, VPS Hetzner sin montar, SQL Server sin probar.
+
+## ══════ SESIÓN 16 (2026-08-02) — GRUPO COMPLETO EN EL DW ══════
 
 **Foco: prefijos DM_/FC_/MD_ en el modelo PBI · dim_socio_negocio (360° por NIT) · NITs
 afiliados en el portal · LAS 10 SOCIEDADES de Cresta extraídas y transformadas · retención

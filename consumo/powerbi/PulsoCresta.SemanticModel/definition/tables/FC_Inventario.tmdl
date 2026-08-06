@@ -75,11 +75,11 @@ table FC_Inventario
 		formatString: #,0
 		displayFolder: 02 Conteos
 
-	measure 'Productos con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[producto_clave]), FC_Inventario[cantidad] <> 0)
+	measure 'Productos con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[producto_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
 		formatString: #,0
 		displayFolder: 02 Conteos
 
-	measure 'Bodegas con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[almacen_clave]), FC_Inventario[cantidad] <> 0)
+	measure 'Bodegas con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[almacen_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
 		formatString: #,0
 		displayFolder: 02 Conteos
 
@@ -94,6 +94,15 @@ table FC_Inventario
 
 	measure 'Días de inventario' = DIVIDE(365, [Rotación de inventario 12M])
 		formatString: #,0
+		displayFolder: 04 Rotación
+
+	measure 'Meses de inventario' = DIVIDE([Días de inventario], 30)
+		formatString: #,0.0
+		displayFolder: 04 Rotación
+
+	/// Cuánto capital hay inmovilizado en bodega por cada quetzal de venta del período. Sube cuando se compra más rápido de lo que se vende.
+	measure 'Inventario sobre ventas' = DIVIDE([Valor de inventario], [Ventas netas])
+		formatString: 0.0%
 		displayFolder: 04 Rotación
 
 	partition FC_Inventario = m

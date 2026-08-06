@@ -198,6 +198,18 @@ table DM_Calendario
 		sourceColumn: dias_del_mes
 		formatString: #,0
 
+	column dias_habiles_del_mes
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_habiles_del_mes
+		formatString: #,0
+
+	column dias_habiles_transcurridos
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_habiles_transcurridos
+		formatString: #,0
+
 	column es_hoy
 		dataType: boolean
 		summarizeBy: none

@@ -118,12 +118,12 @@ table 'DM_Comportamiento de pago'
 		summarizeBy: none
 		sourceColumn: version_proceso
 
-	measure 'Clientes al día' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), 'DM_Comportamiento de pago'[perfil_riesgo] = "al_dia")
+	measure 'Clientes al día' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "al_dia"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
 	/// Más de 90 días vencido o más de la mitad del saldo vencido: revisar antes de despachar.
-	measure 'Clientes en vencido crítico' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), 'DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico")
+	measure 'Clientes en vencido crítico' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
@@ -131,7 +131,7 @@ table 'DM_Comportamiento de pago'
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Saldo en clientes críticos' = CALCULATE(SUM('DM_Comportamiento de pago'[saldo_total]), 'DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico")
+	measure 'Saldo en clientes críticos' = CALCULATE(SUM('DM_Comportamiento de pago'[saldo_total]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
 		formatString: "Q" #,0
 		displayFolder: 02 Montos
 

@@ -83,11 +83,11 @@ table 'FC_Proyección de caja'
 		sourceColumn: version_proceso
 
 	/// Proyección CONTRACTUAL: si cada partida abierta se paga en su vencimiento. No es un pronóstico.
-	measure 'Entradas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), 'FC_Proyección de caja'[flujo] = "entrada")
+	measure 'Entradas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "entrada"))
 		formatString: "Q" #,0
 		displayFolder: 01 Proyección
 
-	measure 'Salidas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), 'FC_Proyección de caja'[flujo] = "salida")
+	measure 'Salidas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "salida"))
 		formatString: "Q" #,0
 		displayFolder: 01 Proyección
 
@@ -96,13 +96,31 @@ table 'FC_Proyección de caja'
 		displayFolder: 01 Proyección
 
 	/// Ya venció y sigue abierto: en teoría es cobrable HOY. La brecha con lo programado mide la gestión de cobro.
-	measure 'Entradas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), 'FC_Proyección de caja'[flujo] = "entrada", 'FC_Proyección de caja'[estado_vencimiento] = "vencido")
+	measure 'Entradas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "entrada"), KEEPFILTERS('FC_Proyección de caja'[estado_vencimiento] = "vencido"))
 		formatString: "Q" #,0
 		displayFolder: 02 Vencido
 
-	measure 'Salidas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), 'FC_Proyección de caja'[flujo] = "salida", 'FC_Proyección de caja'[estado_vencimiento] = "vencido")
+	measure 'Salidas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "salida"), KEEPFILTERS('FC_Proyección de caja'[estado_vencimiento] = "vencido"))
 		formatString: "Q" #,0
 		displayFolder: 02 Vencido
+
+	/// Flujo acumulado semana a semana: la curva que muestra en qué semana la caja se pone negativa si nada cambia. Es la pregunta que hace un gerente el lunes por la mañana.
+	measure 'Posición proyectada acumulada' = CALCULATE([Flujo neto proyectado], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] <= MAX('FC_Proyección de caja'[semana_offset])))
+		formatString: "Q" #,0
+		displayFolder: 03 Acumulado
+
+	/// Horizonte corto: lo que entra y sale en las próximas 4 semanas, sin contar lo ya vencido.
+	measure 'Entradas próximas 4 semanas' = CALCULATE([Entradas proyectadas], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] >= 0 && 'FC_Proyección de caja'[semana_offset] <= 3))
+		formatString: "Q" #,0
+		displayFolder: 03 Acumulado
+
+	measure 'Salidas próximas 4 semanas' = CALCULATE([Salidas proyectadas], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] >= 0 && 'FC_Proyección de caja'[semana_offset] <= 3))
+		formatString: "Q" #,0
+		displayFolder: 03 Acumulado
+
+	measure 'Flujo neto próximas 4 semanas' = [Entradas próximas 4 semanas] - [Salidas próximas 4 semanas]
+		formatString: "Q" #,0
+		displayFolder: 03 Acumulado
 
 	partition 'FC_Proyección de caja' = m
 		mode: import

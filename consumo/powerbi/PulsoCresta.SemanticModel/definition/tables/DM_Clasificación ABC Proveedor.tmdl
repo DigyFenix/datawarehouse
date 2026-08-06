@@ -6,86 +6,69 @@ table 'DM_Clasificación ABC Proveedor'
 		summarizeBy: none
 		sourceColumn: empresa_id
 
+	column anio
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio
+		formatString: #,0
+
+	column anio_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: anio_clave
+
 	column proveedor_clave
 		dataType: int64
 		isHidden
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
-	column ranking_historico
+	column ranking
 		dataType: int64
 		summarizeBy: none
-		sourceColumn: ranking_historico
+		sourceColumn: ranking
 		formatString: #,0
 
-	column compra_historico
+	column compra
 		dataType: decimal
 		summarizeBy: none
-		sourceColumn: compra_historico
+		sourceColumn: compra
 		formatString: #,0.00
 
-	column lineas_historico
+	column lineas
 		dataType: int64
 		summarizeBy: none
-		sourceColumn: lineas_historico
+		sourceColumn: lineas
 		formatString: #,0
 
-	column participacion_historico
+	column participacion
 		dataType: decimal
 		summarizeBy: none
-		sourceColumn: participacion_historico
+		sourceColumn: participacion
 		formatString: 0.0%
 
-	column participacion_acumulada_historico
+	column participacion_acumulada
 		dataType: decimal
 		summarizeBy: none
-		sourceColumn: participacion_acumulada_historico
+		sourceColumn: participacion_acumulada
 		formatString: 0.0%
 
-	column clase_abc_historico
+	column clase_abc
 		dataType: string
 		summarizeBy: none
-		sourceColumn: clase_abc_historico
+		sourceColumn: clase_abc
 
-	column ranking_anio
+	column clase_abc_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: clase_abc_nombre
+
+	column primer_anio_compra
 		dataType: int64
 		summarizeBy: none
-		sourceColumn: ranking_anio
+		sourceColumn: primer_anio_compra
 		formatString: #,0
-
-	column compra_anio
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: compra_anio
-		formatString: #,0.00
-
-	column lineas_anio
-		dataType: int64
-		summarizeBy: none
-		sourceColumn: lineas_anio
-		formatString: #,0
-
-	column participacion_anio
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: participacion_anio
-		formatString: 0.0%
-
-	column participacion_acumulada_anio
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: participacion_acumulada_anio
-		formatString: 0.0%
-
-	column clase_abc_anio
-		dataType: string
-		summarizeBy: none
-		sourceColumn: clase_abc_anio
-
-	column clase_abc_anio_nombre
-		dataType: string
-		summarizeBy: none
-		sourceColumn: clase_abc_anio_nombre
 
 	column ultimo_anio_compra
 		dataType: int64
@@ -93,10 +76,15 @@ table 'DM_Clasificación ABC Proveedor'
 		sourceColumn: ultimo_anio_compra
 		formatString: #,0
 
-	column inactivo_en_anio
+	column es_inactivo
 		dataType: boolean
 		summarizeBy: none
-		sourceColumn: inactivo_en_anio
+		sourceColumn: es_inactivo
+
+	column es_nuevo
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_nuevo
 
 	column proceso_transformacion
 		dataType: string
@@ -110,42 +98,48 @@ table 'DM_Clasificación ABC Proveedor'
 		summarizeBy: none
 		sourceColumn: version_proceso
 
-	/// Cuántos proveedores concentran el 80% de la compra del año: dependencia de suministro.
-	measure 'Proveedores A' = CALCULATE(COUNTROWS('DM_Clasificación ABC Proveedor'), 'DM_Clasificación ABC Proveedor'[clase_abc_anio] = "A")
+	/// Cuántos proveedores concentran el 80% de la compra: dependencia de suministro. Cuenta proveedores DISTINTOS, porque la tabla tiene una fila por proveedor y año.
+	measure 'Proveedores A' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Proveedores B' = CALCULATE(COUNTROWS('DM_Clasificación ABC Proveedor'), 'DM_Clasificación ABC Proveedor'[clase_abc_anio] = "B")
+	measure 'Proveedores B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "B"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Proveedores C' = CALCULATE(COUNTROWS('DM_Clasificación ABC Proveedor'), 'DM_Clasificación ABC Proveedor'[clase_abc_anio] = "C")
+	measure 'Proveedores C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "C"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Proveedores sin compra neta' = CALCULATE(COUNTROWS('DM_Clasificación ABC Proveedor'), 'DM_Clasificación ABC Proveedor'[clase_abc_anio] = "S")
+	measure 'Proveedores sin compra neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "S"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Proveedores clasificados' = COUNTROWS('DM_Clasificación ABC Proveedor')
+	measure 'Proveedores clasificados' = DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave])
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	/// Proveedores a los que se les compró algún año anterior y nada en el año en curso.
-	measure 'Proveedores inactivos' = CALCULATE(COUNTROWS('DM_Clasificación ABC Proveedor'), 'DM_Clasificación ABC Proveedor'[inactivo_en_anio] = TRUE)
+	/// Proveedores a los que se compró algún año anterior y nada en el año seleccionado. No es una pérdida como la de un cliente, pero un abastecimiento que se apaga suele venir con una concentración que crece en otro lado.
+	measure 'Proveedores inactivos' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[es_inactivo] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Proveedores cuya PRIMERA compra cae en el año seleccionado.
+	measure 'Proveedores estrenados en el año' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[es_nuevo] = TRUE))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
 	/// Riesgo de dependencia: si los A concentran el 90% de la compra, perder uno para la operación.
-	measure '% Compra en proveedores A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra_anio]), 'DM_Clasificación ABC Proveedor'[clase_abc_anio] = "A"), SUM('DM_Clasificación ABC Proveedor'[compra_anio]))
+	measure '% Compra en proveedores A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), SUM('DM_Clasificación ABC Proveedor'[compra]))
 		formatString: 0.0%
 		displayFolder: 02 Concentración
 
-	measure 'Compra del año clasificada' = SUM('DM_Clasificación ABC Proveedor'[compra_anio])
+	/// Compra a terceros del año según el catálogo ABC. Sin filtrar un año en 'Año de clasificación' suma TODOS los años cargados.
+	measure 'Compra del año clasificada' = SUM('DM_Clasificación ABC Proveedor'[compra])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 
-	measure 'Compra promedio proveedor A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra_anio]), 'DM_Clasificación ABC Proveedor'[clase_abc_anio] = "A"), [Proveedores A])
+	measure 'Compra promedio proveedor A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), [Proveedores A])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 

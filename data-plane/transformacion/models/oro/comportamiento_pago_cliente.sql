@@ -15,7 +15,13 @@
   GRANO: una fila por (empresa, cliente) — 1:1 con dim_cliente, mismo patrón que ABC y RFM.
   Los pagos consideran SOLO contraparte 'cliente' (ORCT mezcla tesorería contra cuenta).
 #}
-{{ config(materialized='table') }}
+{#- El post_hook desnormaliza la clasificación vigente sobre la dimensión. No puede
+    ser un join dentro de la dimensión: los hechos leen la dimensión y esta tabla lee
+    los hechos, así que un `ref` desde dim_cliente cerraría un ciclo. -#}
+{{ config(
+    materialized='table',
+    post_hook="update {{ ref('dim_cliente') }} d set perfil_riesgo_actual = c.perfil_riesgo from {{ this }} c where c.cliente_clave = d.cliente_clave"
+) }}
 
 with cartera as (
     select
@@ -72,11 +78,10 @@ universo as (
         coalesce(g.pagos_12m, 0)::int                      as pagos_12m,
         coalesce(g.monto_pagado_12m, 0)::numeric(18,4)     as monto_pagado_12m,
         coalesce(g.monto_pagado_3m, 0)::numeric(18,4)      as monto_pagado_3m
-    from {{ ref('dim_cliente') }} c
+    from {{ ref('maestra_cliente') }} c
     left join cartera k on k.empresa_id = c.empresa_id and k.cliente_clave = c.cliente_clave
     left join pagos   g on g.empresa_id = c.empresa_id and g.cliente_clave = c.cliente_clave
-    where c.es_vigente
-      and coalesce(c.es_intercompania, false) = false
+    where coalesce(c.es_intercompania, false) = false
       and c.cliente_clave <> {{ clave_no_definido() }}
 )
 

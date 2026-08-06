@@ -83,12 +83,38 @@ sola vez** para los dos.
 |------|--------|--------|---------|
 | 0 | Fundación agnóstica | ✅ completada | 2026-07-19 |
 | 1 | Datos (Bronce/Plata/Oro) | ✅ **completada — order-to-cash Y procure-to-pay con DATOS REALES de DOS ERPs**: ventas, compras, CxC, CxP, **pagos (cobranza vs tesorería), inventario con valor, tipos de cambio y campos de usuario (UDF, 2.6M de valores)**. Cuadre 7/7 al centavo en ambos tenants, datos al día (2026-08-01) | 2026-08-01 |
-| 2 | Semántica (métricas + catálogo) | 🔨 14 métricas materializadas + ABC clientes **y proveedores** + `dim_rango_aging` + `tipo_cambio`; 140 medidas DAX. Falta recablear el catálogo del portal al canónico v2 | — |
+| 2 | Semántica (métricas + catálogo) | ✅ **completada 2026-08-06** — **293 medidas DAX** (de 180) en 11 familias nuevas: ciclo de conversión de efectivo, fugas de margen, precio-volumen-mezcla, inventario ocioso/quiebre, rotación de clientes, ritmo y proyección, inflación de insumos, cumplimiento de pedidos, estructura de P&L, caja proyectada y frescura del dato. **`oro.metrica_valor` de 14 a 28 métricas** en 6 dominios. **Catálogo del portal REPARADO**: apuntaba a dos hechos que nunca existieron (era imposible registrar una métrica real); ahora 15 hechos reales + 28 fichas con fórmula | 2026-08-06 |
 | 3 | Gobernanza (linaje, roles, RLS, certificación) | ⏳ pendiente — trazabilidad (incl. serie/DocEntry para rastreo en el ERP), cuarentena, control de cuadre y regla dura de UDFs implementados; faltan RLS y certificación | — |
 | 4 | Agente (tools tipadas + 4 restricciones) | ⏸ **POSPUESTA** — hasta 3 clientes pagando (corrección de rumbo 2026-07-26) | — |
 | 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos; **NITs afiliados en el portal** (migración 112: Sociedades → NITs afiliados, normalización `[0-9K]`, el worker los pasa solo en /transformar). Falta la UI del canónico v2 y el filtro por campo | — |
 | 6 | Consumo (Power BI) | ✅ **modelo "versión completa": 25 tablas / 67 relaciones / 140 medidas** (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
 | 7 | Validación (4 criterios) | 🔨 consistencia demostrada 3 veces (cuadre al centavo, revisión adversarial con 9 hallazgos corregidos, ensayo de onboarding); faltan seguridad/RLS y explicabilidad | — |
+
+## Avance 2026-08-06 (sesión 17) — CAPA SEMÁNTICA AMPLIADA + catálogo de gobierno reparado
+
+De 180 a **293 medidas DAX** y de 14 a **28 métricas materializadas**, cubriendo las áreas
+donde una empresa decide y el modelo callaba. Todo local; Power BI solo Cresta.
+
+- **El catálogo de gobierno estaba roto, no desactualizado**: `catalogo_hechos` solo tenía
+  `fct_ventas_facturacion` y `fct_cobros_cxc`, nombres de Fase 0 sin modelo dbt. Como
+  `hecho_origen` es FK, el portal **no podía registrar una métrica sobre ningún hecho real**.
+  Seeds 10 y 20 reescritos (15 hechos con `tabla_oro`, 28 fichas con fórmula) + migración
+  **115 con rollback probada en base efímera** (aplicada, revertida al estado exacto,
+  reaplicada dos veces).
+- **Modelos nuevos**: `oro.analisis_producto` (1:1 con Producto: ocioso, quiebre, cobertura,
+  ABC de producto) y `oro.estado_carga` (frescura con dos relojes). `dim_tiempo` ganó
+  `dias_habiles_del_mes` y `dias_habiles_transcurridos`, prometidos desde siempre en el
+  comentario del modelo y nunca emitidos.
+- **Ocioso ≠ sin rotación comercial**: la primera versión ponía Q94.5M de Q99.4M (95%) del
+  inventario en rojo. La causa eran 35,568 artículos con stock que nunca se facturaron —
+  alimento, medicina y materia prima que se consumen en producción. Separadas las dos
+  banderas, Cresta queda en 18 productos ociosos (Q251k) y **94 en quiebre con Q54M de venta
+  anual en riesgo**.
+- **Hueco cerrado en el validador**: no detectaba nombres de medida duplicados, que producen
+  TMDL válido y revientan Desktop al abrir. Atrapó una colisión real al primer intento.
+- **Hallazgos del contraste SQL**: ciclo de conversión de efectivo **89 días** ·
+  **11.74% de la venta por debajo del costo** (Q45.8M, Q18.2M de margen perdido) · backlog
+  vencido **Q9.0M de Q12.2M** · brecha contable −1.1%.
 
 ## Avance 2026-08-02/03 (sesión 16) — GRUPO COMPLETO + multi-moneda + SQL Server
 

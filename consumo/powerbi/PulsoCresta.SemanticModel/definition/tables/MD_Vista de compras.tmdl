@@ -33,5 +33,7 @@ table 'MD_Vista de compras'
 				  ("Compras a terceros", NAMEOF(FC_Compras[Compras a terceros]), 1),
 				  ("Documentos de compra", NAMEOF(FC_Compras[Documentos de compra]), 2),
 				  ("Compra promedio por documento", NAMEOF(FC_Compras[Compra promedio por documento]), 3),
-				  ("Proveedores con compra", NAMEOF(FC_Compras[Proveedores con compra]), 4)
+				  ("Proveedores con compra", NAMEOF(FC_Compras[Proveedores con compra]), 4),
+				  ("% Variación de precio de compra", NAMEOF(FC_Compras[% Variación de precio de compra]), 5),
+				  ("Sobrecosto por precio de compra", NAMEOF(FC_Compras[Sobrecosto por precio de compra]), 6)
 				}

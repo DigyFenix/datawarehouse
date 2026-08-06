@@ -62,6 +62,26 @@ table DM_Cliente
 		summarizeBy: none
 		sourceColumn: activo
 
+	column clase_abc_actual
+		dataType: string
+		summarizeBy: none
+		sourceColumn: clase_abc_actual
+
+	column clase_abc_actual_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: clase_abc_actual_nombre
+
+	column segmento_rfm_actual
+		dataType: string
+		summarizeBy: none
+		sourceColumn: segmento_rfm_actual
+
+	column perfil_riesgo_actual
+		dataType: string
+		summarizeBy: none
+		sourceColumn: perfil_riesgo_actual
+
 	column valido_desde
 		dataType: dateTime
 		isHidden

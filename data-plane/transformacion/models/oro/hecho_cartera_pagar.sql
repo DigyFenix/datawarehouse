@@ -42,14 +42,9 @@ select
     (abs(p.saldo_pendiente_local) / tp.tasa)::numeric(18,4) as saldo_pendiente_absoluto,
 
     ({{ corte }} - p.fecha_vencimiento)               as dias_vencido,
-    case
-        when p.fecha_vencimiento is null                    then 'sin_vencimiento'
-        when {{ corte }} <= p.fecha_vencimiento            then 'corriente'
-        when {{ corte }} - p.fecha_vencimiento <= 30       then '1-30'
-        when {{ corte }} - p.fecha_vencimiento <= 60       then '31-60'
-        when {{ corte }} - p.fecha_vencimiento <= 90       then '61-90'
-        else '+90'
-    end                                               as rango_aging,
+    -- Etiqueta y clave del mismo bloque (macro `aging_rango`); ver hecho_cartera_cobrar.
+    {{ aging_rango(corte, 'p.fecha_vencimiento', 'codigo') }} as rango_aging,
+    {{ aging_rango(corte, 'p.fecha_vencimiento', 'clave') }}  as rango_aging_clave,
 
     p.proceso_transformacion,
     p.version_proceso

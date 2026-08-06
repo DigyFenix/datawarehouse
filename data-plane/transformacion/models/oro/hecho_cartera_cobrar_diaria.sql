@@ -7,10 +7,20 @@
   INCREMENTAL: cada corrida agrega la foto del día. Si se corre dos veces el mismo día, la
   segunda reemplaza a la primera (unique_key), así que repetir una corrida no duplica.
 #}
+{#-
+  `on_schema_change = 'append_new_columns'`: una columna nueva se agrega SIN full-refresh, que
+  destruiría las fotos ya guardadas — y el histórico de cartera es justo lo que no se puede
+  reconstruir. Las filas anteriores quedan con la columna en NULL, y el `post_hook` las rellena
+  desde la etiqueta que sí guardaron. Sin ese relleno la relación por clave entera perdería las
+  fotos viejas en Power BI.
+-#}
 {{ config(
     materialized = 'incremental',
     unique_key = ['empresa_id', 'partida_id', 'fecha_corte'],
-    pre_hook = "set local max_parallel_workers_per_gather = 0"
+    on_schema_change = 'append_new_columns',
+    pre_hook = "set local max_parallel_workers_per_gather = 0",
+    post_hook = "update {{ this }} set rango_aging_clave = " ~ aging_clave_desde_codigo('rango_aging')
+                ~ " where rango_aging_clave is null"
 ) }}
 
 select
@@ -31,6 +41,7 @@ select
     saldo_pendiente_doc,
     dias_vencido,
     rango_aging,
+    rango_aging_clave,
     proceso_transformacion,
     version_proceso
 from {{ ref('hecho_cartera_cobrar') }}

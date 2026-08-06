@@ -108,16 +108,16 @@ table 'FC_Resultados contables'
 		sourceColumn: version_proceso
 
 	/// Gasto operativo del MAYOR (cuentas de gasto), con jerarquía de cuenta y centro de costo.
-	measure 'Gasto operativo' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), 'FC_Resultados contables'[naturaleza] = "gasto")
+	measure 'Gasto operativo' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "gasto"))
 		formatString: "Q" #,0
 		displayFolder: 01 P&L
 
-	measure 'Costo (contable)' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), 'FC_Resultados contables'[naturaleza] = "costo")
+	measure 'Costo (contable)' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "costo"))
 		formatString: "Q" #,0
 		displayFolder: 01 P&L
 
 	/// Ingresos según el LIBRO MAYOR. Cuadra al centavo con Ventas Netas cuando todo ingreso pasa por factura.
-	measure 'Ingresos contables' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), 'FC_Resultados contables'[naturaleza] = "ingreso")
+	measure 'Ingresos contables' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "ingreso"))
 		formatString: "Q" #,0
 		displayFolder: 01 P&L
 
@@ -125,6 +125,70 @@ table 'FC_Resultados contables'
 	measure 'Resultado contable' = [Ingresos contables] - [Costo (contable)] - [Gasto operativo]
 		formatString: "Q" #,0
 		displayFolder: 01 P&L
+
+	measure 'Partidas contables' = COUNTROWS('FC_Resultados contables')
+		formatString: #,0
+		displayFolder: 01 P&L
+
+	/// Margen operativo real, el del mayor contable — no el margen de línea de factura. Es el número que mira un banco.
+	measure '% Margen operativo' = DIVIDE([Resultado contable], [Ingresos contables])
+		formatString: 0.0%
+		displayFolder: 02 Estructura
+
+	/// Cuánto del ingreso se come la estructura. Subir la venta con este porcentaje subiendo no mejora nada.
+	measure '% Gasto sobre ingreso' = DIVIDE([Gasto operativo], [Ingresos contables])
+		formatString: 0.0%
+		displayFolder: 02 Estructura
+
+	measure '% Costo sobre ingreso' = DIVIDE([Costo (contable)], [Ingresos contables])
+		formatString: 0.0%
+		displayFolder: 02 Estructura
+
+	/// Peso del rubro de gasto más grande dentro del total. Filtrar por nivel de la jerarquía contable para leerlo.
+	measure '% Gasto en el mayor rubro' = DIVIDE(MAXX(ALLSELECTED('DM_Cuenta contable'), [Gasto operativo]), CALCULATE([Gasto operativo], ALLSELECTED('DM_Cuenta contable')))
+		formatString: 0.0%
+		displayFolder: 02 Estructura
+
+	measure 'Gasto promedio mensual' = DIVIDE([Gasto operativo], DISTINCTCOUNT(DM_Calendario[anio_mes]))
+		formatString: "Q" #,0
+		displayFolder: 02 Estructura
+
+	measure 'Gasto mes anterior' = CALCULATE([Gasto operativo], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+
+	measure 'Gasto año anterior' = CALCULATE([Gasto operativo], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+
+	measure 'Gasto acumulado año' = TOTALYTD([Gasto operativo], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+
+	measure 'Variación de gasto vs año anterior' = DIVIDE([Gasto operativo] - [Gasto año anterior], [Gasto año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 03 Comparativos
+
+	measure 'Ingresos acumulados año' = TOTALYTD([Ingresos contables], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+
+	measure 'Resultado acumulado año' = TOTALYTD([Resultado contable], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+
+	measure 'Resultado mes anterior' = CALCULATE([Resultado contable], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+
+	/// Diferencia entre lo que dice contabilidad y lo que dice facturación. Debería ser cerca de cero; si no, hay anticipos, ajustes o cuentas de ingreso mal clasificadas. Es un control, no un KPI: cuando se despega, hay que ir a buscar por qué.
+	measure 'Brecha contable vs facturado' = [Ingresos contables] - [Ventas netas]
+		formatString: "Q" #,0
+		displayFolder: 04 Control
+
+	measure '% Brecha contable' = DIVIDE([Brecha contable vs facturado], [Ventas netas])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 04 Control
 
 	partition 'FC_Resultados contables' = m
 		mode: import

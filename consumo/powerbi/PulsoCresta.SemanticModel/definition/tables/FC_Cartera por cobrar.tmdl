@@ -118,8 +118,15 @@ table 'FC_Cartera por cobrar'
 
 	column rango_aging
 		dataType: string
+		isHidden
 		summarizeBy: none
 		sourceColumn: rango_aging
+
+	column rango_aging_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_aging_clave
 
 	column proceso_transformacion
 		dataType: string
@@ -159,16 +166,16 @@ table 'FC_Cartera por cobrar'
 		formatString: "Q" #,0
 		displayFolder: 02 Conteos
 
-	measure 'Saldo corriente' = CALCULATE([Saldo por cobrar], 'DM_Antigüedad'[es_vencido] = FALSE)
+	measure 'Saldo corriente' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = FALSE))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
-	measure 'Saldo vencido' = CALCULATE([Saldo por cobrar], 'DM_Antigüedad'[es_vencido] = TRUE)
+	measure 'Saldo vencido' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
 	/// La mora que de verdad hay que cobrar: vencida y fuera del grupo.
-	measure 'Saldo vencido terceros' = CALCULATE([Saldo por cobrar], 'DM_Antigüedad'[es_vencido] = TRUE, DM_Cliente[es_intercompania] = FALSE)
+	measure 'Saldo vencido terceros' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE), DM_Cliente[es_intercompania] = FALSE)
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
@@ -180,19 +187,19 @@ table 'FC_Cartera por cobrar'
 		formatString: 0.0%
 		displayFolder: 03 Antigüedad
 
-	measure 'Vencido 1 a 30' = CALCULATE([Saldo por cobrar], 'DM_Antigüedad'[rango_aging] = "1-30")
+	measure 'Vencido 1 a 30' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "1-30"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
-	measure 'Vencido 31 a 60' = CALCULATE([Saldo por cobrar], 'DM_Antigüedad'[rango_aging] = "31-60")
+	measure 'Vencido 31 a 60' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "31-60"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
-	measure 'Vencido 61 a 90' = CALCULATE([Saldo por cobrar], 'DM_Antigüedad'[rango_aging] = "61-90")
+	measure 'Vencido 61 a 90' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "61-90"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
-	measure 'Vencido más de 90' = CALCULATE([Saldo por cobrar], 'DM_Antigüedad'[rango_aging] = "+90")
+	measure 'Vencido más de 90' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "+90"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
@@ -227,6 +234,29 @@ table 'FC_Cartera por cobrar'
 	measure '% Vencido terceros hoy' = DIVIDE([Vencido terceros hoy], [Por cobrar terceros hoy])
 		formatString: 0.0%
 		displayFolder: 05 Foto de hoy
+
+	/// Veces al año que se cobra la cartera completa. Es el recíproco de los días de cartera, más fácil de comparar entre empresas.
+	measure 'Rotación de cartera' = DIVIDE(365, [Días de cartera terceros])
+		formatString: #,0.0
+		displayFolder: 04 Riesgo
+
+	/// Partidas sin fecha de vencimiento pactada: no son ni corrientes ni vencidas, y suelen ser anticipos o ajustes sin depurar.
+	measure 'Saldo sin vencimiento' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "sin_vencimiento"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	/// Cuánto nos debe el cliente más expuesto. Si un solo deudor concentra la cartera, el riesgo no está diversificado.
+	measure 'Exposición mayor deudor' = MAXX(ALLSELECTED(DM_Cliente), [Saldo por cobrar terceros])
+		formatString: "Q" #,0
+		displayFolder: 06 Concentración
+
+	measure '% Exposición mayor deudor' = DIVIDE([Exposición mayor deudor], CALCULATE([Saldo por cobrar terceros], ALLSELECTED(DM_Cliente)))
+		formatString: 0.0%
+		displayFolder: 06 Concentración
+
+	measure '% Saldo en top 5 deudores' = DIVIDE(CALCULATE([Saldo por cobrar terceros], TOPN(5, ALLSELECTED(DM_Cliente), [Saldo por cobrar terceros])), CALCULATE([Saldo por cobrar terceros], ALLSELECTED(DM_Cliente)))
+		formatString: 0.0%
+		displayFolder: 06 Concentración
 
 	partition 'FC_Cartera por cobrar' = m
 		mode: import

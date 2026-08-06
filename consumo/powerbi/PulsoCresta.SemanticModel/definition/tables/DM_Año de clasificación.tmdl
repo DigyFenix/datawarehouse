@@ -1,0 +1,63 @@
+table 'DM_Año de clasificación'
+
+	column anio_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: anio_clave
+
+	column anio
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anio
+		formatString: #,0
+
+	column anio_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: anio_nombre
+
+	column es_anio_actual
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_anio_actual
+
+	column es_anio_anterior
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_anio_anterior
+
+	column anios_desde_hoy
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: anios_desde_hoy
+		formatString: #,0
+
+	column valido_desde
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_desde
+		formatString: dd/MM/yyyy
+
+	column valido_hasta
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_hasta
+		formatString: dd/MM/yyyy
+
+	column es_vigente
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+		sourceColumn: es_vigente
+
+	partition 'DM_Año de clasificación' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="dim_anio"]}[Data]
+				in
+				    Tabla

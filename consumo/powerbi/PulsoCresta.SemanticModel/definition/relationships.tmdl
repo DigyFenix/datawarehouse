@@ -116,8 +116,8 @@ relationship rel_029
 	toColumn: DM_Calendario.tiempo_clave
 
 relationship rel_030
-	fromColumn: 'FC_Cartera por cobrar'.rango_aging
-	toColumn: DM_Antigüedad.rango_aging
+	fromColumn: 'FC_Cartera por cobrar'.rango_aging_clave
+	toColumn: DM_Antigüedad.rango_aging_clave
 
 relationship rel_031
 	fromColumn: 'FC_Cartera por pagar'.tiempo_clave
@@ -149,8 +149,8 @@ relationship rel_037
 	toColumn: DM_Calendario.tiempo_clave
 
 relationship rel_038
-	fromColumn: 'FC_Cartera por pagar'.rango_aging
-	toColumn: DM_Antigüedad.rango_aging
+	fromColumn: 'FC_Cartera por pagar'.rango_aging_clave
+	toColumn: DM_Antigüedad.rango_aging_clave
 
 relationship rel_039
 	fromColumn: 'FC_Cartera cobrar histórico'.cliente_clave
@@ -178,8 +178,8 @@ relationship rel_044
 	toColumn: DM_Calendario.tiempo_clave
 
 relationship rel_045
-	fromColumn: 'FC_Cartera cobrar histórico'.rango_aging
-	toColumn: DM_Antigüedad.rango_aging
+	fromColumn: 'FC_Cartera cobrar histórico'.rango_aging_clave
+	toColumn: DM_Antigüedad.rango_aging_clave
 
 relationship rel_046
 	fromColumn: 'FC_Cartera pagar histórico'.proveedor_clave
@@ -207,8 +207,8 @@ relationship rel_051
 	toColumn: DM_Calendario.tiempo_clave
 
 relationship rel_052
-	fromColumn: 'FC_Cartera pagar histórico'.rango_aging
-	toColumn: DM_Antigüedad.rango_aging
+	fromColumn: 'FC_Cartera pagar histórico'.rango_aging_clave
+	toColumn: DM_Antigüedad.rango_aging_clave
 
 relationship rel_053
 	fromColumn: 'FC_Pagos recibidos'.tiempo_clave
@@ -360,21 +360,37 @@ relationship rel_089
 	toColumn: 'DM_Centro de costo'.centro_costo_clave
 
 relationship rel_090
-	crossFilteringBehavior: bothDirections
+	fromColumn: 'FC_Estado de carga'.organizacion_clave
+	toColumn: DM_Empresa.organizacion_clave
+
+relationship rel_091
+	fromColumn: 'DM_Clasificación ABC'.anio_clave
+	toColumn: 'DM_Año de clasificación'.anio_clave
+
+relationship rel_092
+	fromColumn: 'DM_Clasificación ABC Proveedor'.anio_clave
+	toColumn: 'DM_Año de clasificación'.anio_clave
+
+relationship rel_093
+	fromColumn: DM_Calendario.anio
+	toColumn: 'DM_Año de clasificación'.anio_clave
+
+relationship rel_094
 	fromColumn: 'DM_Clasificación ABC'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_091
-	crossFilteringBehavior: bothDirections
+relationship rel_095
 	fromColumn: 'DM_Clasificación ABC Proveedor'.proveedor_clave
 	toColumn: DM_Proveedor.proveedor_clave
 
-relationship rel_092
-	crossFilteringBehavior: bothDirections
+relationship rel_096
 	fromColumn: 'DM_Clasificación RFM'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_093
-	crossFilteringBehavior: bothDirections
+relationship rel_097
 	fromColumn: 'DM_Comportamiento de pago'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
+
+relationship rel_098
+	fromColumn: 'DM_Análisis de producto'.producto_clave
+	toColumn: DM_Producto.producto_clave

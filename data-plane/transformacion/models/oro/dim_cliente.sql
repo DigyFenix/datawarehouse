@@ -29,6 +29,25 @@ select
     -- var; la comparación normaliza NIT en ambos lados (ver macro es_nit_afiliado).
     {{ es_nit_afiliado('d.nit') }}                    as es_intercompania,
     d.activo,
+
+    -- CLASIFICACIÓN VIGENTE. Con estas columnas, «ventas del trimestre de mis clientes A» es un
+    -- filtro normal de dimensión. Antes eso dependía de que la clasificación filtrara el hecho
+    -- por propagación bidireccional, que se eliminó porque hacía que filtrar por clase ABC
+    -- alterara de paso el RFM y el comportamiento de pago sin que nadie lo pidiera.
+    --
+    -- SE DECLARAN VACÍAS AQUÍ Y LAS RELLENAN LAS CLASIFICACIONES con un `post_hook`. No se
+    -- pueden resolver con un join porque el grafo lo prohíbe: los hechos leen esta dimensión,
+    -- las clasificaciones leen los hechos, así que un `ref` a las clasificaciones desde aquí
+    -- cierra un ciclo y dbt aborta la compilación. El post_hook corre después, sobre la tabla
+    -- ya materializada, y el orden está garantizado por esa misma cadena de dependencias.
+    --
+    -- CONSECUENCIA OPERATIVA: si se reconstruye SOLO esta dimensión, las tres columnas quedan
+    -- en NULL hasta que vuelva a correr la clasificación correspondiente. En un build completo
+    -- —que es como corre el pipeline— siempre quedan pobladas.
+    null::text                                        as clase_abc_actual,
+    null::text                                        as clase_abc_actual_nombre,
+    null::text                                        as segmento_rfm_actual,
+    null::text                                        as perfil_riesgo_actual,
     {{ columnas_vigencia() }}
 from {{ ref('plata_socio_negocio') }} d
 join {{ ref('llave_cliente') }} k
@@ -41,4 +60,5 @@ union all
 select
     {{ clave_no_definido() }}, 'GLOBAL', {{ codigo_no_definido() }}, {{ nombre_no_definido() }},
     null, null, null, null, null, false, false, true,
+    null, null, null, null,
     {{ columnas_vigencia() }}

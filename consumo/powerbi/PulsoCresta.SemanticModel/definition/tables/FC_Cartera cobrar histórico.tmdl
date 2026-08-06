@@ -79,6 +79,7 @@ table 'FC_Cartera cobrar histórico'
 
 	column rango_aging
 		dataType: string
+		isHidden
 		summarizeBy: none
 		sourceColumn: rango_aging
 
@@ -93,6 +94,44 @@ table 'FC_Cartera cobrar histórico'
 		isHidden
 		summarizeBy: none
 		sourceColumn: version_proceso
+
+	column rango_aging_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_aging_clave
+
+	/// Saldo por cobrar a la fecha de corte de la foto. Ya está en MONEDA DE PRESENTACIÓN pese al nombre de la columna (es incremental y no se renombró).
+	measure 'Saldo histórico por cobrar' = SUM('FC_Cartera cobrar histórico'[saldo_pendiente_local])
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	measure 'Vencido histórico por cobrar' = CALCULATE([Saldo histórico por cobrar], KEEPFILTERS('FC_Cartera cobrar histórico'[dias_vencido] > 0))
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	measure '% Vencido histórico' = DIVIDE([Vencido histórico por cobrar], [Saldo histórico por cobrar])
+		formatString: 0.0%
+		displayFolder: 01 Evolución
+
+	/// Saldo en el PRIMER corte del período filtrado: el punto de partida contra el que se mide la gestión de cobranza.
+	measure 'Cartera al inicio del período' = CALCULATE([Saldo histórico por cobrar], FIRSTDATE(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 02 Gestión
+
+	measure 'Cartera al cierre del período' = CALCULATE([Saldo histórico por cobrar], LASTDATE(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 02 Gestión
+
+	/// Cuánto creció o bajó la cartera en el período. Que suba mientras la venta no sube es la señal temprana de que se está cobrando peor.
+	measure 'Variación de cartera' = [Cartera al cierre del período] - [Cartera al inicio del período]
+		formatString: "Q" #,0
+		displayFolder: 02 Gestión
+
+	/// Índice de efectividad de cobranza: del total cobrable del período (cartera inicial + lo facturado), qué porcentaje se cobró. 100% sería cobrar todo lo exigible; por debajo de 80% la cobranza va perdiendo terreno.
+	measure 'Efectividad de cobranza' = DIVIDE([Cartera al inicio del período] + [Ventas netas con IVA] - [Cartera al cierre del período], [Cartera al inicio del período] + [Ventas netas con IVA])
+		formatString: 0.0%
+		displayFolder: 02 Gestión
 
 	partition 'FC_Cartera cobrar histórico' = m
 		mode: import

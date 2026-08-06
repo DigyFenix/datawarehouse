@@ -112,7 +112,7 @@ table 'FC_Pagos efectuados'
 		displayFolder: 01 Importes
 
 	/// Solo pagos a PROVEEDORES (excluye operaciones de tesorería contra cuenta contable).
-	measure 'Pagos a proveedores' = CALCULATE([Monto pagado], 'FC_Pagos efectuados'[contraparte] = "proveedor")
+	measure 'Pagos a proveedores' = CALCULATE([Monto pagado], KEEPFILTERS('FC_Pagos efectuados'[contraparte] = "proveedor"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -138,6 +138,23 @@ table 'FC_Pagos efectuados'
 		displayFolder: 04 Comparativos
 
 	measure 'Pagos acumulados año' = TOTALYTD([Monto pagado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Pagos año anterior' = CALCULATE([Monto pagado], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Pagos acumulados mes' = TOTALMTD([Monto pagado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+
+	measure 'Variación de pagos vs año anterior' = DIVIDE([Monto pagado] - [Pagos año anterior], [Pagos año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 04 Comparativos
+
+	/// Caja neta acumulada del año: lo cobrado menos lo pagado desde el 1 de enero.
+	measure 'Flujo neto acumulado año' = [Cobros acumulados año] - [Pagos acumulados año]
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 

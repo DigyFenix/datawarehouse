@@ -78,6 +78,83 @@ cartera as (
     union all
     select empresa_id, 'pagar', sum(saldo_pendiente), max(fecha_corte)
       from {{ ref('hecho_cartera_pagar') }} group by 1, 2
+),
+
+-- Fuga de margen: venta facturada por debajo del costo registrado en la línea. En Odoo el costo
+-- de línea no existe (llega en 0), así que estas dos métricas salen en 0 — degradan, no rompen.
+fuga_margen as (
+    select
+        empresa_id,
+        to_char(fecha_documento, 'YYYY-MM')                                as periodo,
+        sum(monto_sin_impuesto) filter (where margen < 0)                  as venta_bajo_costo,
+        sum(margen) filter (where margen < 0)                              as margen_negativo
+    from {{ ref('hecho_venta_linea') }}
+    group by 1, 2
+),
+
+-- Resultados del mayor contable. `monto_resultado` ya viene volteado a la naturaleza de la
+-- cuenta, así que las tres se suman sin pensar en signos.
+resultados as (
+    select
+        empresa_id,
+        to_char(fecha, 'YYYY-MM')                                          as periodo,
+        sum(monto_resultado) filter (where naturaleza = 'ingreso')         as ingresos,
+        sum(monto_resultado) filter (where naturaleza = 'gasto')           as gastos,
+        sum(monto_resultado) filter (where naturaleza = 'costo')           as costos
+    from {{ ref('hecho_movimiento_contable') }}
+    group by 1, 2
+),
+
+-- Tesorería real: solo la contraparte de negocio. ORCT mezcla cobranza con operaciones contra
+-- cuenta contable (depósitos, traslados) y sin el filtro la "cobranza" se triplica.
+cobranza as (
+    select
+        empresa_id,
+        to_char(fecha_pago, 'YYYY-MM')                                     as periodo,
+        sum(monto) filter (where contraparte = 'cliente')                  as cobros_clientes
+    from {{ ref('hecho_pago_recibido') }}
+    group by 1, 2
+),
+pagos_prov as (
+    select
+        empresa_id,
+        to_char(fecha_pago, 'YYYY-MM')                                     as periodo,
+        sum(monto) filter (where contraparte = 'proveedor')                as pagos_proveedores
+    from {{ ref('hecho_pago_efectuado') }}
+    group by 1, 2
+),
+
+-- Inventario y su calidad. Son FOTO a la fecha de corte, no flujo: el período es el del corte,
+-- igual que la cartera.
+inventario as (
+    select
+        i.empresa_id,
+        to_char(max(i.fecha_corte), 'YYYY-MM')                             as periodo,
+        sum(i.valor)                                                       as valor_total
+    from {{ ref('hecho_inventario') }} i
+    group by 1
+),
+calidad_inventario as (
+    select
+        empresa_id,
+        to_char(current_date, 'YYYY-MM')                                   as periodo,
+        sum(stock_valor) filter (where es_ocioso)                          as valor_ocioso,
+        sum(stock_valor) filter (where es_sin_rotacion_comercial)          as valor_sin_rotacion,
+        sum(venta_12m)   filter (where es_quiebre)                         as venta_en_riesgo
+    from {{ ref('analisis_producto') }}
+    group by 1
+),
+
+-- Compromiso pendiente de entregar. El backlog vencido es la parte cuya fecha prometida ya pasó.
+pedidos as (
+    select
+        empresa_id,
+        to_char(current_date, 'YYYY-MM')                                   as periodo,
+        sum(monto_abierto) filter (where es_abierta)                       as backlog,
+        sum(monto_abierto) filter (where es_abierta
+                                     and fecha_entrega < current_date)     as backlog_vencido
+    from {{ ref('hecho_pedido_linea') }}
+    group by 1
 )
 
 -- ---------------------------------------------------------------- ventas
@@ -131,3 +208,54 @@ union all
 select empresa_id, 'tesoreria', 'saldo_cxp', 'Saldo Cuentas por Pagar',
        to_char(corte, 'YYYY-MM'), abs(coalesce(saldo, 0))::numeric(18,4)
   from cartera where tipo = 'pagar'
+union all
+select empresa_id, 'tesoreria', 'cobros_de_clientes', 'Cobros de Clientes', periodo,
+       coalesce(cobros_clientes, 0)::numeric(18,4) from cobranza
+union all
+select empresa_id, 'tesoreria', 'pagos_a_proveedores', 'Pagos a Proveedores', periodo,
+       coalesce(pagos_proveedores, 0)::numeric(18,4) from pagos_prov
+
+-- ---------------------------------------------------------------- fuga de margen
+union all
+select empresa_id, 'ventas', 'ventas_bajo_costo', 'Ventas Bajo Costo', periodo,
+       coalesce(venta_bajo_costo, 0)::numeric(18,4) from fuga_margen
+union all
+select empresa_id, 'ventas', 'margen_perdido_bajo_costo', 'Margen Perdido Bajo Costo', periodo,
+       abs(coalesce(margen_negativo, 0))::numeric(18,4) from fuga_margen
+
+-- ---------------------------------------------------------------- resultados del mayor
+union all
+select empresa_id, 'rentabilidad', 'ingresos_contables', 'Ingresos Contables', periodo,
+       coalesce(ingresos, 0)::numeric(18,4) from resultados
+union all
+select empresa_id, 'rentabilidad', 'gasto_operativo', 'Gasto Operativo', periodo,
+       coalesce(gastos, 0)::numeric(18,4) from resultados
+union all
+select empresa_id, 'rentabilidad', 'costo_contable', 'Costo Contable', periodo,
+       coalesce(costos, 0)::numeric(18,4) from resultados
+union all
+select empresa_id, 'rentabilidad', 'resultado_contable', 'Resultado Contable', periodo,
+       (coalesce(ingresos, 0) - coalesce(costos, 0) - coalesce(gastos, 0))::numeric(18,4)
+  from resultados
+
+-- ---------------------------------------------------------------- inventario (foto)
+union all
+select empresa_id, 'inventario', 'valor_inventario', 'Valor de Inventario', periodo,
+       coalesce(valor_total, 0)::numeric(18,4) from inventario
+union all
+select empresa_id, 'inventario', 'valor_inventario_ocioso', 'Valor de Inventario Ocioso', periodo,
+       coalesce(valor_ocioso, 0)::numeric(18,4) from calidad_inventario
+union all
+select empresa_id, 'inventario', 'valor_sin_rotacion_comercial', 'Valor sin Rotación Comercial',
+       periodo, coalesce(valor_sin_rotacion, 0)::numeric(18,4) from calidad_inventario
+union all
+select empresa_id, 'inventario', 'venta_en_riesgo_por_quiebre', 'Venta Anual en Riesgo por Quiebre',
+       periodo, coalesce(venta_en_riesgo, 0)::numeric(18,4) from calidad_inventario
+
+-- ---------------------------------------------------------------- pedidos (foto)
+union all
+select empresa_id, 'pedidos', 'backlog', 'Backlog', periodo,
+       coalesce(backlog, 0)::numeric(18,4) from pedidos
+union all
+select empresa_id, 'pedidos', 'backlog_vencido', 'Backlog Vencido', periodo,
+       coalesce(backlog_vencido, 0)::numeric(18,4) from pedidos

@@ -1,11 +1,12 @@
 {#
-  CLASIFICACIÓN ABC DE CLIENTES (análisis de Pareto sobre ventas netas).
+  CLASIFICACIÓN ABC DE CLIENTES (análisis de Pareto sobre ventas netas), POR AÑO.
 
-  Regla: se ordenan los clientes por venta neta descendente y se acumula su participación.
+  Regla: dentro de cada año se ordenan los clientes por venta neta descendente y se acumula su
+  participación.
     A → hasta el 80% acumulado   (los que hacen el negocio)
     B → del 80% al 95%
     C → el resto
-    S → sin ventas en el ámbito
+    S → sin ventas en el año
   Los cortes son parámetros (`abc_corte_a`, `abc_corte_b`) para ajustarlos por tenant sin
   tocar el modelo.
 
@@ -20,17 +21,26 @@
     las empresas hermanas como clase A y esconde a los clientes reales, que son los que el
     comercial puede trabajar.
 
-  - GRANO: una fila por (empresa, cliente). Los dos ámbitos temporales —año en curso e
-    histórico— van como COLUMNAS, no como filas. Con dos filas por cliente la clase ABC no
-    puede filtrar el hecho de ventas en Power BI sin filtrado bidireccional, y eso vuelve
-    ambiguo el modelo: el mismo cliente sería A en un ámbito y C en el otro dentro del mismo
-    visual. Con una fila por cliente la relación es 1:1 con la dimensión Cliente y la clase se
-    usa como cualquier atributo.
+  - GRANO: una fila por (empresa, AÑO, cliente). Antes era una fila por cliente con los dos
+    ámbitos —año en curso e histórico— en columnas, y la tabla no tenía relación con el tiempo:
+    al filtrar 2024 se devolvía igual la clasificación del último año procesado. El número era
+    plausible y estaba mal. Ahora cada año es una fila y la tabla cuelga de `dim_anio`.
 
-  - Los clientes sin ventas también salen (clase 'S'): un catálogo que solo lista a quien
-    compró no sirve para detectar al que dejó de comprar.
+  - El universo es cliente × año, no solo los años en que compró: un catálogo que solo lista a
+    quien facturó no sirve para detectar al que dejó de comprar. De ahí sale `es_perdido`.
+
+  - La clase VIGENTE (la del año en curso) se desnormaliza además en `dim_cliente`
+    (`clase_abc_actual`), para poder segmentar las ventas por clase desde el panel de campos
+    sin filtrado bidireccional. Esta tabla es para el análisis histórico; la columna de la
+    dimensión, para el uso diario.
 #}
-{{ config(materialized='table') }}
+{#- El post_hook desnormaliza la clasificación vigente sobre la dimensión. No puede
+    ser un join dentro de la dimensión: los hechos leen la dimensión y esta tabla lee
+    los hechos, así que un `ref` desde dim_cliente cerraría un ciclo. -#}
+{{ config(
+    materialized='table',
+    post_hook="update {{ ref('dim_cliente') }} d set clase_abc_actual = c.clase_abc, clase_abc_actual_nombre = c.clase_abc_nombre from {{ this }} c where c.cliente_clave = d.cliente_clave and c.anio = extract(year from current_date)::int"
+) }}
 
 {%- set corte_a = var('abc_corte_a', 0.80) -%}
 {%- set corte_b = var('abc_corte_b', 0.95) -%}
@@ -40,121 +50,121 @@ with ventas_terceros as (
         v.empresa_id,
         v.cliente_clave,
         d.anio                                         as anio,
-        v.monto_sin_impuesto                     as monto,
-        v.margen                                 as margen
+        v.monto_sin_impuesto                           as monto,
+        v.margen                                       as margen
     from {{ ref('hecho_venta_linea') }} v
     join {{ ref('dim_tiempo') }} d on d.tiempo_clave = v.tiempo_clave
-    join {{ ref('dim_cliente') }} c on c.cliente_clave = v.cliente_clave
+    join {{ ref("maestra_cliente") }} c on c.cliente_clave = v.cliente_clave
     -- Solo mercado real: la venta al grupo no compite por precio ni la trabaja un vendedor.
     where coalesce(c.es_intercompania, false) = false
 ),
 
--- Un solo agregado con los dos ámbitos en columnas separadas.
 agregado as (
     select
         empresa_id,
+        anio,
         cliente_clave,
-        sum(monto)                                                            as venta_historico,
-        sum(margen)                                                           as margen_historico,
-        count(*)                                                              as lineas_historico,
-        max(anio)                                                             as ultimo_anio_compra,
-        sum(monto) filter (where anio = date_part('year', current_date))       as venta_anio,
-        sum(margen) filter (where anio = date_part('year', current_date))      as margen_anio,
-        count(*)    filter (where anio = date_part('year', current_date))      as lineas_anio
+        sum(monto)                                     as venta,
+        sum(margen)                                    as margen,
+        count(*)                                       as lineas
     from ventas_terceros
-    group by 1, 2
+    group by 1, 2, 3
 ),
 
--- Universo completo: todo cliente vigente y no intercompañía, con o sin ventas.
+-- Años con actividad. No se usa el rango del calendario completo: multiplicaría el catálogo
+-- por años vacíos anteriores a la primera venta, sin aportar nada.
+anios as (
+    select distinct empresa_id, anio from ventas_terceros
+),
+
+clientes as (
+    select empresa_id, cliente_clave
+    from {{ ref("maestra_cliente") }}
+    where coalesce(es_intercompania, false) = false
+      and cliente_clave <> {{ clave_no_definido() }}
+),
+
+-- Universo completo: todo cliente vigente en CADA año con actividad, haya facturado o no.
 universo as (
     select
         c.empresa_id,
+        a.anio,
         c.cliente_clave,
-        coalesce(g.venta_historico, 0)::numeric(18,4)   as venta_historico,
-        coalesce(g.margen_historico, 0)::numeric(18,4)  as margen_historico,
-        coalesce(g.lineas_historico, 0)::bigint         as lineas_historico,
-        coalesce(g.venta_anio, 0)::numeric(18,4)        as venta_anio,
-        coalesce(g.margen_anio, 0)::numeric(18,4)       as margen_anio,
-        coalesce(g.lineas_anio, 0)::bigint              as lineas_anio,
-        g.ultimo_anio_compra
-    from {{ ref('dim_cliente') }} c
+        coalesce(g.venta, 0)::numeric(18,4)            as venta,
+        coalesce(g.margen, 0)::numeric(18,4)           as margen,
+        coalesce(g.lineas, 0)::bigint                  as lineas
+    from clientes c
+    join anios a on a.empresa_id = c.empresa_id
     left join agregado g
-           on g.empresa_id = c.empresa_id and g.cliente_clave = c.cliente_clave
-    where c.es_vigente
-      and coalesce(c.es_intercompania, false) = false
-      and c.cliente_clave <> {{ clave_no_definido() }}
+           on g.empresa_id = c.empresa_id
+          and g.cliente_clave = c.cliente_clave
+          and g.anio = a.anio
 ),
 
--- Pareto de cada ámbito por separado: el orden y el acumulado no son los mismos.
+-- Pareto DENTRO de cada año: el orden y el acumulado son propios del año.
 acumulado as (
     select
         u.*,
-        sum(u.venta_historico) over (partition by u.empresa_id)                as total_historico,
-        sum(u.venta_anio)      over (partition by u.empresa_id)                as total_anio,
-        row_number() over (partition by u.empresa_id
-                           order by u.venta_historico desc, u.cliente_clave)   as ranking_historico,
-        row_number() over (partition by u.empresa_id
-                           order by u.venta_anio desc, u.cliente_clave)        as ranking_anio,
-        sum(u.venta_historico) over (partition by u.empresa_id
-                           order by u.venta_historico desc, u.cliente_clave
-                           rows between unbounded preceding and current row)   as acum_historico,
-        sum(u.venta_anio) over (partition by u.empresa_id
-                           order by u.venta_anio desc, u.cliente_clave
-                           rows between unbounded preceding and current row)   as acum_anio
+        sum(u.venta) over (partition by u.empresa_id, u.anio)                  as total_anio,
+        row_number() over (partition by u.empresa_id, u.anio
+                           order by u.venta desc, u.cliente_clave)             as ranking,
+        sum(u.venta) over (partition by u.empresa_id, u.anio
+                           order by u.venta desc, u.cliente_clave
+                           rows between unbounded preceding and current row)   as acum
     from universo u
+),
+
+-- Historia del cliente, para distinguir «nunca compró» de «dejó de comprar».
+historia as (
+    select
+        empresa_id,
+        cliente_clave,
+        min(anio) filter (where venta > 0)             as primer_anio_compra,
+        max(anio) filter (where venta > 0)             as ultimo_anio_compra
+    from universo
+    group by 1, 2
 )
 
 select
     a.empresa_id,
+    a.anio,
+    a.anio                                             as anio_clave,
     a.cliente_clave,
 
-    -- ---------- ámbito HISTÓRICO (todo lo que hay en el hecho) ----------
-    a.ranking_historico::int                           as ranking_historico,
-    a.venta_historico,
-    a.margen_historico,
-    a.lineas_historico,
-    round(case when a.total_historico > 0 then a.venta_historico / a.total_historico
-               else 0 end, 6)::numeric(9,6)            as participacion_historico,
-    round(case when a.total_historico > 0 then a.acum_historico / a.total_historico
-               else 0 end, 6)::numeric(9,6)            as participacion_acumulada_historico,
+    a.ranking::int                                     as ranking,
+    a.venta,
+    a.margen,
+    a.lineas,
+    round(case when a.total_anio > 0 then a.venta / a.total_anio
+               else 0 end, 6)::numeric(9,6)            as participacion,
+    round(case when a.total_anio > 0 then a.acum / a.total_anio
+               else 0 end, 6)::numeric(9,6)            as participacion_acumulada,
     case
-        when a.venta_historico <= 0                                                  then 'S'
-        when a.acum_historico / nullif(a.total_historico, 0) <= {{ corte_a }}         then 'A'
-        when a.acum_historico / nullif(a.total_historico, 0) <= {{ corte_b }}         then 'B'
+        when a.venta <= 0                                          then 'S'
+        when a.acum / nullif(a.total_anio, 0) <= {{ corte_a }}     then 'A'
+        when a.acum / nullif(a.total_anio, 0) <= {{ corte_b }}     then 'B'
         else 'C'
-    end                                                as clase_abc_historico,
-
-    -- ---------- ámbito AÑO EN CURSO ----------
-    a.ranking_anio::int                                as ranking_anio,
-    a.venta_anio,
-    a.margen_anio,
-    a.lineas_anio,
-    round(case when a.total_anio > 0 then a.venta_anio / a.total_anio
-               else 0 end, 6)::numeric(9,6)            as participacion_anio,
-    round(case when a.total_anio > 0 then a.acum_anio / a.total_anio
-               else 0 end, 6)::numeric(9,6)            as participacion_acumulada_anio,
-    case
-        when a.venta_anio <= 0                                             then 'S'
-        when a.acum_anio / nullif(a.total_anio, 0) <= {{ corte_a }}        then 'A'
-        when a.acum_anio / nullif(a.total_anio, 0) <= {{ corte_b }}        then 'B'
-        else 'C'
-    end                                                as clase_abc_anio,
-
-    -- Etiqueta legible de la clase del año (la que se usa por defecto en los visuales).
+    end                                                as clase_abc,
     case
         -- Incluye al cliente cuyo neto del año es 0 o negativo (solo devoluciones).
-        when a.venta_anio <= 0                                             then 'S · sin venta neta'
-        when a.acum_anio / nullif(a.total_anio, 0) <= {{ corte_a }}        then 'A · clave'
-        when a.acum_anio / nullif(a.total_anio, 0) <= {{ corte_b }}        then 'B · relevante'
+        when a.venta <= 0                                          then 'S · sin venta neta'
+        when a.acum / nullif(a.total_anio, 0) <= {{ corte_a }}     then 'A · clave'
+        when a.acum / nullif(a.total_anio, 0) <= {{ corte_b }}     then 'B · relevante'
         else 'C · cola larga'
-    end                                                as clase_abc_anio_nombre,
+    end                                                as clase_abc_nombre,
 
-    a.ultimo_anio_compra,
-    -- Cliente que facturó antes y no en el año en curso: el dato que dispara una llamada.
-    (a.venta_historico > 0 and a.venta_anio <= 0)       as perdido_en_anio,
+    h.primer_anio_compra,
+    h.ultimo_anio_compra,
+    -- Facturó en algún año anterior y en este no: el dato que dispara una llamada.
+    (h.ultimo_anio_compra is not null
+     and h.ultimo_anio_compra < a.anio
+     and a.venta <= 0)                                 as es_perdido,
+    (h.primer_anio_compra = a.anio)                    as es_nuevo,
 
     -- Trazabilidad (§12). No usa `columnas_trazabilidad()` porque es un agregado: no arrastra
     -- `fuente_origen`/`extraido_en` de una fila de origen concreta.
     '{{ this.name }}'::text                            as proceso_transformacion,
     '{{ var("version_proceso", "2.0") }}'::text        as version_proceso
 from acumulado a
+left join historia h
+       on h.empresa_id = a.empresa_id and h.cliente_clave = a.cliente_clave

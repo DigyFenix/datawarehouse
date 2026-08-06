@@ -89,11 +89,11 @@ table 'DM_Clasificación RFM'
 		sourceColumn: version_proceso
 
 	/// Clientes recientes y frecuentes: el núcleo que sostiene la venta. Cuidarlos es más barato que reemplazarlos.
-	measure 'Clientes campeones' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), 'DM_Clasificación RFM'[segmento_rfm] = "campeon")
+	measure 'Clientes campeones' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "campeon"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Clientes leales' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), 'DM_Clasificación RFM'[segmento_rfm] = "leal")
+	measure 'Clientes leales' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "leal"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
@@ -103,11 +103,11 @@ table 'DM_Clasificación RFM'
 		displayFolder: 01 Conteos
 
 	/// En riesgo Y de monto alto: si solo se va a llamar a alguien, que sea a estos.
-	measure 'Clientes en riesgo valiosos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), 'DM_Clasificación RFM'[segmento_rfm] = "en_riesgo_valioso")
+	measure 'Clientes en riesgo valiosos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "en_riesgo_valioso"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
-	measure 'Clientes dormidos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), 'DM_Clasificación RFM'[segmento_rfm] = "dormido")
+	measure 'Clientes dormidos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "dormido"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
@@ -119,6 +119,34 @@ table 'DM_Clasificación RFM'
 	measure 'Venta 12m clasificada' = SUM('DM_Clasificación RFM'[monto_neto_12m])
 		formatString: "Q" #,0
 		displayFolder: 02 Montos
+
+	/// Clientes cuya PRIMERA compra cae dentro del período filtrado. Se quitan los filtros de Calendario y Ventas a propósito: sin eso la relación con Cliente ya habría recortado la tabla a quien compró en el período, y el conteo sería el de clientes activos, no el de nuevos.
+	measure 'Clientes nuevos' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) RETURN CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS(DM_Calendario), REMOVEFILTERS(FC_Ventas), 'DM_Clasificación RFM'[primera_compra] >= ini, 'DM_Clasificación RFM'[primera_compra] <= fin)
+		formatString: #,0
+		displayFolder: 03 Rotación de cartera
+
+	/// Cuánto facturaron en el período los clientes que estrenaron relación en él. Mide si la captación trae volumen o solo nombres.
+	measure 'Ventas de clientes nuevos' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) RETURN CALCULATE([Ventas netas], FILTER(ALL('DM_Clasificación RFM'), 'DM_Clasificación RFM'[primera_compra] >= ini && 'DM_Clasificación RFM'[primera_compra] <= fin))
+		formatString: "Q" #,0
+		displayFolder: 03 Rotación de cartera
+
+	measure '% Venta de clientes nuevos' = DIVIDE([Ventas de clientes nuevos], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 03 Rotación de cartera
+
+	/// Clientes con al menos una compra en los últimos 12 meses según la recencia del RFM.
+	measure 'Clientes activos 12m' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[recencia_dias] <= 365))
+		formatString: #,0
+		displayFolder: 03 Rotación de cartera
+
+	measure '% Clientes activos' = DIVIDE([Clientes activos 12m], CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS('DM_Clasificación RFM'[recencia_dias])))
+		formatString: 0.0%
+		displayFolder: 03 Rotación de cartera
+
+	/// Antigüedad media de la relación comercial. Una cartera joven crece; una muy vieja sin clientes nuevos se está apagando.
+	measure 'Antigüedad media del cliente' = AVERAGEX('DM_Clasificación RFM', DATEDIFF('DM_Clasificación RFM'[primera_compra], TODAY(), DAY))
+		formatString: #,0
+		displayFolder: 03 Rotación de cartera
 
 	partition 'DM_Clasificación RFM' = m
 		mode: import

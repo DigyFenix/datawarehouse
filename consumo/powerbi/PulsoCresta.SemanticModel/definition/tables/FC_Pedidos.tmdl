@@ -187,15 +187,15 @@ table FC_Pedidos
 		displayFolder: 01 Pedido
 
 	/// Pedido y AÚN no cumplido (líneas abiertas): lo que la operación debe entregar/facturar.
-	measure 'Backlog' = CALCULATE(SUM(FC_Pedidos[monto_abierto]), FC_Pedidos[es_abierta] = TRUE)
+	measure 'Backlog' = CALCULATE(SUM(FC_Pedidos[monto_abierto]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 02 Backlog
 
-	measure 'Cantidad pendiente' = CALCULATE(SUM(FC_Pedidos[cantidad_abierta]), FC_Pedidos[es_abierta] = TRUE)
+	measure 'Cantidad pendiente' = CALCULATE(SUM(FC_Pedidos[cantidad_abierta]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Backlog
 
-	measure 'Líneas abiertas' = CALCULATE(COUNTROWS(FC_Pedidos), FC_Pedidos[es_abierta] = TRUE)
+	measure 'Líneas abiertas' = CALCULATE(COUNTROWS(FC_Pedidos), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Backlog
 
@@ -203,6 +203,50 @@ table FC_Pedidos
 	measure 'Fill rate' = 1 - DIVIDE([Backlog], [Monto pedido], 0)
 		formatString: 0.0%
 		displayFolder: 02 Backlog
+
+	/// Líneas abiertas cuya fecha de entrega prometida YA PASÓ. Es incumplimiento en curso: el cliente lo está viviendo hoy.
+	measure 'Líneas de pedido vencidas' = CALCULATE([Líneas abiertas], KEEPFILTERS(FC_Pedidos[fecha_entrega] < TODAY()))
+		formatString: #,0
+		displayFolder: 03 Cumplimiento
+
+	measure 'Backlog vencido' = CALCULATE([Backlog], KEEPFILTERS(FC_Pedidos[fecha_entrega] < TODAY()))
+		formatString: "Q" #,0
+		displayFolder: 03 Cumplimiento
+
+	measure '% Backlog vencido' = DIVIDE([Backlog vencido], [Backlog])
+		formatString: 0.0%
+		displayFolder: 03 Cumplimiento
+
+	/// Días que se promete al cliente entre el pedido y la entrega. Si sube, la promesa comercial se está estirando.
+	measure 'Lead time prometido' = AVERAGEX(FC_Pedidos, DATEDIFF(FC_Pedidos[fecha_pedido], FC_Pedidos[fecha_entrega], DAY))
+		formatString: #,0.0
+		displayFolder: 03 Cumplimiento
+
+	/// Backlog traducido a días de venta: cuánto tiempo de operación hay ya comprometido.
+	measure 'Backlog en días de venta' = DIVIDE([Backlog], DIVIDE([Ventas netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas)))
+		formatString: #,0.0
+		displayFolder: 02 Backlog
+
+	measure 'Ticket promedio de pedido' = DIVIDE([Monto pedido], [Pedidos del período])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	measure 'Clientes con pedido' = DISTINCTCOUNT(FC_Pedidos[cliente_clave])
+		formatString: #,0
+		displayFolder: 01 Pedido
+
+	measure 'Pedidos mes anterior' = CALCULATE([Monto pedido], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	measure 'Pedidos año anterior' = CALCULATE([Monto pedido], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	/// Pedido contra facturación del mismo período: mide si la demanda captada se está convirtiendo en venta o se está represando.
+	measure 'Pedido sobre facturado' = DIVIDE([Monto pedido], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 05 Comparativos
 
 	partition FC_Pedidos = m
 		mode: import
