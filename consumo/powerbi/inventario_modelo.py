@@ -137,8 +137,10 @@ def generar(defi: Path) -> str:
         for carpeta in sorted(carpetas):
             a(f"\n**{carpeta}**\n")
             for m in carpetas[carpeta]:
-                marca = "" if m["descripcion"] else " ⚠ sin descripción"
-                a(f"- {m['nombre']}{marca}")
+                if m["descripcion"]:
+                    a(f"- **{m['nombre']}** — {m['descripcion']}")
+                else:
+                    a(f"- **{m['nombre']}** — ⚠ sin descripción")
 
     a("\n## Medidas sin descripción\n")
     if not sin_desc:

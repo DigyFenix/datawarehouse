@@ -107,6 +107,7 @@ table 'FC_Pagos efectuados'
 		summarizeBy: none
 		sourceColumn: version_proceso
 
+	/// Salidas de caja del período, cualquiera sea la contraparte.
 	measure 'Monto pagado' = SUM('FC_Pagos efectuados'[monto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
@@ -121,34 +122,42 @@ table 'FC_Pagos efectuados'
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Número de documentos de pago emitidos.
 	measure 'Cantidad de pagos' = COUNTROWS('FC_Pagos efectuados')
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Proveedores distintos a los que se les pagó.
 	measure 'Proveedores pagados' = DISTINCTCOUNT('FC_Pagos efectuados'[proveedor_clave])
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Importe medio por documento de pago.
 	measure 'Pago promedio' = DIVIDE([Monto pagado], [Cantidad de pagos])
 		formatString: "Q" #,0
 		displayFolder: 03 Promedios
 
+	/// Salidas del mes previo.
 	measure 'Pagos mes anterior' = CALCULATE([Monto pagado], DATEADD(DM_Calendario[fecha], -1, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 
+	/// Salidas acumuladas del ejercicio.
 	measure 'Pagos acumulados año' = TOTALYTD([Monto pagado], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 
+	/// Salidas del mismo período del año pasado.
 	measure 'Pagos año anterior' = CALCULATE([Monto pagado], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 
+	/// Salidas acumuladas desde el primer día del mes.
 	measure 'Pagos acumulados mes' = TOTALMTD([Monto pagado], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 
+	/// Cambio en las salidas contra el año pasado.
 	measure 'Variación de pagos vs año anterior' = DIVIDE([Monto pagado] - [Pagos año anterior], [Pagos año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 04 Comparativos

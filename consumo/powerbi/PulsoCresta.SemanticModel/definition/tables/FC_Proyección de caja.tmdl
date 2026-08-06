@@ -87,10 +87,12 @@ table 'FC_Proyección de caja'
 		formatString: "Q" #,0
 		displayFolder: 01 Proyección
 
+	/// Pagos comprometidos por semana de vencimiento.
 	measure 'Salidas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "salida"))
 		formatString: "Q" #,0
 		displayFolder: 01 Proyección
 
+	/// Entradas menos salidas de la semana. Negativo sostenido es un problema de caja antes de ser un problema contable.
 	measure 'Flujo neto proyectado' = [Entradas proyectadas] - [Salidas proyectadas]
 		formatString: "Q" #,0
 		displayFolder: 01 Proyección
@@ -100,6 +102,7 @@ table 'FC_Proyección de caja'
 		formatString: "Q" #,0
 		displayFolder: 02 Vencido
 
+	/// Pagos cuya fecha ya pasó: exigibles ahora mismo.
 	measure 'Salidas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "salida"), KEEPFILTERS('FC_Proyección de caja'[estado_vencimiento] = "vencido"))
 		formatString: "Q" #,0
 		displayFolder: 02 Vencido
@@ -114,10 +117,12 @@ table 'FC_Proyección de caja'
 		formatString: "Q" #,0
 		displayFolder: 03 Acumulado
 
+	/// Compromisos de pago del horizonte corto.
 	measure 'Salidas próximas 4 semanas' = CALCULATE([Salidas proyectadas], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] >= 0 && 'FC_Proyección de caja'[semana_offset] <= 3))
 		formatString: "Q" #,0
 		displayFolder: 03 Acumulado
 
+	/// Lo que queda en caja del mes si todo se cumple como está pactado.
 	measure 'Flujo neto próximas 4 semanas' = [Entradas próximas 4 semanas] - [Salidas próximas 4 semanas]
 		formatString: "Q" #,0
 		displayFolder: 03 Acumulado

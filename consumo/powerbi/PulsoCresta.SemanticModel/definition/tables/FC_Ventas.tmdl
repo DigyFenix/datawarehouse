@@ -214,26 +214,32 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Lo que el cliente realmente paga. Sale de la CABECERA del documento y no de la suma de líneas: el IVA se calcula por documento y sumarlo línea a línea desvía centavos contra el ERP.
 	measure 'Ventas netas con IVA' = SUM(FC_Ventas[monto_con_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Facturación del período antes de restar devoluciones.
 	measure 'Ventas brutas' = CALCULATE([Ventas netas], KEEPFILTERS('DM_Tipo de documento'[tipo_documento] = "factura"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Notas de crédito del período, en positivo para poder compararlas contra la venta.
 	measure Devoluciones = ABS(CALCULATE([Ventas netas], KEEPFILTERS('DM_Tipo de documento'[tipo_documento] = "nota_credito")))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// IVA de las ventas. Se queda en moneda LOCAL aunque el resto del modelo esté en moneda de presentación: es un concepto fiscal del país de cada sociedad.
 	measure 'Impuesto facturado' = SUM(FC_Ventas[monto_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Descuento concedido, tomado de lo realmente grabado en cada línea y no de una lista de precios teórica.
 	measure 'Descuento otorgado' = SUM(FC_Ventas[monto_descuento])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Cuánto del precio se está cediendo. Que suba sin que suba el volumen es erosión de precio, no una promoción que funciona.
 	measure '% Descuento' = DIVIDE([Descuento otorgado], [Ventas netas] + [Descuento otorgado])
 		formatString: 0.0%
 		displayFolder: 01 Importes
@@ -248,42 +254,52 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
+	/// Facturación a otras empresas del propio grupo. Ni compite por precio ni la trabaja un vendedor.
 	measure 'Ventas al grupo' = CALCULATE([Ventas netas], DM_Cliente[es_intercompania] = TRUE)
 		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
+	/// Qué parte de la facturación es movimiento interno. En Grupo Cresta pesa lo suficiente como para cambiar la lectura de cualquier ranking comercial.
 	measure '% Venta al grupo' = DIVIDE([Ventas al grupo], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 02 Terceros vs grupo
 
+	/// Cantidad neta despachada; la nota de crédito resta.
 	measure 'Unidades vendidas' = SUM(FC_Ventas[cantidad])
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Número de líneas de documento — el grano del hecho.
 	measure 'Líneas de venta' = COUNTROWS(FC_Ventas)
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Facturas y notas de crédito distintas emitidas en el período.
 	measure 'Documentos de venta' = DISTINCTCOUNT(FC_Ventas[documento_id])
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Clientes distintos con movimiento neto en el período.
 	measure 'Clientes con venta' = CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(FC_Ventas[monto_sin_impuesto] <> 0))
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Artículos distintos con movimiento: la parte del catálogo que de verdad rota.
 	measure 'Productos vendidos' = DISTINCTCOUNT(FC_Ventas[producto_clave])
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Venta media por documento. Subirlo suele costar menos que conseguir un cliente nuevo.
 	measure 'Ticket promedio' = DIVIDE([Ventas netas], [Documentos de venta])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
 
+	/// Precio medio realmente cobrado. Solo significa algo con UN producto filtrado: mezclado entre artículos distintos no dice nada.
 	measure 'Precio promedio unidad' = DIVIDE([Ventas netas], [Unidades vendidas])
 		formatString: "Q" #,0.00
 		displayFolder: 04 Promedios
 
+	/// Tamaño medio de la línea de documento.
 	measure 'Venta promedio por línea' = DIVIDE([Ventas netas], [Líneas de venta])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
@@ -293,18 +309,22 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
 
+	/// Facturación media por cliente activo en el período.
 	measure 'Venta promedio por cliente' = DIVIDE([Ventas netas], [Clientes con venta])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
 
+	/// Costo registrado en la línea al momento de facturar. Solo existe en SAP B1; en Odoo la línea no lo trae y la medida sale en cero.
 	measure 'Costo de ventas' = SUM(FC_Ventas[costo])
 		formatString: "Q" #,0
 		displayFolder: 05 Rentabilidad
 
+	/// Venta neta menos costo, calculado línea a línea. Cero en Odoo por la misma razón que el costo.
 	measure 'Margen bruto' = SUM(FC_Ventas[margen])
 		formatString: "Q" #,0
 		displayFolder: 05 Rentabilidad
 
+	/// Rentabilidad sobre la venta, grupo incluido. Para el margen del mercado real usar '% Margen terceros'.
 	measure '% Margen' = DIVIDE([Margen bruto], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 05 Rentabilidad
@@ -319,6 +339,7 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 06 Comparativos
 
+	/// El mismo período del año pasado. En un negocio con temporada dice más que la comparación contra el mes anterior.
 	measure 'Ventas año anterior' = CALCULATE([Ventas netas], DATEADD(DM_Calendario[fecha], -1, YEAR))
 		formatString: "Q" #,0
 		displayFolder: 06 Comparativos
@@ -328,10 +349,12 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 06 Comparativos
 
+	/// Acumulado desde el inicio del trimestre hasta la fecha del contexto.
 	measure 'Ventas acumuladas trimestre' = TOTALQTD([Ventas netas], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 06 Comparativos
 
+	/// Acumulado desde el 1 de enero: la cifra con la que se mide el ejercicio.
 	measure 'Ventas acumuladas año' = TOTALYTD([Ventas netas], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 06 Comparativos
@@ -341,14 +364,17 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 06 Comparativos
 
+	/// Crecimiento contra el mes previo. Cuidado con la estacionalidad: un mes flojo puede ser normal para la época.
 	measure 'Variación vs mes anterior' = DIVIDE([Ventas netas] - [Ventas mes anterior], [Ventas mes anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 06 Comparativos
 
+	/// Crecimiento contra el mismo período del año pasado, ya libre del efecto estacional.
 	measure 'Variación vs año anterior' = DIVIDE([Ventas netas] - [Ventas año anterior], [Ventas año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 06 Comparativos
 
+	/// Cómo va el ejercicio completo contra el anterior. Es la que se lleva a una junta.
 	measure 'Variación acumulada vs año anterior' = DIVIDE([Ventas acumuladas año] - [Ventas acumuladas año anterior], [Ventas acumuladas año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 06 Comparativos
@@ -378,6 +404,7 @@ table FC_Ventas
 		formatString: 0.0%
 		displayFolder: 07 Pareto
 
+	/// Posición del producto por venta neta dentro del filtro vigente.
 	measure 'Ranking de producto por venta' = RANKX(ALLSELECTED(DM_Producto), [Ventas netas])
 		formatString: #,0
 		displayFolder: 07 Pareto
@@ -402,6 +429,7 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 08 Fugas de margen
 
+	/// Cuántas líneas se facturaron por debajo del costo registrado.
 	measure 'Líneas bajo costo' = CALCULATE(COUNTROWS(FC_Ventas), KEEPFILTERS(FC_Ventas[margen] < 0))
 		formatString: #,0
 		displayFolder: 08 Fugas de margen
@@ -411,14 +439,17 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 08 Fugas de margen
 
+	/// Qué porción de la venta se hizo perdiendo margen. Cualquier cifra de dos dígitos aquí merece una revisión de política de precios.
 	measure '% Ventas bajo costo' = DIVIDE([Ventas bajo costo], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 08 Fugas de margen
 
+	/// Artículos distintos que se vendieron perdiendo margen: la lista corta por donde empezar.
 	measure 'Productos vendidos bajo costo' = CALCULATE(DISTINCTCOUNT(FC_Ventas[producto_clave]), KEEPFILTERS(FC_Ventas[margen] < 0))
 		formatString: #,0
 		displayFolder: 08 Fugas de margen
 
+	/// Clientes a los que se les facturó por debajo del costo. Suele concentrarse en pocos y negociados.
 	measure 'Clientes con venta bajo costo' = CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(FC_Ventas[margen] < 0))
 		formatString: #,0
 		displayFolder: 08 Fugas de margen
@@ -428,6 +459,7 @@ table FC_Ventas
 		formatString: "Q" #,0.00
 		displayFolder: 09 Precio y volumen
 
+	/// Volumen del mismo período del año pasado, base del desglose precio/volumen.
 	measure 'Unidades año anterior' = CALCULATE([Unidades vendidas], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
 		formatString: #,0
 		displayFolder: 09 Precio y volumen

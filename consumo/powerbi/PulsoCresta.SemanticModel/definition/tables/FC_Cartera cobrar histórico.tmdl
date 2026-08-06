@@ -106,10 +106,12 @@ table 'FC_Cartera cobrar histórico'
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución
 
+	/// Mora en la fecha de corte de la foto. Es la serie que muestra si la cobranza mejora o se deteriora.
 	measure 'Vencido histórico por cobrar' = CALCULATE([Saldo histórico por cobrar], KEEPFILTERS('FC_Cartera cobrar histórico'[dias_vencido] > 0))
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución
 
+	/// Proporción vencida en cada corte: la tendencia importa más que el valor de un día.
 	measure '% Vencido histórico' = DIVIDE([Vencido histórico por cobrar], [Saldo histórico por cobrar])
 		formatString: 0.0%
 		displayFolder: 01 Evolución
@@ -119,6 +121,7 @@ table 'FC_Cartera cobrar histórico'
 		formatString: "Q" #,0
 		displayFolder: 02 Gestión
 
+	/// Saldo en el ÚLTIMO corte del período filtrado.
 	measure 'Cartera al cierre del período' = CALCULATE([Saldo histórico por cobrar], LASTDATE(DM_Calendario[fecha]))
 		formatString: "Q" #,0
 		displayFolder: 02 Gestión

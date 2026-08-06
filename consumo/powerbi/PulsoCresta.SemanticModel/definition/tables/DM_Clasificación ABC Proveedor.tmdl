@@ -103,18 +103,22 @@ table 'DM_Clasificación ABC Proveedor'
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Proveedores del tramo intermedio de la compra.
 	measure 'Proveedores B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "B"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Cola larga de proveedores: muchos, con poco volumen cada uno.
 	measure 'Proveedores C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "C"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Proveedores del catálogo sin compra en el año.
 	measure 'Proveedores sin compra neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "S"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Proveedores distintos en el catálogo ABC, excluida la intercompañía.
 	measure 'Proveedores clasificados' = DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave])
 		formatString: #,0
 		displayFolder: 01 Conteos
@@ -139,6 +143,7 @@ table 'DM_Clasificación ABC Proveedor'
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 
+	/// Volumen medio con un proveedor crítico.
 	measure 'Compra promedio proveedor A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), [Proveedores A])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración

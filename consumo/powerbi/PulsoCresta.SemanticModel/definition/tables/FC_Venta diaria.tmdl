@@ -94,10 +94,12 @@ table 'FC_Venta diaria'
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
 
+	/// Suaviza el efecto del día de semana. Útil para ver la tendencia corta sin el ruido del fin de semana.
 	measure 'Venta media móvil 7d' = AVERAGEX(DATESINPERIOD('DM_Calendario'[fecha], MAX('DM_Calendario'[fecha]), -7, DAY), CALCULATE(SUM('FC_Venta diaria'[ventas_netas])))
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
 
+	/// Tendencia de fondo, ya sin efecto semanal ni de quincena.
 	measure 'Venta media móvil 30d' = AVERAGEX(DATESINPERIOD('DM_Calendario'[fecha], MAX('DM_Calendario'[fecha]), -30, DAY), CALCULATE(SUM('FC_Venta diaria'[ventas_netas])))
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
@@ -107,14 +109,17 @@ table 'FC_Venta diaria'
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
 
+	/// Días del período sin ninguna facturación. Un pico aquí suele ser paro, feriado o problema de captura.
 	measure 'Días sin venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Actividad
 
+	/// Cuántos clientes distintos compran en un día operado promedio.
 	measure 'Clientes activos por día' = CALCULATE(AVERAGE('FC_Venta diaria'[clientes_activos]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
 		formatString: #,0
 		displayFolder: 02 Actividad
 
+	/// Días del período con facturación real.
 	measure 'Días con venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
 		formatString: #,0
 		displayFolder: 02 Actividad
@@ -134,6 +139,7 @@ table 'FC_Venta diaria'
 		formatString: #,0.00
 		displayFolder: 03 Ritmo
 
+	/// Acumulado dentro de la semana ISO en curso.
 	measure 'Venta acumulada semana' = CALCULATE([Venta diaria neta], FILTER(ALL(DM_Calendario), DM_Calendario[anio_semana_orden] = MAX(DM_Calendario[anio_semana_orden]) && DM_Calendario[fecha] <= MAX(DM_Calendario[fecha])))
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo

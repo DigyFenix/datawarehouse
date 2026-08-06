@@ -117,6 +117,7 @@ table 'FC_Pagos recibidos'
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Movimientos contra cuenta contable —depósitos y traslados—, no cobranza de clientes. En SAP viven en la misma tabla que los cobros y sin separarlos la cobranza se triplica.
 	measure 'Cobros de tesorería' = CALCULATE([Monto cobrado], KEEPFILTERS('FC_Pagos recibidos'[contraparte] = "cuenta_contable"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
@@ -126,34 +127,42 @@ table 'FC_Pagos recibidos'
 		formatString: 0.0%
 		displayFolder: 01 Importes
 
+	/// Número de documentos de cobro recibidos.
 	measure 'Cantidad de cobros' = COUNTROWS('FC_Pagos recibidos')
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Clientes distintos que hicieron algún pago en el período.
 	measure 'Clientes que pagaron' = DISTINCTCOUNT('FC_Pagos recibidos'[cliente_clave])
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Importe medio por documento de cobro.
 	measure 'Cobro promedio' = DIVIDE([Monto cobrado], [Cantidad de cobros])
 		formatString: "Q" #,0
 		displayFolder: 03 Promedios
 
+	/// Cobranza del mes previo.
 	measure 'Cobros mes anterior' = CALCULATE([Monto cobrado], DATEADD(DM_Calendario[fecha], -1, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 
+	/// Cobranza acumulada del ejercicio.
 	measure 'Cobros acumulados año' = TOTALYTD([Monto cobrado], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 
+	/// Cobranza del mismo período del año pasado.
 	measure 'Cobros año anterior' = CALCULATE([Monto cobrado], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 
+	/// Cobranza acumulada desde el primer día del mes.
 	measure 'Cobros acumulados mes' = TOTALMTD([Monto cobrado], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 
+	/// Cambio en la cobranza contra el año pasado.
 	measure 'Variación de cobros vs año anterior' = DIVIDE([Monto cobrado] - [Cobros año anterior], [Cobros año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 04 Comparativos

@@ -71,18 +71,22 @@ table FC_Inventario
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Cantidad física en bodega a la fecha de corte.
 	measure 'Unidades en existencia' = SUM(FC_Inventario[cantidad])
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Artículos distintos con saldo en bodega.
 	measure 'Productos con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[producto_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Almacenes con movimiento vivo.
 	measure 'Bodegas con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[almacen_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Costo unitario medio de lo que hay en bodega.
 	measure 'Costo promedio ponderado' = DIVIDE([Valor de inventario], [Unidades en existencia])
 		formatString: "Q" #,0.00
 		displayFolder: 03 Promedios
@@ -92,10 +96,12 @@ table FC_Inventario
 		formatString: #,0.0
 		displayFolder: 04 Rotación
 
+	/// Cuántos días tarda en consumirse la existencia actual. Es una de las tres patas del ciclo de conversión de efectivo.
 	measure 'Días de inventario' = DIVIDE(365, [Rotación de inventario 12M])
 		formatString: #,0
 		displayFolder: 04 Rotación
 
+	/// Los días de inventario en la unidad con la que suele razonar compras.
 	measure 'Meses de inventario' = DIVIDE([Días de inventario], 30)
 		formatString: #,0.0
 		displayFolder: 04 Rotación

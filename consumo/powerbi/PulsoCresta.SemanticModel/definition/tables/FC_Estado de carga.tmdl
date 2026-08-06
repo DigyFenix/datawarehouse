@@ -74,6 +74,7 @@ table 'FC_Estado de carga'
 		formatString: #,0
 		displayFolder: 01 Frescura
 
+	/// Momento en que corrió por última vez la extracción del dominio más rezagado.
 	measure 'Última extracción' = MAX('FC_Estado de carga'[ultima_extraccion])
 		formatString: dd/MM/yyyy HH:mm
 		displayFolder: 01 Frescura
@@ -83,10 +84,12 @@ table 'FC_Estado de carga'
 		formatString: dd/MM/yyyy
 		displayFolder: 01 Frescura
 
+	/// Cuántos dominios llevan más de tres días sin extraerse. Distinto de cero significa que hay tableros mostrando datos viejos.
 	measure 'Dominios desactualizados' = CALCULATE(COUNTROWS('FC_Estado de carga'), KEEPFILTERS('FC_Estado de carga'[estado_frescura] = "Desactualizado"))
 		formatString: #,0
 		displayFolder: 01 Frescura
 
+	/// Volumen de filas en el origen, para dimensionar cada dominio.
 	measure 'Filas cargadas' = SUM('FC_Estado de carga'[filas])
 		formatString: #,0
 		displayFolder: 02 Volumen

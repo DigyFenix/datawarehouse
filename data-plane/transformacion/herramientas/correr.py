@@ -7,10 +7,17 @@ este vive en el repo (montado en /dbt/herramientas) y lee TODO de la base de con
 que el worker: erp, base del tenant, nits_grupo y sociedades (nombre/NIT/moneda/presentación).
 
 Uso (desde el host):
-    docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo_org> [seleccion]
+    docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo_org> [seleccion] [threads]
 
     <codigo_org>  código de la organización (gobierno.organizaciones.codigo)
     [seleccion]   selección dbt; por defecto "plata oro" (build completo)
+    [threads]     paralelismo; por defecto el del profiles (4)
+
+SOBRE `threads`: en Postgres bajo WSL2 aparece de forma esporádica
+`FileFallocate: Interrupted system call`, y con 4 hilos tumba un modelo al azar en cada build
+completo (el mismo modelo pasa sin problema si se corre aislado). Bajar a 2 lo evita a costa de
+tiempo. Es una limitación del entorno de desarrollo, no del pipeline: en el VPS de producción
+no aplica.
 """
 
 from __future__ import annotations
@@ -35,6 +42,7 @@ def main() -> int:
         return 2
     organizacion = sys.argv[1]
     seleccion = sys.argv[2] if len(sys.argv) > 2 else "plata oro"
+    threads = sys.argv[3] if len(sys.argv) > 3 else None
 
     cfg = cargar_postgres()
     base_datos, erp = _destino_organizacion(cfg, organizacion)
@@ -51,14 +59,18 @@ def main() -> int:
 
     from dbt.cli.main import dbtRunner
 
-    resultado = dbtRunner().invoke([
+    argumentos = [
         "build",
         "--select", *seleccion.split(),
         "--project-dir", PROYECTO_DBT,
         "--profiles-dir", PROFILES_DIR,
         "--target", organizacion,
         "--vars", json.dumps(variables),
-    ])
+    ]
+    if threads:
+        argumentos += ["--threads", threads]
+
+    resultado = dbtRunner().invoke(argumentos)
     return 0 if resultado.success else 1
 
 

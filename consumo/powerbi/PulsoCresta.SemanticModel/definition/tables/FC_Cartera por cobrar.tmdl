@@ -145,6 +145,7 @@ table 'FC_Cartera por cobrar'
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
+	/// Lo que deben los clientes reales. Sin separar el grupo, un aging estándar reporta una crisis de cartera que no existe.
 	measure 'Saldo por cobrar terceros' = CALCULATE([Saldo por cobrar], DM_Cliente[es_intercompania] = FALSE)
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
@@ -154,22 +155,27 @@ table 'FC_Cartera por cobrar'
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
+	/// Número de partidas abiertas en el mayor.
 	measure 'Partidas por cobrar' = COUNTROWS('FC_Cartera por cobrar')
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Clientes distintos con saldo pendiente.
 	measure 'Clientes con saldo' = DISTINCTCOUNT('FC_Cartera por cobrar'[cliente_clave])
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Exposición media por cliente con deuda.
 	measure 'Saldo promedio por cliente' = DIVIDE([Saldo por cobrar], [Clientes con saldo])
 		formatString: "Q" #,0
 		displayFolder: 02 Conteos
 
+	/// Lo que aún no vence: es cobranza futura, no un problema.
 	measure 'Saldo corriente' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = FALSE))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
+	/// Lo que ya pasó su fecha de pago, grupo incluido.
 	measure 'Saldo vencido' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
@@ -179,26 +185,32 @@ table 'FC_Cartera por cobrar'
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
+	/// Qué porción de la cartera está vencida. Mezcla el grupo; para gestión comercial usar la versión de terceros.
 	measure '% Vencido' = DIVIDE([Saldo vencido], [Saldo por cobrar])
 		formatString: 0.0%
 		displayFolder: 03 Antigüedad
 
+	/// El indicador de salud de cobranza que sí se puede accionar.
 	measure '% Vencido terceros' = DIVIDE([Saldo vencido terceros], [Saldo por cobrar terceros])
 		formatString: 0.0%
 		displayFolder: 03 Antigüedad
 
+	/// Primer tramo de mora: normalmente es olvido o trámite, no riesgo.
 	measure 'Vencido 1 a 30' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "1-30"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
+	/// Segundo tramo: aquí la gestión de cobranza tiene que estar activa.
 	measure 'Vencido 31 a 60' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "31-60"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
+	/// Tercer tramo: la probabilidad de cobro empieza a caer de verdad.
 	measure 'Vencido 61 a 90' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "61-90"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
+	/// Deuda vieja. Es la candidata natural a provisión y la que conviene mirar cliente por cliente.
 	measure 'Vencido más de 90' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "+90"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
@@ -223,14 +235,17 @@ table 'FC_Cartera por cobrar'
 		formatString: "Q" #,0
 		displayFolder: 05 Foto de hoy
 
+	/// Saldo entre empresas del grupo, foto de hoy. No es riesgo de crédito: es conciliación pendiente.
 	measure 'Por cobrar grupo hoy' = CALCULATE([Saldo por cobrar grupo], REMOVEFILTERS(DM_Calendario))
 		formatString: "Q" #,0
 		displayFolder: 05 Foto de hoy
 
+	/// Mora real a hoy, ignorando el filtro de fechas de la página.
 	measure 'Vencido terceros hoy' = CALCULATE([Saldo vencido terceros], REMOVEFILTERS(DM_Calendario))
 		formatString: "Q" #,0
 		displayFolder: 05 Foto de hoy
 
+	/// Salud de la cobranza a día de hoy, sin que el período seleccionado la maquille.
 	measure '% Vencido terceros hoy' = DIVIDE([Vencido terceros hoy], [Por cobrar terceros hoy])
 		formatString: 0.0%
 		displayFolder: 05 Foto de hoy
@@ -250,10 +265,12 @@ table 'FC_Cartera por cobrar'
 		formatString: "Q" #,0
 		displayFolder: 06 Concentración
 
+	/// Cuánto pesa el cliente que más debe. Si un solo nombre concentra la cartera, el riesgo no está diversificado.
 	measure '% Exposición mayor deudor' = DIVIDE([Exposición mayor deudor], CALCULATE([Saldo por cobrar terceros], ALLSELECTED(DM_Cliente)))
 		formatString: 0.0%
 		displayFolder: 06 Concentración
 
+	/// Concentración de la deuda en los cinco mayores.
 	measure '% Saldo en top 5 deudores' = DIVIDE(CALCULATE([Saldo por cobrar terceros], TOPN(5, ALLSELECTED(DM_Cliente), [Saldo por cobrar terceros])), CALCULATE([Saldo por cobrar terceros], ALLSELECTED(DM_Cliente)))
 		formatString: 0.0%
 		displayFolder: 06 Concentración

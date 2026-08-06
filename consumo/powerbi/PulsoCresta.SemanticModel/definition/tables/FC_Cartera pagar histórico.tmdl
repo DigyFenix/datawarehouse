@@ -112,6 +112,7 @@ table 'FC_Cartera pagar histórico'
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución
 
+	/// Deuda vencida en la fecha de corte de la foto.
 	measure 'Vencido histórico por pagar' = CALCULATE([Saldo histórico por pagar], KEEPFILTERS('FC_Cartera pagar histórico'[dias_vencido] > 0))
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución

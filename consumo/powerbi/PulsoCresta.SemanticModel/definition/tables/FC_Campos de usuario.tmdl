@@ -66,6 +66,7 @@ table 'FC_Campos de usuario'
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Cuántos campos de usuario del ERP tienen valores capturados en el filtro vigente.
 	measure 'Campos de usuario distintos' = DISTINCTCOUNT('FC_Campos de usuario'[campo])
 		formatString: #,0
 		displayFolder: 01 Conteos

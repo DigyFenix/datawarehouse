@@ -178,10 +178,12 @@ table FC_Pedidos
 		formatString: "Q" #,0
 		displayFolder: 01 Pedido
 
+	/// Unidades comprometidas en los pedidos del período.
 	measure 'Cantidad pedida' = SUM(FC_Pedidos[cantidad])
 		formatString: #,0
 		displayFolder: 01 Pedido
 
+	/// Número de pedidos distintos captados.
 	measure 'Pedidos del período' = DISTINCTCOUNT(FC_Pedidos[pedido_id])
 		formatString: #,0
 		displayFolder: 01 Pedido
@@ -191,10 +193,12 @@ table FC_Pedidos
 		formatString: "Q" #,0
 		displayFolder: 02 Backlog
 
+	/// Unidades que faltan por entregar.
 	measure 'Cantidad pendiente' = CALCULATE(SUM(FC_Pedidos[cantidad_abierta]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Backlog
 
+	/// Líneas de pedido con saldo por despachar.
 	measure 'Líneas abiertas' = CALCULATE(COUNTROWS(FC_Pedidos), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Backlog
@@ -209,10 +213,12 @@ table FC_Pedidos
 		formatString: #,0
 		displayFolder: 03 Cumplimiento
 
+	/// Compromiso cuya fecha de entrega prometida ya pasó. El cliente lo está viviendo hoy.
 	measure 'Backlog vencido' = CALCULATE([Backlog], KEEPFILTERS(FC_Pedidos[fecha_entrega] < TODAY()))
 		formatString: "Q" #,0
 		displayFolder: 03 Cumplimiento
 
+	/// Qué parte del compromiso pendiente ya está en incumplimiento.
 	measure '% Backlog vencido' = DIVIDE([Backlog vencido], [Backlog])
 		formatString: 0.0%
 		displayFolder: 03 Cumplimiento
@@ -227,18 +233,22 @@ table FC_Pedidos
 		formatString: #,0.0
 		displayFolder: 02 Backlog
 
+	/// Tamaño medio del pedido captado.
 	measure 'Ticket promedio de pedido' = DIVIDE([Monto pedido], [Pedidos del período])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
 
+	/// Clientes distintos que colocaron pedido en el período.
 	measure 'Clientes con pedido' = DISTINCTCOUNT(FC_Pedidos[cliente_clave])
 		formatString: #,0
 		displayFolder: 01 Pedido
 
+	/// Captación del mes previo.
 	measure 'Pedidos mes anterior' = CALCULATE([Monto pedido], DATEADD(DM_Calendario[fecha], -1, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
+	/// Captación del mismo período del año pasado.
 	measure 'Pedidos año anterior' = CALCULATE([Monto pedido], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos

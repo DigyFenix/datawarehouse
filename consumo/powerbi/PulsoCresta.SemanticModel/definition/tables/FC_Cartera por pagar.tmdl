@@ -151,10 +151,12 @@ table 'FC_Cartera por pagar'
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
+	/// Lo que se debe a proveedores reales.
 	measure 'Saldo por pagar terceros' = CALCULATE([Saldo por pagar], DM_Proveedor[es_intercompania] = FALSE)
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
+	/// Deuda con empresas del propio grupo: se netea al consolidar.
 	measure 'Saldo por pagar grupo' = CALCULATE([Saldo por pagar], DM_Proveedor[es_intercompania] = TRUE)
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
@@ -164,22 +166,27 @@ table 'FC_Cartera por pagar'
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
+	/// Número de partidas abiertas de deuda.
 	measure 'Partidas por pagar' = COUNTROWS('FC_Cartera por pagar')
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Proveedores distintos a los que se les debe.
 	measure 'Proveedores con saldo' = DISTINCTCOUNT('FC_Cartera por pagar'[proveedor_clave])
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Deuda que ya pasó su fecha de pago. Sostenida en el tiempo es señal de tensión de caja, no de buena negociación.
 	measure 'Por pagar vencido' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
 
+	/// Qué parte de lo que se debe ya está vencido.
 	measure '% Por pagar vencido' = DIVIDE([Por pagar vencido], [Saldo por pagar])
 		formatString: 0.0%
 		displayFolder: 03 Antigüedad
 
+	/// Deuda vieja con proveedores; suele venir con suministro en riesgo.
 	measure 'Por pagar más de 90' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "+90"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
@@ -189,6 +196,7 @@ table 'FC_Cartera por pagar'
 		formatString: "Q" #,0
 		displayFolder: 04 Foto de hoy
 
+	/// Cobrar menos deber, foto de hoy, sin el filtro de período.
 	measure 'Posición neta hoy' = CALCULATE([Posición neta], REMOVEFILTERS(DM_Calendario))
 		formatString: "Q" #,0
 		displayFolder: 04 Foto de hoy
@@ -198,6 +206,7 @@ table 'FC_Cartera por pagar'
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
 
+	/// Veces al año que se paga la deuda completa. Es el recíproco de los días de pago.
 	measure 'Rotación de cuentas por pagar' = DIVIDE(365, [Días de pago terceros])
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
@@ -207,10 +216,12 @@ table 'FC_Cartera por pagar'
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
 
+	/// A cuántos proveedores se les debe algo ya vencido.
 	measure 'Proveedores con saldo vencido' = CALCULATE(DISTINCTCOUNT('FC_Cartera por pagar'[proveedor_clave]), KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Conteos
 
+	/// Partidas sin fecha de pago pactada: normalmente anticipos o ajustes sin depurar.
 	measure 'Por pagar sin vencimiento' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "sin_vencimiento"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad

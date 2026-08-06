@@ -93,6 +93,7 @@ table 'DM_Clasificación RFM'
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Compran seguido y hace poco, aunque no sean los de mayor monto. Son la base estable.
 	measure 'Clientes leales' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "leal"))
 		formatString: #,0
 		displayFolder: 01 Conteos
@@ -107,6 +108,7 @@ table 'DM_Clasificación RFM'
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Llevan mucho sin comprar y compraban poco. Reactivarlos rara vez paga el esfuerzo.
 	measure 'Clientes dormidos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "dormido"))
 		formatString: #,0
 		displayFolder: 01 Conteos
@@ -116,6 +118,7 @@ table 'DM_Clasificación RFM'
 		formatString: "Q" #,0
 		displayFolder: 02 Montos
 
+	/// Venta de los últimos 12 meses cubierta por el catálogo RFM.
 	measure 'Venta 12m clasificada' = SUM('DM_Clasificación RFM'[monto_neto_12m])
 		formatString: "Q" #,0
 		displayFolder: 02 Montos
@@ -130,6 +133,7 @@ table 'DM_Clasificación RFM'
 		formatString: "Q" #,0
 		displayFolder: 03 Rotación de cartera
 
+	/// Qué parte de la facturación viene de relaciones estrenadas en el período.
 	measure '% Venta de clientes nuevos' = DIVIDE([Ventas de clientes nuevos], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 03 Rotación de cartera
@@ -139,6 +143,7 @@ table 'DM_Clasificación RFM'
 		formatString: #,0
 		displayFolder: 03 Rotación de cartera
 
+	/// Proporción de la cartera que compró en los últimos 12 meses. Es la medida de si el catálogo está vivo o es una lista histórica.
 	measure '% Clientes activos' = DIVIDE([Clientes activos 12m], CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS('DM_Clasificación RFM'[recencia_dias])))
 		formatString: 0.0%
 		displayFolder: 03 Rotación de cartera

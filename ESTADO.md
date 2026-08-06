@@ -116,6 +116,30 @@ donde una empresa decide y el modelo callaba. Todo local; Power BI solo Cresta.
   **11.74% de la venta por debajo del costo** (Q45.8M, Q18.2M de margen perdido) · backlog
   vencido **Q9.0M de Q12.2M** · brecha contable −1.1%.
 
+### Auditoría del modelo PBI aplicada (mismo día)
+
+Edwin trajo una auditoría con 12 defectos (`Prompt_ClaudeCode_PulsoCresta.md`). Se corrigieron
+en el **generador**, no en el TMDL: `generar_pbip.py` reescribe los `.tmdl` en cada corrida.
+
+- **KEEPFILTERS** en 82 medidas (los segmentadores dejan de ignorarse). `es_intercompania` se
+  respeta a propósito: una medida que declara su grupo en el nombre lo conserva.
+- **Cero relaciones bidireccionales**; las 3 medidas que dependían de la propagación usan
+  TREATAS explícito.
+- **Grupo de moneda con fallback de tres niveles**: la `"Q"` del formato discrimina los importes
+  no soportados (BLANK) de los conteos y porcentajes (pasan sin conmutar).
+- **Pareto O(n²) eliminado** y `AVERAGEX(FILTER(…))` → `CALCULATE`. Regresión en
+  `consumo/powerbi/tests/fase4-regresion.dax`.
+- **Aging por clave entera** en los 4 hechos de cartera (macro `aging.sql` emite etiqueta y
+  clave juntas); las fotos diarias se migraron sin perder histórico.
+- **ABC regranulado a (empresa, año, entidad)** + `dim_anio`. RFM y Comportamiento de pago se
+  declaran foto: no hay historia de dónde reconstruir un corte anual. La clase vigente se
+  desnormaliza en Cliente y Proveedor por post_hook.
+- **Las 294 medidas quedaron documentadas** (eran 118).
+- Dos huecos cerrados en los validadores: nombres de medida duplicados y el falso positivo de
+  las columnas extendidas de ADDCOLUMNS.
+- **PBI: un solo proyecto.** `PulsoIronNetwork` se retiró; para Iron se cambia el parámetro
+  `BaseDatos` del PBIP de Cresta.
+
 ## Avance 2026-08-02/03 (sesión 16) — GRUPO COMPLETO + multi-moneda + SQL Server
 
 **Las 10 sociedades de Grupo Cresta cargadas y cuadradas (0/70 conceptos)**, incluida

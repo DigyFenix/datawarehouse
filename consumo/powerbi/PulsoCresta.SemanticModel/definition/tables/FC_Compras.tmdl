@@ -190,10 +190,12 @@ table FC_Compras
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Compra con impuesto incluido, desde la cabecera del documento por la misma razón que en ventas.
 	measure 'Compras netas con IVA' = SUM(FC_Compras[monto_con_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// IVA soportado en las compras, en moneda local.
 	measure 'Impuesto de compras' = SUM(FC_Compras[monto_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
@@ -203,38 +205,47 @@ table FC_Compras
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Compra a proveedores reales, sin el movimiento entre empresas del grupo.
 	measure 'Compras a terceros' = CALCULATE([Compras netas], DM_Proveedor[es_intercompania] = FALSE)
 		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
+	/// Compra a otras empresas del propio grupo: traslado interno, no abastecimiento.
 	measure 'Compras al grupo' = CALCULATE([Compras netas], DM_Proveedor[es_intercompania] = TRUE)
 		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
+	/// Qué parte del abastecimiento es interno.
 	measure '% Compra al grupo' = DIVIDE([Compras al grupo], [Compras netas])
 		formatString: 0.0%
 		displayFolder: 02 Terceros vs grupo
 
+	/// Cantidad neta recibida; la nota de crédito a proveedor resta.
 	measure 'Unidades compradas' = SUM(FC_Compras[cantidad])
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Número de líneas de documento de compra.
 	measure 'Líneas de compra' = COUNTROWS(FC_Compras)
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Facturas y notas de crédito de compra distintas del período.
 	measure 'Documentos de compra' = DISTINCTCOUNT(FC_Compras[documento_id])
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Proveedores distintos con movimiento en el período.
 	measure 'Proveedores con compra' = CALCULATE(DISTINCTCOUNT(FC_Compras[proveedor_clave]), KEEPFILTERS(FC_Compras[monto_sin_impuesto] <> 0))
 		formatString: #,0
 		displayFolder: 03 Conteos
 
+	/// Tamaño medio de la factura de compra.
 	measure 'Compra promedio por documento' = DIVIDE([Compras netas], [Documentos de compra])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
 
+	/// Cuánto se le compra en promedio a cada proveedor activo.
 	measure 'Compra promedio por proveedor' = DIVIDE([Compras netas], [Proveedores con compra])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
@@ -244,34 +255,42 @@ table FC_Compras
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
 
+	/// Compra del mes previo, para ver si el abastecimiento se aceleró.
 	measure 'Compras mes anterior' = CALCULATE([Compras netas], DATEADD(DM_Calendario[fecha], -1, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
+	/// Mismo período del año pasado, libre de estacionalidad.
 	measure 'Compras año anterior' = CALCULATE([Compras netas], DATEADD(DM_Calendario[fecha], -1, YEAR))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
+	/// Acumulado desde el primer día del mes.
 	measure 'Compras acumuladas mes' = TOTALMTD([Compras netas], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
+	/// Acumulado del ejercicio.
 	measure 'Compras acumuladas año' = TOTALYTD([Compras netas], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
+	/// Acumulado del ejercicio anterior a la misma altura del año.
 	measure 'Compras acumuladas año anterior' = CALCULATE(TOTALYTD([Compras netas], DM_Calendario[fecha]), DATEADD(DM_Calendario[fecha], -1, YEAR))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
+	/// Cambio contra el mes previo.
 	measure 'Variación compras vs mes anterior' = DIVIDE([Compras netas] - [Compras mes anterior], [Compras mes anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 05 Comparativos
 
+	/// Cambio contra el mismo período del año pasado.
 	measure 'Variación compras vs año anterior' = DIVIDE([Compras netas] - [Compras año anterior], [Compras año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 05 Comparativos
 
+	/// Suaviza el ruido mensual del abastecimiento. Promedia MESES, no días.
 	measure 'Media móvil 3 meses compras' = CALCULATE(AVERAGEX(VALUES(DM_Calendario[anio_mes]), [Compras netas]), DATESINPERIOD(DM_Calendario[fecha], MAX(DM_Calendario[fecha]), -3, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
@@ -281,6 +300,7 @@ table FC_Compras
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
+	/// Posición del proveedor por compra dentro del filtro vigente.
 	measure 'Ranking de proveedor por compra' = RANKX(ALLSELECTED(DM_Proveedor), [Compras a terceros])
 		formatString: #,0
 		displayFolder: 06 Pareto
@@ -295,6 +315,7 @@ table FC_Compras
 		formatString: 0.0%
 		displayFolder: 06 Pareto
 
+	/// Concentración del abastecimiento en los diez mayores proveedores.
 	measure '% Compra en top 10 proveedores' = DIVIDE(CALCULATE([Compras a terceros], TOPN(10, ALLSELECTED(DM_Proveedor), [Compras a terceros])), CALCULATE([Compras a terceros], ALLSELECTED(DM_Proveedor)))
 		formatString: 0.0%
 		displayFolder: 06 Pareto
@@ -304,10 +325,12 @@ table FC_Compras
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
+	/// Compra de los últimos doce meses. Es la base de la rotación de inventario y de los días de pago.
 	measure 'Compras 12 meses móviles' = CALCULATE([Compras netas], DATESINPERIOD(DM_Calendario[fecha], MAX(DM_Calendario[fecha]), -12, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
+	/// Cómo va el abastecimiento del ejercicio completo contra el anterior.
 	measure 'Variación compras acumulada vs año anterior' = DIVIDE([Compras acumuladas año] - [Compras acumuladas año anterior], [Compras acumuladas año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 05 Comparativos
@@ -317,6 +340,7 @@ table FC_Compras
 		formatString: "Q" #,0.00
 		displayFolder: 07 Inflación de insumos
 
+	/// Precio unitario medio pagado el año pasado, base de la comparación de inflación de insumos.
 	measure 'Precio de compra año anterior' = CALCULATE([Precio promedio de compra], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
 		formatString: "Q" #,0.00
 		displayFolder: 07 Inflación de insumos

@@ -112,6 +112,7 @@ table 'FC_Resultados contables'
 		formatString: "Q" #,0
 		displayFolder: 01 P&L
 
+	/// Costo del período según el mayor. Es la cifra contable, no el costo de línea de la factura.
 	measure 'Costo (contable)' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "costo"))
 		formatString: "Q" #,0
 		displayFolder: 01 P&L
@@ -126,6 +127,7 @@ table 'FC_Resultados contables'
 		formatString: "Q" #,0
 		displayFolder: 01 P&L
 
+	/// Número de partidas del mayor en el filtro vigente.
 	measure 'Partidas contables' = COUNTROWS('FC_Resultados contables')
 		formatString: #,0
 		displayFolder: 01 P&L
@@ -140,6 +142,7 @@ table 'FC_Resultados contables'
 		formatString: 0.0%
 		displayFolder: 02 Estructura
 
+	/// Qué parte del ingreso se va en costo directo.
 	measure '% Costo sobre ingreso' = DIVIDE([Costo (contable)], [Ingresos contables])
 		formatString: 0.0%
 		displayFolder: 02 Estructura
@@ -149,34 +152,42 @@ table 'FC_Resultados contables'
 		formatString: 0.0%
 		displayFolder: 02 Estructura
 
+	/// Estructura media mensual: el piso que hay que cubrir cada mes.
 	measure 'Gasto promedio mensual' = DIVIDE([Gasto operativo], DISTINCTCOUNT(DM_Calendario[anio_mes]))
 		formatString: "Q" #,0
 		displayFolder: 02 Estructura
 
+	/// Gasto del mes previo.
 	measure 'Gasto mes anterior' = CALCULATE([Gasto operativo], DATEADD(DM_Calendario[fecha], -1, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 03 Comparativos
 
+	/// Gasto del mismo período del año pasado.
 	measure 'Gasto año anterior' = CALCULATE([Gasto operativo], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
 		formatString: "Q" #,0
 		displayFolder: 03 Comparativos
 
+	/// Gasto acumulado del ejercicio.
 	measure 'Gasto acumulado año' = TOTALYTD([Gasto operativo], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 03 Comparativos
 
+	/// Cómo crece la estructura. Que crezca más rápido que el ingreso es la señal más temprana de deterioro.
 	measure 'Variación de gasto vs año anterior' = DIVIDE([Gasto operativo] - [Gasto año anterior], [Gasto año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 03 Comparativos
 
+	/// Ingreso contable acumulado del ejercicio.
 	measure 'Ingresos acumulados año' = TOTALYTD([Ingresos contables], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 03 Comparativos
 
+	/// Resultado del ejercicio a la fecha, antes de ajustes de cierre.
 	measure 'Resultado acumulado año' = TOTALYTD([Resultado contable], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 03 Comparativos
 
+	/// Resultado del mes previo.
 	measure 'Resultado mes anterior' = CALCULATE([Resultado contable], DATEADD(DM_Calendario[fecha], -1, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 03 Comparativos
@@ -186,6 +197,7 @@ table 'FC_Resultados contables'
 		formatString: "Q" #,0
 		displayFolder: 04 Control
 
+	/// La brecha contra facturación en porcentaje. Debería rondar cero; cuando se despega hay que buscar anticipos, ajustes o cuentas mal clasificadas.
 	measure '% Brecha contable' = DIVIDE([Brecha contable vs facturado], [Ventas netas])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 04 Control

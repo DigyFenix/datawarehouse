@@ -109,18 +109,22 @@ table 'DM_Clasificación ABC'
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Clientes del tramo intermedio: entre el 80% y el 95% acumulado de la venta.
 	measure 'Clientes B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "B"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Cola larga. Muchos nombres y poca venta; el costo de atenderlos es lo que hay que vigilar.
 	measure 'Clientes C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "C"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Clientes del catálogo sin venta en el año, o con solo devoluciones.
 	measure 'Clientes sin venta neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "S"))
 		formatString: #,0
 		displayFolder: 01 Conteos
 
+	/// Clientes distintos en el catálogo ABC, excluida la intercompañía.
 	measure 'Clientes clasificados' = DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave])
 		formatString: #,0
 		displayFolder: 01 Conteos
@@ -145,10 +149,12 @@ table 'DM_Clasificación ABC'
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 
+	/// Cuánto factura en promedio un cliente clave.
 	measure 'Venta promedio cliente A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), [Clientes A])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
 
+	/// Margen que dejan los clientes que hacen el negocio. Que sean los que más venden no garantiza que sean los que más dejan.
 	measure 'Margen de clientes A' = CALCULATE(SUM('DM_Clasificación ABC'[margen]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración

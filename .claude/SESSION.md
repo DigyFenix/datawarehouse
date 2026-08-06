@@ -109,8 +109,10 @@ warehouse corren local), así que se ejecutaron de verdad.
   pago NO se regranulan** (decisión de Edwin tras el hallazgo): el RFM mide recencia contra la
   última venta y el comportamiento se arma sobre partidas abiertas, de las que solo hay 4
   cortes — no hay historia que cortar por año. Diseño y alternativas en `docs/powerbi/fase6-diseno.md`.
-- **Fase 7 (descripciones): PENDIENTE.** 176 de 294 medidas sin `///`. El prompt pide mostrar
-  cada lote por `displayFolder` antes de escribirlo, para corregir terminología de negocio.
+- **Fase 7**: las **294 medidas quedaron documentadas** (eran 118). Las descripciones explican la
+  regla de negocio o la trampa de lectura, no la fórmula. `inventario_modelo.py` ahora las
+  imprime junto a cada medida, así que `docs/powerbi/inventario-modelo.md` sirve para
+  revisarlas de corrido y corregir terminología — que es lo que falta de esta fase.
 
 **Dos huecos cerrados en los validadores**: nombres de medida duplicados (TMDL válido que
 revienta Desktop al abrir — atrapó una colisión real al primer intento) y el falso positivo de
@@ -118,13 +120,14 @@ las columnas extendidas `[@x]` de ADDCOLUMNS.
 
 ### Ojo operativo
 
-- **`PulsoIronNetwork.*` aparece BORRADO en el árbol y no lo borró esta sesión.** Se dejó
-  fuera del commit `4ea8268`, sin stage, a la espera de que Edwin diga si fue intencional.
-  Restaurable con `git checkout -- consumo/powerbi/PulsoIronNetwork.Report consumo/powerbi/PulsoIronNetwork.SemanticModel`.
-- El build completo de Cresta se quedó **31 minutos en `hecho_venta_linea`** y hubo que
-  cancelarlo; los modelos afectados se corrieron selectivamente. En Iron, dos modelos fallaron
-  de forma transitoria al correr en paralelo y pasaron al reintento — es el `FileFallocate` de
-  WSL2 ya documentado. **Subir la imagen de Postgres empieza a ser urgente.**
+- **`PulsoIronNetwork.*` se retiró del repo, confirmado por Edwin**: el PBI se trabaja con UN
+  solo proyecto (Cresta) y para Iron solo se cambia el parámetro `BaseDatos`. Ya no hay dos
+  modelos que mantener sincronizados.
+- **`correr.py` acepta un tercer argumento `threads`.** Con los 4 por defecto, el
+  `FileFallocate: Interrupted system call` de Postgres en WSL2 tumba un modelo al azar en cada
+  build completo (el mismo modelo pasa aislado sin problema). Con `2` el build llega limpio:
+  `correr.py <org> "plata oro" 2`. Es limitación del entorno de desarrollo, no del pipeline.
+  **Subir la imagen de Postgres sigue pendiente y quitaría la necesidad del workaround.**
 
 ### Pendientes / avisos
 
