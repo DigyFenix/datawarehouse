@@ -144,9 +144,36 @@ las columnas extendidas `[@x]` de ADDCOLUMNS.
   (2026-07-27 a 08-02). La medida es correcta; gana sentido conforme se acumulen cortes.
 - `costo`/`margen` son 0 en Odoo → las medidas de fuga de margen salen en 0 ahí. Degradan, no
   rompen. Documentado en la guía y en la ficha del catálogo.
-- El PBIP debe abrirse en Desktop para confirmar las 113 medidas nuevas: el validador comprueba
-  referencias y duplicados, no evalúa DAX.
-- Sigue vigente: PBIP de Iron desincronizado, VPS Hetzner sin montar, SQL Server sin probar.
+- El PBIP debe abrirse en Desktop: el validador comprueba referencias, duplicados y sintaxis
+  TMDL, pero **no evalúa DAX**. Las 176 medidas nuevas no se han ejecutado nunca contra el motor.
+- Sigue vigente: VPS Hetzner sin montar, SQL Server sin probar con credencial real.
+
+### Estado al cierre (2026-08-06)
+
+Árbol **commiteado y limpio**: `4ea8268`, `f86a238`, `d612751`, `f88547a`. Sin push.
+
+Warehouse reconstruido en los dos tenants — Iron 185/185 y cuadre 0/7; Cresta 181/185 con
+`hecho_pago_efectuado` caído por el bind mount y **pasado al reintentarlo**, cuadre 0/70.
+Modelo: **36 tablas · 98 relaciones · 294 medidas · 0 bidireccionales**, TMDL válido, 3 visuales
+de Edwin intactos.
+
+### Próximo paso concreto (SESIÓN 18)
+
+1. **Edwin abre `PulsoCresta.pbip` en Desktop.** Es lo único que falta para dar por buena la
+   sesión: confirmar que las medidas nuevas evalúan sin error, que el segmentador de antigüedad
+   ahora sí acota los tramos (era el defecto que corrigió KEEPFILTERS) y correr
+   `consumo/powerbi/tests/fase4-regresion.dax` en DAX Studio — la columna `dif` debe ser 0 en
+   todas las filas. Si Desktop reporta un error de TMDL, **agregar el caso al validador**, que
+   es el patrón establecido.
+2. **Revisar terminología** en `docs/powerbi/inventario-modelo.md`: las 294 descripciones están
+   escritas pero hay vocabulario de negocio que solo Edwin puede corregir.
+3. **Mover el volumen de Postgres a un volumen Docker nativo** (`pg_dump` → compose →
+   `pg_restore`). Es la causa raíz del `FileFallocate`; mientras siga el bind mount, cada build
+   completo de Cresta tumba un modelo pesado.
+4. Backlog anterior sin tocar: saldos de apertura → BALANCE GENERAL, metas de venta desde el
+   portal, kardex, lotes, aplicación de pagos (RCT2 → días reales de cobro, que desbloquearía
+   el DSO real). Y la brecha ingresos contables vs facturados con el contador — ahora hay una
+   medida que la vigila (`Brecha contable vs facturado`, −1.1%).
 
 ## ══════ SESIÓN 16 (2026-08-02) — GRUPO COMPLETO EN EL DW ══════
 
