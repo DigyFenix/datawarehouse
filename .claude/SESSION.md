@@ -83,6 +83,49 @@ se eliminó la duplicada en vez de renombrarla, porque era la misma definición)
 | Quiebre de stock | 94 productos · **Q54.1M de venta anual en riesgo** |
 | Backlog | Q12.2M, de los cuales **Q9.0M VENCIDOS** (2,033 líneas) · lead time 3.4 días |
 
+### Auditoría del modelo PBI aplicada (`Prompt_ClaudeCode_PulsoCresta.md`)
+
+Edwin trajo un prompt con 12 defectos detectados en una auditoría. **Cambio de enfoque
+obligado: las correcciones van al GENERADOR, no al TMDL** — `generar_pbip.py` reescribe todos
+los `.tmdl` en cada corrida y una edición manual se perdería en la siguiente regeneración.
+Además el prompt daba por bloqueadas las fases 5 y 6 «por ETL»; no lo estaban (dbt y el
+warehouse corren local), así que se ejecutaron de verdad.
+
+- **Fase 0**: `consumo/powerbi/inventario_modelo.py` (nuevo) → `docs/powerbi/inventario-modelo.md`,
+  regenerable tras cada corrida.
+- **Fase 1**: KEEPFILTERS en 82 medidas. **Decisión de Edwin: `es_intercompania` NO se toca** —
+  una medida que declara su grupo en el nombre lo conserva, y ya respetaba los demás filtros
+  (el predicado solo reemplaza el filtro de esa columna). Detalle en `docs/powerbi/fase1-keepfilters.md`.
+- **Fase 2**: 0 bidireccionales. Las 3 medidas que dependían de la propagación → TREATAS.
+- **Fase 3**: fallback en TRES niveles, no dos. `BLANK()` a todo habría borrado conteos y
+  porcentajes, que no tienen moneda; el discriminador es la `"Q"` del formatString, así que se
+  amplía solo con cada medida de importe nueva.
+- **Fase 4**: los 3 Pareto con `ADDCOLUMNS` (dejan de ser O(n²)) y `AVERAGEX(FILTER(…))` →
+  `CALCULATE`. Regresión lista en `consumo/powerbi/tests/fase4-regresion.dax` para DAX Studio.
+- **Fase 5**: aging por clave entera en los 4 hechos. Macro `aging.sql` emite etiqueta y clave
+  del mismo bloque. Las fotos diarias usan `on_schema_change='append_new_columns'` + post_hook
+  de relleno: un full-refresh habría destruido el histórico, que es justo lo irrecuperable.
+- **Fase 6**: ABC regranulado a (empresa, año, entidad) + `dim_anio`. **RFM y Comportamiento de
+  pago NO se regranulan** (decisión de Edwin tras el hallazgo): el RFM mide recencia contra la
+  última venta y el comportamiento se arma sobre partidas abiertas, de las que solo hay 4
+  cortes — no hay historia que cortar por año. Diseño y alternativas en `docs/powerbi/fase6-diseno.md`.
+- **Fase 7 (descripciones): PENDIENTE.** 176 de 294 medidas sin `///`. El prompt pide mostrar
+  cada lote por `displayFolder` antes de escribirlo, para corregir terminología de negocio.
+
+**Dos huecos cerrados en los validadores**: nombres de medida duplicados (TMDL válido que
+revienta Desktop al abrir — atrapó una colisión real al primer intento) y el falso positivo de
+las columnas extendidas `[@x]` de ADDCOLUMNS.
+
+### Ojo operativo
+
+- **`PulsoIronNetwork.*` aparece BORRADO en el árbol y no lo borró esta sesión.** Se dejó
+  fuera del commit `4ea8268`, sin stage, a la espera de que Edwin diga si fue intencional.
+  Restaurable con `git checkout -- consumo/powerbi/PulsoIronNetwork.Report consumo/powerbi/PulsoIronNetwork.SemanticModel`.
+- El build completo de Cresta se quedó **31 minutos en `hecho_venta_linea`** y hubo que
+  cancelarlo; los modelos afectados se corrieron selectivamente. En Iron, dos modelos fallaron
+  de forma transitoria al correr en paralelo y pasaron al reintento — es el `FileFallocate` de
+  WSL2 ya documentado. **Subir la imagen de Postgres empieza a ser urgente.**
+
 ### Pendientes / avisos
 
 - **Efectividad de cobranza** necesita historia: solo hay **4 cortes** de cartera diaria
