@@ -13,11 +13,12 @@ Uso (desde el host):
     [seleccion]   selección dbt; por defecto "plata oro" (build completo)
     [threads]     paralelismo; por defecto el del profiles (4)
 
-SOBRE `threads`: en Postgres bajo WSL2 aparece de forma esporádica
-`FileFallocate: Interrupted system call`, y con 4 hilos tumba un modelo al azar en cada build
-completo (el mismo modelo pasa sin problema si se corre aislado). Bajar a 2 lo evita a costa de
-tiempo. Es una limitación del entorno de desarrollo, no del pipeline: en el VPS de producción
-no aplica.
+SOBRE `threads`: en el entorno local aparece `FileFallocate: Interrupted system call` al
+construir modelos pesados. El error sugiere falta de disco y NO lo es (hay cientos de GB
+libres); la causa es que el volumen de Postgres es un bind mount de Windows y sobre NTFS vía
+WSL2 `posix_fallocate` recibe EINTR. Bajar a 2 hilos reduce la frecuencia y evita que un modelo
+grande se quede colgado, pero no lo elimina: el modelo caído pasa al reintentarlo. El arreglo de
+fondo es mover los datos a un volumen Docker nativo. En el VPS de producción no aplica.
 """
 
 from __future__ import annotations

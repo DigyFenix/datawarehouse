@@ -123,11 +123,20 @@ las columnas extendidas `[@x]` de ADDCOLUMNS.
 - **`PulsoIronNetwork.*` se retiró del repo, confirmado por Edwin**: el PBI se trabaja con UN
   solo proyecto (Cresta) y para Iron solo se cambia el parámetro `BaseDatos`. Ya no hay dos
   modelos que mantener sincronizados.
-- **`correr.py` acepta un tercer argumento `threads`.** Con los 4 por defecto, el
-  `FileFallocate: Interrupted system call` de Postgres en WSL2 tumba un modelo al azar en cada
-  build completo (el mismo modelo pasa aislado sin problema). Con `2` el build llega limpio:
-  `correr.py <org> "plata oro" 2`. Es limitación del entorno de desarrollo, no del pipeline.
-  **Subir la imagen de Postgres sigue pendiente y quitaría la necesidad del workaround.**
+- **`FileFallocate` DIAGNOSTICADO — no es concurrencia ni disco.** El error trae
+  `HINT: Check free disk space` y despista: hay **168 GB libres**. Y falla igual con **1 thread**,
+  así que tampoco es contención. La causa es que el volumen de datos de Postgres es un **bind
+  mount de Windows** (`./data` en `infra/local/docker-compose.yml`): sobre NTFS vía WSL2, la
+  llamada `posix_fallocate` recibe EINTR al extender un archivo grande y Postgres aborta la
+  sentencia. Por eso golpea a los modelos pesados y siempre en la base grande — Iron Network
+  (26 MB) pasó 185/185 limpio, Cresta (4.7 GB) no.
+  **Arreglo de fondo: mover los datos a un volumen Docker NATIVO en vez del bind mount.** Es
+  `pg_dump` → cambiar el compose → `pg_restore`; no se hizo porque toca infraestructura y no
+  estaba en el alcance de la sesión. Mientras tanto: reintentar el modelo caído, que pasa.
+- `correr.py` acepta un tercer argumento `threads` (`correr.py <org> "plata oro" 2`). Reduce la
+  probabilidad del fallo y evita el atasco de 31 minutos en `hecho_venta_linea`, pero **no lo
+  elimina**: el build de Cresta terminó 181/185 con `hecho_pago_efectuado` caído, y pasó al
+  reintentarlo.
 
 ### Pendientes / avisos
 
