@@ -40,6 +40,11 @@ const DDL_TENANT = [
   '119_rol_lector_tenant.sql',
   '120_alcance_empresa_tenant.sql',
   '121_portal_chat_tenant.sql',
+  '125_glosario_tenant.sql',
+  '126_impersonacion.sql',
+  '127_metricas_derivadas.sql',
+  // Va al final: siembra perfiles y necesita las tablas de las anteriores.
+  '131_perfiles_base_tenant.sql',
 ];
 
 /** Paquete de ingesta por ERP: seeds parametrizados con `-v org=` (y `company=` en Odoo). */
