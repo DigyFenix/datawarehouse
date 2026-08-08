@@ -301,3 +301,77 @@ models:
       - name: valor
         description: Valor en moneda de PRESENTACIÓN del grupo (el cuadre en moneda local vive en Plata).
         data_tests: [not_null]
+
+  # ── Claves de dimensión: la guarda que faltaba ───────────────────────────────────────────
+  # Toda dimensión ocupa el lado UNO de sus relaciones en Power BI, así que su clave tiene que
+  # ser única SIEMPRE. Estos tests no existían y el modelo llegó a producción con
+  # `dim_direccion` duplicada: dbt pasó 195/195 y el fallo apareció al refrescar el reporte,
+  # que es el peor lugar para enterarse. Una clave repetida aquí es un defecto bloqueante, no
+  # un aviso — por eso el test vive junto al modelo y no en una revisión manual.
+
+  - name: dim_direccion
+    description: >
+      Geografía de la operación: una fila por dirección registrada del socio (entrega,
+      facturación o principal). El hecho de ventas cruza por la dirección de ENTREGA, que
+      responde "¿a dónde se vende?" — distinto de "¿quién compra?". Es la única dimensión con
+      coordenadas. El departamento viene del catálogo OCST, cuya clave es compuesta
+      (Code, Country): ver la cabecera de `plata_direccion` para el porqué del join en dos
+      niveles.
+    columns:
+      - name: direccion_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_cliente
+    columns:
+      - name: cliente_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_producto
+    columns:
+      - name: producto_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_proveedor
+    columns:
+      - name: proveedor_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_socio_negocio
+    columns:
+      - name: socio_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_vendedor
+    columns:
+      - name: vendedor_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_organizacion
+    columns:
+      - name: organizacion_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_moneda
+    columns:
+      - name: moneda_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_almacen
+    columns:
+      - name: almacen_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_centro_costo
+    columns:
+      - name: centro_costo_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_tipo_documento
+    columns:
+      - name: tipo_documento_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_tiempo
+    columns:
+      - name: tiempo_clave
+        data_tests: [not_null, unique]

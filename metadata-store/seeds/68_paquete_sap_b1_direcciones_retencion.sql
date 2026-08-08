@@ -50,6 +50,11 @@ SELECT org.id, v.objeto, v.tabla, v.campo, false, v.tipo, v.descr, 'directo', tr
     ('socios','CRD1','ZipCode','TEXT','Código postal'),
     ('departamentos','OCST','Code','TEXT','Código de departamento'),
     ('departamentos','OCST','Name','TEXT','Nombre del departamento'),
+    -- OCST tiene clave COMPUESTA (Code, Country): el mismo código existe en varios países.
+    -- Sin este campo, una sociedad con catálogo de más de un país (svproavis: GT y SV) hace
+    -- que el join de plata_direccion DUPLIQUE la dirección — y una dimensión con clave
+    -- repetida rompe el refresco de Power BI, no el build de dbt.
+    ('departamentos','OCST','Country','TEXT','País del departamento (clave compuesta con Code)'),
     -- Dirección de entrega del documento de venta
     ('ventas_factura','OINV','ShipToCode','TEXT','Dirección de entrega (CRD1 tipo S)'),
     -- Retención en cabeceras: DocTotal llega NETO de retención

@@ -1,8 +1,8 @@
 # STATE — Quilate Analytics · Power BI Product
 
-FASE_ACTUAL: F1 (siguiente; no iniciada)
-ULTIMA_ACTUALIZACION: 2026-08-08 (sesión 21)
-GATE_ANTERIOR: PASA (F0 cerrada)
+FASE_ACTUAL: F2 (siguiente; no iniciada)
+ULTIMA_ACTUALIZACION: 2026-08-08 (sesión 22)
+GATE_ANTERIOR: PASA (F1 cerrada)
 
 > **Datos bajo el modelo, al 2026-08-08:** Grupo Cresta refrescado end-to-end (4.66M filas,
 > `dbt build` 195/195, cuadre 70/70 sin desvíos) y PBIP regenerado — 36 tablas de datos /
@@ -32,6 +32,7 @@ GATE_ANTERIOR: PASA (F0 cerrada)
 | Estado del producto | `docs/powerbi/STATE.md` | — | vigente |
 | Tema del producto | `consumo/powerbi/theme/quilate-theme.json` | GATE 0 | creado, JSON válido |
 | Matriz de capacidades | `docs/powerbi/tool-capability-matrix.md` | F0 | cerrada |
+| Mapa de explotación analítica | `docs/powerbi/model-exploitation-map.md` | F1 | cerrado — 43/43 tablas |
 
 ## Decisiones tomadas
 
@@ -43,6 +44,9 @@ GATE_ANTERIOR: PASA (F0 cerrada)
 | 4 | No se instala ningún MCP ni herramienta **por iniciativa propia** | §3.5. Los gaps se reportan con su candidato y se espera autorización | F0 |
 | 5 | Se instala `@microsoft/powerbi-modeling-mcp` **con autorización explícita de Edwin** | Estaba en la lista blanca de §3.5. Elimina el ida y vuelta manual de validación DAX, pero NO elimina la dependencia de Power BI Desktop: el MCP habla XMLA con la instancia de Analysis Services que levanta Desktop al abrir el archivo | F0 |
 | 6 | El MCP se usa como **lectura y validación**, no como vía de cambio del modelo | Arranca en modo `ReadWrite` y el propio paquete advierte que se respalde el modelo semántico. El modelo se genera con `generar_pbip.py` (reproducible, versionado); un cambio escrito por XMLA se perdería en la siguiente regeneración y además convive con visuales hechos a mano | F0 |
+| 7 | El trabajo del contrato sigue en `master`, no en `feature/pbi-product-v1` (§8) | F0 ya se cerró y commiteó en `master` (`8b94142`, `be3e16f`, `d411162`) y el repo trabaja así. Abrir la rama ahora separaría F0 de F1 sin ganancia. Se conserva el resto del protocolo: un commit por fase, mensaje `pbi(FN): …` | F1 |
+| 8 | El departamento queda **NULL** cuando el código de OCST es ambiguo y no hay país que lo desempate | Es preferible el dato ausente al departamento equivocado: el campo alimenta un mapa, y un municipio mal ubicado es un error visible que destruye la confianza en el tablero completo | F1 |
+| 9 | Las 12 dimensiones de Oro sin test de unicidad lo reciben ahora | La dimensión ocupa el lado *uno* de sus relaciones: una clave repetida rompe el refresco de Power BI mientras `dbt build` pasa en verde. Detectarlo en el pipeline es la única ubicación útil del control | F1 |
 
 ## Bloqueos abiertos
 
@@ -57,9 +61,24 @@ GATE_ANTERIOR: PASA (F0 cerrada)
 - Medidas nuevas creadas: 0 / 40
 - Rondas de iteración: 0 / 2
 
+## F1 — cerrada (2026-08-08)
+
+| Criterio del gate | Resultado |
+|---|---|
+| Tablas del baseline cubiertas | **PASA** — 43/43 |
+| Cada tabla con análisis posible hoy o justificación | **PASA** — 40 con análisis, 3 justificadas |
+| No se re-auditó el modelo | **PASA** |
+| Gaps identificados con id | **PASA** — 6 candidatos (~18 medidas de 40) + 7 limitaciones estructurales |
+
+**Defecto de datos encontrado y corregido durante la fase** (fuera del alcance del contrato,
+reportado y resuelto porque bloqueaba el refresco del modelo): `DM_Dirección de entrega` con
+clave duplicada por la clave compuesta `(Code, Country)` de OCST. Se extrae el país, el join se
+rehízo a prueba de multiplicación y las 12 dimensiones sin test de unicidad lo recibieron.
+Verificado en Cresta e Iron Network.
+
 ## Siguiente paso
 
-**F1 — Baseline del modelo.** Entrada: `docs/powerbi/inventario-modelo.md`.
-Trabajo: NO re-auditar; producir el mapa de explotación analítica
-(`docs/powerbi/model-exploitation-map.md`) cubriendo las 43 tablas.
-Gate: cada tabla con al menos una fila en «Análisis posibles hoy» o su justificación.
+**F2 — Matriz de oportunidad analítica.** Entrada: `docs/powerbi/model-exploitation-map.md`.
+Salida: `docs/powerbi/analytics-opportunity-matrix.md`.
+Gate: ≥25 filas, cada una con **pregunta de negocio explícita** e impacto/esfuerzo/prioridad;
+los P0 no exceden 12 (presupuesto de páginas).
