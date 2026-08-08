@@ -272,3 +272,32 @@ models:
     columns:
       - name: anio_clave
         data_tests: [not_null, unique]
+
+  - name: metrica_valor
+    description: >
+      Métricas certificadas en formato largo — (empresa, dominio, métrica, período) → valor.
+      Es el CONTRATO DEL AGENTE DE IA (consulta por clave, jamás arma SQL) y la base de la
+      validación contra el ERP; las claves coinciden EXACTAMENTE con
+      metadatos.catalogo_metricas del metadata-store. En Power BI las mismas definiciones
+      viven como medidas DAX sobre los hechos: esta tabla no alimenta visuales.
+    columns:
+      - name: empresa_id
+        description: Sociedad a la que pertenece el valor. Eje del RLS del agente.
+        data_tests: [not_null]
+      - name: dominio
+        description: Dominio de negocio del catálogo; agrupa las claves para la autorización por alcances.
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [ventas, compras, tesoreria, rentabilidad, inventario, pedidos]
+      - name: metrica_clave
+        description: Clave canónica de la métrica (= metadatos.catalogo_metricas.clave).
+        data_tests: [not_null]
+      - name: metrica_nombre
+        data_tests: [not_null]
+      - name: periodo
+        description: Mes calendario 'YYYY-MM'. Los saldos (cartera, inventario, backlog) usan el mes del corte.
+        data_tests: [not_null]
+      - name: valor
+        description: Valor en moneda de PRESENTACIÓN del grupo (el cuadre en moneda local vive en Plata).
+        data_tests: [not_null]

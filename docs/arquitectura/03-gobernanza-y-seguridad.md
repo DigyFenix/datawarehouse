@@ -71,6 +71,28 @@ usuario "Juan (finanzas)"
 El agente aplica **empresa + sucursal + región + cartera** en cada consulta. Un usuario de la
 empresa 1 nunca ve datos de la empresa 3, aunque compartan el mismo `fct_ventas`.
 
+#### Implementación (2026-08-08) — híbrida, con el piso en la base
+
+El eje **empresa** está implementado; los demás quedan para cuando un tenant los pida.
+
+1. **Alcance en el portal.** `portal.perfil_alcances` acepta `recurso_tipo = 'empresa'` con
+   `recurso_clave` = `empresa_id` o `'*'`. Lo administra el admin de cada organización en su
+   propio portal, junto a los alcances de dominio y métrica.
+2. **RLS nativo de Postgres como piso.** El consumo gobernado entra con el rol `portal_lector`
+   (LOGIN, **NOBYPASSRLS**, sin ownership) y cada consulta corre en una transacción que fija
+   `app.empresas`. Las policies sobre `oro` las **recrea dbt en cada build** (macro
+   `aplicar_rls_oro` como post-hook de la carpeta), así que todo modelo nuevo queda cubierto
+   sin acordarse de nada. Es **fail-closed**: sin la variable de sesión, cero filas.
+3. **Filtro en la aplicación por UX.** Las tools del agente además filtran por `empresa_id` en
+   el SQL, para dar un mensaje claro ("esa empresa está fuera de tu alcance") en vez de una
+   lista vacía. El RLS es lo que aguanta si ese filtro tuviera un bug.
+
+**Lo que NO cubre, dicho sin adornos:** dbt (dueño de las tablas) y Power BI (superusuario del
+tenant) **no** están sujetos al RLS. Power BI se publica con *Publish to Web* —URLs públicas,
+sin RLS— y ese riesgo está aceptado a nivel de producto: el control es de aplicación (quién ve
+la URL) y queda auditado. El RLS de la base protege al **agente**, que es el consumidor que
+razona sobre datos que no eligió.
+
 ### 3.3 Ejemplo integrado (contact center)
 
 ```
