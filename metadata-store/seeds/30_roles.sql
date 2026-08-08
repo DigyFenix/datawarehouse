@@ -7,16 +7,16 @@
 -- español y explican qué concede el rol, sin jerga del oficio.
 -- =====================================================================
 INSERT INTO gobierno.roles (clave, nombre, descripcion) VALUES
-  ('data_owner',      'Responsable del dato',
-   'Aprueba y certifica las métricas de su área. Mientras no firme, una métrica no llega a los usuarios.'),
-  ('data_steward',    'Custodio del dato',
-   'Cuida la calidad de la información, el catálogo de métricas y el vocabulario del negocio.'),
-  ('data_engineer',   'Ingeniero de datos',
-   'Construye y opera las cargas desde el ERP y las capas del almacén.'),
-  ('bi_architect',    'Arquitecto de análisis',
-   'Define la capa semántica, las métricas certificadas y el asistente de consulta.'),
-  ('admin_portal',    'Administrador del portal',
-   'Da de alta organizaciones y usuarios, y decide quién ve qué datos.'),
-  ('usuario_negocio', 'Usuario de negocio',
-   'Consulta tableros y métricas certificadas dentro del alcance que se le asignó.')
+  ('data_owner',      'Aprobador de indicadores',
+   'Da el visto bueno a los indicadores de su área. Hasta que aprueba, la cifra no llega a nadie.'),
+  ('data_steward',    'Encargado de calidad',
+   'Vigila que la información esté completa y bien clasificada, y mantiene el vocabulario del negocio.'),
+  ('data_engineer',   'Encargado de conexiones',
+   'Configura de dónde vienen los datos y con qué frecuencia se actualizan.'),
+  ('bi_architect',    'Diseñador de indicadores',
+   'Define qué se mide y cómo se calcula, y prepara el asistente de consultas.'),
+  ('admin_portal',    'Administrador',
+   'Da de alta empresas y personas, y decide quién ve qué. Control total de la plataforma.'),
+  ('usuario_negocio', 'Consulta',
+   'Ve tableros e indicadores dentro de lo que se le haya autorizado. No configura nada.')
 ON CONFLICT (clave) DO NOTHING;

@@ -1,5 +1,11 @@
 /** Gestión de usuarios del portal. Contraseñas siempre con hash argon2 (nunca en claro). */
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { and, eq, isNull } from 'drizzle-orm';
 
@@ -60,6 +66,16 @@ export class UsuariosService {
 
   async actualizar(id: number, dto: ActualizarUsuarioDto, actor: Actor) {
     const antes = await this.obtener(id);
+    // Desactivar al último operador deja la plataforma sin quien la administre, y
+    // sin forma de revertirlo desde el portal. Ya pasó una vez.
+    if (dto.activo === false) {
+      if (actor.id === id) {
+        throw new BadRequestException(
+          'No puedes desactivarte a ti mismo: perderías el acceso al portal en el momento.',
+        );
+      }
+      await this.exigirQueQuedeOtroOperadorActivo(id);
+    }
     const [act] = await this.db
       .update(usuarios)
       .set({ ...dto, actualizadoEn: new Date() })
@@ -148,6 +164,9 @@ export class UsuariosService {
     actor: Actor,
     alcance?: number | 'global',
   ): Promise<void> {
+    await this.exigirNoQuitarseElPropioMando(usuarioId, rolId, alcance, actor);
+    await this.exigirQueQuedeUnOperador(usuarioId, rolId, alcance);
+
     const filtroAlcance =
       alcance === undefined
         ? undefined
@@ -170,6 +189,89 @@ export class UsuariosService {
       entidadId: String(usuarioId),
       antes: { usuarioId, rolId, alcance: alcance ?? 'todas' },
     });
+  }
+
+  /**
+   * Impide que alguien se quite a sí mismo el mando.
+   *
+   * Es distinto de «queda otro administrador»: aunque queden diez, quitarse el
+   * propio rol te expulsa en la MISMA petición siguiente —la sesión relee los roles
+   * en cada request— y ya no puedes deshacerlo. Le pasó al operador del producto y
+   * dejó el portal mostrando cero organizaciones.
+   *
+   * @throws 400 si el actor intenta retirarse su propio rol de administrador global
+   */
+  private async exigirNoQuitarseElPropioMando(
+    usuarioId: number,
+    rolId: number,
+    alcance: number | 'global' | undefined,
+    actor: Actor,
+  ): Promise<void> {
+    if (actor.id !== usuarioId) return;
+    if (alcance !== undefined && alcance !== 'global') return;
+    const [rol] = await this.db.select().from(roles).where(eq(roles.id, rolId));
+    if (rol?.clave !== 'admin_portal') return;
+    throw new BadRequestException(
+      'No puedes quitarte a ti mismo el rol de administrador: perderías el acceso al portal ' +
+        'en el momento. Pídeselo a otro administrador.',
+    );
+  }
+
+  /** Variante para la baja de un usuario: ¿queda algún operador activo aparte de él? */
+  private async exigirQueQuedeOtroOperadorActivo(usuarioId: number): Promise<void> {
+    const operadores = await this.operadoresGlobalesActivos();
+    if (operadores.filter((o) => o !== usuarioId).length === 0) {
+      throw new BadRequestException(
+        'No se puede desactivar: es el último administrador de la plataforma.',
+      );
+    }
+  }
+
+  private async operadoresGlobalesActivos(): Promise<number[]> {
+    const filas = await this.db
+      .select({ usuarioId: usuarioRoles.usuarioId })
+      .from(usuarioRoles)
+      .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
+      .innerJoin(usuarios, eq(usuarios.id, usuarioRoles.usuarioId))
+      .where(
+        and(
+          eq(roles.clave, 'admin_portal'),
+          isNull(usuarioRoles.organizacionId),
+          eq(usuarios.activo, true),
+        ),
+      );
+    return filas.map((f) => f.usuarioId);
+  }
+
+  /**
+   * Impide dejar la plataforma sin ningún operador.
+   *
+   * Ocurrió: al quitar el último `admin_portal` global, el API dejó de reconocer a
+   * nadie como operador y el portal devolvía la lista de organizaciones vacía — sin
+   * forma de arreglarlo desde la interfaz, porque para asignar un rol hay que ser
+   * administrador.
+   *
+   * @throws 400 si la operación dejaría cero administradores globales activos
+   */
+  private async exigirQueQuedeUnOperador(
+    usuarioId: number,
+    rolId: number,
+    alcance?: number | 'global',
+  ): Promise<void> {
+    // Sólo peligra al retirar un rol GLOBAL (o todos los alcances de ese rol).
+    if (alcance !== undefined && alcance !== 'global') return;
+
+    const [rol] = await this.db.select().from(roles).where(eq(roles.id, rolId));
+    if (rol?.clave !== 'admin_portal') return;
+
+    const operadores = await this.operadoresGlobalesActivos();
+    const quedarian = operadores.filter((o) => o !== usuarioId);
+    if (quedarian.length === 0) {
+      throw new BadRequestException(
+        'No se puede quitar: es el último administrador de la plataforma. ' +
+          'Asigna el rol a otra persona antes de retirárselo a esta.',
+      );
+    }
   }
 
   /** Crea un usuario admin de arranque si no existe ninguno (bootstrap). Idempotente. */
