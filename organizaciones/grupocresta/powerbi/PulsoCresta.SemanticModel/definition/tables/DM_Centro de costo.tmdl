@@ -1,49 +1,62 @@
 table 'DM_Centro de costo'
+	lineageTag: 09594864-ffe3-466f-a4da-36dbc7d32985
 
 	column centro_costo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 4cbfd27c-70d5-4284-a80e-592b2077ee5e
 		summarizeBy: none
 		sourceColumn: centro_costo_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: a3792cc7-fa26-4bb9-bafc-9b4c7b3d48c4
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column centro_costo_codigo
 		dataType: string
+		lineageTag: b20c1085-9a1d-4dfe-8b16-fff548ad1dbe
 		summarizeBy: none
 		sourceColumn: centro_costo_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: f4eae2c2-65c1-46b2-9570-cced6aa71f27
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
+		lineageTag: 7fe43c3a-5580-4933-a4ef-44fa1efca5a6
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: ae32aa2c-9d27-47f3-acbf-d9589ebc2196
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: a308fc12-beed-48d7-b002-4b4905575bd5
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: 8daeb91f-4658-4f59-8b0c-1da5aa5043ca
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -55,3 +68,8 @@ table 'DM_Centro de costo'
 				    Tabla = Origen{[Schema="oro",Item="dim_centro_costo"]}[Data]
 				in
 				    Tabla
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

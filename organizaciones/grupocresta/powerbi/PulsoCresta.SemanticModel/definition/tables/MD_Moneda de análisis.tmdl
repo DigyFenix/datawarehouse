@@ -1,17 +1,18 @@
 table 'MD_Moneda de análisis'
+	lineageTag: 2169f182-a4fa-4b5b-a390-77579d9d5ef5
 
 	calculationGroup
 		precedence: 1
 
 		calculationItem 'Quetzales (local)' = SELECTEDMEASURE()
-			ordinal: 0
 
 		calculationItem 'Moneda original' = SWITCH(TRUE(), ISSELECTEDMEASURE([Ventas netas]), SUM(FC_Ventas[monto_sin_impuesto_doc]), ISSELECTEDMEASURE([Ventas netas con IVA]), SUM(FC_Ventas[monto_con_impuesto_doc]), ISSELECTEDMEASURE([Impuesto facturado]), SUM(FC_Ventas[monto_impuesto_doc]), ISSELECTEDMEASURE([Compras netas]), SUM(FC_Compras[monto_sin_impuesto_doc]), ISSELECTEDMEASURE([Compras netas con IVA]), SUM(FC_Compras[monto_con_impuesto_doc]), ISSELECTEDMEASURE([Impuesto de compras]), SUM(FC_Compras[monto_impuesto_doc]), ISSELECTEDMEASURE([Saldo por cobrar]), SUM('FC_Cartera por cobrar'[saldo_pendiente_doc]), ISSELECTEDMEASURE([Saldo por pagar]), ABS(SUM('FC_Cartera por pagar'[saldo_pendiente_doc])), ISSELECTEDMEASURE([Monto cobrado]), SUM('FC_Pagos recibidos'[monto_doc]), ISSELECTEDMEASURE([Monto pagado]), SUM('FC_Pagos efectuados'[monto_doc]), ISSELECTEDMEASURE([Saldo histórico por cobrar]), SUM('FC_Cartera cobrar histórico'[saldo_pendiente_doc]), ISSELECTEDMEASURE([Saldo histórico por pagar]), ABS(SUM('FC_Cartera pagar histórico'[saldo_pendiente_doc])), ISSELECTEDMEASURE([Monto pedido]), SUM(FC_Pedidos[monto_sin_impuesto_doc]), CONTAINSSTRING(SELECTEDMEASUREFORMATSTRING(), "Q"), BLANK(), SELECTEDMEASURE())
-			ordinal: 1
+
 			formatStringDefinition = IF(ISSELECTEDMEASURE([Ventas netas], [Ventas netas con IVA], [Impuesto facturado], [Compras netas], [Compras netas con IVA], [Impuesto de compras], [Saldo por cobrar], [Saldo por pagar], [Monto cobrado], [Monto pagado], [Saldo histórico por cobrar], [Saldo histórico por pagar], [Monto pedido]), "#,0", SELECTEDMEASUREFORMATSTRING())
 
 	column 'Moneda de análisis'
 		dataType: string
+		lineageTag: 15cc77c8-fe12-4e3b-99f4-00003fd600e1
 		summarizeBy: none
 		sourceColumn: Name
 		sortByColumn: Ordinal
@@ -19,8 +20,7 @@ table 'MD_Moneda de análisis'
 	column Ordinal
 		dataType: int64
 		isHidden
+		lineageTag: 4601bb30-cbf9-4c07-9b07-0452252229bb
 		summarizeBy: none
 		sourceColumn: Ordinal
 
-	partition 'MD_Moneda de análisis' = calculationGroup
-		mode: import

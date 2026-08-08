@@ -1,64 +1,80 @@
 table DM_Producto
+	lineageTag: 00e59967-789f-4b5e-a998-a678699a673c
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: 04ba84f8-78ea-4788-a7bf-b22b444e4bd6
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 7502d0b5-01c5-4afa-9dd5-0ec80f8d0369
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column producto_codigo
 		dataType: string
+		lineageTag: d29f4bbd-7f7b-4f15-954b-70eb7c9a166d
 		summarizeBy: none
 		sourceColumn: producto_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: 047ddf2e-fcef-41f2-8c73-52a9573f5d5e
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column grupo_codigo
 		dataType: string
+		lineageTag: 768653d5-d96e-42be-8e6c-0c48f55a13b7
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column unidad_medida
 		dataType: string
+		lineageTag: df87b2e6-dca1-4aec-a5ee-b64d8d788b11
 		summarizeBy: none
 		sourceColumn: unidad_medida
 
 	column tipo_producto
 		dataType: string
+		lineageTag: e55b3be2-a02b-459c-b65c-8bf900b3ed94
 		summarizeBy: none
 		sourceColumn: tipo_producto
 
 	column activo
 		dataType: boolean
+		lineageTag: 5468f56e-85d8-4f7d-81d2-ec39326b24d2
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 6c11413b-8af7-49c2-b813-b19ad0f48731
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: c2e577d5-9f6b-43a3-b917-15296eb4a266
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: d6b5cddb-00c7-4877-a0c4-fc8b18e82731
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -70,3 +86,8 @@ table DM_Producto
 				    Tabla = Origen{[Schema="oro",Item="dim_producto"]}[Data]
 				in
 				    Tabla
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

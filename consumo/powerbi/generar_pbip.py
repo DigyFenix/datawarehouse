@@ -550,13 +550,19 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 06 Comparativos
 
+	/// Fin de la ventana móvil: el corte del contexto, pero nunca más allá del último día CON DATO. El calendario llega a 2032 para cubrir vencimientos y series proyectadas del ERP, así que anclar en MAX(Calendario[fecha]) dejaba toda ventana móvil apuntando a un futuro vacío y devolviendo BLANK. Con un período filtrado el ancla es el fin del período, que es lo correcto.
+	measure '_Fecha ancla móvil' = VAR fin = MAX(Calendario[fecha]) VAR ultimo_dato = CALCULATE(MAX(Ventas[fecha_documento]), ALL(Calendario)) RETURN MIN(fin, ultimo_dato)
+		formatString: yyyy-mm-dd
+		displayFolder: _Auxiliar
+		isHidden
+
 	/// Promedio MENSUAL de los últimos 3 meses: alisa el diente de sierra de la facturación. (Iterar días con DATESINPERIOD daba un promedio diario disfrazado de mensual.)
-	measure 'Media móvil 3 meses' = CALCULATE(AVERAGEX(VALUES(Calendario[anio_mes]), [Ventas netas]), DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -3, MONTH))
+	measure 'Media móvil 3 meses' = CALCULATE(AVERAGEX(VALUES(Calendario[anio_mes]), [Ventas netas]), DATESINPERIOD(Calendario[fecha], [_Fecha ancla móvil], -3, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 06 Comparativos
 
 	/// Año móvil: los últimos 12 meses completos desde el corte. Quita la estacionalidad del calendario.
-	measure 'Ventas 12 meses móviles' = CALCULATE([Ventas netas], DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -12, MONTH))
+	measure 'Ventas 12 meses móviles' = CALCULATE([Ventas netas], DATESINPERIOD(Calendario[fecha], [_Fecha ancla móvil], -12, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 06 Comparativos
 
@@ -758,7 +764,7 @@ MEDIDAS_POR_TABLA["hecho_compra_linea"] = r"""
 		displayFolder: 05 Comparativos
 
 	/// Suaviza el ruido mensual del abastecimiento. Promedia MESES, no días.
-	measure 'Media móvil 3 meses compras' = CALCULATE(AVERAGEX(VALUES(Calendario[anio_mes]), [Compras netas]), DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -3, MONTH))
+	measure 'Media móvil 3 meses compras' = CALCULATE(AVERAGEX(VALUES(Calendario[anio_mes]), [Compras netas]), DATESINPERIOD(Calendario[fecha], [_Fecha ancla móvil], -3, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
@@ -793,7 +799,7 @@ MEDIDAS_POR_TABLA["hecho_compra_linea"] = r"""
 		displayFolder: 05 Comparativos
 
 	/// Compra de los últimos doce meses. Es la base de la rotación de inventario y de los días de pago.
-	measure 'Compras 12 meses móviles' = CALCULATE([Compras netas], DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -12, MONTH))
+	measure 'Compras 12 meses móviles' = CALCULATE([Compras netas], DATESINPERIOD(Calendario[fecha], [_Fecha ancla móvil], -12, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
@@ -1315,12 +1321,12 @@ MEDIDAS_POR_TABLA["metrica_venta_diaria"] = r"""
 		displayFolder: 01 Serie
 
 	/// Suaviza el efecto del día de semana. Útil para ver la tendencia corta sin el ruido del fin de semana.
-	measure 'Venta media móvil 7d' = AVERAGEX(DATESINPERIOD('Calendario'[fecha], MAX('Calendario'[fecha]), -7, DAY), CALCULATE(SUM('Venta diaria'[ventas_netas])))
+	measure 'Venta media móvil 7d' = AVERAGEX(DATESINPERIOD('Calendario'[fecha], [_Fecha ancla móvil], -7, DAY), CALCULATE(SUM('Venta diaria'[ventas_netas])))
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
 
 	/// Tendencia de fondo, ya sin efecto semanal ni de quincena.
-	measure 'Venta media móvil 30d' = AVERAGEX(DATESINPERIOD('Calendario'[fecha], MAX('Calendario'[fecha]), -30, DAY), CALCULATE(SUM('Venta diaria'[ventas_netas])))
+	measure 'Venta media móvil 30d' = AVERAGEX(DATESINPERIOD('Calendario'[fecha], [_Fecha ancla móvil], -30, DAY), CALCULATE(SUM('Venta diaria'[ventas_netas])))
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
 
@@ -1752,7 +1758,7 @@ MEDIDAS_POR_TABLA["hecho_inventario"] = r"""
 		displayFolder: 03 Promedios
 
 	/// Veces que el inventario rota al año: costo de ventas de los últimos 12 meses sobre el valor actual.
-	measure 'Rotación de inventario 12M' = DIVIDE(CALCULATE([Costo de ventas], DATESINPERIOD(Calendario[fecha], MAX(Calendario[fecha]), -12, MONTH)), [Valor de inventario])
+	measure 'Rotación de inventario 12M' = DIVIDE(CALCULATE([Costo de ventas], DATESINPERIOD(Calendario[fecha], [_Fecha ancla móvil], -12, MONTH)), [Valor de inventario])
 		formatString: #,0.0
 		displayFolder: 04 Rotación
 

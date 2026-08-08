@@ -1,342 +1,427 @@
 table DM_Calendario
-
+	lineageTag: 68d0adcd-0f3f-4b67-8ec1-d23c097e7931
 	dataCategory: Time
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 400c15a6-7634-48fa-9268-952d641cdc54
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column fecha
 		dataType: dateTime
 		isKey
+		formatString: dd/MM/yyyy
+		lineageTag: 40e4fae8-3813-4e15-ac7f-5242d6a00c39
 		summarizeBy: none
 		sourceColumn: fecha
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column anio
 		dataType: int64
+		formatString: #,0
+		lineageTag: d30e6b40-6e7e-4953-917d-bc9fc5a1fdd3
 		summarizeBy: none
 		sourceColumn: anio
-		formatString: #,0
 
 	column trimestre
 		dataType: int64
+		formatString: #,0
+		lineageTag: 072fa82c-4ea1-4065-9456-3e0926dff006
 		summarizeBy: none
 		sourceColumn: trimestre
-		formatString: #,0
 
 	column mes
 		dataType: int64
+		formatString: #,0
+		lineageTag: 8ca25a15-bc7b-4a6e-80a9-295543b5a402
 		summarizeBy: none
 		sourceColumn: mes
-		formatString: #,0
 
 	column dia
 		dataType: int64
+		formatString: #,0
+		lineageTag: d66c2903-091a-4558-aa73-41379a5c1fc0
 		summarizeBy: none
 		sourceColumn: dia
-		formatString: #,0
 
 	column trimestre_nombre
 		dataType: string
+		lineageTag: 19e7d02d-76d4-40fa-a0b4-09ce632ff4e5
 		summarizeBy: none
 		sourceColumn: trimestre_nombre
 
 	column mes_nombre
 		dataType: string
+		lineageTag: 3f854705-d1de-4d5e-89fa-c79dc92a453c
 		summarizeBy: none
 		sourceColumn: mes_nombre
 		sortByColumn: mes_orden
 
 	column mes_nombre_corto
 		dataType: string
+		lineageTag: bb6995a6-42de-4c1e-981e-e28c284092b1
 		summarizeBy: none
 		sourceColumn: mes_nombre_corto
 		sortByColumn: mes_orden
 
 	column anio_mes
 		dataType: string
+		lineageTag: ccbf3a1a-a176-444c-8734-d17a6aa55998
 		summarizeBy: none
 		sourceColumn: anio_mes
 		sortByColumn: anio_mes_orden
 
 	column anio_trimestre
 		dataType: string
+		lineageTag: cf25832c-f373-4b37-a7ca-7d251a8ea3c1
 		summarizeBy: none
 		sourceColumn: anio_trimestre
 		sortByColumn: anio_trimestre_orden
 
 	column mes_anio_etiqueta
 		dataType: string
+		lineageTag: 5ecac6c3-ee9b-47c5-9668-b41c22ad3adf
 		summarizeBy: none
 		sourceColumn: mes_anio_etiqueta
 		sortByColumn: anio_mes_orden
 
 	column anio_iso
 		dataType: int64
+		formatString: #,0
+		lineageTag: 1cbe43ec-0f6a-4262-ae44-a76803617b6c
 		summarizeBy: none
 		sourceColumn: anio_iso
-		formatString: #,0
 
 	column semana_iso
 		dataType: int64
+		formatString: #,0
+		lineageTag: c7c193a3-3bca-4e29-99ec-cb2f722992de
 		summarizeBy: none
 		sourceColumn: semana_iso
-		formatString: #,0
 
 	column anio_semana
 		dataType: string
+		lineageTag: 26bf2496-deac-4b7e-b1ea-96938e67b3fb
 		summarizeBy: none
 		sourceColumn: anio_semana
 		sortByColumn: anio_semana_orden
 
 	column dia_semana_num
 		dataType: int64
+		formatString: #,0
+		lineageTag: 370cd2c6-b4bc-4997-99ed-cb57d7c95185
 		summarizeBy: none
 		sourceColumn: dia_semana_num
-		formatString: #,0
 
 	column dia_semana_nombre
 		dataType: string
+		lineageTag: f447d08b-986e-4955-a57f-019195ff06e3
 		summarizeBy: none
 		sourceColumn: dia_semana_nombre
 		sortByColumn: dia_semana_orden
 
 	column dia_semana_corto
 		dataType: string
+		lineageTag: e5744c82-03c0-4852-a29b-bd0be289a238
 		summarizeBy: none
 		sourceColumn: dia_semana_corto
 		sortByColumn: dia_semana_orden
 
 	column dia_del_anio
 		dataType: int64
+		formatString: #,0
+		lineageTag: f0d7548b-ed14-406c-8907-0bdc2706b09b
 		summarizeBy: none
 		sourceColumn: dia_del_anio
-		formatString: #,0
 
 	column anio_fiscal
 		dataType: int64
+		formatString: #,0
+		lineageTag: a5bcb414-1c78-411d-9c66-61bc01e81da5
 		summarizeBy: none
 		sourceColumn: anio_fiscal
-		formatString: #,0
 
 	column mes_fiscal
 		dataType: int64
+		formatString: #,0
+		lineageTag: d98dc3ee-3f16-4e16-9f6d-370484731dc8
 		summarizeBy: none
 		sourceColumn: mes_fiscal
-		formatString: #,0
 
 	column anio_fiscal_etiqueta
 		dataType: string
+		lineageTag: eda45bb9-3cd4-4ecd-a947-c656591f8777
 		summarizeBy: none
 		sourceColumn: anio_fiscal_etiqueta
 
 	column es_dia_habil
 		dataType: boolean
+		lineageTag: 915e9b86-c1f3-4305-8ded-f8a1862023f5
 		summarizeBy: none
 		sourceColumn: es_dia_habil
 
 	column es_fin_semana
 		dataType: boolean
+		lineageTag: b0b5ddb5-261a-4302-895e-c411e8a4f463
 		summarizeBy: none
 		sourceColumn: es_fin_semana
 
 	column es_feriado
 		dataType: boolean
+		lineageTag: e37a30fd-55c0-4169-9aca-14a770bdf276
 		summarizeBy: none
 		sourceColumn: es_feriado
 
 	column feriado_nombre
 		dataType: string
+		lineageTag: c89d9c49-65af-4acf-802a-7a6314212bcb
 		summarizeBy: none
 		sourceColumn: feriado_nombre
 
 	column es_medio_dia
 		dataType: boolean
+		lineageTag: 3796e760-9e1e-404d-ba0d-930f2ee4e1f7
 		summarizeBy: none
 		sourceColumn: es_medio_dia
 
 	column primer_dia_mes
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 680586c0-75e2-4710-9a32-3c003f3e91ba
 		summarizeBy: none
 		sourceColumn: primer_dia_mes
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column ultimo_dia_mes
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 3bf4e732-2d64-4b6a-a117-3e2ff6a7cf88
 		summarizeBy: none
 		sourceColumn: ultimo_dia_mes
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column primer_dia_trimestre
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: d254f8dc-450a-4212-883e-2ccb715d1f82
 		summarizeBy: none
 		sourceColumn: primer_dia_trimestre
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column primer_dia_anio
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 94d9c41b-c0e9-4f1f-88db-afff104e63b7
 		summarizeBy: none
 		sourceColumn: primer_dia_anio
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_ultimo_dia_mes
 		dataType: boolean
+		lineageTag: fd33138e-12fb-4144-9cff-a356d312813b
 		summarizeBy: none
 		sourceColumn: es_ultimo_dia_mes
 
 	column es_primer_dia_mes
 		dataType: boolean
+		lineageTag: 2ac4abd9-ad6e-4990-9992-5c6149fc3403
 		summarizeBy: none
 		sourceColumn: es_primer_dia_mes
 
 	column dias_del_mes
 		dataType: int64
+		formatString: #,0
+		lineageTag: fa1b435d-bfd0-4110-af8a-2c752612ea83
 		summarizeBy: none
 		sourceColumn: dias_del_mes
-		formatString: #,0
 
 	column dias_habiles_del_mes
 		dataType: int64
+		formatString: #,0
+		lineageTag: f4eaf0c6-f1a5-430b-85ba-f9f8afcc0a6f
 		summarizeBy: none
 		sourceColumn: dias_habiles_del_mes
-		formatString: #,0
 
 	column dias_habiles_transcurridos
 		dataType: int64
+		formatString: #,0
+		lineageTag: 6b906a22-a477-4e8f-b005-8f478a288d73
 		summarizeBy: none
 		sourceColumn: dias_habiles_transcurridos
-		formatString: #,0
 
 	column es_hoy
 		dataType: boolean
+		lineageTag: 80355fc3-7597-4dcd-9a08-ade37f3d82ac
 		summarizeBy: none
 		sourceColumn: es_hoy
 
 	column es_pasado
 		dataType: boolean
+		lineageTag: 09e86fae-00bd-4f57-8bd5-cdb26ae9aed1
 		summarizeBy: none
 		sourceColumn: es_pasado
 
 	column es_mes_actual
 		dataType: boolean
+		lineageTag: 8a1787e5-12ac-4053-bef8-daa18df53c19
 		summarizeBy: none
 		sourceColumn: es_mes_actual
 
 	column es_trimestre_actual
 		dataType: boolean
+		lineageTag: 782523b4-3671-4b7c-bf10-1be6113470f5
 		summarizeBy: none
 		sourceColumn: es_trimestre_actual
 
 	column es_anio_actual
 		dataType: boolean
+		lineageTag: c4403815-27c8-4157-8519-11dffde508df
 		summarizeBy: none
 		sourceColumn: es_anio_actual
 
 	column es_mes_anterior
 		dataType: boolean
+		lineageTag: 3d280e94-052c-4b33-8e08-ee2a55147dee
 		summarizeBy: none
 		sourceColumn: es_mes_anterior
 
 	column dias_desde_hoy
 		dataType: int64
+		formatString: #,0
+		lineageTag: 191dec20-ef5f-41a4-b426-91e5d17e67d6
 		summarizeBy: none
 		sourceColumn: dias_desde_hoy
-		formatString: #,0
 
 	column meses_desde_hoy
 		dataType: int64
+		formatString: #,0
+		lineageTag: d5846e48-eb48-467f-8824-e36ae4213af5
 		summarizeBy: none
 		sourceColumn: meses_desde_hoy
-		formatString: #,0
 
 	column es_anio_hasta_hoy
 		dataType: boolean
+		lineageTag: d23e0d1d-0a29-4b79-bf1a-6ca6a0de1b62
 		summarizeBy: none
 		sourceColumn: es_anio_hasta_hoy
 
 	column es_mes_hasta_hoy
 		dataType: boolean
+		lineageTag: 0c3777d1-4c2a-4a69-be90-d200e02d76ad
 		summarizeBy: none
 		sourceColumn: es_mes_hasta_hoy
 
 	column fecha_anio_anterior
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: fa2e875d-0b3d-429a-b2e3-8c8d65ddd4bb
 		summarizeBy: none
 		sourceColumn: fecha_anio_anterior
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_mes_anterior
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 25964790-fc53-4a45-98cf-b6a854ab992f
 		summarizeBy: none
 		sourceColumn: fecha_mes_anterior
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column tiempo_clave_anio_anterior
 		dataType: int64
+		formatString: #,0
+		lineageTag: 9d41da59-bbd5-4cd6-98d0-bf823d55e7ca
 		summarizeBy: none
 		sourceColumn: tiempo_clave_anio_anterior
-		formatString: #,0
 
 	column tiempo_clave_mes_anterior
 		dataType: int64
+		formatString: #,0
+		lineageTag: 03a73176-b4e8-4535-8d81-7209cc7884c2
 		summarizeBy: none
 		sourceColumn: tiempo_clave_mes_anterior
-		formatString: #,0
 
 	column anio_mes_orden
 		dataType: int64
 		isHidden
+		formatString: #,0
+		lineageTag: 0fec8db7-2180-4d23-b139-e21db89b7bcd
 		summarizeBy: none
 		sourceColumn: anio_mes_orden
-		formatString: #,0
 
 	column anio_trimestre_orden
 		dataType: int64
 		isHidden
+		formatString: #,0
+		lineageTag: a73e625e-a191-449c-b18e-5b42bb365463
 		summarizeBy: none
 		sourceColumn: anio_trimestre_orden
-		formatString: #,0
 
 	column anio_semana_orden
 		dataType: int64
 		isHidden
+		formatString: #,0
+		lineageTag: 50274241-e5a7-4322-acb1-64991d232fee
 		summarizeBy: none
 		sourceColumn: anio_semana_orden
-		formatString: #,0
 
 	column mes_orden
 		dataType: int64
 		isHidden
+		formatString: #,0
+		lineageTag: 10f27210-2149-4dff-9f20-cd99332c9883
 		summarizeBy: none
 		sourceColumn: mes_orden
-		formatString: #,0
 
 	column dia_semana_orden
 		dataType: int64
 		isHidden
+		formatString: #,0
+		lineageTag: 32d3ab78-8ca3-4719-a1d2-c247fedbf888
 		summarizeBy: none
 		sourceColumn: dia_semana_orden
-		formatString: #,0
 
 	hierarchy 'Jerarquía natural'
-		level 'Año'
+		lineageTag: f3b9081b-01d6-42c3-b7c7-c734ebc523cf
+
+		level Año
+			lineageTag: 00a36b35-d87b-4f8a-adfa-3ae14dfc2796
 			column: anio
+
 		level Trimestre
+			lineageTag: ac0f21c6-7414-45a3-ade9-e3401c21abc2
 			column: trimestre_nombre
+
 		level Mes
+			lineageTag: bbeed5df-7cfd-4fe4-8dda-da9a49b21205
 			column: mes_nombre
-		level 'Día'
+
+		level Día
+			lineageTag: aebcb36d-ce5c-46d3-a25a-0ecee6742ec6
 			column: dia
 
 	hierarchy 'Jerarquía ISO'
+		lineageTag: 81bdb94b-55d1-4f4a-bbb3-ab2456a782c5
+
 		level 'Año ISO'
+			lineageTag: db4c1a31-0840-4498-8abc-98655b9155fc
 			column: anio_iso
+
 		level Semana
+			lineageTag: 3d4ab6ef-4cab-4c55-affe-fbb3470336a5
 			column: semana_iso
+
 		level 'Día de semana'
+			lineageTag: 546ffe5b-037e-4503-9129-f8ae204049d6
 			column: dia_semana_nombre
 
 	partition DM_Calendario = m
@@ -347,3 +432,8 @@ table DM_Calendario
 				    Tabla = Origen{[Schema="oro",Item="dim_tiempo"]}[Data]
 				in
 				    Tabla
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

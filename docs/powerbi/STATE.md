@@ -1,8 +1,8 @@
 # STATE — Quilate Analytics · Power BI Product
 
-FASE_ACTUAL: F2 (siguiente; no iniciada)
+FASE_ACTUAL: F4 (lote 1 en curso — corrección del ancla móvil aplicada, falta regenerar)
 ULTIMA_ACTUALIZACION: 2026-08-08 (sesión 22)
-GATE_ANTERIOR: PASA (F1 cerrada)
+GATE_ANTERIOR: PASA (F1, F2 y F3 cerradas)
 
 > **Datos bajo el modelo, al 2026-08-08:** Grupo Cresta refrescado end-to-end (4.66M filas,
 > `dbt build` 195/195, cuadre 70/70 sin desvíos) y PBIP regenerado — 36 tablas de datos /
@@ -33,6 +33,11 @@ GATE_ANTERIOR: PASA (F1 cerrada)
 | Tema del producto | `consumo/powerbi/theme/quilate-theme.json` | GATE 0 | creado, JSON válido |
 | Matriz de capacidades | `docs/powerbi/tool-capability-matrix.md` | F0 | cerrada |
 | Mapa de explotación analítica | `docs/powerbi/model-exploitation-map.md` | F1 | cerrado — 43/43 tablas |
+| Matriz de oportunidad | `docs/powerbi/analytics-opportunity-matrix.md` | F2 | cerrada — 32 filas, 11 P0 |
+| Arquitectura del reporte | `docs/powerbi/report-architecture.md` | F3 | cerrada — 12 páginas |
+| Contrato del sistema visual | `docs/powerbi/contracts/sistema-visual.md` | F3 | cerrado |
+| Convención de nombres | `docs/powerbi/contracts/naming-conventions.md` | F3 | cerrada |
+| Tema de Grupo Cresta | `organizaciones/grupocresta/powerbi/theme/grupocresta-theme.json` | F3 | creado con la paleta oficial |
 
 ## Decisiones tomadas
 

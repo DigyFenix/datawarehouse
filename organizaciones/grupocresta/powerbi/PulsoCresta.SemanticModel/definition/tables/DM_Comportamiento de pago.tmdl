@@ -1,147 +1,193 @@
 table 'DM_Comportamiento de pago'
+	lineageTag: 043b70f9-a2fe-4f9b-bfad-ac3843b7515e
+
+	/// Clientes sin nada vencido. El objetivo de la gestión de cobranza.
+	measure 'Clientes al día' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "al_dia"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 1653b849-9913-4e30-a231-49a170948b4d
+
+	/// Más de 90 días vencido o más de la mitad del saldo vencido: revisar antes de despachar.
+	measure 'Clientes en vencido crítico' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: ed821f31-cbfe-4c0c-8cdc-b5ad6d2d5035
+
+	/// Clientes con al menos una partida en mora.
+	measure 'Clientes con saldo vencido' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), 'DM_Comportamiento de pago'[perfil_riesgo] IN {"vencido_leve", "vencido_moderado", "vencido_critico"})
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 64e7e6f5-b85a-41ee-a0d9-06ad3eefbea9
+
+	/// Dinero expuesto en los clientes de peor perfil de pago.
+	measure 'Saldo en clientes críticos' = CALCULATE(SUM('DM_Comportamiento de pago'[saldo_total]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+		lineageTag: e7277f46-b31e-4250-9cc2-b5e9bbe1445b
+
+	/// Del saldo total abierto, cuánto ya venció. El termómetro de la salud de la cartera.
+	measure '% cartera vencida (clientes)' = DIVIDE(SUM('DM_Comportamiento de pago'[saldo_vencido]), SUM('DM_Comportamiento de pago'[saldo_total]))
+		formatString: 0.0%
+		displayFolder: 02 Montos
+		lineageTag: b063f685-dd9b-4e6f-8db2-712d08f24d66
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 45f93a3e-a699-4ea7-b2b9-6c14ec8db0d7
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cliente_clave
 		dataType: int64
 		isHidden
+		lineageTag: 31487310-5611-4b70-a034-772ea1b0057d
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column partidas_abiertas
 		dataType: int64
+		formatString: #,0
+		lineageTag: 7c127652-5a11-4bdc-ac34-95dd73efcd18
 		summarizeBy: none
 		sourceColumn: partidas_abiertas
-		formatString: #,0
 
 	column saldo_total
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: saldo_total
+		dataType: double
 		formatString: #,0.00
+		lineageTag: a2aa9f68-51c4-4a44-b04b-9f23a2704d33
+		summarizeBy: sum
+		sourceColumn: saldo_total
+
+		annotation SummarizationSetBy = Automatic
 
 	column saldo_corriente
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: saldo_corriente
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 94ce96e5-43dd-4343-bfa4-4cdbf0582a55
+		summarizeBy: sum
+		sourceColumn: saldo_corriente
+
+		annotation SummarizationSetBy = Automatic
 
 	column saldo_vencido
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: saldo_vencido
+		dataType: double
 		formatString: #,0.00
+		lineageTag: d87d4f36-f76f-417a-bab0-08588d2f6733
+		summarizeBy: sum
+		sourceColumn: saldo_vencido
+
+		annotation SummarizationSetBy = Automatic
 
 	column max_dias_vencido
 		dataType: int64
+		formatString: #,0
+		lineageTag: d6b720a0-8857-42ce-81d7-156339f0f515
 		summarizeBy: none
 		sourceColumn: max_dias_vencido
-		formatString: #,0
 
 	column dias_vencido_ponderado
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: dias_vencido_ponderado
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 7497703d-adb7-445e-adee-57ef975306b9
+		summarizeBy: sum
+		sourceColumn: dias_vencido_ponderado
+
+		annotation SummarizationSetBy = Automatic
 
 	column vencimiento_mas_antiguo
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 660282b0-0c06-408c-acf6-95755f9d840e
 		summarizeBy: none
 		sourceColumn: vencimiento_mas_antiguo
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_corte
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 0c66f1ba-142d-46fc-a43f-4d87185f1354
 		summarizeBy: none
 		sourceColumn: fecha_corte
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column ultimo_pago
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: d6929f69-69a4-4a94-8517-118545dd1271
 		summarizeBy: none
 		sourceColumn: ultimo_pago
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column dias_desde_ultimo_pago
 		dataType: int64
+		formatString: #,0
+		lineageTag: bc7dddf7-2420-4266-9849-6b326135e389
 		summarizeBy: none
 		sourceColumn: dias_desde_ultimo_pago
-		formatString: #,0
 
 	column pagos_12m
 		dataType: int64
+		formatString: #,0
+		lineageTag: a7a7f01a-c5e9-4097-a097-5e0eb9a5be0e
 		summarizeBy: none
 		sourceColumn: pagos_12m
-		formatString: #,0
 
 	column monto_pagado_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_pagado_12m
+		dataType: double
 		formatString: #,0.00
+		lineageTag: ac39b4c9-de77-4668-917c-0541c1fae857
+		summarizeBy: sum
+		sourceColumn: monto_pagado_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_pagado_3m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_pagado_3m
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 8f8e7495-605e-4253-8206-b55d7b08a093
+		summarizeBy: sum
+		sourceColumn: monto_pagado_3m
+
+		annotation SummarizationSetBy = Automatic
 
 	column pct_saldo_vencido
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: pct_saldo_vencido
+		dataType: double
 		formatString: 0.0"%"
+		lineageTag: 9a7a611c-0417-4e31-adad-a2e8330085f7
+		summarizeBy: sum
+		sourceColumn: pct_saldo_vencido
+
+		annotation SummarizationSetBy = Automatic
 
 	column perfil_riesgo
 		dataType: string
+		lineageTag: 317a17c5-1c82-464d-a2f1-fbd961238440
 		summarizeBy: none
 		sourceColumn: perfil_riesgo
 
 	column perfil_riesgo_nombre
 		dataType: string
+		lineageTag: fb910a39-d4cd-4da7-9a1b-f80900418a08
 		summarizeBy: none
 		sourceColumn: perfil_riesgo_nombre
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 8e0d1f8a-82ff-4c9d-bc73-b8d10b2d7466
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: 6f045162-e593-421f-a5fa-2c938008e2f5
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Clientes sin nada vencido. El objetivo de la gestión de cobranza.
-	measure 'Clientes al día' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "al_dia"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Más de 90 días vencido o más de la mitad del saldo vencido: revisar antes de despachar.
-	measure 'Clientes en vencido crítico' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Clientes con al menos una partida en mora.
-	measure 'Clientes con saldo vencido' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), 'DM_Comportamiento de pago'[perfil_riesgo] IN {"vencido_leve", "vencido_moderado", "vencido_critico"})
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Dinero expuesto en los clientes de peor perfil de pago.
-	measure 'Saldo en clientes críticos' = CALCULATE(SUM('DM_Comportamiento de pago'[saldo_total]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
-		formatString: "Q" #,0
-		displayFolder: 02 Montos
-
-	/// Del saldo total abierto, cuánto ya venció. El termómetro de la salud de la cartera.
-	measure '% cartera vencida (clientes)' = DIVIDE(SUM('DM_Comportamiento de pago'[saldo_vencido]), SUM('DM_Comportamiento de pago'[saldo_total]))
-		formatString: 0.0%
-		displayFolder: 02 Montos
 
 	partition 'DM_Comportamiento de pago' = m
 		mode: import
@@ -151,3 +197,8 @@ table 'DM_Comportamiento de pago'
 				    Tabla = Origen{[Schema="oro",Item="comportamiento_pago_cliente"]}[Data]
 				in
 				    Tabla
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

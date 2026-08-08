@@ -1,176 +1,217 @@
 table 'FC_Pagos recibidos'
+	lineageTag: a9c3dc6f-339d-4e9b-b59d-2d69baa5ef2a
+
+	/// Flujo de cobros del período en MONEDA DE PRESENTACIÓN. INFORMATIVO para caja: el saldo de cartera sale del mayor.
+	measure 'Monto cobrado' = SUM('FC_Pagos recibidos'[monto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 68031ca3-6755-4f2e-9db8-489e965f3894
+
+	/// Solo cobranza de CLIENTES. Los pagos recibidos del ERP mezclan cobranza con operaciones de tesorería contra cuenta contable (depósitos, traslados); sin este filtro la cobranza se infla.
+	measure 'Cobros de clientes' = CALCULATE([Monto cobrado], KEEPFILTERS('FC_Pagos recibidos'[contraparte] = "cliente"))
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: eb71ce5f-1b66-4075-af03-f95b869967ed
+
+	/// Movimientos contra cuenta contable —depósitos y traslados—, no cobranza de clientes. En SAP viven en la misma tabla que los cobros y sin separarlos la cobranza se triplica.
+	measure 'Cobros de tesorería' = CALCULATE([Monto cobrado], KEEPFILTERS('FC_Pagos recibidos'[contraparte] = "cuenta_contable"))
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: fbcea5be-c606-4135-ac1d-136611cb2b6e
+
+	/// Cobranza de clientes contra la venta con IVA del mismo período: el pulso de la recuperación.
+	measure '% Cobrado vs facturado' = DIVIDE([Cobros de clientes], [Ventas netas con IVA])
+		formatString: 0.0%
+		displayFolder: 01 Importes
+		lineageTag: 1b7a9387-acb0-4525-a75b-d6919014f4e1
+
+	/// Número de documentos de cobro recibidos.
+	measure 'Cantidad de cobros' = COUNTROWS('FC_Pagos recibidos')
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: de90efb5-2169-49da-a46a-1eaeb2e00f5d
+
+	/// Clientes distintos que hicieron algún pago en el período.
+	measure 'Clientes que pagaron' = DISTINCTCOUNT('FC_Pagos recibidos'[cliente_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: 339658e0-ba59-4e69-b9ff-950b958148a6
+
+	/// Importe medio por documento de cobro.
+	measure 'Cobro promedio' = DIVIDE([Monto cobrado], [Cantidad de cobros])
+		formatString: "Q" #,0
+		displayFolder: 03 Promedios
+		lineageTag: 0e3b5fdd-05f3-4ac5-9a4d-000ca9c56db8
+
+	/// Cobranza del mes previo.
+	measure 'Cobros mes anterior' = CALCULATE([Monto cobrado], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: 5a3510fe-c874-40e5-90df-1bd3014dea6d
+
+	/// Cobranza acumulada del ejercicio.
+	measure 'Cobros acumulados año' = TOTALYTD([Monto cobrado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: fabd3774-170a-41c3-8c33-e63791cfbe39
+
+	/// Cobranza del mismo período del año pasado.
+	measure 'Cobros año anterior' = CALCULATE([Monto cobrado], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: 53815002-fd8b-4b48-8cf2-9010b56808b5
+
+	/// Cobranza acumulada desde el primer día del mes.
+	measure 'Cobros acumulados mes' = TOTALMTD([Monto cobrado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: 224e2e93-060e-407a-90fe-e3061d86f74e
+
+	/// Cambio en la cobranza contra el año pasado.
+	measure 'Variación de cobros vs año anterior' = DIVIDE([Monto cobrado] - [Cobros año anterior], [Cobros año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 04 Comparativos
+		lineageTag: 60abb5aa-9369-496f-8c9c-f0967aa26682
+
+	/// Reparto del cobro por instrumento. Un salto del efectivo o una caída de la transferencia cambia el riesgo operativo y el costo bancario.
+	measure '% Cobro en el medio principal' = DIVIDE(MAXX(ALLSELECTED('FC_Pagos recibidos'[medio_pago]), [Cobros de clientes]), CALCULATE([Cobros de clientes], ALLSELECTED('FC_Pagos recibidos'[medio_pago])))
+		formatString: 0.0%
+		displayFolder: 05 Mix de cobro
+		lineageTag: 1027a3d6-3604-4d72-8de5-125e86f1cfd4
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 344d5ea1-8bf3-446a-96c9-262cbcc7b92b
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column cliente_clave
 		dataType: int64
 		isHidden
+		lineageTag: 090994d6-90e7-4d00-b8ae-954b37c67be5
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column socio_clave
 		dataType: int64
 		isHidden
+		lineageTag: a0487f44-c87f-4f08-895f-f3283e3add81
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: 8ec1a358-8a96-486a-9f49-ebabc2edf25d
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
+		lineageTag: 76d6fc6e-e425-4dad-893e-b6367a9e0ab6
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: d7eb6c1d-fd9d-4f09-9831-94bc221f77cc
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column pago_id
 		dataType: string
+		lineageTag: 5a0f141d-d353-43da-800c-14088c65fc29
 		summarizeBy: none
 		sourceColumn: pago_id
 
 	column pago_numero
 		dataType: string
+		lineageTag: 42556d16-dc05-43c2-99b5-0454bd1b70f1
 		summarizeBy: none
 		sourceColumn: pago_numero
 
 	column serie_codigo
 		dataType: string
+		lineageTag: dc16a257-da88-47cd-a288-a90d59cc03d3
 		summarizeBy: none
 		sourceColumn: serie_codigo
 
 	column contraparte
 		dataType: string
+		lineageTag: efeda848-b64a-4c14-96f0-e5f7a58be1f5
 		summarizeBy: none
 		sourceColumn: contraparte
 
 	column fecha_pago
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: d661039b-30c1-491b-add7-75262bcb9195
 		summarizeBy: none
 		sourceColumn: fecha_pago
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column medio_pago
 		dataType: string
+		lineageTag: fd9195d2-1c4d-49f2-b840-7b53867d4efd
 		summarizeBy: none
 		sourceColumn: medio_pago
 
 	column referencia
 		dataType: string
+		lineageTag: 001912e1-f572-435f-bc1d-76784a212559
 		summarizeBy: none
 		sourceColumn: referencia
 
 	column estado
 		dataType: string
+		lineageTag: e54e614b-0b9d-461f-82f7-bdf1c4c61b24
 		summarizeBy: none
 		sourceColumn: estado
 
 	column monto
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto
+		dataType: double
 		formatString: #,0.00
+		lineageTag: f2a723c4-73c0-4692-8164-ccfc8bd657ef
+		summarizeBy: sum
+		sourceColumn: monto
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_doc
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_doc
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 7a83901f-8062-476b-b83b-3d6cf32b5ab9
+		summarizeBy: sum
+		sourceColumn: monto_doc
+
+		annotation SummarizationSetBy = Automatic
 
 	column tipo_cambio
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: tipo_cambio
+		dataType: double
 		formatString: #,0.00
+		lineageTag: ed499abf-cfe8-443d-bf41-3d447df5b072
+		summarizeBy: sum
+		sourceColumn: tipo_cambio
+
+		annotation SummarizationSetBy = Automatic
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 8e508428-4094-47b7-9d24-96546b4a33f2
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: 13bc2c3d-155b-49c2-8730-a8ec8c378af9
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Flujo de cobros del período en MONEDA DE PRESENTACIÓN. INFORMATIVO para caja: el saldo de cartera sale del mayor.
-	measure 'Monto cobrado' = SUM('FC_Pagos recibidos'[monto])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Solo cobranza de CLIENTES. Los pagos recibidos del ERP mezclan cobranza con operaciones de tesorería contra cuenta contable (depósitos, traslados); sin este filtro la cobranza se infla.
-	measure 'Cobros de clientes' = CALCULATE([Monto cobrado], KEEPFILTERS('FC_Pagos recibidos'[contraparte] = "cliente"))
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Movimientos contra cuenta contable —depósitos y traslados—, no cobranza de clientes. En SAP viven en la misma tabla que los cobros y sin separarlos la cobranza se triplica.
-	measure 'Cobros de tesorería' = CALCULATE([Monto cobrado], KEEPFILTERS('FC_Pagos recibidos'[contraparte] = "cuenta_contable"))
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Cobranza de clientes contra la venta con IVA del mismo período: el pulso de la recuperación.
-	measure '% Cobrado vs facturado' = DIVIDE([Cobros de clientes], [Ventas netas con IVA])
-		formatString: 0.0%
-		displayFolder: 01 Importes
-
-	/// Número de documentos de cobro recibidos.
-	measure 'Cantidad de cobros' = COUNTROWS('FC_Pagos recibidos')
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Clientes distintos que hicieron algún pago en el período.
-	measure 'Clientes que pagaron' = DISTINCTCOUNT('FC_Pagos recibidos'[cliente_clave])
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Importe medio por documento de cobro.
-	measure 'Cobro promedio' = DIVIDE([Monto cobrado], [Cantidad de cobros])
-		formatString: "Q" #,0
-		displayFolder: 03 Promedios
-
-	/// Cobranza del mes previo.
-	measure 'Cobros mes anterior' = CALCULATE([Monto cobrado], DATEADD(DM_Calendario[fecha], -1, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
-
-	/// Cobranza acumulada del ejercicio.
-	measure 'Cobros acumulados año' = TOTALYTD([Monto cobrado], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
-
-	/// Cobranza del mismo período del año pasado.
-	measure 'Cobros año anterior' = CALCULATE([Monto cobrado], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
-
-	/// Cobranza acumulada desde el primer día del mes.
-	measure 'Cobros acumulados mes' = TOTALMTD([Monto cobrado], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
-
-	/// Cambio en la cobranza contra el año pasado.
-	measure 'Variación de cobros vs año anterior' = DIVIDE([Monto cobrado] - [Cobros año anterior], [Cobros año anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 04 Comparativos
-
-	/// Reparto del cobro por instrumento. Un salto del efectivo o una caída de la transferencia cambia el riesgo operativo y el costo bancario.
-	measure '% Cobro en el medio principal' = DIVIDE(MAXX(ALLSELECTED('FC_Pagos recibidos'[medio_pago]), [Cobros de clientes]), CALCULATE([Cobros de clientes], ALLSELECTED('FC_Pagos recibidos'[medio_pago])))
-		formatString: 0.0%
-		displayFolder: 05 Mix de cobro
 
 	partition 'FC_Pagos recibidos' = m
 		mode: import
@@ -180,3 +221,8 @@ table 'FC_Pagos recibidos'
 				    Tabla = Origen{[Schema="oro",Item="hecho_pago_recibido"]}[Data]
 				in
 				    Tabla
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

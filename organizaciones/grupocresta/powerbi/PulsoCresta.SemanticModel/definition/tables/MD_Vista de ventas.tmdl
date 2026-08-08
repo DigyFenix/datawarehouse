@@ -1,18 +1,23 @@
 table 'MD_Vista de ventas'
+	lineageTag: fb91102e-f66c-4571-9e38-2ebdd48dabb4
 
 	column 'Vista de ventas'
 		dataType: string
+		lineageTag: 4e91d38b-02b0-4861-9db0-02ead2077374
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de ventas · orden'
+
 		relatedColumnDetails
 			groupByColumn: 'Vista de ventas · campo'
 
 	column 'Vista de ventas · campo'
 		dataType: string
 		isHidden
+		lineageTag: 934f3f7c-244a-48c9-b4e4-da9b8f233a50
 		summarizeBy: none
 		sourceColumn: [Value2]
+
 		extendedProperty ParameterMetadata =
 				{
 				  "version": 3,
@@ -22,6 +27,7 @@ table 'MD_Vista de ventas'
 	column 'Vista de ventas · orden'
 		dataType: int64
 		isHidden
+		lineageTag: 79ebf1f6-0fc8-4a92-a6b0-4b8a924985fb
 		summarizeBy: none
 		sourceColumn: [Value3]
 
@@ -38,3 +44,4 @@ table 'MD_Vista de ventas'
 				  ("Ticket promedio", NAMEOF(FC_Ventas[Ticket promedio]), 6),
 				  ("Documentos de venta", NAMEOF(FC_Ventas[Documentos de venta]), 7)
 				}
+

@@ -4,8 +4,8 @@
     {
       "ordinal": 0,
       "scrollPosition": {
-        "x": 0,
-        "y": 775.59289542236684
+        "x": 119.17319519437737,
+        "y": 770.6533289236404
       },
       "nodes": [
         {
@@ -388,6 +388,138 @@
           "nodeIndex": "MD_Moneda de análisis",
           "size": {
             "height": 128,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3014.8682042660275,
+            "y": 1388.5527292378729
+          },
+          "nodeIndex": "DM_Análisis de producto",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3298.8682042660275,
+            "y": 1390.5527292378729
+          },
+          "nodeIndex": "DM_Año de clasificación",
+          "size": {
+            "height": 296,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3582.8682042660275,
+            "y": 1388.5527292378729
+          },
+          "nodeIndex": "DM_Dirección de entrega",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3866.8682042660275,
+            "y": 1388.5527292378729
+          },
+          "nodeIndex": "DM_Socio de negocio",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4150.8682042660275,
+            "y": 1388.5527292378729
+          },
+          "nodeIndex": "FC_Estado de carga",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4434.8682042660275,
+            "y": 1462.5527292378729
+          },
+          "nodeIndex": "MD_Vista de cartera",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4718.8682042660275,
+            "y": 1462.5527292378729
+          },
+          "nodeIndex": "MD_Vista de compras",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 5002.8682042660275,
+            "y": 1462.5527292378729
+          },
+          "nodeIndex": "MD_Vista de inventario",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 5286.8682042660275,
+            "y": 1462.5527292378729
+          },
+          "nodeIndex": "MD_Vista de liquidez",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 5570.8682042660275,
+            "y": 1462.5527292378729
+          },
+          "nodeIndex": "MD_Vista de rentabilidad",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 5854.8682042660275,
+            "y": 1462.5527292378729
+          },
+          "nodeIndex": "MD_Vista de ventas",
+          "size": {
+            "height": 152,
             "width": 234
           },
           "zIndex": 0
