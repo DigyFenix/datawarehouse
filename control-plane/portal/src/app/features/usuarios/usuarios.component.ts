@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
@@ -10,7 +11,7 @@ import { ToastService } from '../../core/toast.service';
 @Component({
   selector: 'app-usuarios',
   standalone: true,
-  imports: [FormsModule, DrawerComponent],
+  imports: [FormsModule, DrawerComponent, NgTemplateOutlet],
   template: `
     <div class="page-header">
       <div class="titulo-grupo">
@@ -20,61 +21,125 @@ import { ToastService } from '../../core/toast.service';
       <button (click)="nuevo()">+ Nuevo usuario</button>
     </div>
 
-    <div class="filtro-alcance">
-      <div class="filtro-alcance__texto">
-        @if (soloOrganizacionActiva()) {
-          Mostrando quienes tienen acceso a <strong>{{ orgs.activa()?.nombre ?? 'esta organización' }}</strong>,
-          más los operadores del producto (alcance global).
-        } @else {
-          Mostrando <strong>todos los usuarios</strong> del portal, sin importar la organización.
-        }
-      </div>
-      <button class="secundario pequeno" (click)="soloOrganizacionActiva.set(!soloOrganizacionActiva())">
-        {{ soloOrganizacionActiva() ? 'Ver todos' : 'Ver solo esta organización' }}
-      </button>
-    </div>
+    <p class="intro">
+      Estas personas administran <strong>la plataforma</strong>: dan de alta organizaciones,
+      configuran la ingesta y certifican métricas. No son quienes consultan tableros —
+      esos viven en el portal de cada organización y se administran desde allí.
+    </p>
 
-    <div class="tarjeta" style="padding:0;">
-      <div class="tabla-wrap">
-        <table>
-          <thead><tr><th>Correo</th><th>Nombre</th><th>Roles</th><th>Estado</th><th></th></tr></thead>
-          <tbody>
-            @for (u of usuariosVisibles(); track u.id) {
-              <tr>
-                <td>{{ u.email }}</td>
-                <td>{{ u.nombre }}</td>
-                <td>
-                  @for (r of rolesPorUsuario()[u.id]; track r.rolId + '-' + r.organizacionId) {
-                    <span class="badge badge--pill" style="margin:1px 2px;" [title]="tituloRol(r)">
-                      {{ nombreRol(r.rolId) }}
-                      @if (r.organizacionId === null) {
-                        <span class="badge badge--global">Global</span>
-                      } @else if (r.organizacionId !== orgs.activaId()) {
-                        <span class="marca-otra-org">· {{ nombreOrganizacion(r.organizacionId) }}</span>
-                      }
-                    </span>
-                  } @empty { <span style="color:var(--faint);">Sin roles</span> }
-                </td>
-                <td>
-                  @if (u.activo) { <span class="badge badge--ok">Activo</span> }
-                  @else { <span class="badge">Inactivo</span> }
-                </td>
-                <td style="text-align:right;"><button class="secundario pequeno" (click)="editar(u)">Editar</button></td>
-              </tr>
-            } @empty {
-              <tr><td colspan="5"><div class="vacio">
-                @if (soloOrganizacionActiva() && usuarios().length) {
-                  <strong>Nadie tiene acceso a esta organización</strong>
-                  Asigna un rol con alcance en «{{ orgs.activa()?.nombre }}», o pulsa «Ver todos».
-                } @else {
-                  <strong>Sin usuarios</strong>Crea el primero con «Nuevo usuario».
-                }
-              </div></td></tr>
-            }
-          </tbody>
-        </table>
+    <!-- Dos poblaciones distintas, y conviene no mezclarlas: quien tiene rol en ESTA
+         organización, y quien opera el producto entero. Verlas juntas hacía parecer
+         que el filtro no funcionaba, cuando lo que pasa es que casi todos son globales. -->
+    <section class="bloque">
+      <header class="bloque__cab">
+        <h3>Con acceso a {{ orgs.activa()?.nombre ?? 'esta organización' }}</h3>
+        <span class="bloque__cuenta">{{ deLaOrganizacion().length }}</span>
+      </header>
+      <div class="tarjeta" style="padding:0;">
+        <div class="tabla-wrap">
+          <table>
+            <thead><tr><th>Correo</th><th>Nombre</th><th>Roles</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              @for (u of deLaOrganizacion(); track u.id) {
+                <tr>
+                  <td>{{ u.email }}</td>
+                  <td>{{ u.nombre }}</td>
+                  <td>{{ '' }}<ng-container *ngTemplateOutlet="chips; context: { $implicit: u }"></ng-container></td>
+                  <td>
+                    @if (u.activo) { <span class="badge badge--ok">Activo</span> }
+                    @else { <span class="badge">Inactivo</span> }
+                  </td>
+                  <td style="text-align:right;"><button class="secundario pequeno" (click)="editar(u)">Editar</button></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5"><div class="vacio">
+                  <strong>Nadie tiene un rol propio en esta organización</strong>
+                  Hoy sólo la administran los operadores del producto, listados abajo.
+                </div></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <section class="bloque">
+      <header class="bloque__cab">
+        <h3>Operadores del producto</h3>
+        <span class="bloque__cuenta">{{ globales().length }}</span>
+      </header>
+      <p class="bloque__nota">
+        Alcance global: ven y administran <strong>todas</strong> las organizaciones, incluidas
+        las que se den de alta después. Aparecen elijas la organización que elijas.
+      </p>
+      <div class="tarjeta" style="padding:0;">
+        <div class="tabla-wrap">
+          <table>
+            <thead><tr><th>Correo</th><th>Nombre</th><th>Roles</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              @for (u of globales(); track u.id) {
+                <tr>
+                  <td>{{ u.email }}</td>
+                  <td>{{ u.nombre }}</td>
+                  <td>{{ '' }}<ng-container *ngTemplateOutlet="chips; context: { $implicit: u }"></ng-container></td>
+                  <td>
+                    @if (u.activo) { <span class="badge badge--ok">Activo</span> }
+                    @else { <span class="badge">Inactivo</span> }
+                  </td>
+                  <td style="text-align:right;"><button class="secundario pequeno" (click)="editar(u)">Editar</button></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5"><div class="vacio"><strong>Sin operadores globales</strong>
+                  Nadie administra la plataforma completa.</div></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    @if (sinRol().length) {
+      <section class="bloque">
+        <header class="bloque__cab">
+          <h3>Sin ningún rol</h3>
+          <span class="bloque__cuenta">{{ sinRol().length }}</span>
+        </header>
+        <p class="bloque__nota">Todavía no pueden entrar a ninguna parte. Asígnales un rol para darles acceso.</p>
+        <div class="tarjeta" style="padding:0;">
+          <div class="tabla-wrap">
+            <table>
+              <thead><tr><th>Correo</th><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+              <tbody>
+                @for (u of sinRol(); track u.id) {
+                  <tr>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.nombre }}</td>
+                    <td>
+                      @if (u.activo) { <span class="badge badge--ok">Activo</span> }
+                      @else { <span class="badge">Inactivo</span> }
+                    </td>
+                    <td style="text-align:right;"><button class="secundario pequeno" (click)="editar(u)">Editar</button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    }
+
+    <ng-template #chips let-u>
+      @for (r of rolesPorUsuario()[u.id]; track r.rolId + '-' + r.organizacionId) {
+        <span class="badge badge--pill" style="margin:1px 2px;" [title]="tituloRol(r)">
+          {{ nombreRol(r.rolId) }}
+          @if (r.organizacionId === null) {
+            <span class="badge badge--global">Global</span>
+          } @else if (r.organizacionId !== orgs.activaId()) {
+            <span class="marca-otra-org">· {{ nombreOrganizacion(r.organizacionId) }}</span>
+          }
+        </span>
+      } @empty { <span style="color:var(--faint);">Sin roles</span> }
+    </ng-template>
 
     @if (abierto()) {
       <app-drawer [titulo]="editando() ? 'Editar usuario' : 'Nuevo usuario'"
@@ -164,23 +229,46 @@ import { ToastService } from '../../core/toast.service';
   `,
   styles: [
     `
-      .filtro-alcance {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-        padding: 10px 14px;
-        border: 1px solid var(--borde);
-        border-radius: 10px;
-        background: var(--surface-2);
-      }
-      .filtro-alcance__texto {
-        font-size: 13px;
+      .intro {
+        margin: 0 0 22px;
+        max-width: 78ch;
+        font-size: 13.5px;
+        line-height: 1.6;
         color: var(--faint);
       }
-      .filtro-alcance__texto strong {
+      .intro strong {
+        color: var(--texto);
+      }
+      .bloque {
+        margin-bottom: 26px;
+      }
+      .bloque__cab {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .bloque__cab h3 {
+        margin: 0;
+        font-size: 14.5px;
+      }
+      .bloque__cuenta {
+        min-width: 24px;
+        padding: 1px 8px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        font-size: 12px;
+        text-align: center;
+        color: var(--faint);
+      }
+      .bloque__nota {
+        margin: 0 0 10px;
+        max-width: 78ch;
+        font-size: 12.5px;
+        line-height: 1.55;
+        color: var(--faint);
+      }
+      .bloque__nota strong {
         color: var(--texto);
       }
       .marca-otra-org {
@@ -224,33 +312,35 @@ export class UsuariosComponent implements OnInit {
   readonly errorForm = signal<string | null>(null);
   readonly guardando = signal(false);
 
-  /** Filtra la lista por la organización de la barra superior (ver §alcance). */
-  readonly soloOrganizacionActiva = signal(true);
-
   nuevoU = { email: '', nombre: '', password: '' };
   datos = { nombre: '', activo: true };
   rolAsignar: number | null = null;
   rolAlcance: 'global' | 'organizacion' = 'organizacion';
   rolOrganizacionId: number | null = null;
 
-  /**
-   * Usuarios que importan en el contexto elegido: los que tienen algún rol en la
-   * organización activa, más los de alcance global (operadores del producto, que
-   * la administran aunque no estén asignados a ella).
-   *
-   * Quien todavía no tiene ningún rol se muestra siempre: si se ocultara, un usuario
-   * recién creado desaparecería de la pantalla donde hay que darle acceso.
-   */
-  readonly usuariosVisibles = computed(() => {
-    if (!this.soloOrganizacionActiva()) return this.usuarios();
+  /** Quien tiene un rol acotado a la organización activa (no cuenta el global). */
+  readonly deLaOrganizacion = computed(() => {
     const orgActiva = this.orgs.activaId();
-    if (orgActiva === null) return this.usuarios();
     const mapa = this.rolesPorUsuario();
-    return this.usuarios().filter((u) => {
-      const roles = mapa[u.id];
-      if (roles === undefined || roles.length === 0) return true;
-      return roles.some((r) => r.organizacionId === null || r.organizacionId === orgActiva);
-    });
+    return this.usuarios().filter((u) =>
+      (mapa[u.id] ?? []).some((r) => r.organizacionId !== null && r.organizacionId === orgActiva),
+    );
+  });
+
+  /** Operadores del producto: al menos un rol sin organización. */
+  readonly globales = computed(() => {
+    const mapa = this.rolesPorUsuario();
+    return this.usuarios().filter((u) => (mapa[u.id] ?? []).some((r) => r.organizacionId === null));
+  });
+
+  /**
+   * Sin ningún rol: no pueden entrar a ninguna parte. Se listan aparte porque si se
+   * ocultaran, un usuario recién creado desaparecería justo de la pantalla donde hay
+   * que darle acceso.
+   */
+  readonly sinRol = computed(() => {
+    const mapa = this.rolesPorUsuario();
+    return this.usuarios().filter((u) => (mapa[u.id] ?? []).length === 0);
   });
 
   readonly descripcionRolElegido = computed(() => {

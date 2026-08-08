@@ -83,9 +83,31 @@ export class UsuariosService {
     const [rol] = await this.db.select().from(roles).where(eq(roles.id, dto.rolId));
     if (!rol) throw new NotFoundException(`Rol ${dto.rolId} no encontrado`);
 
+    // `onConflictDoNothing` se apoya en el UNIQUE de la tabla, que NO cubre las
+    // filas globales: con `organizacion_id` nulo no hay conflicto que detectar
+    // (NULL <> NULL) y el mismo rol global se insertaba una y otra vez. La
+    // migración 124 añadió el índice parcial; aquí se comprueba antes para
+    // devolver `yaExistia` en vez de un error de restricción.
+    const organizacionId = dto.organizacionId ?? null;
+    const yaAsignado = await this.db
+      .select({ id: usuarioRoles.id })
+      .from(usuarioRoles)
+      .where(
+        and(
+          eq(usuarioRoles.usuarioId, usuarioId),
+          eq(usuarioRoles.rolId, dto.rolId),
+          organizacionId === null
+            ? isNull(usuarioRoles.organizacionId)
+            : eq(usuarioRoles.organizacionId, organizacionId),
+        ),
+      );
+    if (yaAsignado.length > 0) {
+      return { usuarioId, rolId: dto.rolId, organizacionId, yaExistia: true };
+    }
+
     const [asignado] = await this.db
       .insert(usuarioRoles)
-      .values({ usuarioId, rolId: dto.rolId, organizacionId: dto.organizacionId ?? null })
+      .values({ usuarioId, rolId: dto.rolId, organizacionId })
       .onConflictDoNothing()
       .returning();
 
