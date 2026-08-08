@@ -58,6 +58,26 @@ export class PortalOrgController {
     return this.servicio.sembrarAdmin(id, dto, this.actor(req));
   }
 
+  /** Usuarios del portal de la organización: a quién se puede ver como. */
+  @Get('usuarios')
+  listarUsuariosPortal(@Param('id', ParseIntPipe) id: number) {
+    return this.servicio.listarUsuariosPortal(id);
+  }
+
+  /**
+   * Emite un pase de un solo uso para abrir el portal de la organización viendo
+   * exactamente lo que ve ese usuario. No expone su contraseña y la sesión
+   * resultante es de solo lectura, marcada y auditada en ambos planos.
+   */
+  @Post('usuarios/:usuarioId/impersonar')
+  impersonar(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Req() req: Request,
+  ) {
+    return this.servicio.emitirImpersonacion(id, usuarioId, this.actor(req));
+  }
+
   @Get('tableros')
   listarTableros(@Param('id', ParseIntPipe) id: number) {
     return this.servicio.listarTableros(id);

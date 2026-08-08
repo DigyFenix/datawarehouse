@@ -5,6 +5,8 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import {
   cambiarPasswordSchema,
   CambiarPasswordDto,
+  impersonarSchema,
+  ImpersonarDto,
   loginSchema,
   LoginDto,
 } from './auth.dto';
@@ -31,6 +33,22 @@ export class AuthController {
     @Req() req: RequestPortal,
   ) {
     return this.servicio.login(hash, dto, req.ip ?? null);
+  }
+
+  /**
+   * Canjea el pase emitido por el portal de administración por una sesión de este
+   * portal, marcada como suplantada y de solo lectura. Es público porque quien lo
+   * usa todavía no tiene sesión aquí: la autorización la da el pase, que es de un
+   * solo uso, caduca en dos minutos y ya se validó del otro lado.
+   */
+  @Publico()
+  @Post('impersonar')
+  impersonar(
+    @Param('hash') hash: string,
+    @Body(new ZodValidationPipe(impersonarSchema)) dto: ImpersonarDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.canjearImpersonacion(hash, dto.ticket, req.ip ?? null);
   }
 
   @Post('cambiar-password')

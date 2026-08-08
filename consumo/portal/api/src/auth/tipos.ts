@@ -7,6 +7,8 @@ export interface PayloadPortal {
   /** hash_tenant de la organización: un token jamás opera sobre otro tenant. */
   org: string;
   esAdmin: boolean;
+  /** Correo del operador del producto que está suplantando. Ausente en una sesión normal. */
+  imp?: string;
 }
 
 /** Usuario autenticado adjunto al request (estado FRESCO leído de la BD del tenant). */
@@ -18,4 +20,6 @@ export interface UsuarioPortal {
   debeCambiarPassword: boolean;
   /** hash_tenant validado contra la URL. */
   hash: string;
+  /** Correo de quien suplanta. Presente ⇒ sesión de solo lectura (ver SoloLecturaGuard). */
+  impersonadoPor?: string;
 }

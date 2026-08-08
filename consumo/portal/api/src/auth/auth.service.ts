@@ -1,4 +1,6 @@
 /** Login por tenant, cambio de contraseña y perfil de la sesión. */
+import { createHash } from 'node:crypto';
+
 import * as argon2 from 'argon2';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -75,6 +77,76 @@ export class AuthService {
         esAdmin: fila.esAdmin,
         debeCambiarPassword: fila.debeCambiarPassword,
       },
+    };
+  }
+
+  /**
+   * Canjea el pase que emitió el portal de administración por una sesión de ESTE
+   * portal, marcada como suplantada.
+   *
+   * El pase se consume aquí y no vuelve a servir; la sesión resultante es de solo
+   * lectura (lo impone `SoloLecturaGuard`) y dura lo mismo que el pase restante,
+   * no las 8 horas de una sesión normal: es para mirar, no para trabajar.
+   *
+   * @throws 401 si el pase no existe, ya se usó o caducó
+   */
+  async canjearImpersonacion(hash: string, ticket: string, ip: string | null) {
+    const { pool } = await this.sesion.contexto(hash);
+    const tokenHash = createHash('sha256').update(ticket).digest('hex');
+    const invalido = new UnauthorizedException('El pase de acceso no es válido o ya caducó');
+
+    // Se marca usado en el mismo UPDATE que lo valida: dos canjes simultáneos del
+    // mismo pase no pueden ganar los dos.
+    const consumido = await pool.query(
+      `UPDATE portal.impersonaciones
+          SET usado_en = now()
+        WHERE token_hash = $1 AND usado_en IS NULL AND expira_en > now()
+        RETURNING usuario_id AS "usuarioId", emitido_por AS "emitidoPor"`,
+      [tokenHash],
+    );
+    const pase = consumido.rows[0] as { usuarioId: number; emitidoPor: string } | undefined;
+    if (!pase) throw invalido;
+
+    const resultado = await pool.query(
+      `SELECT id, email, nombre, es_admin AS "esAdmin", activo
+         FROM portal.usuarios WHERE id = $1`,
+      [pase.usuarioId],
+    );
+    const fila = resultado.rows[0] as
+      | { id: number; email: string; nombre: string; esAdmin: boolean; activo: boolean }
+      | undefined;
+    if (!fila || !fila.activo) throw invalido;
+
+    const payload: PayloadPortal = {
+      sub: fila.id,
+      email: fila.email,
+      org: hash,
+      esAdmin: fila.esAdmin,
+      imp: pase.emitidoPor,
+    };
+    const token = await this.jwt.signAsync(payload, {
+      secret: this.config.get('PORTAL_JWT_SECRET', { infer: true }),
+      expiresIn: '30m',
+    });
+    await this.auditoria.registrar(pool, {
+      usuarioId: fila.id,
+      usuarioEmail: fila.email,
+      accion: 'login_impersonado',
+      entidad: 'usuarios',
+      entidadId: String(fila.id),
+      despues: { impersonadoPor: pase.emitidoPor },
+      ip,
+    });
+    return {
+      token,
+      usuario: {
+        id: fila.id,
+        email: fila.email,
+        nombre: fila.nombre,
+        esAdmin: fila.esAdmin,
+        debeCambiarPassword: false,
+      },
+      impersonadoPor: pase.emitidoPor,
     };
   }
 

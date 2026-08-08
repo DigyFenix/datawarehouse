@@ -15,6 +15,15 @@ export const routes: Routes = [
         loadComponent: () => import('./features/login/login.component').then((m) => m.LoginComponent),
       },
       {
+        // Acceso de soporte: se entra con el pase de un solo uso que emite el
+        // portal de administración, no con credenciales.
+        path: 'entrar-como',
+        loadComponent: () =>
+          import('./features/entrar-como/entrar-como.component').then(
+            (m) => m.EntrarComoComponent,
+          ),
+      },
+      {
         path: 'cambiar-password',
         canActivate: [authGuard],
         loadComponent: () =>

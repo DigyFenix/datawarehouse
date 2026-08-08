@@ -5,6 +5,8 @@
  * TenantDbService; cada mutación queda auditada en gobierno.auditoria (control)
  * y en portal.auditoria (tenant).
  */
+import { createHash, randomBytes } from 'node:crypto';
+
 import * as argon2 from 'argon2';
 import {
   BadRequestException,
@@ -18,6 +20,9 @@ import { AuditoriaService } from '../auditoria/auditoria.service';
 import { TenantDbService } from '../db/tenant-db.service';
 import { Actor, OrganizacionesService } from '../organizaciones/organizaciones.service';
 import { ActualizarTableroDto, CrearTableroDto, SembrarAdminDto } from './portal-org.dto';
+
+/** Vida del ticket de impersonación: lo justo para abrir la pestaña, no una credencial. */
+const VIDA_TICKET_MS = 2 * 60 * 1000;
 
 export interface TableroPortal {
   id: number;
@@ -116,6 +121,86 @@ export class PortalOrgService {
       despues: usuario,
     });
     return usuario;
+  }
+
+  // --- Impersonación (soporte) ---
+
+  /** Usuarios del portal de la organización, para elegir a quién ver. */
+  async listarUsuariosPortal(orgId: number) {
+    const { pool } = await this.poolDeOrganizacion(orgId);
+    const resultado = await pool.query(
+      `SELECT id, email, nombre, es_admin AS "esAdmin", activo
+         FROM portal.usuarios
+        ORDER BY nombre`,
+    );
+    return resultado.rows as unknown[];
+  }
+
+  /**
+   * Emite un ticket de un solo uso para ver el portal como un usuario concreto.
+   *
+   * No devuelve ni conoce su contraseña: el portal de usuario canjea el ticket por
+   * una sesión SUYA, marcada como suplantada y de solo lectura. Se guarda el hash
+   * del ticket —no el ticket— para que leer la tabla no sirva de nada, y vive dos
+   * minutos: es un pase para abrir la pestaña, no una credencial.
+   *
+   * @throws 404 si la organización o el usuario no existen · 400 si está inactivo
+   */
+  async emitirImpersonacion(orgId: number, usuarioId: number, actor: Actor) {
+    const org = await this.organizaciones.obtener(orgId);
+    const { pool } = await this.poolDeOrganizacion(orgId);
+
+    const objetivo = await pool.query(
+      `SELECT id, email, nombre, activo FROM portal.usuarios WHERE id = $1`,
+      [usuarioId],
+    );
+    const usuario = objetivo.rows[0] as
+      | { id: number; email: string; nombre: string; activo: boolean }
+      | undefined;
+    if (!usuario) throw new NotFoundException(`Usuario ${usuarioId} no encontrado`);
+    if (!usuario.activo) {
+      throw new BadRequestException(
+        `«${usuario.email}» está inactivo: reactívalo antes de ver el portal como él.`,
+      );
+    }
+
+    const ticket = randomBytes(32).toString('base64url');
+    const tokenHash = createHash('sha256').update(ticket).digest('hex');
+    const expiraEn = new Date(Date.now() + VIDA_TICKET_MS);
+
+    await pool.query(
+      `INSERT INTO portal.impersonaciones (token_hash, usuario_id, emitido_por, expira_en, ip_emisor)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [tokenHash, usuarioId, actor.email, expiraEn, actor.ip ?? null],
+    );
+    await pool.query(
+      `INSERT INTO portal.auditoria (usuario_email, accion, entidad, entidad_id, despues, ip)
+       VALUES ($1, 'impersonar', 'usuarios', $2, $3, $4)`,
+      [
+        actor.email,
+        String(usuarioId),
+        JSON.stringify({ email: usuario.email, emitidoPor: actor.email }),
+        actor.ip ?? null,
+      ],
+    );
+    await this.auditoria.registrar({
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      ip: actor.ip,
+      organizacionId: orgId,
+      accion: 'impersonar',
+      entidad: 'portal_usuarios',
+      entidadId: `${orgId}:${usuarioId}`,
+      antes: null,
+      despues: { email: usuario.email, expiraEn },
+    });
+
+    return {
+      ticket,
+      hashTenant: org.hashTenant,
+      usuario: { id: usuario.id, email: usuario.email, nombre: usuario.nombre },
+      expiraEn: expiraEn.toISOString(),
+    };
   }
 
   // --- Tableros (URLs de Publish to Web, alta del proveedor) ---

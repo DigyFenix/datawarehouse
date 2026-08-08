@@ -13,3 +13,14 @@ export const cambiarPasswordSchema = z.object({
 
 export type LoginDto = z.infer<typeof loginSchema>;
 export type CambiarPasswordDto = z.infer<typeof cambiarPasswordSchema>;
+
+/**
+ * Pase de impersonación emitido por el portal de administración. Sólo se valida la
+ * forma: el pase real se comprueba contra `portal.impersonaciones` (un solo uso y
+ * caducidad), no aquí.
+ */
+export const impersonarSchema = z.object({
+  ticket: z.string().min(20).max(200),
+});
+
+export type ImpersonarDto = z.infer<typeof impersonarSchema>;

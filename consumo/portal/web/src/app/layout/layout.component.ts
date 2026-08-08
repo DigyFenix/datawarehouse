@@ -61,6 +61,18 @@ interface ItemNav {
       </aside>
 
       <div class="area">
+        <!-- Ver la cuenta de otra persona nunca puede pasar inadvertido: la banda
+             ocupa el ancho completo y no se puede cerrar mientras dure la sesión. -->
+        @if (auth.impersonadoPor(); as operador) {
+          <div class="banda-suplantacion" role="status">
+            <span>
+              Estás viendo el portal como <strong>{{ auth.usuario()?.nombre }}</strong>
+              ({{ auth.usuario()?.email }}). Sesión de solo lectura abierta por {{ operador }}.
+            </span>
+            <button class="banda-suplantacion__salir" (click)="salir()">Terminar</button>
+          </div>
+        }
+
         <header class="topbar">
           <div class="contexto">
             <button class="topbar__hamburguesa" (click)="menuAbierto.set(true)" aria-label="Abrir menú">
@@ -153,6 +165,19 @@ interface ItemNav {
     }
 
     .area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .banda-suplantacion {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      flex-wrap: wrap;
+      padding: 9px var(--sp-5);
+      background: var(--aviso, #8a5a00); color: #fff;
+      font-size: 13px; line-height: 1.45;
+    }
+    .banda-suplantacion strong { font-weight: 700; }
+    .banda-suplantacion__salir {
+      padding: 4px 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 6px;
+      background: transparent; color: #fff; font-size: 12.5px; cursor: pointer;
+    }
+    .banda-suplantacion__salir:hover { background: rgba(255,255,255,.14); }
     .topbar {
       display: flex; align-items: center; justify-content: space-between;
       background: var(--surface); border-bottom: 1px solid var(--border);
@@ -199,7 +224,20 @@ interface ItemNav {
       .topbar__hamburguesa { display: inline-flex; }
       .usuario__nombre { display: none; }
       .contenido { padding: var(--sp-4); }
-      .topbar { padding: 12px var(--sp-4); }
+      .banda-suplantacion {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      flex-wrap: wrap;
+      padding: 9px var(--sp-5);
+      background: var(--aviso, #8a5a00); color: #fff;
+      font-size: 13px; line-height: 1.45;
+    }
+    .banda-suplantacion strong { font-weight: 700; }
+    .banda-suplantacion__salir {
+      padding: 4px 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 6px;
+      background: transparent; color: #fff; font-size: 12.5px; cursor: pointer;
+    }
+    .banda-suplantacion__salir:hover { background: rgba(255,255,255,.14); }
+    .topbar { padding: 12px var(--sp-4); }
     }
     @media (max-width: 520px) {
       .tema-toggle { order: 3; }

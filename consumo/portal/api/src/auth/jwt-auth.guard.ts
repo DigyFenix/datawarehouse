@@ -27,6 +27,9 @@ import { PayloadPortal, UsuarioPortal } from './tipos';
 
 export type RequestPortal = Request & { usuarioPortal?: UsuarioPortal };
 
+/** Métodos que no modifican nada: los únicos permitidos al suplantar. */
+const METODOS_LECTURA = new Set(['GET', 'HEAD', 'OPTIONS']);
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
@@ -65,7 +68,18 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const usuario = await this.sesion.usuarioVigente(hash, payload.sub);
-    req.usuarioPortal = usuario;
+    // La marca de suplantación viaja en el token, no en la BD: es propia de ESTA
+    // sesión, no del usuario. Dos pestañas del mismo usuario pueden ser una normal
+    // y otra suplantada, y solo la segunda queda restringida.
+    req.usuarioPortal = payload.imp ? { ...usuario, impersonadoPor: payload.imp } : usuario;
+
+    // Una sesión suplantada es para MIRAR. Escribir en nombre de otro dejaría en su
+    // historial acciones que esa persona nunca hizo.
+    if (payload.imp && !METODOS_LECTURA.has(req.method)) {
+      throw new ForbiddenException(
+        'Estás viendo el portal como otro usuario: la sesión es de solo lectura.',
+      );
+    }
 
     const soloAdmin = this.reflector.getAllAndOverride<boolean>(SOLO_ADMIN, [
       ctx.getHandler(),

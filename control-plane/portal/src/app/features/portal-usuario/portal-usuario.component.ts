@@ -30,6 +30,14 @@ interface FormAdmin {
  * tableros de Power BI (Publish to Web). La organización se auto-administra
  * después (sus usuarios y perfiles los crea su propio admin en su portal).
  */
+interface UsuarioPortalOrg {
+  id: number;
+  email: string;
+  nombre: string;
+  esAdmin: boolean;
+  activo: boolean;
+}
+
 @Component({
   selector: 'app-portal-usuario',
   standalone: true,
@@ -73,6 +81,33 @@ interface FormAdmin {
           </ul>
         } @else {
           <p class="sutil">Cargando estado…</p>
+        }
+      </div>
+
+      <!-- Soporte: ver el portal como lo ve el usuario. Es la mitad de resolver un
+           «no me aparece el tablero», y evita pedirle la contraseña a nadie. -->
+      <div class="tarjeta">
+        <span class="eyebrow">Ver como un usuario</span>
+        <p class="sutil">
+          Abre el portal de la organización con la vista exacta de esa persona.
+          La sesión es de <strong>solo lectura</strong>, dura 30 minutos y queda registrada
+          en la auditoría de ambos planos. No necesitas su contraseña.
+        </p>
+        @if (usuariosPortal().length) {
+          <div class="fila-url">
+            <select [(ngModel)]="usuarioAVer" name="usuarioAVer" style="flex:1;">
+              @for (u of usuariosPortal(); track u.id) {
+                <option [ngValue]="u.id" [disabled]="!u.activo">
+                  {{ u.nombre }} · {{ u.email }}{{ u.activo ? '' : ' (inactivo)' }}
+                </option>
+              }
+            </select>
+            <button class="secundario pequeno" (click)="verComo()" [disabled]="emitiendo()">
+              {{ emitiendo() ? 'Abriendo…' : 'Ver portal' }}
+            </button>
+          </div>
+        } @else {
+          <p class="sutil">La organización todavía no tiene usuarios en su portal.</p>
         }
       </div>
 
@@ -197,6 +232,9 @@ export class PortalUsuarioComponent {
   readonly orgs = inject(OrganizacionService);
 
   readonly estado = signal<EstadoPortalOrg | null>(null);
+  readonly usuariosPortal = signal<UsuarioPortalOrg[]>([]);
+  readonly emitiendo = signal(false);
+  usuarioAVer: number | null = null;
   readonly tableros = signal<TableroPortal[]>([]);
   readonly logoUrl = signal<string | null>(null);
   readonly drawerTablero = signal(false);
@@ -230,6 +268,44 @@ export class PortalUsuarioComponent {
     return `${environment.portalUsuarioUrl}/${hash}`;
   }
 
+  private cargarUsuariosPortal(organizacionId: number): void {
+    this.api
+      .get<UsuarioPortalOrg[]>(`/organizaciones/${organizacionId}/portal/usuarios`)
+      .subscribe({
+        next: (us) => {
+          this.usuariosPortal.set(us);
+          this.usuarioAVer = us.find((u) => u.activo)?.id ?? null;
+        },
+      });
+  }
+
+  /**
+   * Pide el pase y abre el portal del cliente en otra pestaña. El pase viaja en la
+   * URL porque caduca en dos minutos y sirve una sola vez: no es una credencial.
+   */
+  verComo(): void {
+    const organizacionId = this.orgs.activaId();
+    if (organizacionId === null || this.usuarioAVer === null) return;
+    this.emitiendo.set(true);
+    this.api
+      .post<{ ticket: string; hashTenant: string; usuario: { email: string } }>(
+        `/organizaciones/${organizacionId}/portal/usuarios/${this.usuarioAVer}/impersonar`,
+        {},
+      )
+      .subscribe({
+        next: (r) => {
+          this.emitiendo.set(false);
+          const url = `${environment.portalUsuarioUrl}/${r.hashTenant}/entrar-como?pase=${r.ticket}`;
+          window.open(url, '_blank', 'noopener');
+          this.toast.info('Portal abierto', `Viendo como ${r.usuario.email}`);
+        },
+        error: (e: Error) => {
+          this.emitiendo.set(false);
+          this.toast.error('No se pudo abrir el portal', e.message);
+        },
+      });
+  }
+
   copiarUrl(): void {
     void navigator.clipboard.writeText(this.urlIngreso());
     this.toast.exito('URL copiada', 'Entrégala al cliente como su acceso al portal');
@@ -240,11 +316,16 @@ export class PortalUsuarioComponent {
     this.estado.set(null);
     this.tableros.set([]);
     this.logoUrl.set(null);
+    this.usuariosPortal.set([]);
+    this.usuarioAVer = null;
     if (organizacionId === null) return;
     this.api.get<EstadoPortalOrg>(`/organizaciones/${organizacionId}/portal/estado`).subscribe({
       next: (e) => {
         this.estado.set(e);
-        if (e.esquemaAplicado) this.cargarTableros(organizacionId);
+        if (e.esquemaAplicado) {
+          this.cargarTableros(organizacionId);
+          this.cargarUsuariosPortal(organizacionId);
+        }
       },
       error: (e: Error) => this.toast.error('No se pudo leer el estado del portal', e.message),
     });
