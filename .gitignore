@@ -15,6 +15,10 @@ build/
 out/
 *.log
 
+# Artefactos de compilación incremental (se regeneran; no aportan al diff)
+*.tsbuildinfo
+.angular/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -32,6 +36,7 @@ logs/
 
 # Docker (datos persistentes locales)
 infra/local/data/
+infra/local/respaldos/
 pgdata/
 
 # Producción: respaldos y datos de Caddy — nunca versionar

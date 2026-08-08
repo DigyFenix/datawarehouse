@@ -1,0 +1,21 @@
+# Dockerignore de la RAÍZ del repo. Antes no hacía falta (cada servicio construía con
+# su propio subdirectorio como contexto); api-usuario ahora construye desde la raíz
+# porque depende de @pulso/agente vía "file:" (ver consumo/portal/api/Dockerfile).
+# Sin este archivo, Docker enviaría TODO el repo como build context (node_modules de
+# cada subproyecto, .git, datos de organizaciones, etc.).
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+.git
+*.log
+**/*.log
+.env
+.env.*
+coverage
+**/coverage
+**/__pycache__
+*.min.js
+*.min.css

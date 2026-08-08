@@ -12,14 +12,23 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Rol de solo lectura para el consumo gobernado (agente de IA); lo crea
+      # init/03_rol_lector.sh en el primer arranque. Sin la var, se omite.
+      PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD:-}
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
-      - ./data:/var/lib/postgresql/data
+      # Volumen Docker NATIVO (no bind mount): sobre NTFS/WSL2 el bind mount provoca
+      # `FileFallocate: Interrupted system call` al extender archivos grandes y tumba
+      # modelos pesados de dbt. Mismo patrón que infra/produccion/docker-compose.yml.
+      - pgdata:/var/lib/postgresql/data
       # Scripts de init: se ejecutan SOLO en el primer arranque (BD vacía).
       - ./init:/docker-entrypoint-initdb.d:ro
       # DDL versionado del catálogo (fuente de verdad); lo aplica 02_aplicar_catalogo.sh
       - ../../metadata-store:/opt/metadata-store:ro
+      # Seeds propios de cada tenant (datos de organización, sociedades, políticas):
+      # NO se aplican en el init — se aplican a mano en el onboarding de cada organización.
+      - ../../organizaciones:/opt/organizaciones:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -36,7 +45,7 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: "False"
       # El TLD .local es "special-use": pgAdmin lo rechaza salvo que se permita explícitamente.
-      PGADMIN_CONFIG_ALLOW_SPECIAL_EMAIL_DOMAINS: "['grupocresta.local', 'local']"
+      PGADMIN_CONFIG_ALLOW_SPECIAL_EMAIL_DOMAINS: "['grupocresta.local', 'ejemplo.local', 'local']"
       PGADMIN_CONFIG_CHECK_EMAIL_DELIVERABILITY: "False"
     ports:
       - "${PGADMIN_PORT}:80"
@@ -70,6 +79,11 @@ services:
       WORKER_TIMEOUT_MS: ${WORKER_TIMEOUT_MS:-1800000}
     ports:
       - "${API_PORT}:3001"
+    volumes:
+      # DDL y seeds del repo (read-only): el botón "Provisionar" aplica los
+      # MISMOS archivos versionados a la base del tenant nuevo. Sin este montaje
+      # el endpoint responde que no está disponible, no falla a medias.
+      - ../../metadata-store:/opt/metadata-store:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -90,7 +104,12 @@ services:
   # el esquema `portal` de la base de cada tenant.
   api-usuario:
     build:
-      context: ../../consumo/portal/api
+      # Contexto en la RAÍZ del repo: la API depende de @pulso/agente vía
+      # "file:../../../data-plane/agente" (consumo/portal/api/package.json), y el
+      # Dockerfile necesita ambas carpetas con la misma estructura relativa que en
+      # desarrollo local (ver comentario al inicio del Dockerfile).
+      context: ../../
+      dockerfile: consumo/portal/api/Dockerfile
     container_name: cresta-portal-usuario-api
     restart: unless-stopped
     profiles: ["portal"]
@@ -105,6 +124,15 @@ services:
       # Secreto PROPIO del portal de usuario (distinto del JWT_SECRET del admin).
       PORTAL_JWT_SECRET: ${PORTAL_JWT_SECRET}
       PORTAL_JWT_EXPIRA_EN: ${PORTAL_JWT_EXPIRA_EN:-8h}
+      # Agente de IA (CLAUDE.md §11): sin ANTHROPIC_API_KEY el módulo responde 503
+      # al postear un mensaje; el resto de la API funciona igual.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AGENTE_MODELO: ${AGENTE_MODELO:-claude-opus-5}
+      AGENTE_MAX_ITERACIONES: ${AGENTE_MAX_ITERACIONES:-6}
+      AGENTE_MAX_TOKENS: ${AGENTE_MAX_TOKENS:-4096}
+      # Rol de solo lectura `portal_lector` (RLS oro): mismo valor que crea el rol
+      # en init/03_rol_lector.sh (servicio postgres, arriba en este archivo).
+      PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD:-}
     ports:
       - "${PORTAL_USUARIO_PORT:-3002}:3002"
     depends_on:
@@ -155,3 +183,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+volumes:
+  # Datos de Postgres en volumen nativo de Docker (ver comentario en el servicio postgres).
+  # Migrado desde el bind mount ./data el 2026-08-07; el datadir viejo queda como respaldo.
+  pgdata:

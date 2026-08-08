@@ -10,15 +10,14 @@ Uso (desde el host):
     docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo_org> [seleccion] [threads]
 
     <codigo_org>  código de la organización (gobierno.organizaciones.codigo)
-    [seleccion]   selección dbt; por defecto "plata oro" (build completo)
+    [seleccion]   selección dbt; sin este argumento corre el PROYECTO COMPLETO
+                  (seeds + modelos + tests), que es lo que necesita un tenant nuevo
     [threads]     paralelismo; por defecto el del profiles (4)
 
-SOBRE `threads`: en el entorno local aparece `FileFallocate: Interrupted system call` al
-construir modelos pesados. El error sugiere falta de disco y NO lo es (hay cientos de GB
-libres); la causa es que el volumen de Postgres es un bind mount de Windows y sobre NTFS vía
-WSL2 `posix_fallocate` recibe EINTR. Bajar a 2 hilos reduce la frecuencia y evita que un modelo
-grande se quede colgado, pero no lo elimina: el modelo caído pasa al reintentarlo. El arreglo de
-fondo es mover los datos a un volumen Docker nativo. En el VPS de producción no aplica.
+HISTORIA de `threads`: el `FileFallocate: Interrupted system call` que obligaba a bajar a 2
+hilos era el bind mount de Windows (NTFS vía WSL2) como volumen de Postgres. RESUELTO el
+2026-08-07 migrando a volumen Docker nativo (infra/local/docker-compose.yml): el build
+completo de Cresta pasa 185/185 con 4 hilos. El argumento se conserva por flexibilidad.
 """
 
 from __future__ import annotations
@@ -32,8 +31,7 @@ from cresta_extraccion.transformacion import (
     PROYECTO_DBT,
     _destino_organizacion,
     _escribir_profiles,
-    _nits_afiliados,
-    _sociedades,
+    _vars_transformacion,
 )
 
 
@@ -42,27 +40,26 @@ def main() -> int:
         print(__doc__)
         return 2
     organizacion = sys.argv[1]
-    seleccion = sys.argv[2] if len(sys.argv) > 2 else "plata oro"
+    # Sin selección = proyecto COMPLETO (seeds incluidos). Con `--select "plata oro"`
+    # los seeds quedaban fuera y un tenant nuevo reventaba en dim_tiempo, que cruza
+    # el calendario de feriados: la primera corrida tiene que traerlo todo.
+    seleccion = sys.argv[2] if len(sys.argv) > 2 else None
     threads = sys.argv[3] if len(sys.argv) > 3 else None
 
     cfg = cargar_postgres()
     base_datos, erp = _destino_organizacion(cfg, organizacion)
-    variables = {
-        "erp": erp,
-        "organizacion": organizacion,
-        "nits_grupo": _nits_afiliados(cfg, organizacion),
-        "sociedades": _sociedades(cfg, organizacion),
-    }
+    variables = _vars_transformacion(cfg, organizacion, erp)
     _escribir_profiles(cfg, base_datos, organizacion)
     print(f"correr · org={organizacion} · base={base_datos} · erp={erp} · "
           f"nits={len(variables['nits_grupo'])} · sociedades={len(variables['sociedades'])} · "
-          f"select='{seleccion}'")
+          f"moneda_local={variables.get('moneda_local', '(default)')} · "
+          f"select='{seleccion or '(proyecto completo)'}'")
 
     from dbt.cli.main import dbtRunner
 
     argumentos = [
         "build",
-        "--select", *seleccion.split(),
+        *(["--select", *seleccion.split()] if seleccion else []),
         "--project-dir", PROYECTO_DBT,
         "--profiles-dir", PROFILES_DIR,
         "--target", organizacion,

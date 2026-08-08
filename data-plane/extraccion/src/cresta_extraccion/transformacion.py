@@ -129,6 +129,26 @@ def _sociedades(cfg: ConfigPostgres, organizacion: str) -> list[dict]:
         ]
 
 
+def _vars_transformacion(cfg: ConfigPostgres, organizacion: str, erp: str) -> dict:
+    """Vars de dbt del tenant, ÚNICO punto donde se arman (worker y correr.py las comparten).
+
+    `moneda_local` sale de la primera sociedad activa con moneda declarada: los modelos de
+    Plata la usan como default cuando el documento no trae moneda. Antes no viajaba y todo
+    caía al default GTQ del modelo — un tenant en otra moneda quedaba mal etiquetado.
+    """
+    sociedades = _sociedades(cfg, organizacion)
+    variables: dict = {
+        "erp": erp,
+        "organizacion": organizacion,
+        "nits_grupo": _nits_afiliados(cfg, organizacion),
+        "sociedades": sociedades,
+    }
+    moneda_local = next((s["moneda"] for s in sociedades if s["moneda"]), "")
+    if moneda_local:
+        variables["moneda_local"] = moneda_local
+    return variables
+
+
 def _escribir_profiles(cfg: ConfigPostgres, base_datos: str, target: str) -> None:
     """Genera el profiles.yml de dbt desde el entorno (sin secretos en repo).
 
@@ -164,8 +184,7 @@ def transformar_objeto(cfg: ConfigPostgres, objeto: str, organizacion: str) -> d
         )
 
     base_datos, erp = _destino_organizacion(cfg, organizacion)
-    nits_grupo = _nits_afiliados(cfg, organizacion)
-    sociedades = _sociedades(cfg, organizacion)
+    variables = _vars_transformacion(cfg, organizacion, erp)
     target = organizacion
     _escribir_profiles(cfg, base_datos, target)
 
@@ -178,19 +197,13 @@ def transformar_objeto(cfg: ConfigPostgres, objeto: str, organizacion: str) -> d
         "--project-dir", PROYECTO_DBT,
         "--profiles-dir", PROFILES_DIR,
         "--target", target,
-        "--vars", json.dumps(
-            {
-                "erp": erp,
-                "organizacion": organizacion,
-                "nits_grupo": nits_grupo,
-                "sociedades": sociedades,
-            }
-        ),
+        "--vars", json.dumps(variables),
     ]
     log.info(
         "transformar.inicio", objeto=objeto, selector=selector,
         organizacion=organizacion, base=base_datos, erp=erp,
-        nits_grupo=len(nits_grupo),
+        nits_grupo=len(variables["nits_grupo"]),
+        moneda_local=variables.get("moneda_local", "(default)"),
     )
     resultado = dbtRunner().invoke(argumentos)
 
