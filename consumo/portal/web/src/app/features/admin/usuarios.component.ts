@@ -24,6 +24,7 @@ const PESTANAS: PestanaTab[] = [
   { etiqueta: 'Usuarios', segmento: 'usuarios' },
   { etiqueta: 'Perfiles', segmento: 'perfiles' },
   { etiqueta: 'Glosario', segmento: 'glosario' },
+  { etiqueta: 'Indicadores', segmento: 'indicadores' },
   { etiqueta: 'Auditoría', segmento: 'auditoria' },
 ];
 

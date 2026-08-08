@@ -23,6 +23,8 @@ export interface AlcanceEfectivo {
    *  `empresa_id` es TEXTO en todo el modelo Oro (la clave de sociedad del ERP:
    *  `proavisa`, `ironnetwork`…), no un entero. */
   empresas: '*' | string[];
+  /** Indicadores compuestos por la organización, por clave. Vacío si no definió ninguno. */
+  derivadas: Map<string, import('./derivadas').MetricaDerivada>;
 }
 
 export interface MetricaAutorizada {

@@ -32,6 +32,8 @@ import {
   CrearPerfilDto,
   crearUsuarioSchema,
   CrearUsuarioDto,
+  metricaDerivadaSchema,
+  MetricaDerivadaDto,
   restablecerPasswordSchema,
   RestablecerPasswordDto,
   terminoGlosarioSchema,
@@ -180,6 +182,43 @@ export class AdminController {
     @Req() req: RequestPortal,
   ) {
     return this.servicio.eliminarTermino(this.usuario(req), terminoId, req.ip ?? null);
+  }
+
+  // --- Métricas derivadas ---
+
+  /**
+   * Indicadores que la organización compone sobre métricas ya certificadas. No
+   * contienen SQL: el motor combina los operandos por (empresa, período).
+   */
+  @Get('derivadas')
+  listarDerivadas(@Req() req: RequestPortal) {
+    return this.servicio.listarDerivadas(this.usuario(req));
+  }
+
+  @Post('derivadas')
+  crearDerivada(
+    @Body(new ZodValidationPipe(metricaDerivadaSchema)) dto: MetricaDerivadaDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.crearDerivada(this.usuario(req), dto, req.ip ?? null);
+  }
+
+  @Put('derivadas/:derivadaId')
+  actualizarDerivada(
+    @Param('derivadaId', ParseIntPipe) derivadaId: number,
+    @Body(new ZodValidationPipe(metricaDerivadaSchema)) dto: MetricaDerivadaDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.actualizarDerivada(this.usuario(req), derivadaId, dto, req.ip ?? null);
+  }
+
+  @Delete('derivadas/:derivadaId')
+  @HttpCode(204)
+  eliminarDerivada(
+    @Param('derivadaId', ParseIntPipe) derivadaId: number,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.eliminarDerivada(this.usuario(req), derivadaId, req.ip ?? null);
   }
 
   // --- Tableros (lectura) y auditoría ---

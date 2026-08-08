@@ -14,6 +14,7 @@
 import { z } from 'zod';
 
 import { empresasParaConsulta } from '../alcances';
+import { combinar, descripcionOperacion, type MetricaDerivada } from '../derivadas';
 import { fichaDeMetrica } from '../catalogo';
 import {
   SQL_AGING_CORTE,
@@ -135,6 +136,54 @@ async function listarMetricas(entrada: unknown, ctx: ContextoTool): Promise<Resu
   };
 }
 
+/**
+ * Valores de un indicador compuesto: se piden los dos operandos por separado y se
+ * combinan por (empresa, período).
+ *
+ * Un período sólo aparece si AMBOS operandos lo tienen. Si un mes tiene ventas y no
+ * tiene costo, el margen de ese mes no es cero: es desconocido, y en una plataforma
+ * que vende certeza en el número inventarlo es el peor error posible.
+ */
+async function filasDeDerivada(
+  derivada: MetricaDerivada,
+  p: { periodo_desde?: string; periodo_hasta?: string; agrupar_por_empresa?: boolean },
+  empresas: string[],
+  ctx: ContextoTool,
+): Promise<Record<string, unknown>[]> {
+  const leerOperando = (clave: string) =>
+    ctx.ejecutor.consultarTenant(SQL_METRICA_VALOR, [
+      clave,
+      p.periodo_desde ?? null,
+      p.periodo_hasta ?? null,
+      empresas,
+    ]);
+  const [filasA, filasB] = await Promise.all([
+    leerOperando(derivada.operandoA),
+    leerOperando(derivada.operandoB),
+  ]);
+
+  // Los operandos se SUMAN hasta la granularidad de salida ANTES de combinarlos.
+  // Es la única forma correcta de agregar una razón: el margen del grupo es
+  // (suma de márgenes / suma de ventas), NO la suma de los porcentajes de cada
+  // empresa — eso daba cifras como «351 % de margen».
+  const porEmpresa = p.agrupar_por_empresa === true;
+  const acumular = (filas: Record<string, unknown>[]): Map<string, number> => {
+    const mapa = new Map<string, number>();
+    for (const f of filas) {
+      const periodo = String(f['periodo']);
+      const llave = porEmpresa ? `${String(f['empresa_id'] ?? '')}|${periodo}` : `|${periodo}`;
+      mapa.set(llave, (mapa.get(llave) ?? 0) + Number(f['valor'] ?? 0));
+    }
+    return mapa;
+  };
+
+  const combinadas = combinar(derivada.operacion, acumular(filasA), acumular(filasB));
+  return [...combinadas.entries()].map(([llave, valor]) => {
+    const [empresaId, periodo] = llave.split('|');
+    return { empresa_id: empresaId, periodo, valor };
+  });
+}
+
 async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<ResultadoTool> {
   const v = validar(esquemaConsultarMetrica, entrada);
   if (!v.ok) return denegado(v.error, ctx.alcance, { tool: 'consultar_metrica' });
@@ -163,12 +212,18 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
     );
   }
 
-  const filas = await ctx.ejecutor.consultarTenant(SQL_METRICA_VALOR, [
-    p.metrica_clave,
-    p.periodo_desde ?? null,
-    p.periodo_hasta ?? null,
-    empresas,
-  ]);
+  // Si es un indicador compuesto por la organización, se leen sus dos operandos con
+  // la MISMA plantilla constante y se combinan en código: una derivada no introduce
+  // SQL nuevo ni escapa del filtro de empresas.
+  const derivada = ctx.alcance.derivadas.get(p.metrica_clave);
+  const filas = derivada
+    ? await filasDeDerivada(derivada, p, empresas, ctx)
+    : await ctx.ejecutor.consultarTenant(SQL_METRICA_VALOR, [
+        p.metrica_clave,
+        p.periodo_desde ?? null,
+        p.periodo_hasta ?? null,
+        empresas,
+      ]);
 
   // Agregación de presentación: por período (default) o por período y empresa.
   const tarjetas: TarjetaDato[] = [];
@@ -340,6 +395,37 @@ async function explicarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Res
       ctx.alcance,
       { tool: 'explicar_metrica', metrica_clave: p.metrica_clave },
     );
+  }
+
+  // Un indicador propio de la organización no está en el catálogo del producto: su
+  // ficha se arma con su composición, que es exactamente lo que hay que explicar.
+  const derivada = ctx.alcance.derivadas.get(p.metrica_clave);
+  if (derivada) {
+    const nombreDe = (clave: string) => ctx.alcance.metricas.get(clave)?.nombreOficial ?? clave;
+    return {
+      contenido: JSON.stringify({
+        metrica: autorizada.nombreOficial,
+        clave: derivada.clave,
+        estado: autorizada.estado,
+        definicion: derivada.definicion,
+        origen: 'Indicador definido por la organización',
+        se_calcula_como: descripcionOperacion(
+          derivada.operacion,
+          nombreDe(derivada.operandoA),
+          nombreDe(derivada.operandoB),
+        ),
+        periodos:
+          autorizada.periodoDesde && autorizada.periodoHasta
+            ? `${autorizada.periodoDesde} a ${autorizada.periodoHasta}`
+            : 'sin datos',
+      }),
+      esError: false,
+      tarjetas: [],
+      auditoria: {
+        accion: 'consulta_agente',
+        detalle: { tool: 'explicar_metrica', metrica_clave: p.metrica_clave, derivada: true },
+      },
+    };
   }
 
   const ficha = await fichaDeMetrica(ctx.ejecutor, p.metrica_clave);

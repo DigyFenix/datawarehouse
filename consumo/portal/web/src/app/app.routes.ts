@@ -80,6 +80,11 @@ export const routes: Routes = [
                   import('./features/admin/glosario.component').then((m) => m.GlosarioComponent),
               },
               {
+                path: 'indicadores',
+                loadComponent: () =>
+                  import('./features/admin/derivadas.component').then((m) => m.DerivadasComponent),
+              },
+              {
                 path: 'auditoria',
                 loadComponent: () =>
                   import('./features/admin/auditoria.component').then((m) => m.AuditoriaComponent),

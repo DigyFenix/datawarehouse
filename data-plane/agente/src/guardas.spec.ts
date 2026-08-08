@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { resolverAlcance } from './alcances';
+import { combinar, fichaDerivada, type MetricaDerivada } from './derivadas';
 import { ejecutarTool } from './tools/ejecutar';
 import type { AlcanceEfectivo, EjecutorSql, MetricaAutorizada } from './tipos';
 
@@ -23,8 +24,26 @@ function metrica(clave: string, dominio: string, estado: 'certificada' | 'explor
   };
 }
 
-function alcanceCon(metricas: MetricaAutorizada[], empresas: '*' | string[]): AlcanceEfectivo {
-  return { metricas: new Map(metricas.map((m) => [m.clave, m])), empresas };
+/**
+ * Alcance de laboratorio. Registra las derivadas EN `metricas` igual que hace
+ * `resolverAlcance`: un fake que no reproduce la forma real es lo que dejó pasar
+ * el bug de `empresa_id`, y no vale la pena repetirlo.
+ */
+function alcanceCon(
+  metricas: MetricaAutorizada[],
+  empresas: '*' | string[],
+  derivadas: MetricaDerivada[] = [],
+): AlcanceEfectivo {
+  const porClave = new Map(metricas.map((m) => [m.clave, m]));
+  for (const d of derivadas) {
+    const ficha = fichaDerivada(d, porClave);
+    if (ficha) porClave.set(d.clave, ficha);
+  }
+  return {
+    metricas: porClave,
+    empresas,
+    derivadas: new Map(derivadas.map((d) => [d.clave, d])),
+  };
 }
 
 /** Ejecutor falso: registra el SQL y los parámetros que recibió. */
@@ -235,5 +254,100 @@ describe('Guarda 5 — dato + métrica + período + estado', () => {
     );
     expect(r.tarjetas).toHaveLength(2);
     expect(r.tarjetas.map((t) => t.empresa)).toEqual(['Empresa Uno', 'Empresa Dos']);
+  });
+});
+
+// ------------------------------------------------- métricas derivadas (composición)
+
+describe('Métricas derivadas — composición gobernada', () => {
+  const derivada = (operacion: MetricaDerivada['operacion']): MetricaDerivada => ({
+    clave: 'margen_pct',
+    nombre: '% de margen',
+    definicion: 'Margen sobre la venta neta',
+    operacion,
+    operandoA: 'margen_bruto',
+    operandoB: 'ventas_netas_sin_iva',
+    unidad: 'porcentaje',
+  });
+
+  it('exige alcance sobre AMBOS operandos: componer no es un rodeo de autorización', () => {
+    const soloUno = new Map([['ventas_netas_sin_iva', metrica('ventas_netas_sin_iva', 'ventas')]]);
+    expect(fichaDerivada(derivada('porcentaje'), soloUno)).toBeNull();
+
+    const losDos = new Map([
+      ['ventas_netas_sin_iva', metrica('ventas_netas_sin_iva', 'ventas')],
+      ['margen_bruto', metrica('margen_bruto', 'rentabilidad')],
+    ]);
+    expect(fichaDerivada(derivada('porcentaje'), losDos)).not.toBeNull();
+  });
+
+  it('hereda el estado menos certificado de sus partes', () => {
+    const mixto = new Map([
+      ['ventas_netas_sin_iva', metrica('ventas_netas_sin_iva', 'ventas')],
+      ['margen_bruto', metrica('margen_bruto', 'rentabilidad', 'exploratoria')],
+    ]);
+    expect(fichaDerivada(derivada('razon'), mixto)?.estado).toBe('exploratoria');
+  });
+
+  it('no inventa un valor donde falta un operando', () => {
+    const a = new Map([['proavisa|2026-07', 30], ['proavisa|2026-08', 40]]);
+    const b = new Map([['proavisa|2026-07', 100]]);
+    const r = combinar('porcentaje', a, b);
+    expect(r.get('proavisa|2026-07')).toBe(30);
+    expect(r.has('proavisa|2026-08')).toBe(false);
+  });
+
+  it('la división por cero no produce infinito: no hay resultado', () => {
+    const r = combinar('razon', new Map([['x|2026-07', 10]]), new Map([['x|2026-07', 0]]));
+    expect(r.has('x|2026-07')).toBe(false);
+  });
+
+  it('un porcentaje del grupo se recalcula sobre los totales, no se suma', async () => {
+    const alcance = alcanceCon(
+      [metrica('margen_bruto', 'rentabilidad'), metrica('ventas_netas_sin_iva', 'ventas')],
+      '*',
+      [derivada('porcentaje')],
+    );
+    // Dos empresas con 50% y 10% de margen. Sumar los porcentajes daría 60%, que no
+    // significa nada; el margen del grupo es 60/300 = 20%.
+    const ejecutor: EjecutorSql = {
+      async consultarTenant(_sql, params) {
+        const clave = (params as unknown[])[0];
+        return clave === 'margen_bruto'
+          ? [
+              { empresa_id: 'a', periodo: '2026-07', valor: 50 },
+              { empresa_id: 'b', periodo: '2026-07', valor: 10 },
+            ]
+          : [
+              { empresa_id: 'a', periodo: '2026-07', valor: 100 },
+              { empresa_id: 'b', periodo: '2026-07', valor: 200 },
+            ];
+      },
+      async consultarControl() {
+        return [];
+      },
+    };
+    const r = await ejecutarTool('consultar_metrica', { metrica_clave: 'margen_pct' }, ctx(alcance, ejecutor));
+    expect(r.tarjetas).toHaveLength(1);
+    expect(r.tarjetas[0]?.valor).toBeCloseTo(20, 6);
+  });
+
+  it('consultar una derivada lee sus operandos con la plantilla constante de siempre', async () => {
+    const alcance = alcanceCon(
+      [metrica('margen_bruto', 'rentabilidad'), metrica('ventas_netas_sin_iva', 'ventas')],
+      ['proavisa'],
+      [derivada('porcentaje')],
+    );
+    const ejecutor = ejecutorFalso([{ empresa_id: 'proavisa', periodo: '2026-07', valor: 50 }]);
+    const r = await ejecutarTool('consultar_metrica', { metrica_clave: 'margen_pct' }, ctx(alcance, ejecutor));
+
+    expect(ejecutor.llamadas).toHaveLength(2);
+    for (const llamada of ejecutor.llamadas) {
+      expect(llamada.sql).toContain('empresa_id = any($4::text[])');
+      expect(llamada.params[3]).toEqual(['proavisa']);
+    }
+    // 50/50 × 100 = 100
+    expect(r.tarjetas[0]?.valor).toBe(100);
+    expect(r.tarjetas[0]?.metricaNombre).toBe('% de margen');
   });
 });

@@ -70,6 +70,32 @@ export const terminoGlosarioSchema = z.object({
   dominio: z.string().trim().max(60).nullable().optional(),
 });
 
+/**
+ * Indicador compuesto por la organización sobre métricas ya certificadas.
+ * Los operandos son claves del catálogo del producto y se comprueban contra la base
+ * de control: el cliente elige de una lista, no escribe.
+ */
+export const metricaDerivadaSchema = z
+  .object({
+    clave: z
+      .string()
+      .regex(/^[a-z0-9_]+$/, 'clave inválida (minúsculas, dígitos y _)')
+      .min(3)
+      .max(60),
+    nombre: z.string().trim().min(3).max(80),
+    definicion: z.string().trim().min(3).max(400),
+    operacion: z.enum(['razon', 'porcentaje', 'suma', 'resta']),
+    operandoA: z.string().regex(/^[a-z0-9_]+$/).max(80),
+    operandoB: z.string().regex(/^[a-z0-9_]+$/).max(80),
+    unidad: z.enum(['numero', 'moneda', 'porcentaje']).default('numero'),
+    activa: z.boolean().default(true),
+  })
+  .refine((d) => d.operandoA !== d.operandoB, {
+    message: 'Los dos operandos no pueden ser la misma métrica',
+    path: ['operandoB'],
+  });
+
+export type MetricaDerivadaDto = z.infer<typeof metricaDerivadaSchema>;
 export type TerminoGlosarioDto = z.infer<typeof terminoGlosarioSchema>;
 export type CrearUsuarioDto = z.infer<typeof crearUsuarioSchema>;
 export type ActualizarUsuarioDto = z.infer<typeof actualizarUsuarioSchema>;

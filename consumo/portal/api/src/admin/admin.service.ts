@@ -25,6 +25,7 @@ import {
   AsignarTablerosDto,
   CrearPerfilDto,
   CrearUsuarioDto,
+  MetricaDerivadaDto,
   RestablecerPasswordDto,
   TerminoGlosarioDto,
 } from './admin.dto';
@@ -499,6 +500,126 @@ export class AdminService {
       [],
     );
     return filas;
+  }
+
+  // --- Métricas derivadas ---
+
+  async listarDerivadas(actor: UsuarioPortal) {
+    const pool = await this.pool(actor);
+    const resultado = await pool.query(
+      `SELECT id, clave, nombre, definicion, operacion,
+              operando_a AS "operandoA", operando_b AS "operandoB",
+              unidad, activa, creado_por AS "creadoPor"
+         FROM portal.metricas_derivadas
+        ORDER BY nombre`,
+    );
+    return resultado.rows as unknown[];
+  }
+
+  /**
+   * Comprueba que los dos operandos existan en el catálogo del producto y estén en
+   * un estado consultable.
+   *
+   * Vive aquí y no como llave foránea porque el catálogo está en OTRA base: la
+   * integridad la sostiene esta comprobación, y por eso no puede saltarse.
+   */
+  private async exigirOperandosValidos(dto: MetricaDerivadaDto): Promise<void> {
+    const filas = await this.controlDb.query(
+      `SELECT clave FROM metadatos.catalogo_metricas
+        WHERE clave = ANY($1::text[]) AND estado IN ('certificada', 'exploratoria')`,
+      [[dto.operandoA, dto.operandoB]],
+    );
+    const encontradas = new Set((filas as { clave: string }[]).map((f) => f.clave));
+    const faltan = [dto.operandoA, dto.operandoB].filter((c) => !encontradas.has(c));
+    if (faltan.length) {
+      throw new BadRequestException(
+        `No se puede componer sobre ${faltan.join(' ni ')}: no existe en el catálogo o no está certificada.`,
+      );
+    }
+  }
+
+  async crearDerivada(actor: UsuarioPortal, dto: MetricaDerivadaDto, ip: string | null) {
+    await this.exigirOperandosValidos(dto);
+    const pool = await this.pool(actor);
+    let insertado;
+    try {
+      insertado = await pool.query(
+        `INSERT INTO portal.metricas_derivadas
+           (clave, nombre, definicion, operacion, operando_a, operando_b, unidad, activa, creado_por)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id, clave, nombre, operacion, operando_a AS "operandoA", operando_b AS "operandoB"`,
+        [
+          dto.clave,
+          dto.nombre,
+          dto.definicion,
+          dto.operacion,
+          dto.operandoA,
+          dto.operandoB,
+          dto.unidad,
+          dto.activa,
+          actor.email,
+        ],
+      );
+    } catch (e) {
+      if ((e as { code?: string }).code === '23505') {
+        throw new ConflictException(`Ya existe un indicador con la clave «${dto.clave}»`);
+      }
+      throw e;
+    }
+    const creada = insertado.rows[0] as { id: number };
+    await this.auditar(pool, actor, 'crear', 'metricas_derivadas', String(creada.id), null, creada, ip);
+    return creada;
+  }
+
+  async actualizarDerivada(
+    actor: UsuarioPortal,
+    id: number,
+    dto: MetricaDerivadaDto,
+    ip: string | null,
+  ) {
+    await this.exigirOperandosValidos(dto);
+    const pool = await this.pool(actor);
+    const antes = await pool.query(`SELECT * FROM portal.metricas_derivadas WHERE id = $1`, [id]);
+    if (!antes.rowCount) throw new NotFoundException('Indicador no encontrado');
+
+    const resultado = await pool.query(
+      `UPDATE portal.metricas_derivadas
+          SET clave = $2, nombre = $3, definicion = $4, operacion = $5,
+              operando_a = $6, operando_b = $7, unidad = $8, activa = $9,
+              actualizado_en = now()
+        WHERE id = $1
+        RETURNING id, clave, nombre, operacion`,
+      [
+        id,
+        dto.clave,
+        dto.nombre,
+        dto.definicion,
+        dto.operacion,
+        dto.operandoA,
+        dto.operandoB,
+        dto.unidad,
+        dto.activa,
+      ],
+    );
+    await this.auditar(
+      pool,
+      actor,
+      'actualizar',
+      'metricas_derivadas',
+      String(id),
+      antes.rows[0],
+      resultado.rows[0],
+      ip,
+    );
+    return resultado.rows[0];
+  }
+
+  async eliminarDerivada(actor: UsuarioPortal, id: number, ip: string | null): Promise<void> {
+    const pool = await this.pool(actor);
+    const antes = await pool.query(`SELECT * FROM portal.metricas_derivadas WHERE id = $1`, [id]);
+    if (!antes.rowCount) throw new NotFoundException('Indicador no encontrado');
+    await pool.query(`DELETE FROM portal.metricas_derivadas WHERE id = $1`, [id]);
+    await this.auditar(pool, actor, 'eliminar', 'metricas_derivadas', String(id), antes.rows[0], null, ip);
   }
 
   // --- Auditoría de la organización ---

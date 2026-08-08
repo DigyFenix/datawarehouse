@@ -10,6 +10,7 @@
  * El alcance se usa DOS veces (defensa en profundidad): al construir el system
  * prompt (el LLM ni ve lo no autorizado) y al re-validar cada tool ejecutada.
  */
+import { fichaDerivada, leerDerivadas, type MetricaDerivada } from './derivadas';
 import {
   SQL_ALCANCES_USUARIO,
   SQL_DOMINIOS_METRICA,
@@ -92,7 +93,18 @@ export async function resolverAlcance(
     });
   }
 
-  return { metricas, empresas };
+  // Indicadores compuestos por la organización. Entran al alcance SOLO si el usuario
+  // puede ver ambos operandos: componer no puede ser un rodeo de autorización.
+  const derivadas = await leerDerivadas(ejecutor);
+  const porClave = new Map<string, MetricaDerivada>();
+  for (const d of derivadas) {
+    const ficha = fichaDerivada(d, metricas);
+    if (ficha === null) continue;
+    metricas.set(d.clave, ficha);
+    porClave.set(d.clave, d);
+  }
+
+  return { metricas, empresas, derivadas: porClave };
 }
 
 /** empresa_id existentes en el warehouse (solo para el rango de períodos con alcance '*'). */

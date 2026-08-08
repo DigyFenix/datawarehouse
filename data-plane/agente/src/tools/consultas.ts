@@ -81,11 +81,14 @@ export const SQL_AGING_CORTE = `
 // ---------------------------------------------------------------- BD de control
 
 /** Ficha de gobierno de una métrica (catálogo + hecho origen). */
+// `hecho_origen` guarda la CLAVE del hecho (`hecho_venta_linea`), no su id: cruzarlo
+// contra `h.id` reventaba con «operator does not exist: bigint = text» y dejaba la
+// tool de explicar inservible para TODAS las métricas.
 export const SQL_FICHA_METRICA = `
   select m.clave, m.nombre_oficial, m.definicion_negocio, m.formula, m.periodicidad,
          m.estado, m.version_definicion, h.nombre_negocio as hecho_nombre, h.grano
     from metadatos.catalogo_metricas m
-    left join metadatos.catalogo_hechos h on h.id = m.hecho_origen
+    left join metadatos.catalogo_hechos h on h.clave = m.hecho_origen
    where m.clave = $1
 `;
 
@@ -110,6 +113,14 @@ export const SQL_GLOSARIO_TENANT = `
   select termino, definicion, equivale_a
     from portal.glosario
    order by termino
+`;
+
+/** Indicadores compuestos por la organización sobre métricas ya certificadas. */
+export const SQL_DERIVADAS = `
+  select clave, nombre, definicion, operacion, operando_a, operando_b, unidad
+    from portal.metricas_derivadas
+   where activa
+   order by nombre
 `;
 
 // ---------------------------------------------------------------- tenant (portal)
