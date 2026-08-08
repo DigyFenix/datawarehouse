@@ -8,6 +8,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Put,
   Query,
   Req,
 } from '@nestjs/common';
@@ -17,7 +18,12 @@ import { RolesGlobales } from '../auth/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import type { Actor } from '../organizaciones/organizaciones.service';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
-import { crearAutorizacionSchema, CrearAutorizacionDto } from './acceso.dto';
+import {
+  crearAutorizacionSchema,
+  CrearAutorizacionDto,
+  definirAprobadorSchema,
+  DefinirAprobadorDto,
+} from './acceso.dto';
 import { AccesoService } from './acceso.service';
 
 @Controller()
@@ -33,6 +39,16 @@ export class AccesoController {
   @Get('roles')
   roles() {
     return this.servicio.listarRoles();
+  }
+
+  /** Habilita o retira a un rol la capacidad de firmar certificaciones. */
+  @Put('roles/:id/aprobador')
+  definirAprobador(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(definirAprobadorSchema)) dto: DefinirAprobadorDto,
+    @Req() req: Request,
+  ) {
+    return this.servicio.definirAprobador(id, dto.puedeAprobar, this.actor(req));
   }
 
   @Get('autorizaciones')

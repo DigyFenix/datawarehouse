@@ -27,13 +27,6 @@ import {
 import type { Actor } from '../organizaciones/organizaciones.service';
 import { ActualizarMetricaDto, CrearMetricaDto, CrearVersionDto } from './metrica.dto';
 
-/**
- * Quién puede aprobar una certificación. El plano de control se quedó con dos
- * roles (migración 129) y aprobar una definición es un acto de gobierno: lo hace
- * quien administra la plataforma o quien administra esa organización.
- */
-const ROLES_APROBADORES = ['admin_portal', 'admin_organizacion'];
-
 @Injectable()
 export class MetricasService {
   constructor(
@@ -267,11 +260,11 @@ export class MetricasService {
       .select({ id: usuarioRoles.id })
       .from(usuarioRoles)
       .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
-      .where(and(eq(usuarioRoles.usuarioId, usuario.id), inArray(roles.clave, ROLES_APROBADORES)))
+      .where(and(eq(usuarioRoles.usuarioId, usuario.id), eq(roles.puedeAprobar, true)))
       .limit(1);
     if (!rolAprobador) {
       throw new ForbiddenException(
-        'Solo un administrador de la plataforma o de la organización puede aprobar una certificación',
+        'Tu rol no está habilitado para firmar certificaciones. Un administrador puede habilitarlo en Usuarios y roles.',
       );
     }
 
@@ -305,10 +298,23 @@ export class MetricasService {
       .from(metricaAprobaciones)
       .where(eq(metricaAprobaciones.metricaVersionId, versionId));
 
+    // Quórum: cuántas de las firmas nombradas bastan. Sin configurar, se exigen
+    // TODAS — la unanimidad de siempre. Configurarlo permite que una métrica se
+    // certifique aunque un aprobador esté ausente, que era el bloqueo real: con
+    // tres nombrados y uno de vacaciones, antes no se certificaba nunca.
+    const [ficha] = await this.db
+      .select({ firmasRequeridas: catalogoMetricas.firmasRequeridas })
+      .from(catalogoMetricas)
+      .where(eq(catalogoMetricas.id, version.metricaId));
+    const firmasNecesarias = ficha?.firmasRequeridas ?? votos.length;
+    const firmasAFavor = votos.filter((v) => v.aprobado === true).length;
+
     let resultado: 'certificada' | 'rechazada' | 'pendiente' = 'pendiente';
 
     if (!aprobado) {
-      // Un rechazo detiene la certificación: versión vuelve a borrador, métrica no certificada.
+      // UN rechazo detiene la certificación aunque otros ya hayan firmado. Es
+      // asimétrico a propósito: una objeción sobre cómo se calcula una cifra debe
+      // poder parar la definición sin tener que reunir mayoría.
       resultado = 'rechazada';
       await this.db.transaction(async (tx) => {
         await tx
@@ -320,8 +326,8 @@ export class MetricasService {
           .set({ estado: 'borrador', actualizadoEn: new Date() })
           .where(eq(catalogoMetricas.id, version.metricaId));
       });
-    } else if (votos.every((v) => v.aprobado === true)) {
-      // TODOS aprobaron: certifica la versión y promueve la métrica (§9).
+    } else if (firmasAFavor >= firmasNecesarias) {
+      // Se alcanzó el quórum: certifica la versión y promueve la métrica (§9).
       resultado = 'certificada';
       await this.db.transaction(async (tx) => {
         await tx
@@ -436,7 +442,8 @@ export class MetricasService {
 
   /**
    * Valida que cada aprobador exista como usuario ACTIVO de gobierno.usuarios y tenga
-   * rol de administrador (en cualquier alcance). Falla con 400 listando los inválidos.
+   * un rol habilitado para aprobar (en cualquier alcance). Falla con 400 listando
+   * los inválidos.
    */
   private async validarAprobadores(aprobadores: string[]) {
     const encontrados = await this.db
@@ -454,7 +461,7 @@ export class MetricasService {
         .select({ usuarioId: usuarioRoles.usuarioId })
         .from(usuarioRoles)
         .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
-        .where(and(inArray(usuarioRoles.usuarioId, idsActivos), inArray(roles.clave, ROLES_APROBADORES)));
+        .where(and(inArray(usuarioRoles.usuarioId, idsActivos), eq(roles.puedeAprobar, true)));
       for (const f of filas) conRolOwner.add(f.usuarioId);
     }
 
@@ -464,7 +471,7 @@ export class MetricasService {
       if (usuarioId === undefined) {
         invalidos.push(`${email} (no existe o está inactivo)`);
       } else if (!conRolOwner.has(usuarioId)) {
-        invalidos.push(`${email} (no es administrador)`);
+        invalidos.push(`${email} (su rol no está habilitado para aprobar)`);
       }
     }
     if (invalidos.length > 0) {

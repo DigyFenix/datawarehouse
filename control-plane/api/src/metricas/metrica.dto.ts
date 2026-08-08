@@ -9,6 +9,8 @@ export const crearMetricaSchema = z.object({
   owner: z.string().min(1).max(100),
   rolesAutorizados: z.array(z.string()).default([]),
   aprobadores: z.array(z.string().email()).default([]),
+  /** Cuántas firmas bastan. Ausente = todas las nombradas (unanimidad). */
+  firmasRequeridas: z.number().int().min(1).max(20).nullable().optional(),
 });
 
 // Editar solo campos de gestión; la fórmula y el estado se cambian por versión/certificación.
@@ -19,6 +21,7 @@ export const actualizarMetricaSchema = z.object({
   owner: z.string().min(1).max(100).optional(),
   rolesAutorizados: z.array(z.string()).optional(),
   aprobadores: z.array(z.string().email()).optional(),
+  firmasRequeridas: z.number().int().min(1).max(20).nullable().optional(),
 });
 
 export const crearVersionSchema = z.object({

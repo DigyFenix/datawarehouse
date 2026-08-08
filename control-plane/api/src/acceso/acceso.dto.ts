@@ -9,3 +9,10 @@ export const crearAutorizacionSchema = z.object({
 });
 
 export type CrearAutorizacionDto = z.infer<typeof crearAutorizacionSchema>;
+
+/** Habilita o retira a un rol la capacidad de firmar certificaciones. */
+export const definirAprobadorSchema = z.object({
+  puedeAprobar: z.boolean(),
+});
+
+export type DefinirAprobadorDto = z.infer<typeof definirAprobadorSchema>;

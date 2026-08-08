@@ -11,6 +11,7 @@ import {
   integer,
   jsonb,
   pgSchema,
+  smallint,
   text,
   timestamp,
   unique,
@@ -55,6 +56,8 @@ export const roles = gobierno.table('roles', {
   clave: text('clave').notNull().unique(),
   nombre: text('nombre').notNull(),
   descripcion: text('descripcion'),
+  /** Habilita a quien tenga el rol para firmar certificaciones (migración 130). */
+  puedeAprobar: boolean('puede_aprobar').notNull().default(false),
 });
 
 export const usuarioRoles = gobierno.table(
@@ -137,6 +140,8 @@ export const catalogoMetricas = metadatos.table('catalogo_metricas', {
   estado: text('estado').notNull().default('borrador'),
   rolesAutorizados: text('roles_autorizados').array().notNull().default([]),
   aprobadores: text('aprobadores').array().notNull().default([]),
+  /** Cuántas de las firmas nombradas bastan. NULL = todas (unanimidad). */
+  firmasRequeridas: smallint('firmas_requeridas'),
   versionDefinicion: integer('version_definicion').notNull().default(1),
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
