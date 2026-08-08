@@ -13,7 +13,9 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
+import { AlcanceOrg } from '../auth/alcance-org.decorator';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
+import { RolesGlobales } from '../auth/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import type { Actor } from '../organizaciones/organizaciones.service';
 import {
@@ -48,7 +50,13 @@ export class IngestaController {
 
   private actor(req: Request): Actor {
     const u = (req as Request & { user?: UsuarioAutenticado }).user;
-    return { id: u?.id ?? null, email: u?.email ?? null, ip: req.ip ?? null };
+    return {
+      id: u?.id ?? null,
+      email: u?.email ?? null,
+      ip: req.ip ?? null,
+      esGlobal: u?.esGlobal ?? false,
+      orgIds: u?.orgIds ?? [],
+    };
   }
 
   // --- Políticas ---
@@ -59,6 +67,7 @@ export class IngestaController {
    * @throws 400 si falta o no es un id válido · 401 sin token
    */
   @Get('politicas')
+  @AlcanceOrg({ desde: 'query' })
   listarPoliticas(
     @Query(new ZodValidationPipe(filtroOrganizacionSchema)) filtro: FiltroOrganizacionDto,
   ) {
@@ -66,6 +75,7 @@ export class IngestaController {
   }
 
   @Post('politicas')
+  @AlcanceOrg({ desde: 'body' })
   crearPolitica(
     @Body(new ZodValidationPipe(crearPoliticaSchema)) dto: CrearPoliticaDto,
     @Req() req: Request,
@@ -96,6 +106,7 @@ export class IngestaController {
    * @throws 400 si falta o no es un id válido · 401 sin token
    */
   @Get('planes')
+  @AlcanceOrg({ desde: 'query' })
   listarPlanes(
     @Query(new ZodValidationPipe(filtroOrganizacionSchema)) filtro: FiltroOrganizacionDto,
   ) {
@@ -103,6 +114,7 @@ export class IngestaController {
   }
 
   @Post('planes')
+  @AlcanceOrg({ desde: 'body' })
   crearPlan(@Body(new ZodValidationPipe(crearPlanSchema)) dto: CrearPlanDto, @Req() req: Request) {
     return this.servicio.crearPlan(dto, this.actor(req));
   }
@@ -132,6 +144,7 @@ export class IngestaController {
    * @throws 400 si falta cualquiera de los dos · 401 sin token
    */
   @Get('campos')
+  @AlcanceOrg({ desde: 'query' })
   listarCampos(@Query(new ZodValidationPipe(filtroCamposSchema)) filtro: FiltroCamposDto) {
     return this.servicio.listarCampos(filtro.organizacionId, filtro.objeto);
   }
@@ -146,6 +159,7 @@ export class IngestaController {
   }
 
   @Post('descubrir')
+  @AlcanceOrg({ desde: 'body' })
   descubrir(
     @Body(new ZodValidationPipe(descubrirSchema)) dto: DescubrirDto,
     @Req() req: Request,
@@ -154,6 +168,7 @@ export class IngestaController {
   }
 
   @Post('extraer')
+  @AlcanceOrg({ desde: 'body' })
   extraer(
     @Body(new ZodValidationPipe(extraerSchema)) dto: ExtraerDto,
     @Req() req: Request,
@@ -162,6 +177,7 @@ export class IngestaController {
   }
 
   @Post('transformar')
+  @AlcanceOrg({ desde: 'body' })
   transformar(
     @Body(new ZodValidationPipe(transformarSchema)) dto: TransformarDto,
     @Req() req: Request,
@@ -169,13 +185,14 @@ export class IngestaController {
     return this.servicio.transformar(dto, this.actor(req));
   }
 
-  // --- Dominios ---
+  // --- Dominios (catálogo GLOBAL del producto: escritura solo roles globales) ---
   @Get('dominios')
   listarDominios() {
     return this.servicio.listarDominios();
   }
 
   @Post('dominios')
+  @RolesGlobales('admin_portal', 'data_steward')
   crearDominio(
     @Body(new ZodValidationPipe(crearDominioSchema)) dto: CrearDominioDto,
     @Req() req: Request,

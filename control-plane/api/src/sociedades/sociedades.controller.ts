@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
+import { AlcanceOrg } from '../auth/alcance-org.decorator';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import type { Actor } from '../organizaciones/organizaciones.service';
@@ -19,7 +20,13 @@ export class SociedadesController {
 
   private actor(req: Request): Actor {
     const u = (req as Request & { user?: UsuarioAutenticado }).user;
-    return { id: u?.id ?? null, email: u?.email ?? null, ip: req.ip ?? null };
+    return {
+      id: u?.id ?? null,
+      email: u?.email ?? null,
+      ip: req.ip ?? null,
+      esGlobal: u?.esGlobal ?? false,
+      orgIds: u?.orgIds ?? [],
+    };
   }
 
   /**
@@ -29,11 +36,13 @@ export class SociedadesController {
    * @throws 400 si falta o no es un id válido · 401 sin token
    */
   @Get()
+  @AlcanceOrg({ desde: 'query' })
   listar(@Query(new ZodValidationPipe(filtroSociedadesSchema)) filtro: FiltroSociedadesDto) {
     return this.servicio.listar(filtro.organizacionId);
   }
 
   @Post()
+  @AlcanceOrg({ desde: 'body' })
   crear(@Body(new ZodValidationPipe(crearSociedadSchema)) dto: CrearSociedadDto, @Req() req: Request) {
     return this.servicio.crear(dto, this.actor(req));
   }

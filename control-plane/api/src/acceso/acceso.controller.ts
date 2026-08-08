@@ -1,4 +1,4 @@
-/** Endpoints de roles y autorizaciones. Requieren token (guard global). */
+/** Endpoints de roles y autorizaciones. Gestión del producto: rol global admin_portal. */
 import {
   Body,
   Controller,
@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
+import { RolesGlobales } from '../auth/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import type { Actor } from '../organizaciones/organizaciones.service';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
@@ -20,6 +21,7 @@ import { crearAutorizacionSchema, CrearAutorizacionDto } from './acceso.dto';
 import { AccesoService } from './acceso.service';
 
 @Controller()
+@RolesGlobales('admin_portal')
 export class AccesoController {
   constructor(private readonly servicio: AccesoService) {}
 

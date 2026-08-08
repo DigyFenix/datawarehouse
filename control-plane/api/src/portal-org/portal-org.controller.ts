@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
+import { AlcanceOrg } from '../auth/alcance-org.decorator';
+import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { Actor } from '../organizaciones/organizaciones.service';
 import {
@@ -25,16 +27,20 @@ import {
 } from './portal-org.dto';
 import { PortalOrgService } from './portal-org.service';
 
+// Todas las rutas cuelgan de /organizaciones/:id/portal: el alcance se declara una vez.
 @Controller('organizaciones/:id/portal')
+@AlcanceOrg({ desde: 'param', campo: 'id' })
 export class PortalOrgController {
   constructor(private readonly servicio: PortalOrgService) {}
 
   private actor(req: Request): Actor {
-    const usuario = (req as Request & { user?: { id: number; email: string } }).user;
+    const u = (req as Request & { user?: UsuarioAutenticado }).user;
     return {
-      id: usuario?.id ?? null,
-      email: usuario?.email ?? null,
+      id: u?.id ?? null,
+      email: u?.email ?? null,
       ip: req.ip ?? null,
+      esGlobal: u?.esGlobal ?? false,
+      orgIds: u?.orgIds ?? [],
     };
   }
 

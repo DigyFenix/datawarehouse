@@ -87,6 +87,10 @@ export const auditoria = gobierno.table('auditoria', {
   ocurridoEn: timestamp('ocurrido_en', { withTimezone: true }).notNull().defaultNow(),
   usuarioId: bigint('usuario_id', { mode: 'number' }),
   usuarioEmail: text('usuario_email'),
+  // Organización afectada (migración 117). NULL = evento global (login, bootstrap,
+  // catálogos del producto); esos solo los ven roles globales. Sin FK: la evidencia
+  // sobrevive al borrado de la organización.
+  organizacionId: bigint('organizacion_id', { mode: 'number' }),
   accion: text('accion').notNull(),
   entidad: text('entidad').notNull(),
   entidadId: text('entidad_id'),
@@ -217,19 +221,26 @@ export const entornosEjecucion = metadatos.table('entornos_ejecucion', {
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const conexiones = gobierno.table('conexiones', {
-  id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
-  nombre: text('nombre').notNull().unique(),
-  entornoClave: text('entorno_clave').notNull(),
-  host: text('host').notNull(),
-  puerto: integer('puerto').notNull(),
-  baseDatos: text('base_datos'),
-  secretoRef: text('secreto_ref').notNull(),
-  activo: boolean('activo').notNull().default(true),
-  notas: text('notas'),
-  creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
-  actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
-});
+// Conexión POR ORGANIZACIÓN (migración 116): sin el eje de tenant, cualquier usuario
+// del portal veía host/puerto/secreto_ref de todos. El nombre es único por organización.
+export const conexiones = gobierno.table(
+  'conexiones',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    organizacionId: bigint('organizacion_id', { mode: 'number' }).notNull(),
+    nombre: text('nombre').notNull(),
+    entornoClave: text('entorno_clave').notNull(),
+    host: text('host').notNull(),
+    puerto: integer('puerto').notNull(),
+    baseDatos: text('base_datos'),
+    secretoRef: text('secreto_ref').notNull(),
+    activo: boolean('activo').notNull().default(true),
+    notas: text('notas'),
+    creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
+    actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('uq_conexiones_org_nombre').on(t.organizacionId, t.nombre)],
+);
 
 export const sociedades = gobierno.table('sociedades', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),

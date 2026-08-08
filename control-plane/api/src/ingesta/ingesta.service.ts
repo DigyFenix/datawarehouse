@@ -14,6 +14,7 @@ import {
 import { and, eq, inArray } from 'drizzle-orm';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { exigirAccesoOrg } from '../common/acceso';
 import { DB, DRIZZLE } from '../db/drizzle.module';
 import {
   campoIngesta,
@@ -84,6 +85,7 @@ export class IngestaService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: dto.organizacionId,
       accion: 'crear',
       entidad: 'politica_ingesta',
       entidadId: String(creado.id),
@@ -95,6 +97,7 @@ export class IngestaService {
   async actualizarPolitica(id: number, dto: ActualizarPoliticaDto, actor: Actor) {
     const [antes] = await this.db.select().from(politicaIngesta).where(eq(politicaIngesta.id, id));
     if (!antes) throw new NotFoundException(`Política ${id} no encontrada`);
+    exigirAccesoOrg(actor, antes.organizacionId); // IDOR por PK: la fila debe ser de una org del actor
     const [act] = await this.db
       .update(politicaIngesta)
       .set({ ...dto, actualizadoEn: new Date() })
@@ -104,6 +107,7 @@ export class IngestaService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: antes.organizacionId,
       accion: 'actualizar',
       entidad: 'politica_ingesta',
       entidadId: String(id),
@@ -116,11 +120,13 @@ export class IngestaService {
   async eliminarPolitica(id: number, actor: Actor): Promise<void> {
     const [antes] = await this.db.select().from(politicaIngesta).where(eq(politicaIngesta.id, id));
     if (!antes) throw new NotFoundException(`Política ${id} no encontrada`);
+    exigirAccesoOrg(actor, antes.organizacionId);
     await this.db.delete(politicaIngesta).where(eq(politicaIngesta.id, id));
     await this.auditoria.registrar({
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: antes.organizacionId,
       accion: 'eliminar',
       entidad: 'politica_ingesta',
       entidadId: String(id),
@@ -200,6 +206,7 @@ export class IngestaService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: dto.organizacionId,
       accion: 'crear',
       entidad: 'plan_ingesta',
       entidadId: String(creado.id),
@@ -211,6 +218,7 @@ export class IngestaService {
   async actualizarPlan(id: number, dto: ActualizarPlanDto, actor: Actor) {
     const [antes] = await this.db.select().from(planIngesta).where(eq(planIngesta.id, id));
     if (!antes) throw new NotFoundException(`Plan ${id} no encontrado`);
+    exigirAccesoOrg(actor, antes.organizacionId);
     if (dto.objetos) await this.validarObjetos(antes.organizacionId, dto.objetos);
     if (dto.empresas) await this.validarSociedades(antes.organizacionId, dto.empresas);
     const [act] = await this.db
@@ -222,6 +230,7 @@ export class IngestaService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: antes.organizacionId,
       accion: 'actualizar',
       entidad: 'plan_ingesta',
       entidadId: String(id),
@@ -234,11 +243,13 @@ export class IngestaService {
   async eliminarPlan(id: number, actor: Actor): Promise<void> {
     const [antes] = await this.db.select().from(planIngesta).where(eq(planIngesta.id, id));
     if (!antes) throw new NotFoundException(`Plan ${id} no encontrado`);
+    exigirAccesoOrg(actor, antes.organizacionId);
     await this.db.delete(planIngesta).where(eq(planIngesta.id, id));
     await this.auditoria.registrar({
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: antes.organizacionId,
       accion: 'eliminar',
       entidad: 'plan_ingesta',
       entidadId: String(id),
@@ -289,6 +300,7 @@ export class IngestaService {
   async actualizarCampo(id: number, dto: ActualizarCampoDto, actor: Actor) {
     const [antes] = await this.db.select().from(campoIngesta).where(eq(campoIngesta.id, id));
     if (!antes) throw new NotFoundException(`Campo ${id} no encontrado`);
+    exigirAccesoOrg(actor, antes.organizacionId);
     // REGLA DURA (decisión de Edwin, 2026-08-01): un UDF SIN DATOS no se incluye ni se mapea.
     // Cada instalación trae decenas de U_* vacíos; incluirlos satura Bronce y oro.campo_usuario
     // sin aportar nada. `tiene_datos` lo determina el perfilado de Descubrir: si el campo se
@@ -308,6 +320,7 @@ export class IngestaService {
       .returning();
     await this.auditoria.registrar({
       usuarioId: actor.id, usuarioEmail: actor.email, ip: actor.ip,
+      organizacionId: antes.organizacionId,
       accion: 'actualizar', entidad: 'campo_ingesta', entidadId: String(id), antes, despues: act,
     });
     return act;
@@ -368,6 +381,7 @@ export class IngestaService {
     });
     await this.auditoria.registrar({
       usuarioId: actor.id, usuarioEmail: actor.email, ip: actor.ip,
+      organizacionId: dto.organizacionId,
       accion: 'descubrir', entidad: 'campo_ingesta', entidadId: dto.objeto, despues: data,
     });
     return data;
@@ -379,6 +393,7 @@ export class IngestaService {
     const data = await this.llamarWorker('extraer', { objeto: dto.objeto, sociedad: dto.sociedad });
     await this.auditoria.registrar({
       usuarioId: actor.id, usuarioEmail: actor.email, ip: actor.ip,
+      organizacionId: dto.organizacionId,
       accion: 'extraer', entidad: 'bronce', entidadId: dto.objeto, despues: data,
     });
     return data;
@@ -401,6 +416,7 @@ export class IngestaService {
     });
     await this.auditoria.registrar({
       usuarioId: actor.id, usuarioEmail: actor.email, ip: actor.ip,
+      organizacionId: dto.organizacionId,
       accion: 'transformar', entidad: 'oro', entidadId: dto.objeto, despues: data,
     });
     return data;

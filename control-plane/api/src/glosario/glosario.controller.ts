@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
+import { RolesGlobales } from '../auth/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import type { Actor } from '../organizaciones/organizaciones.service';
@@ -37,12 +38,15 @@ export class GlosarioController {
     return this.servicio.listar();
   }
 
+  // Escritura del glosario (catálogo del producto): solo roles globales.
   @Post()
+  @RolesGlobales('admin_portal', 'data_steward')
   crear(@Body(new ZodValidationPipe(crearTerminoSchema)) dto: CrearTerminoDto, @Req() req: Request) {
     return this.servicio.crear(dto, this.actor(req));
   }
 
   @Put(':id')
+  @RolesGlobales('admin_portal', 'data_steward')
   actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(actualizarTerminoSchema)) dto: ActualizarTerminoDto,
@@ -52,6 +56,7 @@ export class GlosarioController {
   }
 
   @Delete(':id')
+  @RolesGlobales('admin_portal', 'data_steward')
   @HttpCode(204)
   eliminar(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.servicio.eliminar(id, this.actor(req));

@@ -6,11 +6,12 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, max } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, max, ne } from 'drizzle-orm';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { DB, DRIZZLE } from '../db/drizzle.module';
@@ -19,6 +20,9 @@ import {
   catalogoMetricas,
   metricaAprobaciones,
   metricaVersiones,
+  roles,
+  usuarioRoles,
+  usuarios,
 } from '../db/schema';
 import type { Actor } from '../organizaciones/organizaciones.service';
 import { ActualizarMetricaDto, CrearMetricaDto, CrearVersionDto } from './metrica.dto';
@@ -157,12 +161,53 @@ export class MetricasService {
     actor: Actor,
   ) {
     const metrica = (await this.obtener(metricaId)) as { aprobadores: string[] };
-    await this.obtenerVersion(metricaId, versionId); // valida que la versión pertenece a la métrica
+    const version = await this.obtenerVersion(metricaId, versionId); // valida que la versión pertenece a la métrica
+
+    // Solo una versión en borrador se envía a revisión. Una certificada jamás se
+    // re-envía: eso resetearía sus votos (§9: nueva versión + recertificación).
+    if (version.estado === 'en_revision') {
+      throw new ConflictException('La versión ya está en revisión');
+    }
+    if (version.estado === 'certificada') {
+      throw new BadRequestException('Una versión certificada no se re-envía: crea una versión nueva');
+    }
+    if (version.estado !== 'borrador') {
+      throw new BadRequestException(
+        `Solo una versión en borrador se puede enviar a revisión (estado actual: ${version.estado})`,
+      );
+    }
+
+    // El índice único parcial uq_metrica_una_en_revision garantiza esto en BD;
+    // se valida antes para dar un error legible en lugar de un fallo de constraint.
+    const [otraEnRevision] = await this.db
+      .select({ id: metricaVersiones.id, version: metricaVersiones.version })
+      .from(metricaVersiones)
+      .where(
+        and(
+          eq(metricaVersiones.metricaId, metricaId),
+          eq(metricaVersiones.estado, 'en_revision'),
+          ne(metricaVersiones.id, versionId),
+        ),
+      );
+    if (otraEnRevision) {
+      throw new ConflictException(
+        `La métrica ya tiene la versión ${otraEnRevision.version} en revisión; resuélvela antes de enviar otra`,
+      );
+    }
 
     const aprobadores = aprobadoresParam ?? metrica.aprobadores;
     if (!aprobadores || aprobadores.length === 0) {
       throw new BadRequestException('La métrica no tiene aprobadores definidos');
     }
+
+    // Separación de funciones: quien crea la versión no puede estar entre sus aprobadores.
+    if (aprobadores.includes(version.creadoPor)) {
+      throw new BadRequestException(
+        'Quien crea una versión no puede certificarla (separación de funciones)',
+      );
+    }
+
+    await this.validarAprobadores(aprobadores);
 
     await this.db.transaction(async (tx) => {
       await tx
@@ -200,6 +245,25 @@ export class MetricasService {
   async votar(versionId: number, aprobado: boolean, comentario: string | undefined, actor: Actor) {
     const email = actor.email;
     if (!email) throw new BadRequestException('No se pudo identificar al aprobador');
+
+    // Revalida en el momento del voto: el aprobador debe seguir activo y con rol
+    // data_owner (pudo perderlos después de que se envió la versión a revisión).
+    const [usuario] = await this.db
+      .select({ id: usuarios.id, activo: usuarios.activo })
+      .from(usuarios)
+      .where(eq(usuarios.email, email));
+    if (!usuario || !usuario.activo) {
+      throw new ForbiddenException('Tu usuario no existe o está inactivo: no puedes votar');
+    }
+    const [rolOwner] = await this.db
+      .select({ id: usuarioRoles.id })
+      .from(usuarioRoles)
+      .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
+      .where(and(eq(usuarioRoles.usuarioId, usuario.id), eq(roles.clave, 'data_owner')))
+      .limit(1);
+    if (!rolOwner) {
+      throw new ForbiddenException('Necesitas el rol data_owner para votar una certificación');
+    }
 
     const [voto] = await this.db
       .select()
@@ -277,6 +341,125 @@ export class MetricasService {
       despues: { aprobado, resultado, comentario },
     });
     return { versionId, resultado };
+  }
+
+  /**
+   * Depreca una métrica certificada (y su versión vigente). No hay reactivación:
+   * el único camino de vuelta es nueva versión + recertificación (§9).
+   */
+  async deprecar(metricaId: number, actor: Actor) {
+    const [antes] = await this.db
+      .select()
+      .from(catalogoMetricas)
+      .where(eq(catalogoMetricas.id, metricaId));
+    if (!antes) throw new NotFoundException(`Métrica ${metricaId} no encontrada`);
+    if (antes.estado !== 'certificada') {
+      throw new BadRequestException('Solo una métrica certificada se puede deprecar');
+    }
+
+    // Versión vigente = la certificada de mayor número de versión.
+    const [vigente] = await this.db
+      .select({ id: metricaVersiones.id, version: metricaVersiones.version })
+      .from(metricaVersiones)
+      .where(
+        and(eq(metricaVersiones.metricaId, metricaId), eq(metricaVersiones.estado, 'certificada')),
+      )
+      .orderBy(desc(metricaVersiones.version))
+      .limit(1);
+
+    const despues = await this.db.transaction(async (tx) => {
+      const [act] = await tx
+        .update(catalogoMetricas)
+        .set({ estado: 'deprecada', actualizadoEn: new Date() })
+        .where(eq(catalogoMetricas.id, metricaId))
+        .returning();
+      if (vigente) {
+        await tx
+          .update(metricaVersiones)
+          .set({ estado: 'deprecada' })
+          .where(eq(metricaVersiones.id, vigente.id));
+      }
+      return act;
+    });
+
+    await this.auditoria.registrar({
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      ip: actor.ip,
+      accion: 'deprecar',
+      entidad: 'catalogo_metricas',
+      entidadId: String(metricaId),
+      antes,
+      despues,
+    });
+    return despues;
+  }
+
+  /** Versiones en revisión donde el actor tiene un voto pendiente. */
+  async pendientesDeMiVoto(actor: Actor) {
+    const email = actor.email;
+    if (!email) throw new BadRequestException('No se pudo identificar al aprobador');
+
+    return this.db
+      .select({
+        metricaId: catalogoMetricas.id,
+        clave: catalogoMetricas.clave,
+        nombreOficial: catalogoMetricas.nombreOficial,
+        versionId: metricaVersiones.id,
+        version: metricaVersiones.version,
+        formula: metricaVersiones.formula,
+        definicionNegocio: metricaVersiones.definicionNegocio,
+        creadoPor: metricaVersiones.creadoPor,
+        creadoEn: metricaVersiones.creadoEn,
+      })
+      .from(metricaAprobaciones)
+      .innerJoin(metricaVersiones, eq(metricaVersiones.id, metricaAprobaciones.metricaVersionId))
+      .innerJoin(catalogoMetricas, eq(catalogoMetricas.id, metricaVersiones.metricaId))
+      .where(
+        and(
+          eq(metricaAprobaciones.aprobador, email),
+          isNull(metricaAprobaciones.aprobado),
+          eq(metricaVersiones.estado, 'en_revision'),
+        ),
+      );
+  }
+
+  /**
+   * Valida que cada aprobador exista como usuario ACTIVO de gobierno.usuarios y tenga
+   * rol data_owner (en cualquier alcance). Falla con 400 listando los emails inválidos.
+   */
+  private async validarAprobadores(aprobadores: string[]) {
+    const encontrados = await this.db
+      .select({ id: usuarios.id, email: usuarios.email, activo: usuarios.activo })
+      .from(usuarios)
+      .where(inArray(usuarios.email, aprobadores));
+    const activosPorEmail = new Map(
+      encontrados.filter((u) => u.activo).map((u) => [u.email, u.id]),
+    );
+
+    const idsActivos = [...activosPorEmail.values()];
+    const conRolOwner = new Set<number>();
+    if (idsActivos.length > 0) {
+      const filas = await this.db
+        .select({ usuarioId: usuarioRoles.usuarioId })
+        .from(usuarioRoles)
+        .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
+        .where(and(inArray(usuarioRoles.usuarioId, idsActivos), eq(roles.clave, 'data_owner')));
+      for (const f of filas) conRolOwner.add(f.usuarioId);
+    }
+
+    const invalidos: string[] = [];
+    for (const email of aprobadores) {
+      const usuarioId = activosPorEmail.get(email);
+      if (usuarioId === undefined) {
+        invalidos.push(`${email} (no existe o está inactivo)`);
+      } else if (!conRolOwner.has(usuarioId)) {
+        invalidos.push(`${email} (no tiene rol data_owner)`);
+      }
+    }
+    if (invalidos.length > 0) {
+      throw new BadRequestException(`Aprobadores inválidos: ${invalidos.join(', ')}`);
+    }
   }
 
   private async obtenerVersion(metricaId: number, versionId: number) {

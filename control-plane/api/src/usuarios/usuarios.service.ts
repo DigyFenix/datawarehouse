@@ -1,7 +1,7 @@
 /** Gestión de usuarios del portal. Contraseñas siempre con hash argon2 (nunca en claro). */
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { Actor } from '../organizaciones/organizaciones.service';
@@ -150,5 +150,46 @@ export class UsuariosService {
       despues: { email },
     });
     return 'creado';
+  }
+
+  /**
+   * Garantiza que el usuario de arranque tenga admin_portal con ALCANCE GLOBAL
+   * (organizacion_id NULL). Idempotente: el UNIQUE trata los NULL como distintos,
+   * así que la deduplicación se hace con SELECT explícito, no con onConflict.
+   */
+  async asegurarRolAdminGlobal(email: string): Promise<void> {
+    const [usuario] = await this.db
+      .select({ id: usuarios.id })
+      .from(usuarios)
+      .where(eq(usuarios.email, email));
+    if (!usuario) return;
+
+    const [rol] = await this.db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(eq(roles.clave, 'admin_portal'));
+    if (!rol) return;
+
+    const [existente] = await this.db
+      .select({ id: usuarioRoles.id })
+      .from(usuarioRoles)
+      .where(
+        and(
+          eq(usuarioRoles.usuarioId, usuario.id),
+          eq(usuarioRoles.rolId, rol.id),
+          isNull(usuarioRoles.organizacionId),
+        ),
+      );
+    if (existente) return;
+
+    await this.db
+      .insert(usuarioRoles)
+      .values({ usuarioId: usuario.id, rolId: rol.id, organizacionId: null });
+    await this.auditoria.registrar({
+      accion: 'bootstrap_rol_admin',
+      entidad: 'usuario_roles',
+      entidadId: String(usuario.id),
+      despues: { usuarioId: usuario.id, rolId: rol.id, organizacionId: null },
+    });
   }
 }

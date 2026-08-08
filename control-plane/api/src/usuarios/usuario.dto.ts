@@ -14,7 +14,8 @@ export const actualizarUsuarioSchema = z.object({
 
 export const asignarRolSchema = z.object({
   rolId: z.number().int().positive(),
-  organizacionId: z.number().int().positive().optional(),
+  /** Alcance del rol: id de organización, o null/ausente = alcance global. */
+  organizacionId: z.number().int().positive().nullable().optional(),
 });
 
 export type CrearUsuarioDto = z.infer<typeof crearUsuarioSchema>;

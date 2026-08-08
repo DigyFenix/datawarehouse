@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
+import { AlcanceOrg } from '../auth/alcance-org.decorator';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import type { Actor } from '../organizaciones/organizaciones.service';
@@ -18,20 +19,29 @@ export class ConexionesController {
 
   private actor(req: Request): Actor {
     const u = (req as Request & { user?: UsuarioAutenticado }).user;
-    return { id: u?.id ?? null, email: u?.email ?? null, ip: req.ip ?? null };
+    return {
+      id: u?.id ?? null,
+      email: u?.email ?? null,
+      ip: req.ip ?? null,
+      esGlobal: u?.esGlobal ?? false,
+      orgIds: u?.orgIds ?? [],
+    };
   }
 
+  /** Catálogo del motor (no es por tenant). */
   @Get('entornos')
   listarEntornos() {
     return this.servicio.listarEntornos();
   }
 
+  /** Conexiones visibles para el actor (rol global = todas; si no, las de su membresía). */
   @Get('conexiones')
-  listar() {
-    return this.servicio.listar();
+  listar(@Req() req: Request) {
+    return this.servicio.listar(this.actor(req));
   }
 
   @Post('conexiones')
+  @AlcanceOrg({ desde: 'body' })
   crear(@Body(new ZodValidationPipe(crearConexionSchema)) dto: CrearConexionDto, @Req() req: Request) {
     return this.servicio.crear(dto, this.actor(req));
   }

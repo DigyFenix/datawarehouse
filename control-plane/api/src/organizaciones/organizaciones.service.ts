@@ -2,19 +2,26 @@
 import { randomBytes } from 'node:crypto';
 
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { Pool } from 'pg';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { orgIdsVisibles } from '../common/acceso';
 import { DB, DRIZZLE, PG_POOL } from '../db/drizzle.module';
 import { organizaciones } from '../db/schema';
 import { ActualizarOrganizacionDto, CrearOrganizacionDto, SubirLogoDto } from './organizacion.dto';
 
-/** Actor que ejecuta la acción (viene del token de auth; null hasta que P4 conecte el guard). */
+/**
+ * Actor que ejecuta la acción (sesión fresca que puebla JwtAuthGuard).
+ * `esGlobal`/`orgIds` alimentan el scoping por organización (exigirAccesoOrg):
+ * quedan opcionales para no romper llamadas internas (bootstrap) que auditan sin sesión.
+ */
 export interface Actor {
   id: number | null;
   email: string | null;
   ip?: string | null;
+  esGlobal?: boolean;
+  orgIds?: number[];
 }
 
 @Injectable()
@@ -25,8 +32,12 @@ export class OrganizacionesService {
     private readonly auditoria: AuditoriaService,
   ) {}
 
-  listar() {
-    return this.db.select().from(organizaciones);
+  /** Organizaciones visibles para el actor: rol global = todas; si no, solo su membresía. */
+  async listar(actor: Actor) {
+    const ids = orgIdsVisibles(actor);
+    if (ids === null) return this.db.select().from(organizaciones);
+    if (ids.length === 0) return [];
+    return this.db.select().from(organizaciones).where(inArray(organizaciones.id, ids));
   }
 
   async obtener(id: number) {
@@ -51,6 +62,7 @@ export class OrganizacionesService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: creada.id,
       accion: 'crear',
       entidad: 'organizaciones',
       entidadId: String(creada.id),
@@ -71,6 +83,7 @@ export class OrganizacionesService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: id,
       accion: 'actualizar',
       entidad: 'organizaciones',
       entidadId: String(id),
@@ -105,6 +118,7 @@ export class OrganizacionesService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: id,
       accion: 'actualizar',
       entidad: 'organizaciones_logo',
       entidadId: String(id),
@@ -126,6 +140,7 @@ export class OrganizacionesService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: id,
       accion: 'eliminar',
       entidad: 'organizaciones_logo',
       entidadId: String(id),
@@ -170,6 +185,7 @@ export class OrganizacionesService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: id,
       accion: 'eliminar',
       entidad: 'organizaciones',
       entidadId: String(id),

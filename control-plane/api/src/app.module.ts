@@ -6,6 +6,8 @@ import { AccesoModule } from './acceso/acceso.module';
 import { AuditoriaModule } from './auditoria/auditoria.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { OrganizacionGuard } from './auth/organizacion.guard';
+import { RolesGuard } from './auth/roles.guard';
 import { validarEnv } from './config/env';
 import { CanonicoModule } from './canonico/canonico.module';
 import { ConexionesModule } from './conexiones/conexiones.module';
@@ -43,8 +45,11 @@ import { UsuariosModule } from './usuarios/usuarios.module';
   ],
   controllers: [HealthController],
   providers: [
-    // Guard de autenticación global: exige JWT salvo rutas @Publico().
+    // Guards globales EN ORDEN: (1) autenticación + sesión fresca de BD,
+    // (2) autorización por rol, (3) membresía por organización (cierre del IDOR).
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: OrganizacionGuard },
   ],
 })
 export class AppModule {}

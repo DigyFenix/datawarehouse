@@ -8,6 +8,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { and, eq } from 'drizzle-orm';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { exigirAccesoOrg } from '../common/acceso';
 import { DB, DRIZZLE } from '../db/drizzle.module';
 import { nitsAfiliados, organizaciones } from '../db/schema';
 import type { Actor } from '../organizaciones/organizaciones.service';
@@ -70,6 +71,7 @@ export class NitsAfiliadosService {
 
     await this.auditoria.registrar({
       usuarioId: actor.id, usuarioEmail: actor.email, ip: actor.ip,
+      organizacionId: dto.organizacionId,
       accion: 'crear', entidad: 'nits_afiliados',
       entidadId: `org:${dto.organizacionId}`,
       despues: { nits: creados.map((c) => c.nit), omitidos: dto.nits.length - creados.length },
@@ -80,6 +82,7 @@ export class NitsAfiliadosService {
   async actualizar(id: number, dto: ActualizarNitAfiliadoDto, actor: Actor) {
     const [antes] = await this.db.select().from(nitsAfiliados).where(eq(nitsAfiliados.id, id));
     if (!antes) throw new NotFoundException(`NIT afiliado ${id} no encontrado`);
+    exigirAccesoOrg(actor, antes.organizacionId); // IDOR por PK: la fila debe ser de una org del actor
     if (dto.nit !== undefined && normalizarNit(dto.nit) === '') {
       throw new BadRequestException('El NIT queda vacío tras normalizar');
     }
@@ -90,6 +93,7 @@ export class NitsAfiliadosService {
       .returning();
     await this.auditoria.registrar({
       usuarioId: actor.id, usuarioEmail: actor.email, ip: actor.ip,
+      organizacionId: antes.organizacionId,
       accion: 'actualizar', entidad: 'nits_afiliados', entidadId: String(id), antes, despues: act,
     });
     return act;
@@ -98,11 +102,13 @@ export class NitsAfiliadosService {
   async eliminar(id: number, actor: Actor): Promise<void> {
     const [antes] = await this.db.select().from(nitsAfiliados).where(eq(nitsAfiliados.id, id));
     if (!antes) throw new NotFoundException(`NIT afiliado ${id} no encontrado`);
+    exigirAccesoOrg(actor, antes.organizacionId);
     await this.db
       .delete(nitsAfiliados)
       .where(and(eq(nitsAfiliados.id, id), eq(nitsAfiliados.organizacionId, antes.organizacionId)));
     await this.auditoria.registrar({
       usuarioId: actor.id, usuarioEmail: actor.email, ip: actor.ip,
+      organizacionId: antes.organizacionId,
       accion: 'eliminar', entidad: 'nits_afiliados', entidadId: String(id), antes,
     });
   }

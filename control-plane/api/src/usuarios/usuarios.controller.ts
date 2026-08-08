@@ -1,4 +1,7 @@
-/** Endpoints REST de usuarios y su asignación de roles. Requieren token (guard global). */
+/**
+ * Endpoints REST de usuarios y su asignación de roles. Gestión del producto:
+ * reservados al rol global admin_portal (el perfil propio vive en GET /auth/perfil).
+ */
 import {
   Body,
   Controller,
@@ -13,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
+import { RolesGlobales } from '../auth/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import type { Actor } from '../organizaciones/organizaciones.service';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
@@ -27,6 +31,7 @@ import {
 import { UsuariosService } from './usuarios.service';
 
 @Controller('usuarios')
+@RolesGlobales('admin_portal')
 export class UsuariosController {
   constructor(private readonly servicio: UsuariosService) {}
 
@@ -69,6 +74,16 @@ export class UsuariosController {
 
   @Post(':id/roles')
   asignarRol(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(asignarRolSchema)) dto: AsignarRolDto,
+    @Req() req: Request,
+  ) {
+    return this.servicio.asignarRol(id, dto, this.actor(req));
+  }
+
+  /** Alias PUT de la asignación (idempotente: si ya existe, no duplica). */
+  @Put(':id/roles')
+  asignarRolPut(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(asignarRolSchema)) dto: AsignarRolDto,
     @Req() req: Request,

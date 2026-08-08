@@ -21,5 +21,8 @@ export class BootstrapService implements OnApplicationBootstrap {
     if (resultado === 'creado') {
       this.logger.warn(`Usuario admin de arranque creado: ${email}. Cambia su contraseña.`);
     }
+    // Con o sin creación: el admin de arranque debe tener admin_portal GLOBAL
+    // (organizacion_id NULL); sin esa fila nadie pasa @RolesGlobales.
+    await this.usuarios.asegurarRolAdminGlobal(email);
   }
 }
