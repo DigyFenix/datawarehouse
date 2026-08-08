@@ -81,6 +81,29 @@ function cortePorDefecto(): string {
   return `${new Date().getFullYear()}-01-01`;
 }
 
+/**
+ * El corte entra al seed como literal SQL (`:'corte'`), así que se valida aquí y
+ * no solo en el DTO: el servicio es invocable desde otro punto del portal sin
+ * pasar por el pipe de Zod, igual que el código de organización y el companyId
+ * que ya se revisan en este mismo método.
+ *
+ * El patrón por sí solo no alcanza — `2026-13-45` lo cumple y no es una fecha —
+ * así que se reconstruye y se compara: si el calendario la normalizó a otra, no
+ * existía.
+ */
+function validarCorte(corte: string): void {
+  const fecha = new Date(`${corte}T00:00:00Z`);
+  const esValida =
+    /^\d{4}-\d{2}-\d{2}$/.test(corte) &&
+    !Number.isNaN(fecha.getTime()) &&
+    fecha.toISOString().slice(0, 10) === corte;
+  if (!esValida) {
+    throw new BadRequestException(
+      `Fecha de corte inválida: '${corte}'. Se espera una fecha real en formato YYYY-MM-DD.`,
+    );
+  }
+}
+
 @Injectable()
 export class ProvisionarService {
   constructor(
@@ -134,11 +157,20 @@ export class ProvisionarService {
         `La organización no tiene un ERP soportado ('${erp}'). Válidos: ${Object.keys(PAQUETES).join(', ')}.`,
       );
     }
+    // También entra al seed como literal: se exige entero aunque el ERP no lo pida.
+    if (companyId !== null && !Number.isInteger(companyId)) {
+      throw new BadRequestException(
+        `Id de compañía inválido: '${companyId}'. Debe ser un entero.`,
+      );
+    }
     if (erp === 'odoo' && (companyId === null || !Number.isInteger(companyId))) {
       throw new BadRequestException(
         'Odoo requiere el id de compañía (company_id de res_company) para sembrar su paquete.',
       );
     }
+
+    const corteEfectivo = corte ?? cortePorDefecto();
+    validarCorte(corteEfectivo);
 
     const advertencias: string[] = [];
     const baseCreada = await this.crearBaseSiFalta(baseDatos);
@@ -148,14 +180,14 @@ export class ProvisionarService {
       seeds,
       org.codigo,
       companyId,
-      corte ?? cortePorDefecto(),
+      corteEfectivo,
       advertencias,
     );
 
     const resultado: ResultadoProvision = {
       baseDatos,
       baseCreada,
-      corte: corte ?? cortePorDefecto(),
+      corte: corteEfectivo,
       ddlAplicado,
       seedsAplicados,
       advertencias,
