@@ -3,6 +3,11 @@
 > **Producto:** Quilate Analytics — plataforma de BI gobernada. **Empresa:** DigyFenix.
 > Organizaciones activas: **Grupo Cresta** (SAP B1) e **Iron Network** (Odoo 18). Ninguna es
 > «la del proyecto»: el motor no privilegia a ninguna.
+>
+> **Al 2026-08-08 el cuello de botella no es construcción, es CONTENIDO:** los dos portales
+> tienen **cero tableros**. Todo lo construido sirve para mostrar algo que aún no existe.
+> El producto Power BI se rige por su propio contrato (`CLAUDE_POWERBI_ANALYTICS_PRODUCT_MASTER_V3.md`);
+> su progreso vive en `docs/powerbi/STATE.md` — **F0 cerrada, sigue F1**.
 
 Tablero maestro de avance. Fuente de verdad del progreso. Se actualiza al cerrar cada fase.
 Regla: cada fase se valida contra su **DoD** antes de avanzar (salvo instrucción de entregar

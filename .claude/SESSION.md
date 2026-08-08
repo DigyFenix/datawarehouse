@@ -85,6 +85,94 @@ frase. Diccionario de dominios en ambos portales (`tesoreria` → «Tesorería»
 `admin@admin.com` / `CrestaLocal2026!` · `admin@ironnetwork.local` / `IronLocal2026!`
 (el portal admin sigue con las del `.env`).
 
+### Los tres niveles de administración (debatido y acordado)
+
+Edwin propuso «tres portales». Se le argumentó que **son dos aplicaciones y tres permisos**:
+una tercera app Angular con su login, build y despliegue, sobre los mismos datos y el mismo
+tenant, no aporta nada. Lo aceptó. La regla que ordena todo: **los accesos por área viven en
+los perfiles del tenant**, no en el plano de control — duplicarlos arriba daría dos sitios
+para lo mismo y el de arriba no serviría, porque esa gente no entra al portal admin.
+
+Consecuencia: el plano de control se quedó con **dos roles** (`admin_portal` global y
+`admin_organizacion` acotado); los cuatro del oficio de datos se retiraron, tenían **cero
+asignaciones**. La migración 129 aborta si alguno tuviera acceso asignado.
+
+### Lo que el cliente ahora puede hacer solo
+
+- **Su glosario** (migración 125). Vivía en una tabla global sin `organizacion_id`: una sola
+  lista para todos los tenants, siendo lo más propio que tiene cada empresa. Ante un término
+  repetido gana el del tenant.
+- **Sus indicadores** (migración 127), componiendo sobre métricas certificadas: razón,
+  porcentaje, suma, resta. **No hay campo de fórmula ni SQL** — el cálculo se hace en código
+  leyendo los operandos con la misma plantilla constante. Cinco guardas con test, incluida la
+  que exige alcance sobre AMBOS operandos: componer no puede ser un rodeo de autorización.
+- **Sus perfiles** ya no parten de cero: seis base (Dirección, Ventas, Cobranza, Compras,
+  Inventario, Finanzas) del cruce de los dominios de Oro con las áreas de cualquier empresa.
+
+### Impersonación de soporte (migración 126)
+
+Edwin pidió una **clave maestra** que abriera cualquier cuenta. Se le rechazó con argumento:
+sería UNA credencial cuya filtración abre todas las organizaciones, y en la auditoría del
+cliente quedaría el usuario suplantado en vez de quién entró. En su lugar, **pase de un solo
+uso**: se guarda su SHA-256 (no el pase), vive 2 minutos, la sesión resultante dura 30 y es de
+**solo lectura**, con banda de ancho completo que no se puede cerrar. 8 pruebas en verde.
+
+### Aprobación de métricas: dos ejes separados
+
+Estaban mezclados y mal resueltos. **Quién firma** estaba clavado en el código (`data_owner`);
+ahora es una casilla por rol. **Cuántas firmas** exigía unanimidad sin alternativa — con tres
+aprobadores y uno de vacaciones, esa métrica **no se certificaba nunca**; ahora hay quórum por
+métrica. El rechazo sigue siendo **unilateral a propósito**: una objeción sobre cómo se calcula
+una cifra debe poder parar la definición sin reunir mayoría.
+
+### Seis bugs que nadie había ejecutado
+
+1. **`empresa_id` es texto**, el agente lo trataba como entero → no habría devuelto un dato en
+   ningún tenant. Los tests no lo vieron porque el fake devolvía ids numéricos que la base no
+   produce. Ver [[bug-clave-negocio-vs-id]].
+2. `leerEmpresas` leía la surrogate key en vez de la clave de negocio.
+3. `explicar_metrica` rota para TODAS las métricas (mismo patrón: id vs clave).
+4. **No se podía dar de baja una organización** (FK RESTRICT → 500).
+5. **Quitar un rol lo quitaba en todas las organizaciones** (el DELETE ignoraba el alcance).
+6. El **204 No Content** mostraba «Cannot read properties of null» como error de negocio.
+
+### Quedarse fuera del portal: pasó de verdad
+
+El operador se quedó sin rol de administrador y el portal empezó a devolver **cero
+organizaciones**, sin salida desde la interfaz — para asignar un rol hay que ser admin. Hubo
+que arreglarlo con SQL. Ahora hay tres guardas: no puedes quitarte tu propio rol, no puedes
+desactivarte, y no se puede retirar al último administrador. Además la cuenta que declara
+`PORTAL_ADMIN_EMAIL` (`admin@quilate.local`) es **maestra e intocable**: para moverla se
+cambia el `.env`.
+
+### Power BI: contrato v3 iniciado
+
+Edwin dejó `CLAUDE_POWERBI_ANALYTICS_PRODUCT_MASTER_V3.md` como **contrato de ejecución**:
+una fase por sesión, gates binarios, `docs/powerbi/STATE.md` como única fuente de verdad.
+**GATE 0 pasa, F0 cerrada.** Tres desfases resueltos: el baseline del contrato cita 180
+medidas y hay **294**; el audit está en otra ruta; y el `version: 1.0` del `.pbir` no
+significa formato legacy. Se instaló `@microsoft/powerbi-modeling-mcp` **con autorización** —
+pero **solo funciona con el PBIP abierto en Desktop**. Ver [[contrato-powerbi-v3]].
+
+### Estado al cierre
+
+25+ commits, árbol limpio, todo en GitHub. Base `quilate_control`, rol `quilate_admin`,
+contenedores `quilate-*`. Dos organizaciones, 2 usuarios de control, 28 métricas (7
+certificadas), 19/19 tests del agente, 11 migraciones nuevas con su rollback.
+
+**El cuello de botella ya no es construcción: los dos portales tienen CERO tableros.**
+
+### Próximo paso concreto (SESIÓN 21)
+
+1. **Tableros.** Sin ellos el portal de usuario no tiene nada que enseñar y cualquier trabajo
+   de diseño sería pulir pantallas vacías.
+2. **F1 del contrato de Power BI**: mapa de explotación sobre las 43 tablas.
+3. Con el PBIP abierto en Desktop: correr `fase4-regresion.dax` (pendiente desde la sesión 17)
+   y validar las 294 medidas contra el motor DAX. El MCP ya está instalado para eso.
+4. Decidir el destino de `gobierno.autorizaciones`: la pantalla existe pero **el agente no la
+   consulta** (usa los perfiles del tenant). O se conecta para acotar al admin de organización,
+   o se retira por redundante.
+
 ---
 
 ## ══════ SESIÓN 19 (2026-08-08) — EL AGENTE HABLÓ POR PRIMERA VEZ ══════
