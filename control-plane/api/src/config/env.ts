@@ -20,8 +20,10 @@ const esquemaEnv = z.object({
   JWT_EXPIRA_EN: z.string().default('8h'),
 
   // Admin de arranque: se crea si la tabla de usuarios está vacía (bootstrap).
-  PORTAL_ADMIN_EMAIL: z.string().email().default('admin@grupocresta.local'),
-  PORTAL_ADMIN_PASSWORD: z.string().min(8).default('cambiar_admin_2026'),
+  // SIN defaults: un correo/contraseña por defecto en un producto multi-tenant es una
+  // puerta trasera conocida. Se exigen en el .env (ver .env.example).
+  PORTAL_ADMIN_EMAIL: z.string().email(),
+  PORTAL_ADMIN_PASSWORD: z.string().min(8),
 
   // Worker del plano de datos (introspección/extracción).
   WORKER_URL: z.string().url().default('http://worker:3010'),

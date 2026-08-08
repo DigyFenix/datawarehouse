@@ -259,7 +259,7 @@ table FC_Ventas
 		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
-	/// Qué parte de la facturación es movimiento interno. En Grupo Cresta pesa lo suficiente como para cambiar la lectura de cualquier ranking comercial.
+	/// Qué parte de la facturación es movimiento interno entre compañías del grupo. Cuando pesa, cambia la lectura de cualquier ranking comercial: revisarla antes de comparar clientes.
 	measure '% Venta al grupo' = DIVIDE([Ventas al grupo], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 02 Terceros vs grupo

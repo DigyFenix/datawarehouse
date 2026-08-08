@@ -962,8 +962,13 @@ def pagina_compras(empresa: str) -> list[dict]:
 
 
 def main() -> int:
+    # El nombre de la empresa es OBLIGATORIO: un default silencioso pondría el nombre de
+    # otro cliente en el reporte de un tenant nuevo (barrido de genericidad 2026-08-07).
+    if len(sys.argv) < 3:
+        print("Uso: python generar_reporte.py <carpeta.Report> <nombre_empresa>")
+        return 1
     destino = Path(sys.argv[1])
-    empresa = sys.argv[2] if len(sys.argv) > 2 else "Grupo Cresta"
+    empresa = sys.argv[2]
 
     secciones = [
         pagina("pagina_pulso", "Pulso", 0, pagina_pulso(empresa)),

@@ -27,10 +27,10 @@ INSERT INTO metadatos.politica_ingesta
 SELECT org.id, v.* FROM org, (VALUES
   ('pagos_recibidos',  'Pagos recibidos',  'tesoreria', 'hecho', 'incremental_ventana', 'ORCT',
    'DocDate', 12, 'meses', 'DocEntry', '{}'::text[], 'data_owner_finanzas',
-   'plata_pago+ campo_usuario', '"DocDate" >= ''2026-01-01'''),
+   'plata_pago+ campo_usuario', '"DocDate" >= ''' || :'corte' || ''''),
   ('pagos_efectuados', 'Pagos efectuados', 'tesoreria', 'hecho', 'incremental_ventana', 'OVPM',
    'DocDate', 12, 'meses', 'DocEntry', '{}'::text[], 'data_owner_finanzas',
-   'plata_pago+ campo_usuario', '"DocDate" >= ''2026-01-01'''),
+   'plata_pago+ campo_usuario', '"DocDate" >= ''' || :'corte' || ''''),
   ('inventario', 'Inventario por bodega', 'inventario', 'hecho', 'abiertos', 'OITW',
    NULL, NULL, NULL, 'ItemCode', '{}'::text[], 'data_owner_inventario',
    'plata_inventario+', '"OnHand" <> 0'),

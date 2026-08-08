@@ -295,7 +295,7 @@ table FC_Compras
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
-	/// Compra de líneas sin artículo (servicios, fletes, gastos) — en Cresta son el 60% de las líneas.
+	/// Compra de líneas sin código de artículo (servicios, fletes, gastos). En operaciones con mucho gasto indirecto puede ser la mayoría de las líneas de compra.
 	measure 'Compras de servicios' = CALCULATE([Compras netas], KEEPFILTERS(DM_Producto[producto_codigo] = "SERVICIO"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes

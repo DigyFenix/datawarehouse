@@ -112,7 +112,7 @@ table 'FC_Pagos recibidos'
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
-	/// Solo cobranza de CLIENTES. En Cresta el 67% del monto de ORCT son operaciones de tesorería contra cuenta contable — sin este filtro la cobranza se triplica.
+	/// Solo cobranza de CLIENTES. Los pagos recibidos del ERP mezclan cobranza con operaciones de tesorería contra cuenta contable (depósitos, traslados); sin este filtro la cobranza se infla.
 	measure 'Cobros de clientes' = CALCULATE([Monto cobrado], KEEPFILTERS('FC_Pagos recibidos'[contraparte] = "cliente"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes

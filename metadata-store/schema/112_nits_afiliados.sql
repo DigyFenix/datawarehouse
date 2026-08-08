@@ -7,7 +7,9 @@
 --             del botón Transformar).
 -- Ejecución : sobre la base de control `cresta_dw`.
 -- Tablas    : gobierno.nits_afiliados (nueva)
--- Impacto   : bajo; tabla nueva + carga inicial de Grupo Cresta (10 NIT).
+-- Impacto   : bajo; SOLO DDL. Los datos de cada organización se cargan con su
+--             seed (p. ej. organizaciones/grupocresta/seeds/71_nits_afiliados.sql)
+--             o desde el portal (Sociedades → NITs afiliados).
 -- Idempotente: sí.
 -- Rollback  : metadata-store/rollback/112_nits_afiliados_down.sql
 -- Ref       : CLAUDE.md §4 (el portal escribe, el plano de datos lee)
@@ -43,14 +45,7 @@ COMMENT ON TABLE gobierno.nits_afiliados IS
 COMMENT ON COLUMN gobierno.nits_afiliados.nit_normalizado IS
   'Forma canónica de comparación: upper + solo [0-9K]. Columna generada; no se escribe.';
 
--- 2) Carga inicial de Grupo Cresta (solicitud 2026-08-02). Idempotente: la
---    unicidad por (organización, normalizado) hace que repetir no duplique.
-INSERT INTO gobierno.nits_afiliados (organizacion_id, nit)
-SELECT o.id, v.nit
-  FROM gobierno.organizaciones o
- CROSS JOIN (VALUES
-    ('1230263'), ('109967739'), ('90738772'), ('4733851'), ('4733843'),
-    ('5333814'), ('105077283'), ('1182706'), ('82686742'), ('05011105181019')
-  ) AS v (nit)
- WHERE o.codigo = 'grupocresta'
-ON CONFLICT ON CONSTRAINT uq_nits_afiliados_org_nit DO NOTHING;
+-- 2) Los NIT de cada organización se cargan con su seed de tenant
+--    (organizaciones/<codigo>/seeds/) o desde el portal. La migración quedó
+--    solo con DDL a partir del barrido de genericidad de 2026-08-07; la carga
+--    inicial de Grupo Cresta vive en organizaciones/grupocresta/seeds/71_nits_afiliados.sql.

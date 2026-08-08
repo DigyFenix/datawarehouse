@@ -7,8 +7,8 @@ import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { Respuesta, SesionUsuario } from './modelos';
 
-const CLAVE_TOKEN = 'cresta_portal_token';
-const CLAVE_USUARIO = 'cresta_portal_usuario';
+const CLAVE_TOKEN = 'pulso_admin_token';
+const CLAVE_USUARIO = 'pulso_admin_usuario';
 
 interface RespuestaLogin {
   token: string;

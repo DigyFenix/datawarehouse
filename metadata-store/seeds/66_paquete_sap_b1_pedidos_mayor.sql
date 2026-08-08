@@ -30,7 +30,7 @@ INSERT INTO metadatos.politica_ingesta
    owner, modelos_dbt, filtro_origen)
 SELECT org.id, 'pedidos_venta', 'Pedidos de venta', 'ventas', 'hecho', 'incremental_ventana',
        'ORDR+RDR1', 'DocDate', 12, 'meses', 'DocEntry', '{}'::text[],
-       'data_owner_ventas', 'plata_pedido_linea+ campo_usuario', '"DocDate" >= ''2026-01-01'''
+       'data_owner_ventas', 'plata_pedido_linea+ campo_usuario', '"DocDate" >= ''' || :'corte' || ''''
 FROM org
 ON CONFLICT (organizacion_id, objeto) DO UPDATE
    SET nombre_negocio = EXCLUDED.nombre_negocio, fuente_objeto = EXCLUDED.fuente_objeto,
@@ -54,7 +54,7 @@ lista AS (
 )
 UPDATE metadatos.politica_ingesta p
    SET nombre_negocio = 'Mayor contable (cartera + resultados)',
-       filtro_origen  = '(("Account" IN (' || lista.cuentas || ') AND "BalDueDeb" <> "BalDueCred") OR "RefDate" >= ''2026-01-01'')',
+       filtro_origen  = '(("Account" IN (' || lista.cuentas || ') AND "BalDueDeb" <> "BalDueCred") OR "RefDate" >= ''' || :'corte' || ''')',
        modelos_dbt    = 'plata_partida_cartera+ plata_movimiento_contable+',
        actualizado_en = now()
   FROM org, lista

@@ -1,13 +1,18 @@
 # Modelos Power BI
 
-Un proyecto por organización, generado desde el esquema `oro` de su base:
+Esta carpeta es el **motor**: el generador y los validadores, sin datos ni proyectos de
+ningún cliente. Los PBIP viven en la carpeta de cada organización:
 
-| Proyecto | Base | Organización |
+| Proyecto | Ubicación | Base |
 |---|---|---|
-| `PulsoCresta.pbip` | `dw_grupocresta` | Grupo Cresta (SAP B1 / HANA) |
-| `PulsoIronNetwork.pbip` | `dw_ironnetwork` | Iron Network (Odoo 18) |
+| `PulsoCresta.pbip` | `organizaciones/grupocresta/powerbi/` | `dw_grupocresta` |
 
-Cada uno trae **35 tablas de datos, 95 relaciones y 293 medidas DAX** ya definidas (más el
+Un solo proyecto sirve para los dos ERPs: para apuntarlo a otro tenant se cambian los
+parámetros `Servidor` y `BaseDatos` en Desktop. El **símbolo de moneda** de las medidas de
+importe lo decide la moneda de presentación de la organización (se lee de la BD de control al
+generar), así que un tenant en dólares sale con `$` sin tocar el generador.
+
+El modelo trae **36 tablas de datos, 98 relaciones y 294 medidas DAX** ya definidas (más el
 grupo de cálculo y 6 parámetros de campo: 42 archivos de tabla en total), con el grupo de
 cálculo **«Moneda de análisis»** (Quetzales ↔ moneda original del documento). Además de las
 dimensiones por rol (Cliente / Proveedor), el modelo incluye **`DM_Socio de negocio`**: la
@@ -18,8 +23,6 @@ Las tablas llevan **prefijo de rol** para que el usuario identifique en el panel
 tabla filtra y qué tabla mide: `DM_` dimensión · `FC_` hecho · `MD_` solo medidas (el grupo de
 cálculo). Los prefijos los aplica `generar_pbip.py`; las expresiones DAX del generador se
 mantienen con los nombres legibles y las referencias se renombran al generar.
-*PulsoCresta ya está regenerado con esta convención; PulsoIronNetwork la toma en su próxima
-regeneración.*
 
 ---
 
@@ -48,7 +51,8 @@ revisar ni versionar.
 
 ## Abrir
 
-Doble clic en `PulsoCresta.pbip`. Al primer refresco pide credenciales de PostgreSQL:
+Doble clic en `organizaciones/grupocresta/powerbi/PulsoCresta.pbip`. Al primer refresco pide
+credenciales de PostgreSQL:
 
 - Servidor: `localhost` (o el host del servidor donde corre el warehouse)
 - Base de datos: `dw_grupocresta`
@@ -133,12 +137,15 @@ por proveedor, producto y centro de costo.
 
 ## Regenerar cuando cambie el warehouse
 
+Los artefactos PBIP de cada tenant viven en `organizaciones/<codigo>/powerbi/` (el motor
+en `consumo/powerbi/` es solo código, sin datos ni proyectos de ningún cliente).
+
 ```bash
 # modelo semántico (tablas, relaciones, medidas)
-POSTGRES_HOST=localhost python consumo/powerbi/generar_pbip.py dw_grupocresta PulsoCresta consumo/powerbi
+POSTGRES_HOST=localhost python consumo/powerbi/generar_pbip.py dw_grupocresta PulsoCresta organizaciones/grupocresta/powerbi
 
-# páginas y visuales
-python consumo/powerbi/generar_reporte.py consumo/powerbi/PulsoCresta.Report "Grupo Cresta"
+# páginas y visuales (el nombre de la empresa es obligatorio)
+python consumo/powerbi/generar_reporte.py organizaciones/grupocresta/powerbi/PulsoCresta.Report "Grupo Cresta"
 ```
 
 **Cuidado:** `generar_reporte.py` **sobrescribe** `report.json`, así que se lleva los visuales que

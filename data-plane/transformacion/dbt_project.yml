@@ -33,6 +33,12 @@ models:
     oro:
       +schema: oro
       +materialized: table
+      # RLS del consumo gobernado (agente de IA): cada build recrea las policies y el
+      # GRANT SELECT para el rol portal_lector (fail-closed sin `app.empresas`). Si el
+      # rol no existe en el clúster, la macro no hace nada (no usa +grants de dbt a
+      # propósito: un GRANT a rol inexistente tumbaría el build). dbt y Power BI no se
+      # ven afectados (dueño/superusuario). Ver macros/aplicar_rls_oro.sql.
+      +post-hook: "{{ aplicar_rls_oro() }}"
 
 # El canónico v1 (documento_venta / documento_cobro / item, prefijos silver_ y fct_)
 # y los seeds sintéticos estilo SAP B1 se conservan como referencia histórica en
@@ -42,11 +48,13 @@ models:
 seeds:
   cresta_dw:
     +schema: bronce
-    # Calendario oficial de feriados (referencia del motor, no dato del ERP). dim_tiempo lo
-    # cruza para es_feriado/es_dia_habil. Al entrar un tenant fuera de Guatemala, se agrega
-    # su calendario como otro seed y una columna de país.
-    feriados_guatemala:
+    # Calendario oficial de feriados por PAÍS (referencia del motor, no dato del ERP).
+    # dim_tiempo cruza las filas del país del tenant (var `pais_feriados`, default GT)
+    # para es_feriado/es_dia_habil. Un tenant de otro país = agregar sus filas a este
+    # CSV con su código de país y pasar la var; el motor no cambia.
+    feriados:
       +column_types:
         fecha: date
         nombre: text
         es_medio_dia: boolean
+        pais: text

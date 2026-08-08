@@ -70,12 +70,15 @@ enriquecido as (
         f.nombre                                              as feriado_nombre,
         f.fecha is not null and not coalesce(f.es_medio_dia, false) as es_feriado,
         coalesce(f.es_medio_dia, false)                       as es_medio_dia,
-        -- Día hábil = lunes a viernes que no es feriado completo (seed feriados_guatemala).
+        -- Día hábil = lunes a viernes que no es feriado completo (seed feriados, filtrado
+        -- por el país del tenant — var pais_feriados, default GT).
         -- El medio día (24/31 dic) cuenta como hábil: se opera, aunque menos horas.
         b.dia_semana_num <= 5
           and not (f.fecha is not null and not coalesce(f.es_medio_dia, false)) as es_dia_habil
     from base b
-    left join {{ ref('feriados_guatemala') }} f on f.fecha = b.fecha
+    left join {{ ref('feriados') }} f
+      on f.fecha = b.fecha
+     and f.pais = '{{ var("pais_feriados", "GT") }}'
 )
 
 select

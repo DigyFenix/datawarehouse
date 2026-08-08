@@ -41,10 +41,83 @@ HECHOS = [
     "hecho_pedido_linea", "hecho_movimiento_contable", "estado_carga",
 ]
 
-# Formato de moneda local: quetzales sin decimales. Las medidas de importe lo llevan TODAS;
-# la conmutación a la moneda original del documento la hace el grupo de cálculo
-# 'Moneda de análisis' (ver gen_grupo_moneda), que quita la Q en ese modo.
+# Formato de moneda: las medidas de importe lo llevan TODAS; la conmutación a la moneda
+# original del documento la hace el grupo de cálculo 'Moneda de análisis', que quita el
+# símbolo en ese modo. Los bloques TMDL de este archivo están escritos con "Q" (la moneda
+# del primer tenant); al EMITIR, `aplicar_moneda()` reemplaza el símbolo por el de la
+# moneda de presentación de la organización (leída de gobierno.sociedades en la BD de
+# control) — un tenant en USD sale con "$", nunca con "Q".
 FMT_Q = '"Q" #,0'
+
+# Moneda de presentación → símbolo del formatString y nombre visible del modo local del
+# grupo de cálculo. Fallback: el propio código ISO como símbolo (formato válido en TMDL).
+SIMBOLO_MONEDA = {
+    "GTQ": "Q", "USD": "$", "MXN": "$", "EUR": "€", "HNL": "L", "NIO": "C$",
+    "CRC": "₡", "PAB": "B/.", "DOP": "RD$", "COP": "$", "PEN": "S/",
+}
+NOMBRE_MONEDA = {
+    "GTQ": "Quetzales", "USD": "Dólares", "MXN": "Pesos", "EUR": "Euros",
+    "HNL": "Lempiras", "NIO": "Córdobas", "CRC": "Colones", "PAB": "Balboas",
+    "DOP": "Pesos", "COP": "Pesos", "PEN": "Soles",
+}
+
+
+def moneda_presentacion_de(base: str) -> str:
+    """Moneda de presentación de la organización dueña de `base`, leída de la BD de control.
+
+    Toma la moneda de presentación dominante entre las sociedades activas (por diseño es una
+    sola para todo el grupo). Si la BD de control no está accesible o la organización no está
+    registrada, cae a GTQ con aviso — el modelo sale usable, no roto.
+    """
+    bd_control = os.environ.get("POSTGRES_DB")
+    if not bd_control:
+        print("  [!] POSTGRES_DB no definido — moneda de presentación asumida GTQ")
+        return "GTQ"
+    try:
+        dsn = (f"host={os.environ.get('POSTGRES_HOST', 'localhost')} "
+               f"port={os.environ.get('POSTGRES_PORT', '5432')} dbname={bd_control} "
+               f"user={os.environ['POSTGRES_USER']} password={os.environ['POSTGRES_PASSWORD']}")
+        with psycopg.connect(dsn) as cx:
+            cx.read_only = True
+            fila = cx.execute(
+                """
+                SELECT s.moneda_presentacion
+                  FROM gobierno.sociedades s
+                  JOIN gobierno.organizaciones o ON o.id = s.organizacion_id
+                 WHERE o.base_datos_dw = %s AND s.activo AND s.moneda_presentacion IS NOT NULL
+                 GROUP BY s.moneda_presentacion
+                 ORDER BY count(*) DESC
+                 LIMIT 1
+                """,
+                (base,),
+            ).fetchone()
+        if fila and fila[0]:
+            return str(fila[0]).upper()
+        print(f"  [!] {base} sin sociedades con moneda de presentación — asumida GTQ")
+        return "GTQ"
+    except Exception as exc:  # noqa: BLE001 — el generador debe poder correr sin BD de control
+        print(f"  [!] No se pudo leer la moneda de presentación ({exc}) — asumida GTQ")
+        return "GTQ"
+
+
+def aplicar_moneda(tmdl: str, moneda: str) -> str:
+    """Reemplaza el símbolo "Q" de los bloques TMDL por el de la moneda de presentación.
+
+    Toca exactamente tres formas: el formatString de importes ('"Q" #…'), el discriminador
+    del calculation group (CONTAINSSTRING sobre el formatString) y el nombre del modo local
+    ('Quetzales (local)'). Las cifras "Q…" dentro de descripciones /// no se tocan.
+    """
+    if moneda == "GTQ":
+        return tmdl
+    simbolo = SIMBOLO_MONEDA.get(moneda, moneda)
+    nombre = NOMBRE_MONEDA.get(moneda, moneda)
+    return (
+        tmdl
+        .replace('CONTAINSSTRING(SELECTEDMEASUREFORMATSTRING(), "Q")',
+                 f'CONTAINSSTRING(SELECTEDMEASUREFORMATSTRING(), "{simbolo}")')
+        .replace('"Q" #', f'"{simbolo}" #')
+        .replace("'Quetzales (local)'", f"'{nombre} (local)'")
+    )
 
 # Nombres amigables: el usuario de negocio no debería ver `hecho_` ni `dim_`.
 ETIQUETA = {
@@ -357,7 +430,7 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] = r"""
 		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
 
-	/// Qué parte de la facturación es movimiento interno. En Grupo Cresta pesa lo suficiente como para cambiar la lectura de cualquier ranking comercial.
+	/// Qué parte de la facturación es movimiento interno entre compañías del grupo. Cuando pesa, cambia la lectura de cualquier ranking comercial: revisarla antes de comparar clientes.
 	measure '% Venta al grupo' = DIVIDE([Ventas al grupo], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 02 Terceros vs grupo
@@ -689,7 +762,7 @@ MEDIDAS_POR_TABLA["hecho_compra_linea"] = r"""
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
 
-	/// Compra de líneas sin artículo (servicios, fletes, gastos) — en Cresta son el 60% de las líneas.
+	/// Compra de líneas sin código de artículo (servicios, fletes, gastos). En operaciones con mucho gasto indirecto puede ser la mayoría de las líneas de compra.
 	measure 'Compras de servicios' = CALCULATE([Compras netas], KEEPFILTERS(Producto[producto_codigo] = "SERVICIO"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
@@ -1529,7 +1602,7 @@ MEDIDAS_POR_TABLA["hecho_pago_recibido"] = r"""
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
-	/// Solo cobranza de CLIENTES. En Cresta el 67% del monto de ORCT son operaciones de tesorería contra cuenta contable — sin este filtro la cobranza se triplica.
+	/// Solo cobranza de CLIENTES. Los pagos recibidos del ERP mezclan cobranza con operaciones de tesorería contra cuenta contable (depósitos, traslados); sin este filtro la cobranza se infla.
 	measure 'Cobros de clientes' = CALCULATE([Monto cobrado], KEEPFILTERS('Pagos recibidos'[contraparte] = "cliente"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
@@ -2178,6 +2251,11 @@ def main() -> int:
 
     conn = psycopg.connect(dsn); conn.read_only = True; cur = conn.cursor()
 
+    # Moneda de presentación de la organización: define el símbolo de TODAS las medidas
+    # de importe y el modo local del grupo de cálculo (genericidad multi-tenant).
+    moneda = moneda_presentacion_de(base)
+    print(f"  moneda de presentación: {moneda} (símbolo '{SIMBOLO_MONEDA.get(moneda, moneda)}')")
+
     problemas_datos = validar_calendario(cur)
 
     # Se limpian los .tmdl de la corrida anterior: tras el renombrado con prefijos DM_/FC_/MD_,
@@ -2194,7 +2272,7 @@ def main() -> int:
         presentes.append(tabla)
         rel_cols[tabla] = {c for c, _ in cols}
         (defi / "tables" / f"{ETIQUETA.get(tabla, tabla)}.tmdl").write_text(
-            gen_tabla(tabla, cols, base), encoding="utf-8")
+            aplicar_moneda(gen_tabla(tabla, cols, base), moneda), encoding="utf-8")
     # Ya no hay tabla única de métricas: cada medida vive en la tabla que mide. Si quedó de una
     # generación anterior se borra, o Desktop cargaría medidas duplicadas.
     viejo = defi / "tables" / "_ Métricas.tmdl"
@@ -2203,7 +2281,7 @@ def main() -> int:
 
     # Grupo de cálculo de moneda (no sale de oro: es puro modelo).
     (defi / "tables" / f"{GRUPO_MONEDA_NOMBRE}.tmdl").write_text(
-        renombrar_dax(GRUPO_MONEDA), encoding="utf-8")
+        aplicar_moneda(renombrar_dax(GRUPO_MONEDA), moneda), encoding="utf-8")
 
     # Parámetros de campo (segmentador que conmuta la métrica del visual). Solo con medidas
     # de tablas presentes en esta base.

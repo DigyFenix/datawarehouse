@@ -12,8 +12,8 @@ import { AuthService } from '../../core/auth.service';
     <div class="acceso">
       <section class="hero">
         <div class="hero__top">
-          <div class="logo">GC</div>
-          <span class="eyebrow">Grupo Cresta · Plano de control</span>
+          <div class="logo">P</div>
+          <span class="eyebrow">Pulso · Plano de control</span>
         </div>
 
         <div class="hero__msg">

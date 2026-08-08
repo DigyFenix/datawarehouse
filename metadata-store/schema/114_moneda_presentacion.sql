@@ -21,12 +21,10 @@ COMMENT ON COLUMN gobierno.sociedades.moneda_presentacion IS
   'conversión. Distinta = convertir con la serie de tipo de cambio de la propia sociedad; '
   'sin tasa válida, los montos de grupo quedan nulos (la sociedad solo se lee en su moneda).';
 
--- Backfill: por defecto cada sociedad presenta en su propia moneda…
+-- Backfill: por defecto cada sociedad presenta en su propia moneda.
+-- Las excepciones (sociedades que consolidan a otra moneda) son DATO de cada
+-- organización: se configuran en el portal (Sociedades) o en el seed del tenant
+-- (p. ej. organizaciones/grupocresta/seeds/72_moneda_presentacion.sql).
 UPDATE gobierno.sociedades
    SET moneda_presentacion = moneda
  WHERE moneda_presentacion IS NULL;
-
--- …y Proavisa de El Salvador (USD) consolida al GTQ del grupo (solicitud 2026-08-02).
-UPDATE gobierno.sociedades
-   SET moneda_presentacion = 'GTQ', actualizado_en = now()
- WHERE empresa_id = 'svproavis';

@@ -27,7 +27,7 @@ INSERT INTO metadatos.politica_ingesta
    owner, modelos_dbt, filtro_origen)
 SELECT org.id, 'pedidos_venta', 'Pedidos de venta', 'ventas', 'hecho', 'incremental_ventana',
        'sale_order+sale_order_line', 'date_order', 12, 'meses', 'id>order_id', '{}'::text[],
-       'data_owner_ventas', 'plata_pedido_linea+ campo_usuario', '"date_order" >= ''2026-01-01'''
+       'data_owner_ventas', 'plata_pedido_linea+ campo_usuario', '"date_order" >= ''' || :'corte' || ''''
 FROM org
 ON CONFLICT (organizacion_id, objeto) DO UPDATE
    SET nombre_negocio = EXCLUDED.nombre_negocio, fuente_objeto = EXCLUDED.fuente_objeto,
