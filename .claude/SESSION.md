@@ -153,7 +153,9 @@ agente 12/12, IDOR 8/8, certificación 7/7.
 
 Árbol **commiteado y pusheado** a `DigyFenix/datawarehouse` (master): `f037a81` infra,
 `b842538` genericidad, `80728a7` IDOR + certificación, `e5bef61` RLS, `c93022c` agente,
-`e204f85` UX del portal, `c449ef8` onboarding, `2e90204` cierre.
+`e204f85` UX del portal, `c449ef8` onboarding, `2e90204` cierre, `111002a` validación del
+corte y el companyId en el servicio de provisión (hallazgo de la revisión automática de
+seguridad: entraban a los seeds como literal confiando solo en el DTO).
 
 ### Pendientes / avisos
 
