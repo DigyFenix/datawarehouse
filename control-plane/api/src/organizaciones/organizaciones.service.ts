@@ -24,6 +24,15 @@ export interface Actor {
   orgIds?: number[];
 }
 
+/** Qué se retiró del metadata-store al dar de baja una organización. */
+export interface ResultadoEliminacion {
+  codigo: string;
+  /** Filas borradas por entidad, para que el portal lo muestre y quede en auditoría. */
+  borradas: Record<string, number>;
+  /** Base del tenant que sigue viva: los datos NO se borran desde aquí. */
+  baseDatosRemanente: string | null;
+}
+
 @Injectable()
 export class OrganizacionesService {
   constructor(
@@ -178,9 +187,53 @@ export class OrganizacionesService {
     return { datos: fila.logo, mime: fila.logo_mime };
   }
 
-  async eliminar(id: number, actor: Actor): Promise<void> {
+  /**
+   * Da de baja una organización y toda su configuración del metadata-store.
+   *
+   * `sociedades`, `conexiones` y `nits_afiliados` son RESTRICT en la base, así que
+   * un DELETE plano fallaba con un error de llave foránea y la organización no se
+   * podía retirar nunca desde el portal. El borrado se hace aquí en una sola
+   * transacción, en orden de dependencia.
+   *
+   * NO se elimina la base de datos del tenant: son los datos del cliente y
+   * borrarlos no puede ser efecto colateral de un clic. Se devuelve su nombre para
+   * que quien opera decida.
+   *
+   * @param id organización a retirar
+   * @returns qué se borró y qué base quedó viva
+   * @throws 404 si la organización no existe
+   */
+  async eliminar(id: number, actor: Actor): Promise<ResultadoEliminacion> {
     const antes = await this.obtener(id);
-    await this.db.delete(organizaciones).where(eq(organizaciones.id, id));
+    const cliente = await this.pool.connect();
+    const borradas: Record<string, number> = {};
+    try {
+      await cliente.query('BEGIN');
+      // Orden de dependencia: primero lo que apunta a sociedades/conexiones.
+      for (const [etiqueta, sql] of [
+        ['campos de ingesta', `DELETE FROM metadatos.campo_ingesta WHERE organizacion_id = $1`],
+        ['planes de ingesta', `DELETE FROM metadatos.plan_ingesta WHERE organizacion_id = $1`],
+        [
+          'políticas de ingesta',
+          `DELETE FROM metadatos.politica_ingesta WHERE organizacion_id = $1`,
+        ],
+        ['NITs afiliados', `DELETE FROM gobierno.nits_afiliados WHERE organizacion_id = $1`],
+        ['roles de usuario', `DELETE FROM gobierno.usuario_roles WHERE organizacion_id = $1`],
+        ['sociedades', `DELETE FROM gobierno.sociedades WHERE organizacion_id = $1`],
+        ['conexiones', `DELETE FROM gobierno.conexiones WHERE organizacion_id = $1`],
+      ] as const) {
+        const r = await cliente.query(sql, [id]);
+        if (r.rowCount) borradas[etiqueta] = r.rowCount;
+      }
+      await cliente.query(`DELETE FROM gobierno.organizaciones WHERE id = $1`, [id]);
+      await cliente.query('COMMIT');
+    } catch (error) {
+      await cliente.query('ROLLBACK');
+      throw error;
+    } finally {
+      cliente.release();
+    }
+
     await this.auditoria.registrar({
       usuarioId: actor.id,
       usuarioEmail: actor.email,
@@ -190,7 +243,13 @@ export class OrganizacionesService {
       entidad: 'organizaciones',
       entidadId: String(id),
       antes,
-      despues: null,
+      despues: { borradas },
     });
+
+    return {
+      codigo: antes.codigo,
+      borradas,
+      baseDatosRemanente: antes.baseDatosDw ?? null,
+    };
   }
 }

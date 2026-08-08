@@ -59,6 +59,18 @@ export interface Rol {
   descripcion: string | null;
 }
 
+/**
+ * Grant de un rol sobre un recurso: el control de AUTORIZACIÓN, independiente del
+ * RLS. `recursoClave` admite `'*'` como comodín del tipo completo.
+ */
+export interface Autorizacion {
+  id: number;
+  rolId: number;
+  recursoTipo: 'dominio' | 'metrica' | 'portal';
+  recursoClave: string;
+  permiso: 'leer' | 'invocar' | 'certificar' | 'administrar';
+}
+
 export interface RolDeUsuario {
   rolId: number;
   clave: string;

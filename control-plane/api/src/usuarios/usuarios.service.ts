@@ -110,18 +110,43 @@ export class UsuariosService {
       .where(eq(usuarioRoles.usuarioId, usuarioId));
   }
 
-  async quitarRol(usuarioId: number, rolId: number, actor: Actor): Promise<void> {
+  /**
+   * Quita una asignación de rol.
+   *
+   * El mismo rol puede estar asignado en varias organizaciones (y además en global),
+   * así que el alcance identifica la fila: sin él se borraban TODAS las asignaciones
+   * de ese rol y quitar `data_owner` en una organización lo revocaba en el resto.
+   *
+   * @param alcance `'global'` para la asignación sin organización, un id para la de
+   *        esa organización, `undefined` para quitar el rol completo (todas).
+   */
+  async quitarRol(
+    usuarioId: number,
+    rolId: number,
+    actor: Actor,
+    alcance?: number | 'global',
+  ): Promise<void> {
+    const filtroAlcance =
+      alcance === undefined
+        ? undefined
+        : alcance === 'global'
+          ? isNull(usuarioRoles.organizacionId)
+          : eq(usuarioRoles.organizacionId, alcance);
+
     await this.db
       .delete(usuarioRoles)
-      .where(and(eq(usuarioRoles.usuarioId, usuarioId), eq(usuarioRoles.rolId, rolId)));
+      .where(
+        and(eq(usuarioRoles.usuarioId, usuarioId), eq(usuarioRoles.rolId, rolId), filtroAlcance),
+      );
     await this.auditoria.registrar({
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       ip: actor.ip,
+      organizacionId: typeof alcance === 'number' ? alcance : null,
       accion: 'quitar_rol',
       entidad: 'usuario_roles',
       entidadId: String(usuarioId),
-      antes: { usuarioId, rolId },
+      antes: { usuarioId, rolId, alcance: alcance ?? 'todas' },
     });
   }
 

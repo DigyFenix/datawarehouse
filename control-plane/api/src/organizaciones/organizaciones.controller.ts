@@ -115,11 +115,14 @@ export class OrganizacionesController {
     return { disponible: await this.provision.disponible() };
   }
 
-  /** Baja de tenants: reservada al operador del producto. */
+  /**
+   * Baja de tenants: reservada al operador del producto. Retira la organización y
+   * toda su configuración; la base de datos del tenant NO se toca (devuelve su
+   * nombre para que quien opera decida qué hacer con los datos).
+   */
   @Delete(':id')
   @RolesGlobales('admin_portal')
   @AlcanceOrg({ desde: 'param', campo: 'id' })
-  @HttpCode(204)
   eliminar(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.servicio.eliminar(id, this.actor(req));
   }

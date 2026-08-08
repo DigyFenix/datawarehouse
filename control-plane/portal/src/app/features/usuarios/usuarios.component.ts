@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/api.service';
@@ -20,24 +20,56 @@ import { ToastService } from '../../core/toast.service';
       <button (click)="nuevo()">+ Nuevo usuario</button>
     </div>
 
+    <div class="filtro-alcance">
+      <div class="filtro-alcance__texto">
+        @if (soloOrganizacionActiva()) {
+          Mostrando quienes tienen acceso a <strong>{{ orgs.activa()?.nombre ?? 'esta organización' }}</strong>,
+          más los operadores del producto (alcance global).
+        } @else {
+          Mostrando <strong>todos los usuarios</strong> del portal, sin importar la organización.
+        }
+      </div>
+      <button class="secundario pequeno" (click)="soloOrganizacionActiva.set(!soloOrganizacionActiva())">
+        {{ soloOrganizacionActiva() ? 'Ver todos' : 'Ver solo esta organización' }}
+      </button>
+    </div>
+
     <div class="tarjeta" style="padding:0;">
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Email</th><th>Nombre</th><th>Roles</th><th></th></tr></thead>
+          <thead><tr><th>Correo</th><th>Nombre</th><th>Roles</th><th>Estado</th><th></th></tr></thead>
           <tbody>
-            @for (u of usuarios(); track u.id) {
+            @for (u of usuariosVisibles(); track u.id) {
               <tr>
                 <td>{{ u.email }}</td>
                 <td>{{ u.nombre }}</td>
                 <td>
-                  @for (r of rolesPorUsuario()[u.id]; track r.rolId) {
-                    <span class="badge badge--pill" style="margin:1px 2px;">{{ r.clave }}</span>
-                  } @empty { <span style="color:var(--faint);">—</span> }
+                  @for (r of rolesPorUsuario()[u.id]; track r.rolId + '-' + r.organizacionId) {
+                    <span class="badge badge--pill" style="margin:1px 2px;" [title]="tituloRol(r)">
+                      {{ nombreRol(r.rolId) }}
+                      @if (r.organizacionId === null) {
+                        <span class="badge badge--global">Global</span>
+                      } @else if (r.organizacionId !== orgs.activaId()) {
+                        <span class="marca-otra-org">· {{ nombreOrganizacion(r.organizacionId) }}</span>
+                      }
+                    </span>
+                  } @empty { <span style="color:var(--faint);">Sin roles</span> }
+                </td>
+                <td>
+                  @if (u.activo) { <span class="badge badge--ok">Activo</span> }
+                  @else { <span class="badge">Inactivo</span> }
                 </td>
                 <td style="text-align:right;"><button class="secundario pequeno" (click)="editar(u)">Editar</button></td>
               </tr>
             } @empty {
-              <tr><td colspan="4"><div class="vacio"><strong>Sin usuarios</strong>Crea el primer usuario con “Nuevo usuario”.</div></td></tr>
+              <tr><td colspan="5"><div class="vacio">
+                @if (soloOrganizacionActiva() && usuarios().length) {
+                  <strong>Nadie tiene acceso a esta organización</strong>
+                  Asigna un rol con alcance en «{{ orgs.activa()?.nombre }}», o pulsa «Ver todos».
+                } @else {
+                  <strong>Sin usuarios</strong>Crea el primero con «Nuevo usuario».
+                }
+              </div></td></tr>
             }
           </tbody>
         </table>
@@ -73,49 +105,110 @@ import { ToastService } from '../../core/toast.service';
             </div>
           </form>
 
-          <h4 style="margin:22px 0 12px;">Roles</h4>
-          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+          <h4 style="margin:22px 0 6px;">Roles asignados</h4>
+          <p class="ayuda">
+            El rol define <strong>qué puede hacer</strong> esta persona; el alcance, <strong>en qué
+            organización</strong>. Un rol global convierte al usuario en operador del producto:
+            ve y administra todas las organizaciones.
+          </p>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">
             @for (r of rolesActuales(); track r.rolId + '-' + r.organizacionId) {
               <span class="badge badge--pill" style="gap:8px;">
-                {{ r.clave }}
+                {{ nombreRol(r.rolId) }}
                 @if (r.organizacionId === null) {
                   <span class="badge badge--global">Global</span>
                 } @else {
-                  <span style="font-size:11.5px; color:var(--faint);">· {{ nombreOrganizacion(r.organizacionId) }}</span>
+                  <span class="marca-otra-org">· {{ nombreOrganizacion(r.organizacionId) }}</span>
                 }
-                <button class="icono" style="padding:0 2px; font-size:13px;" (click)="quitarRol(r.rolId)" aria-label="Quitar">✕</button>
+                <button class="icono" style="padding:0 2px; font-size:13px;"
+                        (click)="quitarRol(r)"
+                        [attr.aria-label]="'Quitar ' + nombreRol(r.rolId)">✕</button>
               </span>
-            } @empty { <span style="color:var(--faint); font-size:13px;">Sin roles asignados.</span> }
+            } @empty { <span style="color:var(--faint); font-size:13px;">Todavía sin roles: este usuario no puede entrar a ninguna organización.</span> }
           </div>
           <div class="campo">
             <label>Agregar rol</label>
             <select name="rol" [(ngModel)]="rolAsignar">
               @for (r of roles(); track r.id) { <option [value]="r.id">{{ r.nombre }}</option> }
             </select>
+            @if (descripcionRolElegido()) { <span class="ayuda">{{ descripcionRolElegido() }}</span> }
           </div>
           <div style="display:flex; gap:8px; align-items:flex-end;">
             <div class="campo" style="flex:1; margin:0;">
               <label>Alcance</label>
               <select name="alcance" [(ngModel)]="rolAlcance">
-                <option value="global">Global (todas las organizaciones)</option>
-                <option value="organizacion">Una organización específica</option>
+                <option value="organizacion">Una organización</option>
+                <option value="global">Global — operador del producto</option>
               </select>
             </div>
             @if (rolAlcance === 'organizacion') {
               <div class="campo" style="flex:1; margin:0;">
                 <label>Organización</label>
                 <select name="rolOrganizacionId" [(ngModel)]="rolOrganizacionId">
-                  <option [ngValue]="null" disabled>Elige…</option>
+                  <option [ngValue]="null" disabled>Elige una…</option>
                   @for (o of orgs.organizaciones(); track o.id) { <option [ngValue]="o.id">{{ o.nombre }}</option> }
                 </select>
               </div>
             }
             <button type="button" (click)="asignar()">Agregar</button>
           </div>
+          @if (rolAlcance === 'global') {
+            <p class="aviso-global">
+              Con alcance global, esta persona podrá ver y administrar <strong>todas</strong> las
+              organizaciones del portal, incluidas las que se den de alta en el futuro.
+            </p>
+          }
         }
       </app-drawer>
     }
   `,
+  styles: [
+    `
+      .filtro-alcance {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+        padding: 10px 14px;
+        border: 1px solid var(--borde);
+        border-radius: 10px;
+        background: var(--surface-2);
+      }
+      .filtro-alcance__texto {
+        font-size: 13px;
+        color: var(--faint);
+      }
+      .filtro-alcance__texto strong {
+        color: var(--texto);
+      }
+      .marca-otra-org {
+        font-size: 11.5px;
+        color: var(--faint);
+      }
+      .ayuda {
+        display: block;
+        margin: 4px 0 12px;
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--faint);
+      }
+      .aviso-global {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-left: 3px solid var(--marca);
+        border-radius: 0 8px 8px 0;
+        background: var(--surface-2);
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--faint);
+      }
+      .aviso-global strong {
+        color: var(--texto);
+      }
+    `,
+  ],
 })
 export class UsuariosComponent implements OnInit {
   private readonly api = inject(ApiService);
@@ -131,14 +224,55 @@ export class UsuariosComponent implements OnInit {
   readonly errorForm = signal<string | null>(null);
   readonly guardando = signal(false);
 
+  /** Filtra la lista por la organización de la barra superior (ver §alcance). */
+  readonly soloOrganizacionActiva = signal(true);
+
   nuevoU = { email: '', nombre: '', password: '' };
   datos = { nombre: '', activo: true };
   rolAsignar: number | null = null;
-  rolAlcance: 'global' | 'organizacion' = 'global';
+  rolAlcance: 'global' | 'organizacion' = 'organizacion';
   rolOrganizacionId: number | null = null;
+
+  /**
+   * Usuarios que importan en el contexto elegido: los que tienen algún rol en la
+   * organización activa, más los de alcance global (operadores del producto, que
+   * la administran aunque no estén asignados a ella).
+   *
+   * Quien todavía no tiene ningún rol se muestra siempre: si se ocultara, un usuario
+   * recién creado desaparecería de la pantalla donde hay que darle acceso.
+   */
+  readonly usuariosVisibles = computed(() => {
+    if (!this.soloOrganizacionActiva()) return this.usuarios();
+    const orgActiva = this.orgs.activaId();
+    if (orgActiva === null) return this.usuarios();
+    const mapa = this.rolesPorUsuario();
+    return this.usuarios().filter((u) => {
+      const roles = mapa[u.id];
+      if (roles === undefined || roles.length === 0) return true;
+      return roles.some((r) => r.organizacionId === null || r.organizacionId === orgActiva);
+    });
+  });
+
+  readonly descripcionRolElegido = computed(() => {
+    const elegido = this.roles().find((r) => r.id === Number(this.rolAsignar));
+    return elegido?.descripcion ?? null;
+  });
 
   nombreOrganizacion(id: number): string {
     return this.orgs.organizaciones().find((o) => o.id === id)?.nombre ?? `#${id}`;
+  }
+
+  /** Nombre legible del rol; la clave técnica (`data_owner`) no se le muestra a nadie. */
+  nombreRol(rolId: number): string {
+    return this.roles().find((r) => r.id === rolId)?.nombre ?? `#${rolId}`;
+  }
+
+  tituloRol(r: RolDeUsuario): string {
+    const alcance =
+      r.organizacionId === null
+        ? 'en todas las organizaciones'
+        : `en ${this.nombreOrganizacion(r.organizacionId)}`;
+    return `${this.nombreRol(r.rolId)} ${alcance}`;
   }
 
   ngOnInit(): void {
@@ -237,12 +371,14 @@ export class UsuariosComponent implements OnInit {
     });
   }
 
-  quitarRol(rolId: number): void {
+  /** Quita SOLO la asignación señalada: el mismo rol puede existir en otras organizaciones. */
+  quitarRol(r: RolDeUsuario): void {
     const u = this.editando();
     if (!u) return;
-    this.api.delete(`/usuarios/${u.id}/roles/${rolId}`).subscribe({
+    const alcance = r.organizacionId === null ? 'global' : String(r.organizacionId);
+    this.api.delete(`/usuarios/${u.id}/roles/${r.rolId}?alcance=${alcance}`).subscribe({
       next: () => {
-        this.toast.info('Rol quitado');
+        this.toast.info('Rol quitado', this.tituloRol(r));
         this.cargarRoles(u.id);
       },
       error: (e: Error) => this.toast.error('No se pudo quitar el rol', e.message),

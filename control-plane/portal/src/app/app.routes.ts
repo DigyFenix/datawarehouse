@@ -24,6 +24,13 @@ export const routes: Routes = [
           import('./features/usuarios/usuarios.component').then((m) => m.UsuariosComponent),
       },
       {
+        path: 'autorizaciones',
+        loadComponent: () =>
+          import('./features/autorizaciones/autorizaciones.component').then(
+            (m) => m.AutorizacionesComponent,
+          ),
+      },
+      {
         path: 'glosario',
         loadComponent: () =>
           import('./features/glosario/glosario.component').then((m) => m.GlosarioComponent),

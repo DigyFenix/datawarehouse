@@ -3,6 +3,7 @@
  * reservados al rol global admin_portal (el perfil propio vive en GET /auth/perfil).
  */
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -10,6 +11,7 @@ import {
   HttpCode,
   Param,
   ParseIntPipe,
+  Query,
   Post,
   Put,
   Req,
@@ -91,13 +93,30 @@ export class UsuariosController {
     return this.servicio.asignarRol(id, dto, this.actor(req));
   }
 
+  /**
+   * Quita una asignación de rol.
+   *
+   * @param alcance query opcional: `global` o el id de la organización. Sin él se
+   *        quita el rol en TODAS las organizaciones, que casi nunca es lo deseado —
+   *        el portal siempre lo envía.
+   */
   @Delete(':id/roles/:rolId')
   @HttpCode(204)
   quitarRol(
     @Param('id', ParseIntPipe) id: number,
     @Param('rolId', ParseIntPipe) rolId: number,
+    @Query('alcance') alcance: string | undefined,
     @Req() req: Request,
   ) {
-    return this.servicio.quitarRol(id, rolId, this.actor(req));
+    const destino =
+      alcance === undefined || alcance === ''
+        ? undefined
+        : alcance === 'global'
+          ? ('global' as const)
+          : Number(alcance);
+    if (typeof destino === 'number' && !Number.isInteger(destino)) {
+      throw new BadRequestException(`Alcance inválido: '${alcance}'. Usa 'global' o un id.`);
+    }
+    return this.servicio.quitarRol(id, rolId, this.actor(req), destino);
   }
 }

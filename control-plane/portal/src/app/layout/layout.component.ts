@@ -181,6 +181,7 @@ export class LayoutComponent implements OnInit {
   readonly items: ItemNav[] = [
     { ruta: '/organizaciones', etiqueta: 'Organizaciones', icono: 'M3 21h18M6 21V7l6-4 6 4v14M10 9h4M10 13h4M10 17h4' },
     { ruta: '/usuarios', etiqueta: 'Usuarios y roles', icono: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75' },
+    { ruta: '/autorizaciones', etiqueta: 'Autorizaciones', icono: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4' },
     { ruta: '/glosario', etiqueta: 'Glosario', icono: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z' },
     { ruta: '/metricas', etiqueta: 'Métricas', icono: 'M3 3v18h18M7 15l3-4 3 3 5-7' },
     { ruta: '/conexiones', etiqueta: 'Conexiones', icono: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' },
