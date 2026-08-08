@@ -35,13 +35,14 @@ GATE_ANTERIOR: PASA (F0 cerrada)
 | 1 | El `version: "1.0"` de `definition.pbir` NO se interpreta como formato legacy | Ese campo versiona el archivo `.pbir`, no el formato del reporte. La prueba sustantiva —`definition/pages/` con carpeta por página y `pages.json`— se cumple, y el `report.json` no contiene páginas | GATE 0 |
 | 2 | El baseline es `docs/powerbi/inventario-modelo.md`, con las cifras REALES: **43 tablas · 662 columnas · 294 medidas · 98 relaciones** | El contrato cita 37/595/180/93, de una versión anterior del modelo. §2.3 prohíbe re-auditar y autoriza registrar la ruta real; construir sobre cifras viejas llevaría a decisiones de cobertura equivocadas | GATE 0 |
 | 3 | El tema es del PRODUCTO, no del cliente: `quilate-theme.json` | Edwin autorizó un tema genérico ahora y el de cada sociedad después. Se deriva de los tokens que ya usan los portales, así que tableros y portal se ven de la misma familia | GATE 0 |
-| 4 | No se instala ningún MCP ni herramienta | §3.5. Los gaps se reportan con su candidato y se espera autorización | F0 |
+| 4 | No se instala ningún MCP ni herramienta **por iniciativa propia** | §3.5. Los gaps se reportan con su candidato y se espera autorización | F0 |
+| 5 | Se instala `@microsoft/powerbi-modeling-mcp` **con autorización explícita de Edwin** | Estaba en la lista blanca de §3.5. Elimina el ida y vuelta manual de validación DAX, pero NO elimina la dependencia de Power BI Desktop: el MCP habla XMLA con la instancia de Analysis Services que levanta Desktop al abrir el archivo | F0 |
 
 ## Bloqueos abiertos
 
 | # | Bloqueo | Requiere de | Desde |
 |---|---|---|---|
-| B4 | Sin ejecución DAX contra el modelo: la validación de F6.2 pasa a ser manual (exportar visual → comparar con SQL) | Decisión de Edwin al llegar a F4: (A) mantener pocas medidas nuevas P0 para que el coste manual sea asumible, o (B) autorizar la evaluación de `microsoft/powerbi-modeling-mcp` | 2026-08-08 |
+| B4 | ~~Sin ejecución DAX~~ **RESUELTO PARCIALMENTE**: MCP instalado con autorización. Queda que el modelo esté abierto en Power BI Desktop para que exista motor XMLA al que conectarse | Edwin: abrir `organizaciones/grupocresta/powerbi/PulsoCresta.pbip` cuando toque validar | 2026-08-08 |
 | B5 | Sin render del reporte: F6.3 depende de capturas | Edwin, al cerrar cada ola de páginas (ya previsto en §9.8) | 2026-08-08 |
 
 ## Presupuesto consumido
