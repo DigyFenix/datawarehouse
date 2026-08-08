@@ -53,9 +53,18 @@
 {%- set dias = "array['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']" -%}
 {%- set dias_cortos = "array['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']" -%}
 
-{#- Toda columna de fecha de Plata que llega a alimentar una clave de tiempo en Oro. Si se
-    agrega un hecho con un eje de fecha nuevo, va aquí: es lo que impide que su fecha quede
-    fuera del calendario. -#}
+{#- Columnas de fecha de Plata que definen hasta dónde debe llegar el calendario. Si se agrega
+    un hecho con un eje de fecha nuevo, va aquí: es lo que impide que su fecha quede fuera.
+
+    `plata_tipo_cambio` NO está en la lista a propósito (decisión de Edwin, 2026-08-08). SAP
+    guarda tasas pactadas o proyectadas muy por delante —en Cresta llegan a julio de 2027— y
+    dejarlas mandar estiraba el calendario siete meses de más por una tabla que solo se usa
+    para diagnosticar la conversión. Las tasas futuras quedan en el miembro No definido hasta
+    que el calendario las alcance, cosa que ocurre SOLA: el rango se recalcula contra
+    `current_date` en cada corrida.
+
+    Esto no afecta ningún importe convertido: la conversión une por `fecha` contra
+    `plata_tasa_presentacion`, nunca por la clave de tiempo. -#}
 {%- set ejes_fecha = [
     (ref('plata_documento_comercial'), 'fecha_documento'),
     (ref('plata_documento_comercial'), 'fecha_vencimiento'),
@@ -64,7 +73,6 @@
     (ref('plata_pago'),                'fecha_pago'),
     (ref('plata_pedido_linea'),        'fecha_pedido'),
     (ref('plata_pedido_linea'),        'fecha_entrega'),
-    (ref('plata_tipo_cambio'),         'fecha'),
 ] -%}
 
 with limites as (
