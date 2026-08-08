@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 
 import { AdminModule } from './admin/admin.module';
+import { AgenteModule } from './agente/agente.module';
+import { InicioModule } from './inicio/inicio.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { validarEnv } from './config/env';
@@ -24,6 +26,8 @@ import { TablerosModule } from './tableros/tableros.module';
     OrganizacionModule,
     TablerosModule,
     AdminModule,
+    AgenteModule,
+    InicioModule,
   ],
   controllers: [HealthController],
   providers: [

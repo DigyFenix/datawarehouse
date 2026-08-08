@@ -50,7 +50,8 @@ export interface UsuarioOrg {
 }
 
 export interface AlcancePerfil {
-  recursoTipo: 'dominio' | 'metrica';
+  // 'empresa' es RLS del agente (qué filas ve); 'dominio'/'metrica' son autorización (qué invoca).
+  recursoTipo: 'dominio' | 'metrica' | 'empresa';
   recursoClave: string;
 }
 

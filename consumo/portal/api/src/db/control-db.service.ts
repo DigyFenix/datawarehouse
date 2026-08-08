@@ -67,6 +67,20 @@ export class ControlDbService implements OnModuleDestroy {
     return { datos: fila.logo, mime: fila.logo_mime };
   }
 
+  /**
+   * Consulta genérica de SOLO LECTURA contra la BD de control (catálogo de
+   * metadatos, glosario). Único método no acotado a `gobierno.organizaciones`:
+   * lo usa el agente de IA (`EjecutorSql.consultarControl`) para leer
+   * `metadatos.*` sin que el paquete `@pulso/agente` conozca `pg`.
+   */
+  async query<T extends Record<string, unknown> = Record<string, unknown>>(
+    sql: string,
+    params: unknown[],
+  ): Promise<T[]> {
+    const resultado = await this.pool.query<T>(sql, params);
+    return resultado.rows;
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
   }

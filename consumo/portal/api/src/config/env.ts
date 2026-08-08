@@ -22,6 +22,17 @@ const esquemaEnv = z.object({
   // Auth del portal de usuario: secreto PROPIO, distinto del portal admin.
   PORTAL_JWT_SECRET: z.string().min(16, 'PORTAL_JWT_SECRET debe tener al menos 16 caracteres'),
   PORTAL_JWT_EXPIRA_EN: z.string().default('8h'),
+
+  // Agente de IA (CLAUDE.md §11): opcional — sin ANTHROPIC_API_KEY el módulo agente
+  // responde 503 al postear un mensaje, pero el resto de la API arranca normal.
+  ANTHROPIC_API_KEY: z.string().default(''),
+  AGENTE_MODELO: z.string().default('claude-opus-5'),
+  AGENTE_MAX_ITERACIONES: z.coerce.number().int().positive().default(6),
+  AGENTE_MAX_TOKENS: z.coerce.number().int().positive().default(4096),
+
+  // Rol de solo lectura `portal_lector` (RLS oro): el agente lee el warehouse del
+  // tenant SOLO con esta contraseña. Sin ella, LectorPoolsService lanza al usarse.
+  PORTAL_LECTOR_PASSWORD: z.string().default(''),
 });
 
 export type Env = z.infer<typeof esquemaEnv>;

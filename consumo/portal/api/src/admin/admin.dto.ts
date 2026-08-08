@@ -41,11 +41,12 @@ export const asignarTablerosSchema = z.object({
 });
 
 // Alcances del perfil para el chatbot (Fase 4 del roadmap): se administran desde ya.
+// 'empresa' es RLS (qué filas ve el agente); 'dominio'/'metrica' son autorización (qué puede invocar).
 export const asignarAlcancesSchema = z.object({
   alcances: z
     .array(
       z.object({
-        recursoTipo: z.enum(['dominio', 'metrica']),
+        recursoTipo: z.enum(['dominio', 'metrica', 'empresa']),
         recursoClave: z.string().min(1).max(120),
       }),
     )
