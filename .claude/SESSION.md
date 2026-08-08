@@ -1,6 +1,93 @@
 # SESSION — datawarehouse
 
-## ══════ SESIÓN 19 (2026-08-08) — EL AGENTE HABLÓ POR PRIMERA VEZ — leer esto primero ══════
+## ══════ SESIÓN 20 (2026-08-08) — EL PRODUCTO SE LLAMA QUILATE ANALYTICS — leer esto primero ══════
+
+**El proyecto deja de ser «el datawarehouse de Cresta» y pasa a ser un producto con nombre
+propio. Grupo Cresta es, desde ahora, una organización más — igual que Iron Network.**
+
+### La marca
+
+**Quilate Analytics** · *Plataforma de BI gobernada* · «La cifra que nadie discute».
+
+El quilate es la unidad que certifica la pureza del oro: el significado previo **explica** el
+producto en vez de competir con él, que es lo que descartó a Meridiano y Atalaya. Se verificó
+que no colisiona en búsqueda — Fidata, Axira, Signata, Veracta, Certo, Vértice, Cota y Cifera
+estaban todos tomados en software.
+
+**DigyFenix queda como la empresa** (marca de Edwin, su GitHub, quien firma). Se le dijo
+francamente que como nombre de producto se ve anticuado: el prefijo «Digi» es de 1995-2008 y
+«Fénix» está muy transitado en marcas latinas. La separación empresa/producto resuelve las dos
+cosas.
+
+### Alcance del renombre (`de442c8`)
+
+    contenedores      cresta-*          →  quilate-*
+    paquete Python    cresta_extraccion →  quilate_extraccion
+    paquete npm       @pulso/agente     →  @quilate/agente
+    perfil dbt        cresta            →  quilate
+    marca visible     Pulso             →  Quilate Analytics
+
+NO se tocó, a propósito: el código `grupocresta` y el nombre «Grupo Cresta» (ahora designan un
+tenant), los artefactos Power BI del tenant (llevan los visuales hechos a mano) y las menciones
+a Cresta que hablan de la organización.
+
+**⚠ La trampa del volumen.** Cambiar `name:` en el compose cambia el prefijo de los volúmenes:
+Docker creó un `quilate_pgdata` VACÍO mientras los 5.2 GB seguían en `cresta-dw_pgdata`. Levantar
+sin mirar habría arrancado Postgres con una base en blanco, y habría parecido pérdida total de
+datos. Se copió el volumen y se verificó (`dw_grupocresta` 4412 MB intacta). **Cualquier renombre
+futuro del proyecto compose tiene que contemplar esto.**
+
+### PENDIENTE: migración 122 (bloqueada por el `.env`)
+
+La base de control y el rol de Postgres siguen con el nombre viejo. Para completarlo:
+
+1. En el `.env`: `POSTGRES_DB=quilate_control` y `POSTGRES_USER=quilate_admin`
+2. Bajar el stack, aplicar `metadata-store/schema/122_renombre_marca_producto.sql`
+   conectado a la base `postgres`, y levantar.
+
+Es un `ALTER DATABASE/ROLE RENAME`, no un dump/restore: **la contraseña sobrevive** porque el rol
+usa SCRAM-SHA-256, donde el nombre no entra en el hash (verificado). Rollback simétrico escrito.
+
+### Tres fallos de administración de acceso (`494d30b`)
+
+- **No se podía dar de baja una organización**: el DELETE plano chocaba con las FK RESTRICT de
+  sociedades y conexiones y devolvía 500. Ahora retira la configuración en una transacción y
+  devuelve el detalle; la base del tenant NO se borra (dato del cliente, no efecto colateral).
+- **Quitar un rol lo quitaba en TODAS las organizaciones**: el DELETE filtraba por usuario y rol
+  sin mirar el alcance. Nuevo query `alcance` (`global` o el id), probado con el mismo rol en dos
+  organizaciones.
+- **Usuarios ignoraba el selector de organización** — la única pantalla de su grupo que no lo
+  respetaba. Ahora filtra, marca a los operadores globales y muestra el nombre del rol.
+
+### Pantalla de Autorizaciones (nueva)
+
+El API de grants por rol (`GET/POST/DELETE /autorizaciones`) estaba completo desde la fase de
+gobernanza pero **ninguna pantalla lo consumía**: el control de autorización de §12 era
+inadministrable. Ya está en el menú, con los dominios saliendo del catálogo de hechos.
+
+### Español (`84d0de3`)
+
+Roles traducidos con descripciones que dicen qué conceden (`Responsable del dato`, `Custodio del
+dato`, `Ingeniero de datos`, `Arquitecto de análisis`, `Administrador del portal`, `Usuario de
+negocio`); la clave técnica no se toca. La auditoría ya no muestra `votar_aprobacion` sino la
+frase. Diccionario de dominios en ambos portales (`tesoreria` → «Tesorería»).
+
+### Otros cambios
+
+- Organización `ensayo18` eliminada (portal + base). Quedan **grupocresta** e **ironnetwork**.
+- **Iron actualizado**: 12 objetos extraídos y build 195/195; sus 11 dominios pasaron a «Al día»
+  con dato al 2026-08-07.
+- Los tres portales quedaron con perfil y alcances sembrados, y el agente probado en Cresta con
+  las **10 sociedades**: total de julio 57 247 909,83, que cuadra al centavo con la base.
+
+### Credenciales locales de los portales de usuario
+
+`admin@admin.com` / `CrestaLocal2026!` · `admin@ironnetwork.local` / `IronLocal2026!`
+(el portal admin sigue con las del `.env`).
+
+---
+
+## ══════ SESIÓN 19 (2026-08-08) — EL AGENTE HABLÓ POR PRIMERA VEZ ══════
 
 Edwin puso la `ANTHROPIC_API_KEY` y se levantó el stack para revisar cómo quedó todo. La
 primera conversación real contra el modelo destapó un **bug que ningún test podía ver**.
