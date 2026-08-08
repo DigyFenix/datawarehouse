@@ -56,6 +56,14 @@ import { ToastService } from '../../core/toast.service';
               <h3>{{ rol.nombre }}</h3>
               <p>{{ rol.descripcion ?? 'Sin descripción' }}</p>
             </div>
+            <label class="firmante">
+              <input type="checkbox" [checked]="rol.puedeAprobar"
+                     (change)="cambiarAprobador(rol, $event)" />
+              <span>
+                <strong>Puede firmar certificaciones</strong>
+                Quien tenga este rol podrá aprobar la definición de un indicador.
+              </span>
+            </label>
           </header>
 
           @if (cargando()) {
@@ -217,8 +225,34 @@ import { ToastService } from '../../core/toast.service';
         padding: 0;
       }
       .panel__cabecera {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
         padding: 16px 18px;
         border-bottom: 1px solid var(--borde);
+      }
+      .firmante {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        max-width: 34ch;
+        cursor: pointer;
+      }
+      .firmante input {
+        margin-top: 2px;
+        flex-shrink: 0;
+      }
+      .firmante span {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--faint);
+      }
+      .firmante strong {
+        display: block;
+        color: var(--texto);
+        font-size: 13px;
       }
       .panel__cabecera h3 {
         margin: 0 0 3px;
@@ -364,6 +398,29 @@ export class AutorizacionesComponent implements OnInit {
         if (rolId !== null) this.elegirRol(rolId);
       },
       error: (e: Error) => this.toast.error('No se pudo quitar', e.message),
+    });
+  }
+
+  /**
+   * Habilita o retira la firma de certificaciones a este rol. Si el API lo rechaza
+   * —por ser el último habilitado— se revierte la casilla: dejarla marcada como si
+   * hubiera funcionado sería mentirle a quien administra.
+   */
+  cambiarAprobador(rol: Rol, evento: Event): void {
+    const casilla = evento.target as HTMLInputElement;
+    const valor = casilla.checked;
+    this.api.put<Rol>(`/roles/${rol.id}/aprobador`, { puedeAprobar: valor }).subscribe({
+      next: () => {
+        this.roles.update((rs) => rs.map((r) => (r.id === rol.id ? { ...r, puedeAprobar: valor } : r)));
+        this.toast.exito(
+          valor ? 'Rol habilitado para firmar' : 'Rol sin capacidad de firma',
+          rol.nombre,
+        );
+      },
+      error: (e: Error) => {
+        casilla.checked = !valor;
+        this.toast.error('No se pudo cambiar', e.message);
+      },
     });
   }
 

@@ -13,6 +13,7 @@ interface FormMetrica {
   hechoOrigen: string;
   owner: string;
   aprobadores: string;
+  firmasRequeridas: number | null;
 }
 
 @Component({
@@ -92,11 +93,38 @@ interface FormMetrica {
               @for (h of hechos(); track h.clave) { <option [value]="h.clave">{{ h.clave }}</option> }
             </select>
           </div>
-          <div class="campo"><label>Owner</label><input name="owner" [(ngModel)]="form.owner" required placeholder="data_owner_ventas" /></div>
           <div class="campo">
-            <label>Aprobadores <span style="color:var(--faint);">(emails, separados por coma)</span></label>
-            <input name="aprob" [(ngModel)]="form.aprobadores" placeholder="owner1@…, owner2@…" />
+            <label>Responsable</label>
+            <input name="owner" [(ngModel)]="form.owner" required placeholder="Gerencia de ventas" />
           </div>
+          <div class="campo">
+            <label>Quiénes firman <span style="color:var(--faint);">(correos separados por coma)</span></label>
+            <input name="aprob" [(ngModel)]="form.aprobadores"
+                   (ngModelChange)="ajustarQuorum()" placeholder="ana@empresa.com, luis@empresa.com" />
+          </div>
+          @if (cuantosFirmantes() > 1) {
+            <div class="campo">
+              <label>Firmas necesarias para certificar</label>
+              <select name="quorum" [(ngModel)]="form.firmasRequeridas">
+                <option [ngValue]="null">Todas ({{ cuantosFirmantes() }}) — unanimidad</option>
+                @for (n of opcionesQuorum(); track n) {
+                  <option [ngValue]="n">{{ n }} de {{ cuantosFirmantes() }}</option>
+                }
+              </select>
+              <span class="ayuda">
+                @if (form.firmasRequeridas === null) {
+                  Tendrán que firmar los {{ cuantosFirmantes() }}. Si alguno se ausenta, la métrica
+                  no podrá certificarse hasta que vuelva.
+                } @else if (form.firmasRequeridas === 1) {
+                  Con una sola firma basta: nombras varios por comodidad, pero no hay control de
+                  varias personas.
+                } @else {
+                  Bastan {{ form.firmasRequeridas }} de {{ cuantosFirmantes() }}. Un solo rechazo
+                  detiene la certificación aunque otros ya hayan firmado.
+                }
+              </span>
+            </div>
+          }
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="formAbierto.set(false)">Cancelar</button>
@@ -224,8 +252,25 @@ export class MetricasComponent implements OnInit {
     });
   }
 
+  /** Cuántos correos hay escritos ahora mismo en el campo de firmantes. */
+  cuantosFirmantes(): number {
+    return this.form.aprobadores.split(',').map((x) => x.trim()).filter(Boolean).length;
+  }
+
+  opcionesQuorum(): number[] {
+    return Array.from({ length: this.cuantosFirmantes() }, (_, i) => i + 1);
+  }
+
+  /** Un quórum mayor que los firmantes nombrados sería imposible de alcanzar. */
+  ajustarQuorum(): void {
+    const total = this.cuantosFirmantes();
+    if (this.form.firmasRequeridas !== null && this.form.firmasRequeridas > total) {
+      this.form.firmasRequeridas = total > 0 ? total : null;
+    }
+  }
+
   private vacio(): FormMetrica {
-    return { clave: '', nombreOficial: '', definicionNegocio: '', hechoOrigen: '', owner: '', aprobadores: '' };
+    return { clave: '', nombreOficial: '', definicionNegocio: '', hechoOrigen: '', owner: '', aprobadores: '', firmasRequeridas: null };
   }
 
   etiqueta(estado: string): string {
@@ -255,6 +300,7 @@ export class MetricasComponent implements OnInit {
       hechoOrigen: m.hechoOrigen,
       owner: m.owner,
       aprobadores: (m.aprobadores ?? []).join(', '),
+      firmasRequeridas: m.firmasRequeridas ?? null,
     };
     this.edicionId.set(m.id);
     this.errorForm.set(null);
@@ -278,8 +324,8 @@ export class MetricasComponent implements OnInit {
     const id = this.edicionId();
     const aprobadores = this.form.aprobadores.split(',').map((s) => s.trim()).filter(Boolean);
     const cuerpo = id
-      ? { nombreOficial: this.form.nombreOficial, definicionNegocio: this.form.definicionNegocio, owner: this.form.owner, aprobadores }
-      : { clave: this.form.clave, nombreOficial: this.form.nombreOficial, definicionNegocio: this.form.definicionNegocio, hechoOrigen: this.form.hechoOrigen, owner: this.form.owner, aprobadores };
+      ? { nombreOficial: this.form.nombreOficial, definicionNegocio: this.form.definicionNegocio, owner: this.form.owner, aprobadores, firmasRequeridas: this.form.firmasRequeridas }
+      : { clave: this.form.clave, nombreOficial: this.form.nombreOficial, definicionNegocio: this.form.definicionNegocio, hechoOrigen: this.form.hechoOrigen, owner: this.form.owner, aprobadores, firmasRequeridas: this.form.firmasRequeridas };
     const accion = id
       ? this.api.put<Metrica>(`/metricas/${id}`, cuerpo)
       : this.api.post<Metrica>('/metricas', cuerpo);

@@ -244,7 +244,7 @@ interface FormPlan {
             <p class="sutil" style="margin-top:4px;">Selección de <code>dbt build --select</code>. El <code>+</code> final incluye lo que depende aguas abajo (snapshot, dimensión). Vacío = sin botón Transformar.</p>
           </div>
 
-          <div class="campo"><label>Owner</label><input name="owner" [(ngModel)]="fp.owner" required placeholder="data_engineer" /></div>
+          <div class="campo"><label>Owner</label><input name="owner" [(ngModel)]="fp.owner" required placeholder="Equipo de datos" /></div>
           <label class="check"><input type="checkbox" name="activoP" [(ngModel)]="fp.activo" /> Activa</label>
 
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }

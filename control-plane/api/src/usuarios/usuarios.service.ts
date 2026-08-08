@@ -180,7 +180,7 @@ export class UsuariosService {
    *
    * El mismo rol puede estar asignado en varias organizaciones (y además en global),
    * así que el alcance identifica la fila: sin él se borraban TODAS las asignaciones
-   * de ese rol y quitar `data_owner` en una organización lo revocaba en el resto.
+   * de ese rol y quitarlo en una organización lo revocaba en todas las demás.
    *
    * @param alcance `'global'` para la asignación sin organización, un id para la de
    *        esa organización, `undefined` para quitar el rol completo (todas).

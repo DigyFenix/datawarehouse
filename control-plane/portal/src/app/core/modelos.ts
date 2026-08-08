@@ -57,6 +57,8 @@ export interface Rol {
   clave: string;
   nombre: string;
   descripcion: string | null;
+  /** Habilita a quien tenga el rol para firmar certificaciones de indicadores. */
+  puedeAprobar: boolean;
 }
 
 /**
@@ -121,6 +123,8 @@ export interface Metrica {
   owner: string;
   estado: string;
   aprobadores: string[];
+  /** Cuántas de las firmas nombradas bastan. null = todas (unanimidad). */
+  firmasRequeridas: number | null;
   versionDefinicion: number;
 }
 

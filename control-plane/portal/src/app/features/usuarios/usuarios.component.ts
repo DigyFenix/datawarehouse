@@ -352,7 +352,7 @@ export class UsuariosComponent implements OnInit {
     return this.orgs.organizaciones().find((o) => o.id === id)?.nombre ?? `#${id}`;
   }
 
-  /** Nombre legible del rol; la clave técnica (`data_owner`) no se le muestra a nadie. */
+  /** Nombre legible del rol; la clave técnica (`admin_portal`) no se le muestra a nadie. */
   nombreRol(rolId: number): string {
     return this.roles().find((r) => r.id === rolId)?.nombre ?? `#${rolId}`;
   }
