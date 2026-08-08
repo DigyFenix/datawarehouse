@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
+import { nombreDominio } from '../../core/dominios';
 import { TenantService } from '../../core/tenant.service';
 import { IconComponent } from '../../ui/icon.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
@@ -146,11 +147,8 @@ export class InicioComponent implements OnInit {
     });
   }
 
-  /** `cartera_cobrar` → `Cartera cobrar`: el dominio es una clave técnica. */
-  nombreDominio(clave: string): string {
-    const limpio = clave.replace(/_/g, ' ');
-    return limpio.charAt(0).toUpperCase() + limpio.slice(1);
-  }
+  /** Nombre de negocio del dominio (con tildes); ver core/dominios.ts. */
+  nombreDominio = nombreDominio;
 
   irA(ruta: string): void {
     void this.router.navigate(['/', this.tenant.hash(), ruta]);

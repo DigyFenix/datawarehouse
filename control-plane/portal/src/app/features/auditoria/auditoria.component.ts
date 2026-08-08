@@ -40,14 +40,14 @@ interface CambioCampo {
         <label>Acción</label>
         <select [(ngModel)]="fAccion" (ngModelChange)="sincronizar()">
           <option value="">Todas</option>
-          @for (a of acciones(); track a) { <option [value]="a">{{ a }}</option> }
+          @for (a of acciones(); track a) { <option [value]="a">{{ etiquetaAccion(a) }}</option> }
         </select>
       </div>
       <div class="campo">
         <label>Entidad</label>
         <select [(ngModel)]="fEntidad" (ngModelChange)="sincronizar()">
           <option value="">Todas</option>
-          @for (e of entidades(); track e) { <option [value]="e">{{ e }}</option> }
+          @for (e of entidades(); track e) { <option [value]="e">{{ etiquetaEntidad(e) }}</option> }
         </select>
       </div>
       <div class="campo" style="flex:1;">
@@ -68,7 +68,7 @@ interface CambioCampo {
               <tr>
                 <td style="white-space:nowrap;">{{ e.ocurridoEn | date: 'dd MMM, HH:mm' }}</td>
                 <td>{{ e.usuarioEmail ?? 'sistema' }}</td>
-                <td><span class="badge badge--neutral">{{ e.accion }}</span></td>
+                <td><span class="badge badge--neutral">{{ etiquetaAccion(e.accion) }}</span></td>
                 <td><code>{{ e.entidad }}</code></td>
                 <td><code>{{ e.entidadId ?? '—' }}</code></td>
                 <td style="text-align:right;"><button class="secundario pequeno" (click)="ver(e)">Ver cambios</button></td>
@@ -90,7 +90,7 @@ interface CambioCampo {
     </div>
 
     @if (detalle(); as e) {
-      <app-drawer [titulo]="e.accion + ' · ' + e.entidad" [eyebrow]="'Registro ' + (e.entidadId ?? '—')" (cerrar)="detalle.set(null)">
+      <app-drawer [titulo]="etiquetaAccion(e.accion) + ' · ' + etiquetaEntidad(e.entidad)" [eyebrow]="'Registro ' + (e.entidadId ?? '—')" (cerrar)="detalle.set(null)">
         <dl class="meta">
           <div><dt>Fecha</dt><dd>{{ e.ocurridoEn | date: 'dd MMM y, HH:mm:ss' }}</dd></div>
           <div><dt>Usuario</dt><dd>{{ e.usuarioEmail ?? 'sistema' }}</dd></div>
@@ -151,6 +151,61 @@ export class AuditoriaComponent implements OnInit {
   private readonly _texto = signal('');
 
   readonly acciones = computed(() => [...new Set(this.entradas().map((e) => e.accion))].sort());
+
+  /**
+   * La auditoría guarda claves técnicas (`crear_version`, `asignar_rol`) porque son
+   * estables y consultables. Quien lee la bitácora necesita la frase, no la clave.
+   * Lo no traducido cae al formateo genérico en vez de desaparecer.
+   */
+  private static readonly ACCIONES: Record<string, string> = {
+    crear: 'Creación',
+    actualizar: 'Actualización',
+    eliminar: 'Eliminación',
+    login: 'Inicio de sesión',
+    asignar_rol: 'Rol asignado',
+    quitar_rol: 'Rol retirado',
+    crear_version: 'Nueva versión',
+    enviar_revision: 'Enviada a revisión',
+    votar_aprobacion: 'Voto de aprobación',
+    certificar: 'Certificación',
+    deprecar: 'Baja de métrica',
+    descubrir: 'Descubrimiento de campos',
+    extraer: 'Extracción',
+    transformar: 'Transformación',
+    provisionar: 'Provisión de organización',
+    bootstrap_admin: 'Alta del administrador inicial',
+    siembra_admin: 'Alta del administrador del portal',
+  };
+
+  private static readonly ENTIDADES: Record<string, string> = {
+    organizaciones: 'Organización',
+    organizaciones_logo: 'Logotipo',
+    sociedades: 'Sociedad',
+    conexiones: 'Conexión',
+    usuarios: 'Usuario',
+    usuario_roles: 'Roles de usuario',
+    autorizaciones: 'Autorización',
+    catalogo_metricas: 'Métrica',
+    metrica_versiones: 'Versión de métrica',
+    glosario_negocio: 'Glosario',
+    politica_ingesta: 'Política de ingesta',
+    campo_ingesta: 'Campos de ingesta',
+    nits_afiliados: 'NIT afiliado',
+    portal_tableros: 'Tablero',
+  };
+
+  etiquetaAccion(clave: string): string {
+    return AuditoriaComponent.ACCIONES[clave] ?? this.enBonito(clave);
+  }
+
+  etiquetaEntidad(clave: string): string {
+    return AuditoriaComponent.ENTIDADES[clave] ?? this.enBonito(clave);
+  }
+
+  private enBonito(clave: string): string {
+    const texto = clave.replace(/_/g, ' ');
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+  }
   readonly entidades = computed(() => [...new Set(this.entradas().map((e) => e.entidad))].sort());
 
   readonly filtradas = computed(() => {

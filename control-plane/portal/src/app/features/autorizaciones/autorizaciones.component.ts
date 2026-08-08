@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/api.service';
+import { nombreDominio } from '../../core/dominios';
 import { Autorizacion, Hecho, Metrica, Rol } from '../../core/modelos';
 import { ToastService } from '../../core/toast.service';
 
@@ -291,7 +292,7 @@ export class AutorizacionesComponent implements OnInit {
         .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
     }
     if (this.nueva.recursoTipo === 'dominio') {
-      return this.dominios().map((d) => ({ clave: d, nombre: this.enBonito(d) }));
+      return this.dominios().map((d) => ({ clave: d, nombre: nombreDominio(d) }));
     }
     return [
       { clave: 'admin', nombre: 'Administración del portal' },
@@ -382,13 +383,8 @@ export class AutorizacionesComponent implements OnInit {
     if (tipo === 'metrica') {
       return this.metricas().find((m) => m.clave === clave)?.nombreOficial ?? clave;
     }
-    if (tipo === 'dominio') return this.enBonito(clave);
+    if (tipo === 'dominio') return nombreDominio(clave);
     return clave;
   }
 
-  /** `cartera_cobrar` → `Cartera cobrar`: las claves técnicas no se le muestran a nadie. */
-  private enBonito(clave: string): string {
-    const texto = clave.replace(/_/g, ' ');
-    return texto.charAt(0).toUpperCase() + texto.slice(1);
-  }
 }
