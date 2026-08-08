@@ -31,8 +31,11 @@ import { ToastService } from '../../core/toast.service';
           <label for="confirma">Confirma la contraseña nueva</label>
           <input id="confirma" type="password" name="confirma" [(ngModel)]="confirma" required autocomplete="new-password" />
         </div>
-        @if (error()) { <p class="error">{{ error() }}</p> }
-        <button type="submit" [disabled]="cargando()">{{ cargando() ? 'Guardando…' : 'Guardar' }}</button>
+        @if (error()) { <p class="error" aria-live="polite">{{ error() }}</p> }
+        <button type="submit" [disabled]="cargando()">
+          @if (cargando()) { <span class="spinner"></span> }
+          {{ cargando() ? 'Guardando…' : 'Guardar' }}
+        </button>
       </form>
     </div>
   `,
@@ -40,7 +43,7 @@ import { ToastService } from '../../core/toast.service';
     .panel { min-height: 100vh; display: grid; place-items: center; background: var(--bg); padding: 24px; }
     .form { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 28px; }
     .form h2 { margin: 8px 0 4px; }
-    .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 18px; }
+    .sub { color: var(--muted); font-size: var(--fs-base); margin: 0 0 18px; }
     button { width: 100%; margin-top: 10px; padding: 11px; }
   `],
 })

@@ -22,6 +22,9 @@ import { TenantService } from '../../core/tenant.service';
           <span class="eyebrow">{{ tenant.nombre() }} · Portal de datos</span>
         </div>
 
+        <!-- Versión compacta (<820px): logo + nombre + una línea, en vez de perder todo el branding. -->
+        <p class="hero__compacta">Tableros y métricas certificadas de tu organización, en un solo lugar.</p>
+
         <div class="hero__msg">
           <h1>Tus datos,<br />gobernados</h1>
           <p>Tableros y métricas certificadas de tu organización, en un solo lugar.</p>
@@ -42,8 +45,9 @@ import { TenantService } from '../../core/tenant.service';
             <label for="password">Contraseña</label>
             <input id="password" type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" />
           </div>
-          @if (error()) { <p class="error">{{ error() }}</p> }
+          @if (error()) { <p class="error" aria-live="polite">{{ error() }}</p> }
           <button type="submit" class="entrar" [disabled]="cargando()">
+            @if (cargando()) { <span class="spinner"></span> }
             {{ cargando() ? 'Verificando…' : 'Entrar' }}
           </button>
         </form>
@@ -76,16 +80,29 @@ import { TenantService } from '../../core/tenant.service';
     .hero__msg { margin-top: auto; margin-bottom: 24px; }
     .hero__msg h1 { color: #fff; font-size: 52px; line-height: .98; letter-spacing: -.04em; }
     .hero__msg p { color: #a7bcae; font-size: 15.5px; max-width: 34ch; margin: 18px 0 0; line-height: 1.5; }
+    .hero__compacta { display: none; margin: 0; color: #a7bcae; font-size: var(--fs-sm); }
 
     .form-panel { display: grid; place-items: center; padding: 32px; background: var(--bg); }
     .acceso-form { width: 100%; max-width: 348px; }
     .acceso-form h2 { margin: 8px 0 4px; font-size: 26px; }
-    .acceso-form .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 24px; }
+    .acceso-form .sub { color: var(--muted); font-size: var(--fs-base); margin: 0 0 24px; }
     .entrar { width: 100%; margin-top: 8px; padding: 11px; }
 
     @media (max-width: 820px) {
-      .acceso { grid-template-columns: 1fr; }
-      .hero { display: none; }
+      /* align-content: start evita que el grid reparta el min-height:100vh entre
+         las dos filas (hero + formulario) al apilarlas — si no, "stretch" (el
+         valor por defecto) separa ambos bloques con un hueco enorme. */
+      .acceso { grid-template-columns: 1fr; align-content: start; }
+      .hero {
+        flex-direction: row; align-items: center; gap: var(--sp-4);
+        padding: var(--sp-4) var(--sp-5);
+      }
+      .hero__msg { display: none; }
+      .hero__compacta { display: block; }
+    }
+    @media (max-width: 460px) {
+      .hero { flex-wrap: wrap; }
+      .hero__compacta { flex-basis: 100%; }
     }
   `],
 })

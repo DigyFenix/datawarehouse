@@ -5,15 +5,18 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { TableroDetalle } from '../../core/modelos';
 import { TenantService } from '../../core/tenant.service';
+import { EmptyComponent } from '../../ui/empty.component';
 
 /**
  * Visor del tablero: pide la URL pública (Publish to Web) al abrir — nunca viaja
  * en listados — y la embebe en un iframe. Cada apertura queda auditada en el API.
+ * Power BI tarda unos segundos en pintar: se muestra un spinner sobre el marco
+ * hasta que el propio iframe dispara `load`.
  */
 @Component({
   selector: 'app-tablero-visor',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, EmptyComponent],
   template: `
     <div class="page-header">
       <div class="titulo-grupo">
@@ -26,18 +29,25 @@ import { TenantService } from '../../core/tenant.service';
 
     @if (urlSegura(); as url) {
       <div class="marco">
+        @if (!iframeListo()) {
+          <div class="marco__carga" role="status" aria-live="polite">
+            <span class="spinner spinner--grande"></span>
+            <span>Cargando el tablero…</span>
+          </div>
+        }
         <iframe
           [src]="url"
           title="Tablero de Power BI"
           frameborder="0"
           allowfullscreen
           sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          [class.oculto]="!iframeListo()"
+          (load)="iframeListo.set(true)"
         ></iframe>
       </div>
     } @else if (error()) {
       <div class="tarjeta vacio-caja">
-        <strong>No se pudo abrir el tablero</strong>
-        <p>{{ error() }}</p>
+        <app-empty titulo="No se pudo abrir el tablero">{{ error() }}</app-empty>
       </div>
     }
   `,
@@ -45,12 +55,17 @@ import { TenantService } from '../../core/tenant.service';
     .volver { color: var(--muted); text-decoration: none; font-size: 12px; }
     .volver:hover { color: var(--text); }
     .marco {
+      position: relative;
       background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
       overflow: hidden; height: calc(100vh - 170px); min-height: 480px;
     }
-    iframe { width: 100%; height: 100%; display: block; }
-    .vacio-caja { text-align: center; padding: 40px; }
-    .vacio-caja p { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+    iframe { width: 100%; height: 100%; display: block; border: 0; }
+    iframe.oculto { visibility: hidden; }
+    .marco__carga {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; background: var(--surface); color: var(--muted); font-size: var(--fs-base);
+    }
+    .spinner--grande { width: 26px; height: 26px; border-width: 3px; color: var(--brand-600); }
   `],
 })
 export class TableroVisorComponent {
@@ -62,6 +77,7 @@ export class TableroVisorComponent {
   readonly tablero = signal<TableroDetalle | null>(null);
   readonly urlSegura = signal<SafeResourceUrl | null>(null);
   readonly error = signal<string | null>(null);
+  readonly iframeListo = signal(false);
 
   constructor() {
     const clave = this.ruta.snapshot.paramMap.get('clave');

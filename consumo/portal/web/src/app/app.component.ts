@@ -11,7 +11,9 @@ import { ThemeService } from './core/theme.service';
 })
 export class AppComponent {
   constructor() {
-    // Aplica el color de marca persistido al instante (evita parpadeo antes del branding).
-    inject(ThemeService).aplicarDesdeAlmacen();
+    // Aplica color de marca y preferencia de tema persistidos al instante (evita parpadeo).
+    const tema = inject(ThemeService);
+    tema.aplicarDesdeAlmacen();
+    tema.aplicarTemaDesdeAlmacen();
   }
 }

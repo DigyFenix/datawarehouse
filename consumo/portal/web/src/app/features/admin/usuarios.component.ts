@@ -1,12 +1,16 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
 import { PerfilOrg, UsuarioOrg } from '../../core/modelos';
 import { TenantService } from '../../core/tenant.service';
 import { ToastService } from '../../core/toast.service';
+import { EmptyComponent } from '../../ui/empty.component';
+import { IconComponent } from '../../ui/icon.component';
+import { PageHeaderComponent } from '../../ui/page-header.component';
+import { SkeletonComponent } from '../../ui/skeleton.component';
+import { PestanaTab, TabsComponent } from '../../ui/tabs.component';
 
 interface FormUsuario {
   email: string;
@@ -16,47 +20,56 @@ interface FormUsuario {
   activo: boolean;
 }
 
+const PESTANAS: PestanaTab[] = [
+  { etiqueta: 'Usuarios', segmento: 'usuarios' },
+  { etiqueta: 'Perfiles', segmento: 'perfiles' },
+  { etiqueta: 'Auditoría', segmento: 'auditoria' },
+];
+
 /** Administración de usuarios de la organización (solo su admin). */
 @Component({
   selector: 'app-admin-usuarios',
   standalone: true,
-  imports: [FormsModule, DrawerComponent, RouterLink],
+  imports: [FormsModule, DrawerComponent, TabsComponent, PageHeaderComponent, SkeletonComponent, EmptyComponent, IconComponent],
   template: `
-    <div class="page-header">
-      <div class="titulo-grupo">
-        <span class="eyebrow">Administración</span>
-        <h2>Usuarios</h2>
-      </div>
-      <button (click)="nuevo()">+ Nuevo usuario</button>
-    </div>
-    <nav class="tabs">
-      <a [routerLink]="['/', tenant.hash(), 'admin', 'usuarios']" class="tab activo">Usuarios</a>
-      <a [routerLink]="['/', tenant.hash(), 'admin', 'perfiles']" class="tab">Perfiles</a>
-      <a [routerLink]="['/', tenant.hash(), 'admin', 'auditoria']" class="tab">Auditoría</a>
-    </nav>
+    <app-page-header eyebrow="Administración" titulo="Usuarios">
+      <button acciones (click)="nuevo()">+ Nuevo usuario</button>
+    </app-page-header>
+    <app-tabs [baseRuta]="['/', tenant.hash(), 'admin']" [items]="pestanas"></app-tabs>
 
-    <div class="tarjeta" style="padding:0;">
-      <div class="tabla-wrap">
+    <div class="tarjeta tarjeta--tabla">
+      <div class="tabla-wrap tabla-responsive">
         <table>
-          <thead><tr><th>Usuario</th><th>Perfiles</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th scope="col">Usuario</th><th scope="col">Perfiles</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
           <tbody>
-            @for (u of usuarios(); track u.id) {
-              <tr>
-                <td><strong>{{ u.nombre }}</strong><br /><span class="sutil">{{ u.email }}</span></td>
-                <td>
-                  @for (p of u.perfiles; track p.id) { <span class="chip">{{ p.nombre }}</span> }
-                  @if (!u.perfiles.length) { <span class="sutil">—</span> }
-                </td>
-                <td>@if (u.esAdmin) { <span class="chip chip--admin">admin</span> } @else { <span class="sutil">usuario</span> }</td>
-                <td>@if (u.activo) { <span class="ok">activo</span> } @else { <span class="sutil">inactivo</span> }</td>
-                <td style="text-align:right; white-space:nowrap;">
-                  <button class="secundario pequeno" (click)="editar(u)">Editar</button>
-                  <button class="secundario pequeno" (click)="abrirPerfiles(u)">Perfiles</button>
-                  <button class="secundario pequeno" (click)="abrirRestablecer(u)">Contraseña</button>
-                </td>
-              </tr>
-            } @empty {
-              <tr><td colspan="5"><div class="vacio"><strong>Sin usuarios</strong>Crea los usuarios de tu organización.</div></td></tr>
+            @if (cargando()) {
+              <app-skeleton variante="fila-tabla" [columnas]="5"></app-skeleton>
+              <app-skeleton variante="fila-tabla" [columnas]="5"></app-skeleton>
+              <app-skeleton variante="fila-tabla" [columnas]="5"></app-skeleton>
+            } @else {
+              @for (u of usuarios(); track u.id) {
+                <tr>
+                  <td data-label="Usuario"><strong>{{ u.nombre }}</strong><br /><span class="sutil">{{ u.email }}</span></td>
+                  <td data-label="Perfiles">
+                    @for (p of u.perfiles; track p.id) { <span class="chip">{{ p.nombre }}</span> }
+                    @if (!u.perfiles.length) { <span class="sutil">—</span> }
+                  </td>
+                  <td data-label="Rol">@if (u.esAdmin) { <span class="chip chip--admin">admin</span> } @else { <span class="sutil">usuario</span> }</td>
+                  <td data-label="Estado">@if (u.activo) { <span class="ok">activo</span> } @else { <span class="sutil">inactivo</span> }</td>
+                  <td data-label="Acciones" class="col-acciones">
+                    <details class="menu-acciones">
+                      <summary [attr.aria-label]="'Acciones para ' + u.nombre"><app-icon name="menu" [size]="16"></app-icon></summary>
+                      <div class="menu-acciones__lista">
+                        <button type="button" (click)="editar(u); cerrarMenu($event)"><app-icon name="editar" [size]="15"></app-icon> Editar</button>
+                        <button type="button" (click)="abrirPerfiles(u); cerrarMenu($event)"><app-icon name="usuarios" [size]="15"></app-icon> Perfiles</button>
+                        <button type="button" (click)="abrirRestablecer(u); cerrarMenu($event)"><app-icon name="candado" [size]="15"></app-icon> Contraseña</button>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5"><app-empty titulo="Sin usuarios">Crea los usuarios de tu organización.</app-empty></td></tr>
+              }
             }
           </tbody>
         </table>
@@ -82,7 +95,10 @@ interface FormUsuario {
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="drawerUsuario.set(false)">Cancelar</button>
-            <button type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar' }}</button>
+            <button type="submit" [disabled]="guardando()">
+              @if (guardando()) { <span class="spinner"></span> }
+              {{ guardando() ? 'Guardando…' : 'Guardar' }}
+            </button>
           </div>
         </form>
       </app-drawer>
@@ -91,18 +107,24 @@ interface FormUsuario {
     @if (drawerPerfiles()) {
       <app-drawer titulo="Perfiles del usuario" [eyebrow]="seleccionado()?.nombre ?? ''" (cerrar)="drawerPerfiles.set(false)">
         <p class="ayuda">Los perfiles definen qué tableros ve el usuario (y mañana, el alcance del chatbot).</p>
-        @for (p of perfiles(); track p.id) {
-          <label class="check">
-            <input type="checkbox" [checked]="perfilesSeleccionados().includes(p.id)" (change)="alternarPerfil(p.id)" />
-            {{ p.nombre }} <span class="sutil">({{ p.clave }})</span>
-          </label>
-        } @empty {
-          <p class="sutil">Aún no hay perfiles. Créalos en la pestaña Perfiles.</p>
-        }
+        <fieldset>
+          <legend>Perfiles asignados</legend>
+          @for (p of perfiles(); track p.id) {
+            <label class="check">
+              <input type="checkbox" [checked]="perfilesSeleccionados().includes(p.id)" (change)="alternarPerfil(p.id)" />
+              {{ p.nombre }} <span class="sutil">({{ p.clave }})</span>
+            </label>
+          } @empty {
+            <p class="sutil">Aún no hay perfiles. Créalos en la pestaña Perfiles.</p>
+          }
+        </fieldset>
         @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
         <div class="acciones-fila">
           <button type="button" class="secundario" (click)="drawerPerfiles.set(false)">Cancelar</button>
-          <button (click)="guardarPerfiles()" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar' }}</button>
+          <button (click)="guardarPerfiles()" [disabled]="guardando()">
+            @if (guardando()) { <span class="spinner"></span> }
+            {{ guardando() ? 'Guardando…' : 'Guardar' }}
+          </button>
         </div>
       </app-drawer>
     }
@@ -118,22 +140,22 @@ interface FormUsuario {
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="drawerRestablecer.set(false)">Cancelar</button>
-            <button type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Restablecer' }}</button>
+            <button type="submit" [disabled]="guardando()">
+              @if (guardando()) { <span class="spinner"></span> }
+              {{ guardando() ? 'Restableciendo…' : 'Restablecer' }}
+            </button>
           </div>
         </form>
       </app-drawer>
     }
   `,
   styles: [`
-    .ayuda { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); }
-    .sutil { font-size: 11.5px; color: var(--faint); }
-    .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin: 8px 0; color: var(--muted); }
-    .chip { display: inline-block; background: var(--brand-100); color: var(--brand-700); border-radius: 999px; padding: 2px 9px; font-size: 11.5px; margin: 1px 3px 1px 0; }
+    .ayuda { margin: 0 0 12px; font-size: var(--fs-sm); color: var(--muted); }
+    .sutil { font-size: var(--fs-xs); color: var(--faint); }
+    .check { display: flex; align-items: center; gap: 8px; font-size: var(--fs-base); margin: 8px 0; color: var(--muted); }
+    .chip { display: inline-block; background: var(--brand-100); color: var(--brand-700); border-radius: 999px; padding: 2px 9px; font-size: var(--fs-xs); margin: 1px 3px 1px 0; }
     .chip--admin { background: var(--amber-100); color: var(--amber-700); }
     .ok { color: var(--ok); }
-    .tabs { display: flex; gap: 4px; margin: 0 0 16px; border-bottom: 1px solid var(--border); }
-    .tab { padding: 8px 14px; text-decoration: none; color: var(--muted); font-size: 13.5px; border-bottom: 2px solid transparent; }
-    .tab.activo { color: var(--text); border-bottom-color: var(--brand-600); font-weight: 600; }
   `],
 })
 export class UsuariosComponent {
@@ -141,8 +163,10 @@ export class UsuariosComponent {
   private readonly toast = inject(ToastService);
   readonly tenant = inject(TenantService);
 
+  readonly pestanas = PESTANAS;
   readonly usuarios = signal<UsuarioOrg[]>([]);
   readonly perfiles = signal<PerfilOrg[]>([]);
+  readonly cargando = signal(true);
   readonly drawerUsuario = signal(false);
   readonly drawerPerfiles = signal(false);
   readonly drawerRestablecer = signal(false);
@@ -164,14 +188,26 @@ export class UsuariosComponent {
   }
 
   cargar(): void {
+    this.cargando.set(true);
     this.api.get<UsuarioOrg[]>('/admin/usuarios').subscribe({
-      next: (d) => this.usuarios.set(d),
-      error: (e: Error) => this.toast.error('No se pudieron cargar los usuarios', e.message),
+      next: (d) => {
+        this.usuarios.set(d);
+        this.cargando.set(false);
+      },
+      error: (e: Error) => {
+        this.toast.error('No se pudieron cargar los usuarios', e.message);
+        this.cargando.set(false);
+      },
     });
     this.api.get<PerfilOrg[]>('/admin/perfiles').subscribe({
       next: (d) => this.perfiles.set(d),
       error: () => {},
     });
+  }
+
+  /** Cierra el <details> de acciones tras elegir una opción del menú. */
+  cerrarMenu(evento: Event): void {
+    (evento.currentTarget as HTMLElement)?.closest('details')?.removeAttribute('open');
   }
 
   nuevo(): void {
