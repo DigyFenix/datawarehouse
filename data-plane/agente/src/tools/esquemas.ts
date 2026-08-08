@@ -13,6 +13,13 @@ const periodo = z
   .string()
   .regex(/^\d{4}-\d{2}$/, "período inválido (formato 'YYYY-MM')");
 
+// `empresa_id` es la clave de sociedad del ERP y en todo el modelo Oro es TEXTO
+// (`proavisa`, `ironnetwork`…), no un entero. Mismo regex que la clave de métrica:
+// deja fuera espacios, comillas y cualquier cosa que parezca SQL.
+const claveEmpresa = z
+  .string()
+  .regex(/^[a-z0-9_]+$/, 'clave de empresa inválida (solo minúsculas, dígitos y _)');
+
 export const esquemaListarMetricas = z
   .object({
     dominio: z
@@ -26,7 +33,7 @@ export const esquemaConsultarMetrica = z
     metrica_clave: claveMetrica,
     periodo_desde: periodo.optional(),
     periodo_hasta: periodo.optional(),
-    empresa_id: z.number().int().positive().optional(),
+    empresa_id: claveEmpresa.optional(),
     agrupar_por_empresa: z.boolean().optional(),
   })
   .strict();
@@ -34,7 +41,7 @@ export const esquemaConsultarMetrica = z
 export const esquemaConsultarAging = z
   .object({
     tipo_cartera: z.enum(['cobrar', 'pagar']),
-    empresa_id: z.number().int().positive().optional(),
+    empresa_id: claveEmpresa.optional(),
     detalle: z.enum(['por_rango', 'por_socio']).default('por_rango'),
     limite_socios: z.number().int().min(1).max(25).default(10),
   })

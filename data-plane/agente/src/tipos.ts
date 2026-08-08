@@ -19,8 +19,10 @@ export interface EjecutorSql {
 export interface AlcanceEfectivo {
   /** Claves de métrica consultables (ya intersectadas con estado certificada/exploratoria). */
   metricas: Map<string, MetricaAutorizada>;
-  /** Empresas visibles: lista de empresa_id, o '*' = todas. FAIL-CLOSED: vacía = ninguna. */
-  empresas: '*' | number[];
+  /** Empresas visibles: lista de `empresa_id`, o '*' = todas. FAIL-CLOSED: vacía = ninguna.
+   *  `empresa_id` es TEXTO en todo el modelo Oro (la clave de sociedad del ERP:
+   *  `proavisa`, `ironnetwork`…), no un entero. */
+  empresas: '*' | string[];
 }
 
 export interface MetricaAutorizada {
@@ -70,7 +72,7 @@ export interface ConfigAgente {
   /** Contexto de frescura y empresas para el system prompt. */
   nombreOrganizacion: string;
   /** empresa_id → nombre visible (de dim_organizacion), para el prompt y las tarjetas. */
-  empresas: Map<number, string>;
+  empresas: Map<string, string>;
   /** Glosario término → definición (global + del tenant). */
   glosario: { termino: string; definicion: string; equivaleA: string | null }[];
   /** Frescura por dominio (oro.estado_carga), para que el agente cite el corte del dato. */

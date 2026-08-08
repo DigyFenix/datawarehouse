@@ -27,6 +27,17 @@ export function construirSystemPrompt(config: ConfigAgente, alcance: AlcanceEfec
       : alcance.empresas.map((id) => `${id}=${config.empresas.get(id) ?? id}`).join(', ') ||
         'NINGUNA (este usuario no tiene empresas autorizadas)';
 
+  // La tool de aging exige alcance sobre el saldo correspondiente (misma regla que
+  // aplica `ejecutarTool`). Se declara aquí para que el agente no ofrezca una cartera
+  // que después va a denegar.
+  const carteras = [
+    { clave: 'saldo_cxc', texto: 'por cobrar' },
+    { clave: 'saldo_cxp', texto: 'por pagar' },
+  ].filter((c) => alcance.metricas.has(c.clave));
+  const agingTexto = carteras.length
+    ? carteras.map((c) => c.texto).join(' y ')
+    : 'NO autorizada para este usuario — no la ofrezcas';
+
   const glosario = config.glosario
     .map((g) => `- ${g.termino}: ${g.definicion}${g.equivaleA ? ` → métrica ${g.equivaleA}` : ''}`)
     .join('\n');
@@ -54,6 +65,12 @@ REGLAS QUE NO PUEDES ROMPER:
 
 QUÉ PUEDES CONSULTAR (catálogo autorizado de este usuario):
 ${lineasMetricas.length ? lineasMetricas.join('\n') : '(ninguna métrica autorizada)'}
+
+ANTIGÜEDAD DE CARTERA (herramienta consultar_aging): ${agingTexto}
+
+Esa lista es EXHAUSTIVA: no ofrezcas ni sugieras nada que no aparezca en ella, aunque sepas
+que el dato existe en algún lugar. Prometer una consulta que después vas a denegar es peor
+que decir de entrada que no está autorizada.
 
 EMPRESAS VISIBLES PARA ESTE USUARIO: ${empresasTexto}
 

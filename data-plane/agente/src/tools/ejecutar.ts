@@ -38,7 +38,7 @@ export interface ContextoTool {
   ejecutor: EjecutorSql;
   alcance: AlcanceEfectivo;
   /** empresa_id → nombre visible; también define el universo cuando el alcance es '*'. */
-  empresas: Map<number, string>;
+  empresas: Map<string, string>;
 }
 
 export interface ResultadoTool {
@@ -173,11 +173,11 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
   // Agregación de presentación: por período (default) o por período y empresa.
   const tarjetas: TarjetaDato[] = [];
   const porPeriodo = new Map<string, number>();
-  const porPeriodoEmpresa: { periodo: string; empresaId: number; valor: number }[] = [];
+  const porPeriodoEmpresa: { periodo: string; empresaId: string; valor: number }[] = [];
   for (const f of filas) {
     const periodo = String(f['periodo']);
     const valor = Number(f['valor'] ?? 0);
-    const empresaId = Number(f['empresa_id']);
+    const empresaId = String(f['empresa_id'] ?? '');
     porPeriodo.set(periodo, (porPeriodo.get(periodo) ?? 0) + valor);
     porPeriodoEmpresa.push({ periodo, empresaId, valor });
   }

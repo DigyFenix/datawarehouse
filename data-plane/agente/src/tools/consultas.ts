@@ -16,7 +16,7 @@ export const SQL_METRICA_VALOR = `
    where metrica_clave = $1
      and ($2::text is null or periodo >= $2)
      and ($3::text is null or periodo <= $3)
-     and empresa_id = any($4::bigint[])
+     and empresa_id = any($4::text[])
    order by periodo, empresa_id
 `;
 
@@ -26,7 +26,7 @@ export const SQL_PERIODOS_METRICA = `
          min(periodo) as periodo_desde,
          max(periodo) as periodo_hasta
     from oro.metrica_valor
-   where empresa_id = any($1::bigint[])
+   where empresa_id = any($1::text[])
    group by metrica_clave
 `;
 
@@ -45,10 +45,10 @@ export const SQL_AGING_POR_RANGO = `
     from oro.metrica_aging a
     left join oro.dim_rango_aging r on r.rango_aging = a.rango_aging
    where a.tipo_cartera = $1
-     and a.empresa_id = any($2::bigint[])
+     and a.empresa_id = any($2::text[])
      and a.fecha_corte = (
        select max(fecha_corte) from oro.metrica_aging
-        where tipo_cartera = $1 and empresa_id = any($2::bigint[])
+        where tipo_cartera = $1 and empresa_id = any($2::text[])
      )
    group by a.rango_aging
    order by min(r.rango_aging_orden)
@@ -61,10 +61,10 @@ export const SQL_AGING_POR_SOCIO = `
          sum(partidas)    as partidas
     from oro.metrica_aging
    where tipo_cartera = $1
-     and empresa_id = any($2::bigint[])
+     and empresa_id = any($2::text[])
      and fecha_corte = (
        select max(fecha_corte) from oro.metrica_aging
-        where tipo_cartera = $1 and empresa_id = any($2::bigint[])
+        where tipo_cartera = $1 and empresa_id = any($2::text[])
      )
    group by socio_nombre
    order by sum(saldo_local) desc
@@ -75,7 +75,7 @@ export const SQL_AGING_POR_SOCIO = `
 export const SQL_AGING_CORTE = `
   select max(fecha_corte) as fecha_corte
     from oro.metrica_aging
-   where tipo_cartera = $1 and empresa_id = any($2::bigint[])
+   where tipo_cartera = $1 and empresa_id = any($2::text[])
 `;
 
 // ---------------------------------------------------------------- BD de control

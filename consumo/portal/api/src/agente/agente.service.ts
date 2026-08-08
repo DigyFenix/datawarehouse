@@ -114,7 +114,10 @@ export class AgenteService {
     );
     const claves = (resultado.rows as { recursoClave: string }[]).map((f) => f.recursoClave);
     if (claves.some((c) => c === '*')) return '*';
-    return claves.filter((c) => /^\d+$/.test(c)).join(',');
+    // `empresa_id` es texto (clave de sociedad del ERP), no un entero: se filtra por
+    // el mismo alfabeto que valida el catálogo para que la coma del CSV siga siendo
+    // separador y no pueda venir en el valor.
+    return claves.filter((c) => /^[a-z0-9_]+$/.test(c)).join(',');
   }
 
   /** Ejecutor inyectado al paquete: tenant bajo RLS (portal_lector), control de solo lectura. */
@@ -130,12 +133,16 @@ export class AgenteService {
   }
 
   /** empresa_id → nombre visible (oro.dim_organizacion), con el pool NORMAL del tenant. */
-  private async leerEmpresas(pool: Pool): Promise<Map<number, string>> {
+  private async leerEmpresas(pool: Pool): Promise<Map<string, string>> {
+    // `empresa_id` (texto) es la clave de negocio con la que se filtran los hechos;
+    // `organizacion_clave` es la surrogate key de la dimensión y NO cruza con ellos.
     const resultado = await pool.query(
-      `SELECT organizacion_clave AS id, nombre FROM oro.dim_organizacion`,
+      `SELECT empresa_id AS id, nombre
+         FROM oro.dim_organizacion
+        WHERE es_vigente AND empresa_id IS NOT NULL`,
     );
-    const filas = resultado.rows as { id: number; nombre: string }[];
-    return new Map(filas.map((f) => [Number(f.id), f.nombre]));
+    const filas = resultado.rows as { id: string; nombre: string }[];
+    return new Map(filas.map((f) => [String(f.id), f.nombre]));
   }
 
   /** Frescura por dominio (oro.estado_carga), agregada a través de las empresas del tenant. */

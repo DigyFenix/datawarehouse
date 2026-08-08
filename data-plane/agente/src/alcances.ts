@@ -25,12 +25,13 @@ export async function resolverAlcance(
   const alcances = await ejecutor.consultarTenant(SQL_ALCANCES_USUARIO, [usuarioId]);
 
   // Eje empresa — fail-closed: sin alcance explícito no hay filas.
+  // `empresa_id` es texto (clave de sociedad del ERP), así que la clave del alcance
+  // se conserva tal cual: convertirla a número la volvía NaN y dejaba al agente sin
+  // una sola fila en cualquier tenant.
   const filasEmpresa = alcances.filter((a) => a['recurso_tipo'] === 'empresa');
-  const empresas: '*' | number[] = filasEmpresa.some((a) => a['recurso_clave'] === '*')
+  const empresas: '*' | string[] = filasEmpresa.some((a) => a['recurso_clave'] === '*')
     ? '*'
-    : filasEmpresa
-        .map((a) => Number(a['recurso_clave']))
-        .filter((n) => Number.isInteger(n) && n > 0);
+    : filasEmpresa.map((a) => String(a['recurso_clave'] ?? '')).filter((c) => c !== '');
 
   // Qué puede consultar: claves directas y dominios (con '*' en cualquiera de los dos).
   const clavesDirectas = new Set<string>();
@@ -95,21 +96,21 @@ export async function resolverAlcance(
 }
 
 /** empresa_id existentes en el warehouse (solo para el rango de períodos con alcance '*'). */
-async function todasLasEmpresas(ejecutor: EjecutorSql): Promise<number[]> {
+async function todasLasEmpresas(ejecutor: EjecutorSql): Promise<string[]> {
   const filas = await ejecutor.consultarTenant(
     'select distinct empresa_id from oro.metrica_valor',
     [],
   );
-  return filas.map((f) => Number(f['empresa_id'])).filter((n) => Number.isInteger(n));
+  return filas.map((f) => String(f['empresa_id'] ?? '')).filter((c) => c !== '');
 }
 
 /** Intersección {empresa solicitada} ∩ {empresas autorizadas} → arreglo para `= any($n)`.
  *  null = denegado (solicitó una empresa fuera de su alcance). */
 export function empresasParaConsulta(
   alcance: AlcanceEfectivo,
-  empresaSolicitada: number | undefined,
-  todas: number[],
-): number[] | null {
+  empresaSolicitada: string | undefined,
+  todas: string[],
+): string[] | null {
   const autorizadas = alcance.empresas === '*' ? todas : alcance.empresas;
   if (autorizadas.length === 0) return null; // fail-closed
   if (empresaSolicitada === undefined) return autorizadas;

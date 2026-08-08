@@ -23,7 +23,7 @@ function metrica(clave: string, dominio: string, estado: 'certificada' | 'explor
   };
 }
 
-function alcanceCon(metricas: MetricaAutorizada[], empresas: '*' | number[]): AlcanceEfectivo {
+function alcanceCon(metricas: MetricaAutorizada[], empresas: '*' | string[]): AlcanceEfectivo {
   return { metricas: new Map(metricas.map((m) => [m.clave, m])), empresas };
 }
 
@@ -48,7 +48,10 @@ function ejecutorFalso(filas: Record<string, unknown>[] = []): EjecutorSql & {
 const ctx = (alcance: AlcanceEfectivo, ejecutor: EjecutorSql) => ({
   ejecutor,
   alcance,
-  empresas: new Map([[1, 'Empresa Uno'], [2, 'Empresa Dos']]),
+  empresas: new Map([
+    ['proavisa', 'Empresa Uno'],
+    ['loreto', 'Empresa Dos'],
+  ]),
 });
 
 // ---------------------------------------------------------------- guarda 1
@@ -112,7 +115,7 @@ describe('Guarda 2 — solo métricas consumibles', () => {
     const r = await ejecutarTool(
       'consultar_metrica',
       { metrica_clave: 'backlog' },
-      ctx(alcance, ejecutorFalso([{ empresa_id: 1, periodo: '2026-07', valor: 100 }])),
+      ctx(alcance, ejecutorFalso([{ empresa_id: 'proavisa', periodo: '2026-07', valor: 100 }])),
     );
     expect(r.esError).toBe(false);
     expect(r.tarjetas[0]?.estado).toBe('exploratoria');
@@ -122,25 +125,35 @@ describe('Guarda 2 — solo métricas consumibles', () => {
 // ---------------------------------------------------------------- guarda 3
 
 describe('Guarda 3 — alcance de empresas siempre aplicado', () => {
+  // Regresión: `empresa_id` es TEXTO en todo el modelo Oro (la clave de sociedad del
+  // ERP). Castearlo a bigint hacía que Postgres abortara con «operator does not exist:
+  // text = bigint» y el agente no devolvía una sola fila en ningún tenant. Los tests
+  // no lo vieron porque el ejecutor falso devolvía ids numéricos que la base nunca da.
+  it('el filtro de empresa se compara como texto, nunca como entero', () => {
+    const fuente = readFileSync(join(__dirname, 'tools', 'consultas.ts'), 'utf8');
+    expect(fuente).not.toMatch(/::(big)?int\[\]/);
+    expect(fuente).toContain('::text[]');
+  });
+
   it('toda consulta al warehouse lleva el arreglo de empresas autorizadas', async () => {
-    const alcance = alcanceCon([metrica('ventas_netas_sin_iva', 'ventas')], [1]);
-    const ejecutor = ejecutorFalso([{ empresa_id: 1, periodo: '2026-07', valor: 500 }]);
+    const alcance = alcanceCon([metrica('ventas_netas_sin_iva', 'ventas')], ['proavisa']);
+    const ejecutor = ejecutorFalso([{ empresa_id: 'proavisa', periodo: '2026-07', valor: 500 }]);
     await ejecutarTool(
       'consultar_metrica',
       { metrica_clave: 'ventas_netas_sin_iva' },
       ctx(alcance, ejecutor),
     );
     const llamada = ejecutor.llamadas[0];
-    expect(llamada?.sql).toContain('empresa_id = any($4::bigint[])');
-    expect(llamada?.params[3]).toEqual([1]);
+    expect(llamada?.sql).toContain('empresa_id = any($4::text[])');
+    expect(llamada?.params[3]).toEqual(['proavisa']);
   });
 
   it('pedir una empresa fuera del alcance se deniega antes de tocar la base', async () => {
-    const alcance = alcanceCon([metrica('ventas_netas_sin_iva', 'ventas')], [1]);
+    const alcance = alcanceCon([metrica('ventas_netas_sin_iva', 'ventas')], ['proavisa']);
     const ejecutor = ejecutorFalso();
     const r = await ejecutarTool(
       'consultar_metrica',
-      { metrica_clave: 'ventas_netas_sin_iva', empresa_id: 2 },
+      { metrica_clave: 'ventas_netas_sin_iva', empresa_id: 'loreto' },
       ctx(alcance, ejecutor),
     );
     expect(r.esError).toBe(true);
@@ -197,8 +210,8 @@ describe('Guarda 5 — dato + métrica + período + estado', () => {
       'consultar_metrica',
       { metrica_clave: 'ventas_netas_sin_iva' },
       ctx(alcance, ejecutorFalso([
-        { empresa_id: 1, periodo: '2026-06', valor: 1000 },
-        { empresa_id: 2, periodo: '2026-06', valor: 500 },
+        { empresa_id: 'proavisa', periodo: '2026-06', valor: 1000 },
+        { empresa_id: 'loreto', periodo: '2026-06', valor: 500 },
       ])),
     );
     expect(r.tarjetas).toHaveLength(1);
@@ -216,8 +229,8 @@ describe('Guarda 5 — dato + métrica + período + estado', () => {
       'consultar_metrica',
       { metrica_clave: 'ventas_netas_sin_iva', agrupar_por_empresa: true },
       ctx(alcance, ejecutorFalso([
-        { empresa_id: 1, periodo: '2026-06', valor: 1000 },
-        { empresa_id: 2, periodo: '2026-06', valor: 500 },
+        { empresa_id: 'proavisa', periodo: '2026-06', valor: 1000 },
+        { empresa_id: 'loreto', periodo: '2026-06', valor: 500 },
       ])),
     );
     expect(r.tarjetas).toHaveLength(2);
