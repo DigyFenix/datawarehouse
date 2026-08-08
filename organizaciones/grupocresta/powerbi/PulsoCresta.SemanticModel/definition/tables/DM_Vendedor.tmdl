@@ -1,62 +1,49 @@
 table DM_Vendedor
-	lineageTag: 3d207af0-e22d-494c-9d42-c13fe357e97a
 
 	column vendedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: 6c807939-1a77-4599-a85b-083f842d6de3
 		summarizeBy: none
 		sourceColumn: vendedor_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: e52c6b29-5988-4450-b9f0-17bfcb164dcb
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column vendedor_codigo
 		dataType: string
-		lineageTag: 1acac51a-affc-46f8-8721-6bd19d1c5841
 		summarizeBy: none
 		sourceColumn: vendedor_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: aafa3d57-8b2b-4d8c-a3ed-cc20818995ad
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
-		lineageTag: 2637eb4e-c7fa-49e1-b40e-6e6e521c2f14
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: 38c72678-9317-4f29-9d48-07d4caeeb5a4
 		summarizeBy: none
 		sourceColumn: valido_desde
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: b15a0088-0a55-46f5-9d8f-c68531f23f38
 		summarizeBy: none
 		sourceColumn: valido_hasta
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 0b3e9cf1-6fa4-4d5a-ad4a-e3922d9dc3e3
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -68,8 +55,3 @@ table DM_Vendedor
 				    Tabla = Origen{[Schema="oro",Item="dim_vendedor"]}[Data]
 				in
 				    Tabla
-
-	annotation PBI_NavigationStepName = Navegación
-
-	annotation PBI_ResultType = Table
-

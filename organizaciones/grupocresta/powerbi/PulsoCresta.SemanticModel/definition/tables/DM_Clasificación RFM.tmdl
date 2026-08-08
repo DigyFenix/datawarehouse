@@ -1,194 +1,157 @@
 table 'DM_Clasificación RFM'
-	lineageTag: 38851f2f-08b9-4a07-b4b9-abe025c60fe5
-
-	/// Clientes recientes y frecuentes: el núcleo que sostiene la venta. Cuidarlos es más barato que reemplazarlos.
-	measure 'Clientes campeones' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "campeon"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-		lineageTag: 08029168-21e0-441e-a106-e031aacd0896
-
-	/// Compran seguido y hace poco, aunque no sean los de mayor monto. Son la base estable.
-	measure 'Clientes leales' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "leal"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-		lineageTag: 63ec99fc-823b-46e8-a7c0-4f392adabcf5
-
-	/// Compraban y dejaron de venir. La lista de reactivación con mayor retorno por llamada.
-	measure 'Clientes en riesgo' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), 'DM_Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
-		formatString: #,0
-		displayFolder: 01 Conteos
-		lineageTag: 90687f68-3161-4239-9680-ffbf8240b7fd
-
-	/// En riesgo Y de monto alto: si solo se va a llamar a alguien, que sea a estos.
-	measure 'Clientes en riesgo valiosos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "en_riesgo_valioso"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-		lineageTag: bdb6c4ef-6fdb-4d04-bc39-760fc53e677a
-
-	/// Llevan mucho sin comprar y compraban poco. Reactivarlos rara vez paga el esfuerzo.
-	measure 'Clientes dormidos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "dormido"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-		lineageTag: ee2c3309-d95a-435f-bfde-ebe41733c7ab
-
-	/// Venta de 12 meses que está en manos de clientes en riesgo: lo que se pierde si nadie los llama.
-	measure 'Venta 12m en riesgo' = CALCULATE(SUM('DM_Clasificación RFM'[monto_neto_12m]), 'DM_Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
-		formatString: "Q" #,0
-		displayFolder: 02 Montos
-		lineageTag: 5ecc64e1-36ea-4e46-b261-3dd47502be02
-
-	/// Venta de los últimos 12 meses cubierta por el catálogo RFM.
-	measure 'Venta 12m clasificada' = SUM('DM_Clasificación RFM'[monto_neto_12m])
-		formatString: "Q" #,0
-		displayFolder: 02 Montos
-		lineageTag: 44fe829f-23b7-4d39-9f60-ce3512f0de0b
-
-	/// Clientes cuya PRIMERA compra cae dentro del período filtrado. Se quitan los filtros de Calendario y Ventas a propósito: sin eso la relación con Cliente ya habría recortado la tabla a quien compró en el período, y el conteo sería el de clientes activos, no el de nuevos.
-	measure 'Clientes nuevos' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) RETURN CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS(DM_Calendario), REMOVEFILTERS(FC_Ventas), 'DM_Clasificación RFM'[primera_compra] >= ini, 'DM_Clasificación RFM'[primera_compra] <= fin)
-		formatString: #,0
-		displayFolder: 03 Rotación de cartera
-		lineageTag: 3595ab39-0d81-4084-bfe1-d01de845600e
-
-	/// Cuánto facturaron en el período los clientes que estrenaron relación en él. Mide si la captación trae volumen o solo nombres.
-	measure 'Ventas de clientes nuevos' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) RETURN CALCULATE([Ventas netas], FILTER(ALL('DM_Clasificación RFM'), 'DM_Clasificación RFM'[primera_compra] >= ini && 'DM_Clasificación RFM'[primera_compra] <= fin))
-		formatString: "Q" #,0
-		displayFolder: 03 Rotación de cartera
-		lineageTag: fe65d612-9858-468f-85bf-1bc17cda1b8a
-
-	/// Qué parte de la facturación viene de relaciones estrenadas en el período.
-	measure '% Venta de clientes nuevos' = DIVIDE([Ventas de clientes nuevos], [Ventas netas])
-		formatString: 0.0%
-		displayFolder: 03 Rotación de cartera
-		lineageTag: c0d7e453-9d3b-41bf-81e2-6f3babe6d60d
-
-	/// Clientes con al menos una compra en los últimos 12 meses según la recencia del RFM.
-	measure 'Clientes activos 12m' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[recencia_dias] <= 365))
-		formatString: #,0
-		displayFolder: 03 Rotación de cartera
-		lineageTag: 1e6b90d5-4846-4257-a267-d03b96751a64
-
-	/// Proporción de la cartera que compró en los últimos 12 meses. Es la medida de si el catálogo está vivo o es una lista histórica.
-	measure '% Clientes activos' = DIVIDE([Clientes activos 12m], CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS('DM_Clasificación RFM'[recencia_dias])))
-		formatString: 0.0%
-		displayFolder: 03 Rotación de cartera
-		lineageTag: 40875915-b9c4-4637-84ca-fa3496240773
-
-	/// Antigüedad media de la relación comercial. Una cartera joven crece; una muy vieja sin clientes nuevos se está apagando.
-	measure 'Antigüedad media del cliente' = AVERAGEX('DM_Clasificación RFM', DATEDIFF('DM_Clasificación RFM'[primera_compra], TODAY(), DAY))
-		formatString: #,0
-		displayFolder: 03 Rotación de cartera
-		lineageTag: b1e00404-a4d1-4280-86c0-2552a2e5bda8
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 81f7ff15-7a2d-4261-9457-3679ea75bf6e
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: 31728889-8a00-431c-84f1-7d5060fc91c9
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column primera_compra
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 8adf3b57-154e-4eed-ac6e-38865c796673
 		summarizeBy: none
 		sourceColumn: primera_compra
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column ultima_compra
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 20ff7ff7-5c85-4796-b1ab-d54f8f370f00
 		summarizeBy: none
 		sourceColumn: ultima_compra
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column recencia_dias
 		dataType: int64
-		formatString: #,0
-		lineageTag: adff8fde-e3fa-40cf-8145-73e99acb6926
 		summarizeBy: none
 		sourceColumn: recencia_dias
+		formatString: #,0
 
 	column frecuencia_12m
 		dataType: int64
-		formatString: #,0
-		lineageTag: 27011978-77a3-4c78-8c0e-2e53494db4a8
 		summarizeBy: none
 		sourceColumn: frecuencia_12m
+		formatString: #,0
 
 	column monto_neto_12m
-		dataType: double
-		formatString: #,0.00
-		lineageTag: a866a59c-b819-4206-9f4e-79af94ab58bf
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: monto_neto_12m
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column fecha_referencia
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 49f2dc60-d2fa-44b7-8b6d-f59fd5664f52
 		summarizeBy: none
 		sourceColumn: fecha_referencia
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column puntaje_recencia
 		dataType: int64
-		formatString: #,0
-		lineageTag: 09f48a67-23b2-4b56-88d7-f13f132d4834
 		summarizeBy: none
 		sourceColumn: puntaje_recencia
+		formatString: #,0
 
 	column puntaje_frecuencia
 		dataType: int64
-		formatString: #,0
-		lineageTag: 7621c872-23f0-4881-b366-e1be9fba69e0
 		summarizeBy: none
 		sourceColumn: puntaje_frecuencia
+		formatString: #,0
 
 	column puntaje_monto
 		dataType: int64
-		formatString: #,0
-		lineageTag: e0359a5c-c3eb-4070-bcb1-626f4bbc470e
 		summarizeBy: none
 		sourceColumn: puntaje_monto
+		formatString: #,0
 
 	column segmento_rfm
 		dataType: string
-		lineageTag: a0857457-21cb-4b82-be2c-d486dde1f126
 		summarizeBy: none
 		sourceColumn: segmento_rfm
 
 	column segmento_rfm_nombre
 		dataType: string
-		lineageTag: 98dec092-d2c1-4c88-bd26-0a63c2f0d240
 		summarizeBy: none
 		sourceColumn: segmento_rfm_nombre
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 0926b9be-5f24-4011-8ebd-0266b7015585
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: ce20a47e-abb3-48f5-9973-65ef437c53d9
 		summarizeBy: none
 		sourceColumn: version_proceso
+
+	/// Clientes recientes y frecuentes: el núcleo que sostiene la venta. Cuidarlos es más barato que reemplazarlos.
+	measure 'Clientes campeones' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "campeon"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Compran seguido y hace poco, aunque no sean los de mayor monto. Son la base estable.
+	measure 'Clientes leales' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "leal"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Compraban y dejaron de venir. La lista de reactivación con mayor retorno por llamada.
+	measure 'Clientes en riesgo' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), 'DM_Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// En riesgo Y de monto alto: si solo se va a llamar a alguien, que sea a estos.
+	measure 'Clientes en riesgo valiosos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "en_riesgo_valioso"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Llevan mucho sin comprar y compraban poco. Reactivarlos rara vez paga el esfuerzo.
+	measure 'Clientes dormidos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "dormido"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Venta de 12 meses que está en manos de clientes en riesgo: lo que se pierde si nadie los llama.
+	measure 'Venta 12m en riesgo' = CALCULATE(SUM('DM_Clasificación RFM'[monto_neto_12m]), 'DM_Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+
+	/// Venta de los últimos 12 meses cubierta por el catálogo RFM.
+	measure 'Venta 12m clasificada' = SUM('DM_Clasificación RFM'[monto_neto_12m])
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+
+	/// Clientes cuya PRIMERA compra cae dentro del período filtrado. Se quitan los filtros de Calendario y Ventas a propósito: sin eso la relación con Cliente ya habría recortado la tabla a quien compró en el período, y el conteo sería el de clientes activos, no el de nuevos.
+	measure 'Clientes nuevos' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) RETURN CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS(DM_Calendario), REMOVEFILTERS(FC_Ventas), 'DM_Clasificación RFM'[primera_compra] >= ini, 'DM_Clasificación RFM'[primera_compra] <= fin)
+		formatString: #,0
+		displayFolder: 03 Rotación de cartera
+
+	/// Cuánto facturaron en el período los clientes que estrenaron relación en él. Mide si la captación trae volumen o solo nombres.
+	measure 'Ventas de clientes nuevos' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) RETURN CALCULATE([Ventas netas], FILTER(ALL('DM_Clasificación RFM'), 'DM_Clasificación RFM'[primera_compra] >= ini && 'DM_Clasificación RFM'[primera_compra] <= fin))
+		formatString: "Q" #,0
+		displayFolder: 03 Rotación de cartera
+
+	/// Qué parte de la facturación viene de relaciones estrenadas en el período.
+	measure '% Venta de clientes nuevos' = DIVIDE([Ventas de clientes nuevos], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 03 Rotación de cartera
+
+	/// Clientes con al menos una compra en los últimos 12 meses según la recencia del RFM.
+	measure 'Clientes activos 12m' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[recencia_dias] <= 365))
+		formatString: #,0
+		displayFolder: 03 Rotación de cartera
+
+	/// Proporción de la cartera que compró en los últimos 12 meses. Es la medida de si el catálogo está vivo o es una lista histórica.
+	measure '% Clientes activos' = DIVIDE([Clientes activos 12m], CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS('DM_Clasificación RFM'[recencia_dias])))
+		formatString: 0.0%
+		displayFolder: 03 Rotación de cartera
+
+	/// Antigüedad media de la relación comercial. Una cartera joven crece; una muy vieja sin clientes nuevos se está apagando.
+	measure 'Antigüedad media del cliente' = AVERAGEX('DM_Clasificación RFM', DATEDIFF('DM_Clasificación RFM'[primera_compra], TODAY(), DAY))
+		formatString: #,0
+		displayFolder: 03 Rotación de cartera
 
 	partition 'DM_Clasificación RFM' = m
 		mode: import
@@ -198,8 +161,3 @@ table 'DM_Clasificación RFM'
 				    Tabla = Origen{[Schema="oro",Item="clasificacion_rfm_cliente"]}[Data]
 				in
 				    Tabla
-
-	annotation PBI_NavigationStepName = Navegación
-
-	annotation PBI_ResultType = Table
-

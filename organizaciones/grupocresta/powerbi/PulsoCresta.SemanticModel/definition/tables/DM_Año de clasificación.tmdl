@@ -1,69 +1,55 @@
 table 'DM_Año de clasificación'
-	lineageTag: 96849b5b-fb2b-4750-8230-360cde642fa3
 
 	column anio_clave
 		dataType: int64
 		isHidden
-		lineageTag: 6b53d224-f435-4555-ab07-f72fc5c94a3e
 		summarizeBy: none
 		sourceColumn: anio_clave
 
 	column anio
 		dataType: int64
-		formatString: #,0
-		lineageTag: c09cc0bb-34d9-4083-a863-33321f012e69
 		summarizeBy: none
 		sourceColumn: anio
+		formatString: #,0
 
 	column anio_nombre
 		dataType: string
-		lineageTag: 300da23a-c8e9-427f-a4da-39441cc4a23a
 		summarizeBy: none
 		sourceColumn: anio_nombre
 
 	column es_anio_actual
 		dataType: boolean
-		lineageTag: 199180c9-9c9b-400f-ae9b-778ec3f825f5
 		summarizeBy: none
 		sourceColumn: es_anio_actual
 
 	column es_anio_anterior
 		dataType: boolean
-		lineageTag: d364bce6-6e4b-4bd5-8a0f-789addbc09e6
 		summarizeBy: none
 		sourceColumn: es_anio_anterior
 
 	column anios_desde_hoy
 		dataType: int64
-		formatString: #,0
-		lineageTag: 0c6e3a3b-a54b-49fa-92f8-d0fcebb2c035
 		summarizeBy: none
 		sourceColumn: anios_desde_hoy
+		formatString: #,0
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: 0c024ff2-98ec-4707-8e59-077f757aa6cf
 		summarizeBy: none
 		sourceColumn: valido_desde
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: df706e2d-1fbc-4423-b4d4-34757fa41d04
 		summarizeBy: none
 		sourceColumn: valido_hasta
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 9f97372e-7ce0-47d8-afa3-f9252751aab3
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -75,8 +61,3 @@ table 'DM_Año de clasificación'
 				    Tabla = Origen{[Schema="oro",Item="dim_anio"]}[Data]
 				in
 				    Tabla
-
-	annotation PBI_NavigationStepName = Navegación
-
-	annotation PBI_ResultType = Table
-

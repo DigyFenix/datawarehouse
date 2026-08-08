@@ -1,14 +1,5 @@
 expression Servidor = "localhost" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	lineageTag: par-servidor
 
-	annotation PBI_NavigationStepName = Navegación
-
-	annotation PBI_ResultType = Text
-
 expression BaseDatos = "dw_grupocresta" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
 	lineageTag: par-basedatos
-
-	annotation PBI_NavigationStepName = Navegación
-
-	annotation PBI_ResultType = Text
-

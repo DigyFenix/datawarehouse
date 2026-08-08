@@ -1,116 +1,94 @@
 table DM_Proveedor
-	lineageTag: 17e330cd-fd58-4f03-a448-f037d6cf9a5a
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: 1634ba95-f1fb-4e98-8c59-c3786c0b3432
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 32409afe-e251-4147-be26-2ea589f52cd8
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column proveedor_codigo
 		dataType: string
-		lineageTag: 495a3b1f-c680-473a-890e-c8ea7897aa0d
 		summarizeBy: none
 		sourceColumn: proveedor_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 300b3327-2f49-4f6f-8e46-2d356e49bf6a
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column nit
 		dataType: string
-		lineageTag: 502d102e-ca00-4444-979a-05cdcbf9f8d2
 		summarizeBy: none
 		sourceColumn: nit
 
 	column grupo_codigo
 		dataType: string
-		lineageTag: 6b331ca0-1d07-4136-b478-6bd75105aa33
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column condicion_pago_codigo
 		dataType: string
-		lineageTag: 1262260a-f81a-4ad7-93bf-45716eb71cf3
 		summarizeBy: none
 		sourceColumn: condicion_pago_codigo
 
 	column pais
 		dataType: string
-		lineageTag: 82fa8387-5896-485b-a43f-92b1acc0bec6
 		summarizeBy: none
 		sourceColumn: pais
 
 	column region
 		dataType: string
-		lineageTag: 0fb25765-ea66-41c1-83bc-417e06cac9cf
 		summarizeBy: none
 		sourceColumn: region
 
 	column es_tambien_cliente
 		dataType: boolean
-		lineageTag: 14342d8f-f054-4d64-8488-bdd9357c15df
 		summarizeBy: none
 		sourceColumn: es_tambien_cliente
 
 	column es_intercompania
 		dataType: boolean
-		lineageTag: 21a1110d-9304-4fe7-ba6a-1cc018b58ea0
 		summarizeBy: none
 		sourceColumn: es_intercompania
 
 	column activo
 		dataType: boolean
-		lineageTag: a6974a82-5c77-45f0-8e62-8b98c5f38c4e
 		summarizeBy: none
 		sourceColumn: activo
 
 	column clase_abc_actual
 		dataType: string
-		lineageTag: beef2e57-3ebe-4e06-bfe9-5a6955016cc0
 		summarizeBy: none
 		sourceColumn: clase_abc_actual
 
 	column clase_abc_actual_nombre
 		dataType: string
-		lineageTag: a79c9407-dd0e-4deb-9903-2590f38f6bd0
 		summarizeBy: none
 		sourceColumn: clase_abc_actual_nombre
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: b039d463-0d3b-4a8b-9c6d-365725d1eb3b
 		summarizeBy: none
 		sourceColumn: valido_desde
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: 21377e8b-d6dc-44f2-b554-62c0c963c604
 		summarizeBy: none
 		sourceColumn: valido_hasta
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: f23215a9-066b-4424-855a-aff22a630b45
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -122,8 +100,3 @@ table DM_Proveedor
 				    Tabla = Origen{[Schema="oro",Item="dim_proveedor"]}[Data]
 				in
 				    Tabla
-
-	annotation PBI_NavigationStepName = Navegación
-
-	annotation PBI_ResultType = Table
-

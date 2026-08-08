@@ -1,23 +1,18 @@
 table 'MD_Vista de rentabilidad'
-	lineageTag: a23e19b2-fbf9-4687-b81b-e68b2a7accc8
 
 	column 'Vista de rentabilidad'
 		dataType: string
-		lineageTag: da56c7ce-73ce-4b44-8604-bcfc179803af
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de rentabilidad · orden'
-
 		relatedColumnDetails
 			groupByColumn: 'Vista de rentabilidad · campo'
 
 	column 'Vista de rentabilidad · campo'
 		dataType: string
 		isHidden
-		lineageTag: cb764f2e-20e2-456a-8ca0-494ad80a0ce7
 		summarizeBy: none
 		sourceColumn: [Value2]
-
 		extendedProperty ParameterMetadata =
 				{
 				  "version": 3,
@@ -27,7 +22,6 @@ table 'MD_Vista de rentabilidad'
 	column 'Vista de rentabilidad · orden'
 		dataType: int64
 		isHidden
-		lineageTag: f3b41c76-432b-429a-bb03-52c97244b202
 		summarizeBy: none
 		sourceColumn: [Value3]
 
@@ -44,4 +38,3 @@ table 'MD_Vista de rentabilidad'
 				  ("Efecto precio", NAMEOF(FC_Ventas[Efecto precio]), 6),
 				  ("Efecto volumen", NAMEOF(FC_Ventas[Efecto volumen]), 7)
 				}
-

@@ -1,62 +1,49 @@
 table DM_Bodega
-	lineageTag: 72c1200f-f609-4500-b3ef-07bcf2580d6c
 
 	column almacen_clave
 		dataType: int64
 		isHidden
-		lineageTag: dbc3727d-c270-4469-9ae3-dda52fafa90a
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: f7cfe059-8b83-47a3-b13d-d9fd19ec5dbf
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column almacen_codigo
 		dataType: string
-		lineageTag: 2032a61c-8567-47f5-991f-f9e700e7c230
 		summarizeBy: none
 		sourceColumn: almacen_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 7dacdf1c-f36e-4325-a479-98a177cc533f
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
-		lineageTag: 4c6e2988-6f29-4815-ab9f-53a1e8a0efa0
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: a73565ab-3bb0-4c6c-9362-a1e7fdebc311
 		summarizeBy: none
 		sourceColumn: valido_desde
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: 29b37b80-8f53-4abb-aaf3-9d17a6f0c8b8
 		summarizeBy: none
 		sourceColumn: valido_hasta
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 8b20b493-3984-4081-b248-1527397624a7
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -68,8 +55,3 @@ table DM_Bodega
 				    Tabla = Origen{[Schema="oro",Item="dim_almacen"]}[Data]
 				in
 				    Tabla
-
-	annotation PBI_NavigationStepName = Navegación
-
-	annotation PBI_ResultType = Table
-
