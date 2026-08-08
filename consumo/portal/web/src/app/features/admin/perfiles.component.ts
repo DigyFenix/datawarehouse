@@ -23,6 +23,7 @@ interface FormPerfil {
 const PESTANAS: PestanaTab[] = [
   { etiqueta: 'Usuarios', segmento: 'usuarios' },
   { etiqueta: 'Perfiles', segmento: 'perfiles' },
+  { etiqueta: 'Glosario', segmento: 'glosario' },
   { etiqueta: 'Auditoría', segmento: 'auditoria' },
 ];
 

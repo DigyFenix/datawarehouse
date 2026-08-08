@@ -66,6 +66,11 @@ export const routes: Routes = [
                   import('./features/admin/perfiles.component').then((m) => m.PerfilesComponent),
               },
               {
+                path: 'glosario',
+                loadComponent: () =>
+                  import('./features/admin/glosario.component').then((m) => m.GlosarioComponent),
+              },
+              {
                 path: 'auditoria',
                 loadComponent: () =>
                   import('./features/admin/auditoria.component').then((m) => m.AuditoriaComponent),

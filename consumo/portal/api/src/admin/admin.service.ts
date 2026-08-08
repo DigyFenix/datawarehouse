@@ -14,6 +14,7 @@ import {
 import { Pool } from 'pg';
 
 import { AuditoriaPortalService } from '../auditoria/auditoria-portal.service';
+import { ControlDbService } from '../db/control-db.service';
 import { SesionService } from '../auth/sesion.service';
 import { UsuarioPortal } from '../auth/tipos';
 import {
@@ -25,6 +26,7 @@ import {
   CrearPerfilDto,
   CrearUsuarioDto,
   RestablecerPasswordDto,
+  TerminoGlosarioDto,
 } from './admin.dto';
 
 const COLUMNAS_USUARIO = `id, email, nombre,
@@ -38,6 +40,7 @@ export class AdminService {
   constructor(
     private readonly sesion: SesionService,
     private readonly auditoria: AuditoriaPortalService,
+    private readonly controlDb: ControlDbService,
   ) {}
 
   private pool(actor: UsuarioPortal): Promise<Pool> {
@@ -393,6 +396,109 @@ export class AdminService {
         ORDER BY orden, id`,
     );
     return resultado.rows as unknown[];
+  }
+
+  // --- Glosario de la organización ---
+
+  /**
+   * Vocabulario propio del negocio. Se superpone al glosario base del producto:
+   * ante un término repetido, el agente usa el de la organización.
+   */
+  async listarGlosario(actor: UsuarioPortal) {
+    const pool = await this.pool(actor);
+    const resultado = await pool.query(
+      `SELECT id, termino, definicion, equivale_a AS "equivaleA", dominio,
+              creado_por AS "creadoPor", actualizado_en AS "actualizadoEn"
+         FROM portal.glosario
+        ORDER BY termino`,
+    );
+    return resultado.rows as unknown[];
+  }
+
+  async crearTermino(actor: UsuarioPortal, dto: TerminoGlosarioDto, ip: string | null) {
+    const pool = await this.pool(actor);
+    const existente = await pool.query(
+      `SELECT id FROM portal.glosario WHERE lower(termino) = lower($1)`,
+      [dto.termino],
+    );
+    if (existente.rowCount) {
+      throw new ConflictException(`El término «${dto.termino}» ya está definido.`);
+    }
+    const resultado = await pool.query(
+      `INSERT INTO portal.glosario (termino, definicion, equivale_a, dominio, creado_por)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, termino, definicion, equivale_a AS "equivaleA", dominio`,
+      [dto.termino, dto.definicion, dto.equivaleA ?? null, dto.dominio ?? null, actor.email],
+    );
+    const creado = resultado.rows[0];
+    await this.auditoria.registrar(pool, {
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      accion: 'crear',
+      entidad: 'glosario',
+      entidadId: String((creado as { id: number }).id),
+      despues: creado as Record<string, unknown>,
+      ip,
+    });
+    return creado;
+  }
+
+  async actualizarTermino(
+    actor: UsuarioPortal,
+    id: number,
+    dto: TerminoGlosarioDto,
+    ip: string | null,
+  ) {
+    const pool = await this.pool(actor);
+    const antes = await pool.query(`SELECT * FROM portal.glosario WHERE id = $1`, [id]);
+    if (!antes.rowCount) throw new NotFoundException('Término no encontrado');
+
+    const resultado = await pool.query(
+      `UPDATE portal.glosario
+          SET termino = $2, definicion = $3, equivale_a = $4, dominio = $5, actualizado_en = now()
+        WHERE id = $1
+        RETURNING id, termino, definicion, equivale_a AS "equivaleA", dominio`,
+      [id, dto.termino, dto.definicion, dto.equivaleA ?? null, dto.dominio ?? null],
+    );
+    await this.auditoria.registrar(pool, {
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      accion: 'actualizar',
+      entidad: 'glosario',
+      entidadId: String(id),
+      antes: antes.rows[0] as Record<string, unknown>,
+      despues: resultado.rows[0] as Record<string, unknown>,
+      ip,
+    });
+    return resultado.rows[0];
+  }
+
+  async eliminarTermino(actor: UsuarioPortal, id: number, ip: string | null): Promise<void> {
+    const pool = await this.pool(actor);
+    const antes = await pool.query(`SELECT * FROM portal.glosario WHERE id = $1`, [id]);
+    if (!antes.rowCount) throw new NotFoundException('Término no encontrado');
+    await pool.query(`DELETE FROM portal.glosario WHERE id = $1`, [id]);
+    await this.auditoria.registrar(pool, {
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      accion: 'eliminar',
+      entidad: 'glosario',
+      entidadId: String(id),
+      antes: antes.rows[0] as Record<string, unknown>,
+      ip,
+    });
+  }
+
+  /** Métricas que el agente puede consultar: alimentan el desplegable de «equivale a». */
+  async metricasConsumibles() {
+    const filas = await this.controlDb.query(
+      `SELECT clave, nombre_oficial AS "nombreOficial", estado
+         FROM metadatos.catalogo_metricas
+        WHERE estado IN ('certificada', 'exploratoria')
+        ORDER BY nombre_oficial`,
+      [],
+    );
+    return filas;
   }
 
   // --- Auditoría de la organización ---

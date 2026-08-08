@@ -104,6 +104,14 @@ export const SQL_GLOSARIO = `
    order by termino
 `;
 
+/** Glosario propio de la organización (portal.glosario del tenant). Se superpone
+ *  al base: ante un término repetido manda el de la casa. */
+export const SQL_GLOSARIO_TENANT = `
+  select termino, definicion, equivale_a
+    from portal.glosario
+   order by termino
+`;
+
 // ---------------------------------------------------------------- tenant (portal)
 
 /** Alcances de los perfiles ACTIVOS del usuario (portal.perfil_alcances). */

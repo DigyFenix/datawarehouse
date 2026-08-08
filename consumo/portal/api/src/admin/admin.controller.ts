@@ -34,6 +34,8 @@ import {
   CrearUsuarioDto,
   restablecerPasswordSchema,
   RestablecerPasswordDto,
+  terminoGlosarioSchema,
+  TerminoGlosarioDto,
 } from './admin.dto';
 import { AdminService } from './admin.service';
 
@@ -135,6 +137,49 @@ export class AdminController {
     @Req() req: RequestPortal,
   ) {
     return this.servicio.asignarAlcances(this.usuario(req), perfilId, dto, req.ip ?? null);
+  }
+
+  // --- Glosario del negocio ---
+
+  /**
+   * Vocabulario propio de la organización, con el que el agente interpreta las
+   * preguntas de su gente. Se superpone al glosario base del producto.
+   */
+  @Get('glosario')
+  listarGlosario(@Req() req: RequestPortal) {
+    return this.servicio.listarGlosario(this.usuario(req));
+  }
+
+  /** Métricas consultables: alimentan el desplegable de «equivale a». */
+  @Get('glosario/metricas')
+  metricasParaGlosario() {
+    return this.servicio.metricasConsumibles();
+  }
+
+  @Post('glosario')
+  crearTermino(
+    @Body(new ZodValidationPipe(terminoGlosarioSchema)) dto: TerminoGlosarioDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.crearTermino(this.usuario(req), dto, req.ip ?? null);
+  }
+
+  @Put('glosario/:terminoId')
+  actualizarTermino(
+    @Param('terminoId', ParseIntPipe) terminoId: number,
+    @Body(new ZodValidationPipe(terminoGlosarioSchema)) dto: TerminoGlosarioDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.actualizarTermino(this.usuario(req), terminoId, dto, req.ip ?? null);
+  }
+
+  @Delete('glosario/:terminoId')
+  @HttpCode(204)
+  eliminarTermino(
+    @Param('terminoId', ParseIntPipe) terminoId: number,
+    @Req() req: RequestPortal,
+  ) {
+    return this.servicio.eliminarTermino(this.usuario(req), terminoId, req.ip ?? null);
   }
 
   // --- Tableros (lectura) y auditoría ---

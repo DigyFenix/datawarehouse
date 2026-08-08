@@ -53,6 +53,24 @@ export const asignarAlcancesSchema = z.object({
     .max(200),
 });
 
+/**
+ * Término del glosario propio de la organización. `equivaleA` apunta a la clave de
+ * una métrica del catálogo del producto: se valida con el mismo alfabeto que allí,
+ * porque el agente la usa para traducir la pregunta a una consulta.
+ */
+export const terminoGlosarioSchema = z.object({
+  termino: z.string().trim().min(2).max(80),
+  definicion: z.string().trim().min(3).max(600),
+  equivaleA: z
+    .string()
+    .regex(/^[a-z0-9_]+$/, 'clave de métrica inválida (minúsculas, dígitos y _)')
+    .max(80)
+    .nullable()
+    .optional(),
+  dominio: z.string().trim().max(60).nullable().optional(),
+});
+
+export type TerminoGlosarioDto = z.infer<typeof terminoGlosarioSchema>;
 export type CrearUsuarioDto = z.infer<typeof crearUsuarioSchema>;
 export type ActualizarUsuarioDto = z.infer<typeof actualizarUsuarioSchema>;
 export type RestablecerPasswordDto = z.infer<typeof restablecerPasswordSchema>;
