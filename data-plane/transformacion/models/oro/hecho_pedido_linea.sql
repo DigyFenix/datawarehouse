@@ -12,9 +12,9 @@
 {{ config(materialized='table') }}
 
 select
-    coalesce((to_char(p.fecha_pedido, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+    {{ clave_tiempo('p.fecha_pedido') }}
                                                       as tiempo_clave,
-    coalesce((to_char(p.fecha_entrega, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+    {{ clave_tiempo('p.fecha_entrega') }}
                                                       as tiempo_vencimiento_clave,
     {{ clave_o_no_definido('dc', 'cliente_clave') }}  as cliente_clave,
     {{ clave_o_no_definido('ds', 'socio_clave') }}    as socio_clave,

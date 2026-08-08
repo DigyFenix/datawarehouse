@@ -19,7 +19,7 @@
 ) }}
 
 select
-    coalesce((to_char(m.fecha, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+    {{ clave_tiempo('m.fecha') }}
                                                       as tiempo_clave,
     {{ clave_o_no_definido('dcu', 'cuenta_clave') }}  as cuenta_clave,
     {{ clave_o_no_definido('dcc', 'centro_costo_clave') }} as centro_costo_clave,

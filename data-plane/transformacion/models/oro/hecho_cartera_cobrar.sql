@@ -10,9 +10,9 @@
 {%- set corte = "current_date" -%}
 
 select
-    coalesce((to_char(p.fecha_documento, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+    {{ clave_tiempo('p.fecha_documento') }}
                                                       as tiempo_clave,
-    coalesce((to_char(p.fecha_vencimiento, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+    {{ clave_tiempo('p.fecha_vencimiento') }}
                                                       as tiempo_vencimiento_clave,
     {{ clave_o_no_definido('dc', 'cliente_clave') }}  as cliente_clave,
     {{ clave_o_no_definido('ds', 'socio_clave') }}    as socio_clave,

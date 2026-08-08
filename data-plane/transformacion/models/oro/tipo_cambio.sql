@@ -5,7 +5,7 @@
 {{ config(materialized='table') }}
 
 select
-    coalesce((to_char(t.fecha, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+    {{ clave_tiempo('t.fecha') }}
                                                       as tiempo_clave,
     {{ clave_o_no_definido('dm', 'moneda_clave') }}   as moneda_clave,
     {{ clave_o_no_definido('dorg', 'organizacion_clave') }} as organizacion_clave,

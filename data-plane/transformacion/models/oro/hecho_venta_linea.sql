@@ -15,7 +15,7 @@
 
 select
     -- ---------- claves dimensionales ----------
-    coalesce((to_char(l.fecha_documento, 'YYYYMMDD'))::bigint, {{ clave_no_definido() }})
+    {{ clave_tiempo('l.fecha_documento') }}
                                                       as tiempo_clave,
     {{ clave_o_no_definido('dc', 'cliente_clave') }}  as cliente_clave,
     {{ clave_o_no_definido('ds', 'socio_clave') }}    as socio_clave,
