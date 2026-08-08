@@ -149,7 +149,11 @@ Los tres tenants construidos con el motor nuevo: **Cresta 195/195 y cuadre 0/70*
 sin `app.empresas` → 0 filas; con `'*'` → 382,175; con una empresa inexistente → 0;
 `plata` denegada al rol de lectura. PBIP regenerado y validado (36 tablas · 98 relaciones ·
 294 medidas · TMDL válido · los 3 visuales de Edwin intactos). Suites verdes: guardas del
-agente 12/12, IDOR 8/8, certificación 7/7. Árbol **sin commitear**.
+agente 12/12, IDOR 8/8, certificación 7/7.
+
+Árbol **commiteado y pusheado** a `DigyFenix/datawarehouse` (master): `f037a81` infra,
+`b842538` genericidad, `80728a7` IDOR + certificación, `e5bef61` RLS, `c93022c` agente,
+`e204f85` UX del portal, `c449ef8` onboarding, `2e90204` cierre.
 
 ### Pendientes / avisos
 
@@ -164,7 +168,26 @@ agente 12/12, IDOR 8/8, certificación 7/7. Árbol **sin commitear**.
 - El `.dockerignore` de la raíz es nuevo: el build de `api-usuario` ahora usa la raíz del repo
   como contexto porque la API depende de `@pulso/agente` por ruta relativa.
 
-## ══════ SESIÓN 17 (2026-08-06) — CAPA SEMÁNTICA AMPLIADA — leer esto primero ══════
+### Próximo paso concreto (SESIÓN 19)
+
+1. **Poner la `ANTHROPIC_API_KEY` en el `.env` y reiniciar `api-usuario`.** Es lo único que
+   separa al agente de conversar de verdad; todo lo demás está probado. Después, preguntarle
+   algo real en `portal.<hash>/chatbot` y ver que la tarjeta traiga métrica, período y badge
+   de certificación.
+2. **Abrir `organizaciones/grupocresta/powerbi/PulsoCresta.pbip` en Desktop** — las 294
+   medidas siguen sin evaluarse contra el motor DAX. Correr también
+   `consumo/powerbi/tests/fase4-regresion.dax` en DAX Studio (la columna `dif` debe ser 0).
+   Si Desktop reporta un error de TMDL, agregar el caso al validador: es el patrón establecido.
+3. **Revisar terminología** en `docs/powerbi/inventario-modelo.md` (vocabulario de negocio que
+   solo Edwin puede corregir) y **recortar el alcance global** de los usuarios que no deban ser
+   operadores del producto.
+4. Cuando Edwin quiera salir de local: montar el VPS Hetzner con `infra/produccion/RUNBOOK.md`.
+   El portal, el agente y el RLS ya están listos para eso.
+5. Backlog analítico sin tocar: saldos de apertura → BALANCE GENERAL, aplicación de pagos
+   (RCT2 → DSO real), metas de venta desde el portal, kardex, lotes. Y la brecha ingresos
+   contables vs facturados (−1.1%) con el contador.
+
+## ══════ SESIÓN 17 (2026-08-06) — CAPA SEMÁNTICA AMPLIADA ══════
 
 **Foco: pasar la capa semántica de 180 a 293 medidas cubriendo las áreas donde una empresa
 decide y el modelo callaba, y reparar el catálogo de gobierno, que estaba ROTO. Todo local
