@@ -39,6 +39,10 @@ export class ApiService {
   private desempaquetar<T>(fuente: Observable<Respuesta<T>>): Observable<T> {
     return fuente.pipe(
       map((r) => {
+        // Un 204 No Content llega como `null`: es una operación sin cuerpo (los
+        // DELETE del API), no un fallo. Leer `.success` sobre null reventaba con
+        // «Cannot read properties of null» y eso acababa en el aviso al usuario.
+        if (r === null || r === undefined) return undefined as T;
         if (!r.success || r.data === null) {
           throw new Error(r.error?.mensaje ?? 'Error desconocido');
         }

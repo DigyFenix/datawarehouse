@@ -192,7 +192,7 @@ export class IngestaController {
   }
 
   @Post('dominios')
-  @RolesGlobales('admin_portal', 'data_steward')
+  @RolesGlobales('admin_portal')
   crearDominio(
     @Body(new ZodValidationPipe(crearDominioSchema)) dto: CrearDominioDto,
     @Req() req: Request,

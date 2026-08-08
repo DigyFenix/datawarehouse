@@ -43,6 +43,20 @@ SELECT pg_terminate_backend(pid)
    AND pid <> pg_backend_pid();
 
 ALTER DATABASE cresta_dw RENAME TO quilate_control;
+
+-- ⚠ Postgres rechaza «session user cannot be renamed»: un rol no puede renombrarse
+--    a sí mismo. Como `cresta_admin` es el único superusuario, hace falta uno
+--    temporal que haga el cambio desde otra sesión y se retire después.
+--    Comprobado al aplicarlo el 2026-08-08; sin esto la migración falla a la mitad,
+--    con la base ya renombrada y el rol no.
+--
+--      docker exec <pg> psql -U cresta_admin -d postgres \
+--        -c "CREATE ROLE migrador_temporal LOGIN SUPERUSER PASSWORD '<temporal>';"
+--      docker exec <pg> psql -U migrador_temporal -d postgres \
+--        -c "ALTER ROLE cresta_admin RENAME TO quilate_admin;"
+--      docker exec <pg> psql -U quilate_admin -d postgres \
+--        -c "DROP ROLE migrador_temporal;"    -- ¡no dejar un superusuario suelto!
+--
 ALTER ROLE cresta_admin RENAME TO quilate_admin;
 
 -- Comprobación: ambos nombres nuevos existen y los viejos ya no.

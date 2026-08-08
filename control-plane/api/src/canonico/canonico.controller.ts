@@ -30,7 +30,7 @@ export class CanonicoController {
 
   // Escritura del canónico (motor común, agnóstico): solo roles globales.
   @Post('entidades')
-  @RolesGlobales('admin_portal', 'data_engineer')
+  @RolesGlobales('admin_portal')
   crearEntidad(@Body(new ZodValidationPipe(crearEntidadSchema)) dto: CrearEntidadDto, @Req() req: Request) {
     return this.servicio.crearEntidad(dto, this.actor(req));
   }
@@ -41,13 +41,13 @@ export class CanonicoController {
   }
 
   @Post('campos')
-  @RolesGlobales('admin_portal', 'data_engineer')
+  @RolesGlobales('admin_portal')
   crearCampo(@Body(new ZodValidationPipe(crearCampoSchema)) dto: CrearCampoCanonicoDto, @Req() req: Request) {
     return this.servicio.crearCampo(dto, this.actor(req));
   }
 
   @Put('campos/:id')
-  @RolesGlobales('admin_portal', 'data_engineer')
+  @RolesGlobales('admin_portal')
   actualizarCampo(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(actualizarCampoCanonicoSchema)) dto: ActualizarCampoCanonicoDto,
@@ -57,7 +57,7 @@ export class CanonicoController {
   }
 
   @Delete('campos/:id')
-  @RolesGlobales('admin_portal', 'data_engineer')
+  @RolesGlobales('admin_portal')
   eliminarCampo(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.servicio.eliminarCampo(id, this.actor(req));
   }

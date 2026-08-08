@@ -40,13 +40,13 @@ export class GlosarioController {
 
   // Escritura del glosario (catálogo del producto): solo roles globales.
   @Post()
-  @RolesGlobales('admin_portal', 'data_steward')
+  @RolesGlobales('admin_portal')
   crear(@Body(new ZodValidationPipe(crearTerminoSchema)) dto: CrearTerminoDto, @Req() req: Request) {
     return this.servicio.crear(dto, this.actor(req));
   }
 
   @Put(':id')
-  @RolesGlobales('admin_portal', 'data_steward')
+  @RolesGlobales('admin_portal')
   actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(actualizarTerminoSchema)) dto: ActualizarTerminoDto,
@@ -56,7 +56,7 @@ export class GlosarioController {
   }
 
   @Delete(':id')
-  @RolesGlobales('admin_portal', 'data_steward')
+  @RolesGlobales('admin_portal')
   @HttpCode(204)
   eliminar(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.servicio.eliminar(id, this.actor(req));

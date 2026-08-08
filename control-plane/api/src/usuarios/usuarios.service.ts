@@ -6,10 +6,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { and, eq, isNull } from 'drizzle-orm';
 
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import type { Env } from '../config/env';
 import type { Actor } from '../organizaciones/organizaciones.service';
 import { DB, DRIZZLE } from '../db/drizzle.module';
 import { roles, usuarioRoles, usuarios } from '../db/schema';
@@ -30,7 +32,31 @@ export class UsuariosService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DB,
     private readonly auditoria: AuditoriaService,
+    private readonly config: ConfigService<Env, true>,
   ) {}
+
+  /**
+   * La cuenta maestra de la plataforma: la que declara `PORTAL_ADMIN_EMAIL`.
+   *
+   * Es la llave de repuesto del producto. No se le puede quitar el rol, desactivar
+   * ni cambiar el estado desde el portal, porque es lo único que garantiza que
+   * siempre haya una forma de entrar aunque el resto de las cuentas se rompan. Para
+   * moverla hay que cambiar el `.env`, que es una decisión de infraestructura y no
+   * un clic.
+   */
+  private esCuentaMaestra(email: string): boolean {
+    const maestro = this.config.get('PORTAL_ADMIN_EMAIL', { infer: true });
+    return email.toLowerCase() === String(maestro).toLowerCase();
+  }
+
+  private exigirNoTocarLaMaestra(email: string, accion: string): void {
+    if (this.esCuentaMaestra(email)) {
+      throw new BadRequestException(
+        `La cuenta maestra de la plataforma (${email}) no se puede ${accion}. ` +
+          'Es la llave de repuesto del sistema; para moverla se cambia PORTAL_ADMIN_EMAIL.',
+      );
+    }
+  }
 
   listar() {
     return this.db.select(columnasPublicas).from(usuarios);
@@ -69,6 +95,7 @@ export class UsuariosService {
     // Desactivar al último operador deja la plataforma sin quien la administre, y
     // sin forma de revertirlo desde el portal. Ya pasó una vez.
     if (dto.activo === false) {
+      this.exigirNoTocarLaMaestra(antes.email, 'desactivar');
       if (actor.id === id) {
         throw new BadRequestException(
           'No puedes desactivarte a ti mismo: perderías el acceso al portal en el momento.',
@@ -164,6 +191,8 @@ export class UsuariosService {
     actor: Actor,
     alcance?: number | 'global',
   ): Promise<void> {
+    const objetivo = await this.obtener(usuarioId);
+    this.exigirNoTocarLaMaestra(objetivo.email, 'modificar');
     await this.exigirNoQuitarseElPropioMando(usuarioId, rolId, alcance, actor);
     await this.exigirQueQuedeUnOperador(usuarioId, rolId, alcance);
 

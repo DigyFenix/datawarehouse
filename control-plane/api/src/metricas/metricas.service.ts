@@ -27,6 +27,13 @@ import {
 import type { Actor } from '../organizaciones/organizaciones.service';
 import { ActualizarMetricaDto, CrearMetricaDto, CrearVersionDto } from './metrica.dto';
 
+/**
+ * Quién puede aprobar una certificación. El plano de control se quedó con dos
+ * roles (migración 129) y aprobar una definición es un acto de gobierno: lo hace
+ * quien administra la plataforma o quien administra esa organización.
+ */
+const ROLES_APROBADORES = ['admin_portal', 'admin_organizacion'];
+
 @Injectable()
 export class MetricasService {
   constructor(
@@ -246,8 +253,9 @@ export class MetricasService {
     const email = actor.email;
     if (!email) throw new BadRequestException('No se pudo identificar al aprobador');
 
-    // Revalida en el momento del voto: el aprobador debe seguir activo y con rol
-    // data_owner (pudo perderlos después de que se envió la versión a revisión).
+    // Revalida en el momento del voto: el aprobador debe seguir activo y siendo
+    // administrador (pudo dejar de serlo después de que se envió a revisión).
+    // Aprobar una definición es un acto de gobierno, no de consulta.
     const [usuario] = await this.db
       .select({ id: usuarios.id, activo: usuarios.activo })
       .from(usuarios)
@@ -255,14 +263,16 @@ export class MetricasService {
     if (!usuario || !usuario.activo) {
       throw new ForbiddenException('Tu usuario no existe o está inactivo: no puedes votar');
     }
-    const [rolOwner] = await this.db
+    const [rolAprobador] = await this.db
       .select({ id: usuarioRoles.id })
       .from(usuarioRoles)
       .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
-      .where(and(eq(usuarioRoles.usuarioId, usuario.id), eq(roles.clave, 'data_owner')))
+      .where(and(eq(usuarioRoles.usuarioId, usuario.id), inArray(roles.clave, ROLES_APROBADORES)))
       .limit(1);
-    if (!rolOwner) {
-      throw new ForbiddenException('Necesitas el rol data_owner para votar una certificación');
+    if (!rolAprobador) {
+      throw new ForbiddenException(
+        'Solo un administrador de la plataforma o de la organización puede aprobar una certificación',
+      );
     }
 
     const [voto] = await this.db
@@ -426,7 +436,7 @@ export class MetricasService {
 
   /**
    * Valida que cada aprobador exista como usuario ACTIVO de gobierno.usuarios y tenga
-   * rol data_owner (en cualquier alcance). Falla con 400 listando los emails inválidos.
+   * rol de administrador (en cualquier alcance). Falla con 400 listando los inválidos.
    */
   private async validarAprobadores(aprobadores: string[]) {
     const encontrados = await this.db
@@ -444,7 +454,7 @@ export class MetricasService {
         .select({ usuarioId: usuarioRoles.usuarioId })
         .from(usuarioRoles)
         .innerJoin(roles, eq(roles.id, usuarioRoles.rolId))
-        .where(and(inArray(usuarioRoles.usuarioId, idsActivos), eq(roles.clave, 'data_owner')));
+        .where(and(inArray(usuarioRoles.usuarioId, idsActivos), inArray(roles.clave, ROLES_APROBADORES)));
       for (const f of filas) conRolOwner.add(f.usuarioId);
     }
 
@@ -454,7 +464,7 @@ export class MetricasService {
       if (usuarioId === undefined) {
         invalidos.push(`${email} (no existe o está inactivo)`);
       } else if (!conRolOwner.has(usuarioId)) {
-        invalidos.push(`${email} (no tiene rol data_owner)`);
+        invalidos.push(`${email} (no es administrador)`);
       }
     }
     if (invalidos.length > 0) {

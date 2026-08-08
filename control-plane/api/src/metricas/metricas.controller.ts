@@ -56,13 +56,13 @@ export class MetricasController {
   }
 
   @Post('metricas')
-  @RolesGlobales('admin_portal', 'data_steward', 'data_owner')
+  @RolesGlobales('admin_portal')
   crear(@Body(new ZodValidationPipe(crearMetricaSchema)) dto: CrearMetricaDto, @Req() req: Request) {
     return this.servicio.crear(dto, this.actor(req));
   }
 
   @Put('metricas/:id')
-  @RolesGlobales('admin_portal', 'data_steward', 'data_owner')
+  @RolesGlobales('admin_portal')
   actualizar(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(actualizarMetricaSchema)) dto: ActualizarMetricaDto,
@@ -72,7 +72,7 @@ export class MetricasController {
   }
 
   @Post('metricas/:id/versiones')
-  @RolesGlobales('admin_portal', 'data_steward', 'data_owner')
+  @RolesGlobales('admin_portal')
   crearVersion(
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(crearVersionSchema)) dto: CrearVersionDto,
@@ -82,7 +82,7 @@ export class MetricasController {
   }
 
   @Post('metricas/:id/versiones/:versionId/enviar-revision')
-  @RolesPermitidos('data_owner', 'data_steward', 'admin_portal')
+  @RolesPermitidos('admin_portal', 'admin_organizacion')
   enviarRevision(
     @Param('id', ParseIntPipe) id: number,
     @Param('versionId', ParseIntPipe) versionId: number,
@@ -93,7 +93,7 @@ export class MetricasController {
   }
 
   @Post('metricas/versiones/:versionId/votar')
-  @RolesPermitidos('data_owner')
+  @RolesPermitidos('admin_portal', 'admin_organizacion')
   votar(
     @Param('versionId', ParseIntPipe) versionId: number,
     @Body(new ZodValidationPipe(votarSchema)) dto: VotarDto,
@@ -103,7 +103,7 @@ export class MetricasController {
   }
 
   @Post('metricas/:id/deprecar')
-  @RolesPermitidos('data_owner', 'admin_portal')
+  @RolesPermitidos('admin_portal', 'admin_organizacion')
   deprecar(@Param('id', ParseIntPipe) id: number, @Req() req: Request) {
     return this.servicio.deprecar(id, this.actor(req));
   }
