@@ -1,5 +1,169 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 18 (2026-08-07/08) — TODAS LAS FASES CERRADAS EN LOCAL — leer esto primero ══════
+
+**Foco: cerrar el roadmap completo sin salir de local. Gobernanza real (IDOR, RLS,
+certificación), agente de IA (Fase 4, que estaba pospuesta), UX profesional del portal de
+usuario, genericidad total del motor y onboarding validado con un tenant nuevo de punta a
+punta. Sin VPS, sin publicar nada.**
+
+### Lo que desbloqueó todo: el FileFallocate era el bind mount
+
+`infra/local/data` (bind mount de Windows) era la causa del `FileFallocate: Interrupted system
+call` que tumbaba un modelo pesado en cada build de Cresta. Migrado a **volumen Docker nativo**
+(`pgdata`, mismo patrón que producción) con `pg_dump`/`pg_restore` de las tres bases —
+conteos verificados antes y después. El build completo de Cresta ahora pasa con 4 hilos.
+El datadir viejo queda intacto como respaldo; los dumps están en `infra/local/respaldos/`
+(ignorado por git).
+
+### Genericidad: el motor ya no sabe de ningún cliente
+
+Una instalación limpia arranca con **CERO organizaciones**. Antes el init creaba Grupo Cresta e
+Iron Network con sus NIT y sociedades reales en cualquier instalación.
+
+- **8 seeds de tenant** salieron del init: los de organización/sociedades/políticas a
+  `organizaciones/<tenant>/seeds/`, y los 60–63 (historia ya aplicada) a `seeds/historicos/`.
+- **Datos de tenant fuera de las migraciones DDL**: los 10 NIT de Cresta (112) y el UPDATE a
+  `svproavis` (114) pasaron a seeds del tenant. Las migraciones quedaron solo con estructura.
+- **Generador PBI parametrizado por moneda**: `FMT_Q` era `"Q" #,0` fijo. Ahora
+  `moneda_presentacion_de()` lee la moneda de la organización de la BD de control y
+  `aplicar_moneda()` reescribe el símbolo del formatString, el discriminador del calculation
+  group y el nombre del modo local. Un tenant en USD sale con `$`. Verificado con GTQ (sin
+  cambios) y USD.
+- Los 3 tooltips con estadísticas de Cresta ahora explican la regla de negocio sin cifras de
+  ningún cliente. `generar_reporte.py` exige el nombre de empresa (antes caía a "Grupo Cresta").
+- **PulsoCresta.\* movido** a `organizaciones/grupocresta/powerbi/` con `git mv` (los visuales
+  de Edwin intactos: el .Report no se regenera nunca).
+- Marca neutra en el chasis: título, eyebrow del login, claves de localStorage, `.env.example`.
+- **Feriados por país**: el seed `feriados_guatemala` pasó a `feriados` con columna `pais` y
+  `dim_tiempo` filtra por la var `pais_feriados` (default GT).
+- `moneda_local` ahora sí viaja en las vars de dbt (antes solo salvaba el coalesce de sociedades).
+
+### Gobernanza (Fase 3) — cerrada y probada
+
+**IDOR del portal admin.** El JWT sigue siendo `{sub, email}`, pero el guard **relee usuario y
+roles de la BD en cada request**: desactivar a alguien lo saca al siguiente request. Tres
+APP_GUARD en orden: autenticación → roles (`@RolesPermitidos` / `@RolesGlobales`) → membresía
+por organización (`@AlcanceOrg`). Las mutaciones por PK llaman `exigirAccesoOrg()` DESPUÉS de
+cargar la fila. Migración **116**: `gobierno.conexiones` gana `organizacion_id` (era la fuga
+grande: host, puerto y `secreto_ref` de todos los tenants a cualquier autenticado) y su unicidad
+de nombre pasa a ser por organización. Migración **117**: auditoría con organización y
+paginación por cursor obligatoria.
+
+*Rol de proveedor* = `admin_portal` con `organizacion_id NULL`. No hizo falta un rol nuevo:
+`gobierno.usuario_roles` ya lo modelaba. Seed 70 de compatibilidad da alcance global a los
+usuarios existentes — **recortarlo a mano es un paso pendiente de Edwin**.
+
+Verificado con un usuario acotado a una organización: listado filtrado, 404 al leer la ajena,
+404 al mutar su política **por PK sin mencionar el id**, conexiones filtradas, 403 al dar de
+alta un tenant, auditoría sin fugas y 401 inmediato al desactivarlo.
+
+**Certificación.** Migración **118**: default `borrador` en `metrica_versiones` (el DDL decía
+`en_revision` y el servicio insertaba `borrador`) e índice único parcial "una sola versión en
+revisión por métrica". Los 8 huecos cerrados: `deprecada` ahora es alcanzable
+(`POST /metricas/:id/deprecar`), los aprobadores se validan (usuario activo + rol `data_owner`),
+el creador de una versión no puede aprobarla, una certificada no se re-envía, y hay bandeja
+"pendientes de mi voto". **7 reglas probadas por el API real, todas en verde.**
+
+**7 métricas certificadas por el flujo real** (ventas brutas/netas, devoluciones, saldo CxC/CxP,
+margen bruto, cobros de clientes) con dos aprobadores `data_owner`. El catálogo quedó 21
+borrador + 7 certificada. Se crearon `aprobador1@ejemplo.local` y `aprobador2@ejemplo.local`
+con contraseña temporal — **Edwin decide si los conserva o los reemplaza por personas reales**.
+
+**RLS del warehouse — híbrido, sin teatro.** Rol Postgres `portal_lector` (LOGIN, NOBYPASSRLS,
+sin ownership) con acceso a `oro` y a las tres tablas de alcances de `portal`; **sin acceso a
+bronce ni plata**. La macro `aplicar_rls_oro()` corre como post-hook a nivel de carpeta oro, así
+que **cada `dbt build` recrea las policies** y todo modelo oro futuro queda cubierto sin
+acordarse de nada. Es **fail-closed**: sin `app.empresas` en la sesión, cero filas. Verificado:
+49 policies en Iron, 0 filas sin variable, solo la empresa autorizada con variable, y `plata`
+denegada. dbt (dueño) y Power BI (superusuario) no se ven afectados — el riesgo de Publish to
+Web sigue aceptado y documentado, no disfrazado.
+
+Migración **120**: `portal.perfil_alcances` acepta `recurso_tipo = 'empresa'` (el eje de filas).
+Fail-closed permanente, con seed de compatibilidad `('empresa','*')` de una sola vez para los
+perfiles que ya existían.
+
+### Agente de IA (Fase 4) — construido y con guardas verificables
+
+**Arquitectura:** el dominio vive como paquete TypeScript puro en `data-plane/agente`
+(`@pulso/agente`) — tools, guardas, prompt y loop, sin NestJS ni pg, con el ejecutor de SQL
+inyectado. El endpoint es un módulo delgado en `consumo/portal/api` que reusa el guard JWT por
+tenant-hash, los pools y la auditoría que ya existían.
+
+**4 tools tipadas** (Zod `.strict()`): `listar_metricas_disponibles`, `consultar_metrica`,
+`consultar_aging`, `explicar_metrica`. Todo el SQL vive como **constantes con placeholders** en
+`tools/consultas.ts`; ninguna función concatena texto dentro de una consulta.
+
+**Las 4 restricciones de CLAUDE.md §11, con test cada una (12/12 en verde):**
+1. *Sin SQL libre* — test estático de que ninguna plantilla lleva interpolación; una clave con
+   `'; DROP TABLE …` la rechaza Zod antes de tocar la base.
+2. *Solo certificadas* — el único filtro de estado del paquete es
+   `estado in ('certificada','exploratoria')`; una métrica en borrador ni aparece en el prompt.
+3. *Alcance siempre* — `empresa_id = any($n)` en toda consulta; pedir una empresa ajena se
+   deniega **antes** de ir a la base y queda auditado como `consulta_agente_denegada`. El RLS
+   de Postgres es el piso por debajo.
+4. *Ambigüedad → aclarar* — en el system prompt, reforzado porque las tools exigen una clave
+   exacta: ante "¿cómo van las ventas?" no hay clave que pasar sin preguntar antes.
+5. La **tarjeta de dato** (métrica + período + valor + estado) se arma del catálogo y del
+   resultado SQL, **nunca del texto del modelo**, y la UI la renderiza con badge propio.
+
+Migración **121**: `portal.chat_conversaciones` y `portal.chat_mensajes` (tarjetas en jsonb).
+Sin `ANTHROPIC_API_KEY` el chat responde **503 y el resto del portal sigue en pie** — verificado.
+
+### Portal de usuario — UX profesional
+
+Tokens de espaciado y tipografía, **modo oscuro completo** (3 estados, persistido por tenant,
+sin FOUC), 7 componentes reutilizables nuevos (`app-tabs`, `app-skeleton`, `app-empty`,
+`app-confirm`, `app-icon`, `app-page-header`), skeletons donde antes la pantalla quedaba en
+blanco, spinner sobre el iframe de Power BI, tablas de admin que se vuelven tarjetas en móvil,
+sidebar off-canvas, `confirm()` nativo eliminado, favicon y metadatos propios, auditoría con
+JSON expandible, y accesibilidad (fieldset/legend, scope, aria-labels).
+
+**Inicio** dejó de ser dos cajas: ahora responde de entrada "¿hasta cuándo llega el dato?"
+(frescura por dominio desde `oro.estado_carga`), cuántos tableros tienes y cuáles viste hace
+poco. **Chat** con dos paneles, burbujas, indicador de "consultando las métricas", tarjetas de
+dato con su badge de certificación y sugerencias iniciales.
+
+### Onboarding: de tres pasos manuales a un botón
+
+`POST /organizaciones/:id/provisionar` crea la BD del tenant, le aplica el DDL
+(101/110/119/120/121) y siembra el paquete de ingesta de su ERP — con los MISMOS archivos
+versionados del repo (`metadata-store` montado read-only en el API). Idempotente y auditado.
+La **fecha de corte** dejó de ser el literal `2026-01-01` de los seeds: ahora es un parámetro
+con default "1 de enero del año en curso".
+
+**Ensayo real completo** con una organización nueva (`ensayo18`, Odoo de Iron como origen):
+alta → provisionar (5 DDL + 4 seeds, 12 políticas, 54 campos) → conexión → sociedad →
+descubrir y extraer los **12 objetos** → primer build **195/195** → cuadre **0 desvíos** →
+portal de usuario con su admin sembrado y el chat respondiendo. **Cero pasos que requieran
+editar código o SQL a mano.**
+
+**Hueco encontrado y cerrado**: `correr.py <org> "plata oro"` dejaba los seeds fuera y un tenant
+nuevo reventaba en `dim_tiempo` (que cruza el calendario de feriados). Ahora, sin selección,
+corre el **proyecto completo**.
+
+### Estado al cierre (2026-08-08)
+
+Los tres tenants construidos con el motor nuevo: **Cresta 195/195 y cuadre 0/70**,
+**Iron 195/195 y cuadre 0/7**, **ensayo18 195/195 y cuadre 0/7**. RLS verificado en Cresta:
+sin `app.empresas` → 0 filas; con `'*'` → 382,175; con una empresa inexistente → 0;
+`plata` denegada al rol de lectura. PBIP regenerado y validado (36 tablas · 98 relaciones ·
+294 medidas · TMDL válido · los 3 visuales de Edwin intactos). Suites verdes: guardas del
+agente 12/12, IDOR 8/8, certificación 7/7. Árbol **sin commitear**.
+
+### Pendientes / avisos
+
+- **ANTHROPIC_API_KEY sin configurar**: el agente está completo y probado salvo la conversación
+  real contra el modelo. Al ponerla en el `.env` y reiniciar `api-usuario`, el chat funciona.
+- **Recortar el alcance global** de los usuarios que no deban ser operadores del producto
+  (el seed 70 se lo dio a todos por compatibilidad).
+- La organización `ensayo18` sigue viva como banco de pruebas. Se elimina con
+  `DELETE /organizaciones/5` + `dropdb dw_ensayo18` cuando ya no haga falta.
+- **Power BI Desktop** sigue pendiente de abrir (las 294 medidas nunca se evaluaron contra el
+  motor DAX) y la terminología de las descripciones sigue esperando la revisión de Edwin.
+- El `.dockerignore` de la raíz es nuevo: el build de `api-usuario` ahora usa la raíz del repo
+  como contexto porque la API depende de `@pulso/agente` por ruta relativa.
+
 ## ══════ SESIÓN 17 (2026-08-06) — CAPA SEMÁNTICA AMPLIADA — leer esto primero ══════
 
 **Foco: pasar la capa semántica de 180 a 293 medidas cubriendo las áreas donde una empresa

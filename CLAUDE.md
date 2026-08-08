@@ -90,7 +90,7 @@ ERP elegido, mapeo, glosario, valores de métricas, RLS, empresas) vive en su ca
 | Extracción (ELT, read-only) | Orquestador (n8n / SSIS / Python — **por confirmar por tenant**); Service Layer (OData) o vistas read-only |
 | Repositorio corporativo | Postgres o SQL Server, esquemas medallion (**motor por confirmar por tenant**) |
 | Transformación / modelado | dbt (Bronze→Silver→Gold, tests, docs, linaje) |
-| Capa semántica + métricas | Cube.dev o dbt Semantic Layer — ver §7 |
+| Capa semántica + métricas | Vistas Gold materializadas en dbt (`oro.metrica_valor`) + catálogo de metadatos — ver §7 |
 | Calidad de datos | dbt tests + tabla de cuarentena |
 | Consumo (dashboards) | Power BI conectado a Gold / capa semántica |
 | Agente de IA (NL→consulta) | Node.js + TypeScript + Anthropic API, contra capa semántica |
@@ -122,9 +122,11 @@ contrato entre capas es lo fijo. No cambiar el resto sin motivo técnico explíc
 
 ## 7. Capa semántica y catálogo de metadatos
 
-Elección de motor pendiente de confirmar (**Cube.dev** o **dbt Semantic Layer**). Hasta
-confirmar, modelar métricas como vistas/tablas Gold materializadas en dbt, de forma que migrar a
-cualquiera sea directo.
+**Decisión (2026-08-08): no se adopta motor semántico dedicado.** La capa semántica del
+producto son las vistas Gold materializadas en dbt (`oro.metrica_valor`, 28 métricas en 6
+dominios) más el catálogo de metadatos. Es lo que consume el agente vía tools tipadas y lo que
+alimenta Power BI. Migrar a Cube.dev o al dbt Semantic Layer sigue siendo directo desde aquí,
+y se hará cuando un tenant lo exija — no antes.
 
 La capa semántica gobierna **tres ejes por métrica**: **definición** (fórmula única),
 **certificación** (`borrador`→`en_revision`→`certificada`→`deprecada`; más `exploratoria`) y

@@ -316,7 +316,7 @@ _Generado por `inventario_modelo.py` desde el TMDL publicado. No editar a mano._
 - **Compras netas con IVA** — Compra con impuesto incluido, desde la cabecera del documento por la misma razón que en ventas.
 - **Impuesto de compras** — IVA soportado en las compras, en moneda local.
 - **Saldo de facturas de compra** — Saldo pendiente de pago de las facturas de compra, prorrateado por línea. INFORMATIVO: la cartera oficial sale del mayor.
-- **Compras de servicios** — Compra de líneas sin artículo (servicios, fletes, gastos) — en Cresta son el 60% de las líneas.
+- **Compras de servicios** — Compra de líneas sin código de artículo (servicios, fletes, gastos). En operaciones con mucho gasto indirecto puede ser la mayoría de las líneas de compra.
 
 **02 Terceros vs grupo**
 
@@ -436,7 +436,7 @@ _Generado por `inventario_modelo.py` desde el TMDL publicado. No editar a mano._
 **01 Importes**
 
 - **Monto cobrado** — Flujo de cobros del período en MONEDA DE PRESENTACIÓN. INFORMATIVO para caja: el saldo de cartera sale del mayor.
-- **Cobros de clientes** — Solo cobranza de CLIENTES. En Cresta el 67% del monto de ORCT son operaciones de tesorería contra cuenta contable — sin este filtro la cobranza se triplica.
+- **Cobros de clientes** — Solo cobranza de CLIENTES. Los pagos recibidos del ERP mezclan cobranza con operaciones de tesorería contra cuenta contable (depósitos, traslados); sin este filtro la cobranza se infla.
 - **Cobros de tesorería** — Movimientos contra cuenta contable —depósitos y traslados—, no cobranza de clientes. En SAP viven en la misma tabla que los cobros y sin separarlos la cobranza se triplica.
 - **% Cobrado vs facturado** — Cobranza de clientes contra la venta con IVA del mismo período: el pulso de la recuperación.
 
@@ -601,7 +601,7 @@ _Generado por `inventario_modelo.py` desde el TMDL publicado. No editar a mano._
 
 - **Ventas a terceros** — El mercado real. La venta al grupo no compite por precio: mezclarla distorsiona todo indicador comercial.
 - **Ventas al grupo** — Facturación a otras empresas del propio grupo. Ni compite por precio ni la trabaja un vendedor.
-- **% Venta al grupo** — Qué parte de la facturación es movimiento interno. En Grupo Cresta pesa lo suficiente como para cambiar la lectura de cualquier ranking comercial.
+- **% Venta al grupo** — Qué parte de la facturación es movimiento interno entre compañías del grupo. Cuando pesa, cambia la lectura de cualquier ranking comercial: revisarla antes de comparar clientes.
 
 **03 Conteos**
 
