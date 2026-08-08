@@ -1,4 +1,4 @@
-# Build en tres etapas. La API depende de @pulso/agente vía "file:../../../data-plane/agente"
+# Build en tres etapas. La API depende de @quilate/agente vía "file:../../../data-plane/agente"
 # (ver package.json), así que este build corre con CONTEXTO EN LA RAÍZ DEL REPO
 # (infra/local/docker-compose.yml, servicio api-usuario: context ../../, dockerfile
 # consumo/portal/api/Dockerfile).

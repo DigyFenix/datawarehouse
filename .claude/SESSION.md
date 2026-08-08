@@ -8,7 +8,7 @@ primera conversación real contra el modelo destapó un **bug que ningún test p
 ### `empresa_id` es TEXTO, y el agente lo trataba como entero
 
 En las 49 tablas de Oro `empresa_id` es la clave de sociedad del ERP (`proavisa`,
-`ironnetwork`, `ensayo18`), tipo `text`. El paquete `@pulso/agente` la trataba como número:
+`ironnetwork`, `ensayo18`), tipo `text`. El paquete `@quilate/agente` la trataba como número:
 `::bigint[]` en las 7 consultas, `Number()` al resolver el alcance, `Map<number,string>` en el
 contexto. Toda consulta moría con **«operator does not exist: text = bigint»**: el agente no
 habría devuelto una sola cifra en ningún tenant, nunca.
@@ -139,7 +139,7 @@ perfiles que ya existían.
 ### Agente de IA (Fase 4) — construido y con guardas verificables
 
 **Arquitectura:** el dominio vive como paquete TypeScript puro en `data-plane/agente`
-(`@pulso/agente`) — tools, guardas, prompt y loop, sin NestJS ni pg, con el ejecutor de SQL
+(`@quilate/agente`) — tools, guardas, prompt y loop, sin NestJS ni pg, con el ejecutor de SQL
 inyectado. El endpoint es un módulo delgado en `consumo/portal/api` que reusa el guard JWT por
 tenant-hash, los pools y la auditoría que ya existían.
 
@@ -221,7 +221,7 @@ seguridad: entraban a los seeds como literal confiando solo en el DTO).
 - **Power BI Desktop** sigue pendiente de abrir (las 294 medidas nunca se evaluaron contra el
   motor DAX) y la terminología de las descripciones sigue esperando la revisión de Edwin.
 - El `.dockerignore` de la raíz es nuevo: el build de `api-usuario` ahora usa la raíz del repo
-  como contexto porque la API depende de `@pulso/agente` por ruta relativa.
+  como contexto porque la API depende de `@quilate/agente` por ruta relativa.
 
 ### Próximo paso concreto (SESIÓN 19)
 
@@ -564,7 +564,7 @@ modelo Power BI actualizado. Todo con dbt build 35/35 PASS en ambos tenants y PB
 
 El worker tiene `/tmp/dbt/profiles.yml` multi-target (grupocresta/ironnetwork, password por
 env_var — lo reescribe el botón /transformar del portal; regenerarlo si hace falta):
-`docker exec cresta-worker sh -c 'cd /dbt && DBT_PROFILES_DIR=/tmp/dbt dbt build --select <modelos> --vars "{erp: sap_b1}" --target grupocresta'`
+`docker exec quilate-worker sh -c 'cd /dbt && DBT_PROFILES_DIR=/tmp/dbt dbt build --select <modelos> --vars "{erp: sap_b1}" --target grupocresta'`
 
 ### Hallazgos de datos (sesión 15)
 
@@ -1131,7 +1131,7 @@ reales, con datos productivos y cuadre al centavo.** Detalle abajo.
 ### Dónde quedó todo
 
 ```
-cresta_dw        control: metadatos + gobierno, 2 organizaciones, 19 objetos, 320 campos mapeados
+quilate_control        control: metadatos + gobierno, 2 organizaciones, 19 objetos, 320 campos mapeados
 dw_grupocresta   bronce (17 tablas) → plata (13) → oro (11 dims + 6 hechos + 2 métricas)
 dw_ironnetwork   bronce (9)         → plata (13) → oro (idéntico, mismo código)
 consumo/powerbi  PulsoCresta.pbip y PulsoIronNetwork.pbip (18 tablas, 43 relaciones, 24 medidas,
@@ -1142,13 +1142,13 @@ consumo/powerbi  PulsoCresta.pbip y PulsoIronNetwork.pbip (18 tablas, 43 relacio
 
 ```bash
 # extraer (CLI local; venv en data-plane/extraccion/.venv, POSTGRES_HOST=localhost)
-PYTHONPATH=src .venv/Scripts/python.exe -m cresta_extraccion.main extraer \
+PYTHONPATH=src .venv/Scripts/python.exe -m quilate_extraccion.main extraer \
   --sociedad proavisa --objeto ventas_factura --desde 2026-06-01 --hasta 2026-07-01
 
 # transformar (worker; OJO con el escapado de --vars, ver más abajo)
 export MSYS_NO_PATHCONV=1
-docker exec cresta-worker /tmp/correr.sh grupocresta sap_b1 "plata oro" '["109967739","5333814","P05011105181019","90738772","1230263"]'
-docker exec cresta-worker /tmp/correr.sh ironnetwork odoo "plata oro"
+docker exec quilate-worker /tmp/correr.sh grupocresta sap_b1 "plata oro" '["109967739","5333814","P05011105181019","90738772","1230263"]'
+docker exec quilate-worker /tmp/correr.sh ironnetwork odoo "plata oro"
 
 # regenerar Power BI
 POSTGRES_HOST=localhost python consumo/powerbi/generar_pbip.py dw_grupocresta PulsoCresta consumo/powerbi
@@ -1186,7 +1186,7 @@ Ninguno. Ambos ERPs conectan (HANA requiere estar en la red corporativa: desde f
 (100/101/102/103), canónico v2 sembrado, paquetes base SAP B1 y Odoo 18, y **carga real de las dos
 empresas** con cuadre exacto contra sus ERPs.
 
-**Arquitectura de aislamiento:** 1 instancia Postgres · `cresta_dw` = plano de control
+**Arquitectura de aislamiento:** 1 instancia Postgres · `quilate_control` = plano de control
 (metadatos+gobierno, un solo portal para ambos tenants) · `dw_grupocresta` y `dw_ironnetwork` =
 planos de datos separados (bronce/plata/oro). Los datos de dos clientes nunca comparten base.
 
@@ -1349,7 +1349,7 @@ comparables) + año fiscal configurable + perspectivas relativas a hoy (`es_mes_
 con el script de dataviz (CVD ΔE 24.7 light / 25.2 dark, todos los checks PASS en ambos modos).
 
 **Notas de operación:** para pasar `--vars` con listas al worker hay que usar
-`docker exec cresta-worker /tmp/correr.sh <target> <erp> "<selección>" '<json>'` y exportar
+`docker exec quilate-worker /tmp/correr.sh <target> <erp> "<selección>" '<json>'` y exportar
 `MSYS_NO_PATHCONV=1` en Git Bash (convierte `/tmp/...` a ruta Windows). Un comentario Jinja con
 `-#}` antes de una línea SQL se come el salto de línea y mete el SQL dentro de un comentario `--`.
 
@@ -1588,7 +1588,7 @@ ante una duda real.
 
 **TODOS los mecanismos están construidos, probados EN VIVO y quedan listos** para lo que Edwin configure:
 
-1. **Introspección auto-descriptiva** (worker `cresta-worker`, FastAPI+hdbcli): `POST /descubrir` →
+1. **Introspección auto-descriptiva** (worker `quilate-worker`, FastAPI+hdbcli): `POST /descubrir` →
    lee `SYS.TABLE_COLUMNS` (nativos) + `CUFD` (UDFs con descripción) + perfila no-nulos (excluye LOB)
    → llena `campo_ingesta`. Probado: OCRD real = 421 cols, 30 UDFs, 247 con datos.
 2. **Extractor read-only → Bronze** (worker `POST /extraer`): lee política + campos INCLUIDOS, SELECT
@@ -1607,9 +1607,9 @@ ante una duda real.
    por organización** (`--marca` derivado por color-mix; ThemeService).
 
 **Cómo correr las capas (por ahora manual; el encadenado automático es lo siguiente):**
-- Worker: contenedor `cresta-worker` (perfil portal). Botones en Campos: *Descubrir* / *Extraer a Bronze*.
+- Worker: contenedor `quilate-worker` (perfil portal). Botones en Campos: *Descubrir* / *Extraer a Bronze*.
 - Extractor CLI local: venv en `data-plane/extraccion/.venv`, `POSTGRES_HOST=localhost`,
-  `PYTHONPATH=src python -m cresta_extraccion.main {descubrir|extraer} --sociedad proavisa --objeto <x>`.
+  `PYTHONPATH=src python -m quilate_extraccion.main {descubrir|extraer} --sociedad proavisa --objeto <x>`.
 - dbt contra la BD real: profile en `<scratchpad>/dbt_real/profiles.yml` (localhost:5432). Ej.:
   `dbt run --select silver_socio_negocio` → `dbt snapshot --select snap_cliente` → `dbt run --select dim_cliente`.
 
@@ -1633,7 +1633,7 @@ ajustar `columnas_versionado` (política) + var `cols_versionado_clientes` (dbt)
 
 **Introspección real HANA CONSTRUIDA y VALIDADA contra el ERP en vivo.** El extractor descubre
 campos auto-descriptivamente y llena `metadata.campo_ingesta`.
-- **Motor** (`data-plane/extraccion/src/cresta_extraccion/`): `config.py` (credenciales por
+- **Motor** (`data-plane/extraccion/src/quilate_extraccion/`): `config.py` (credenciales por
   `secreto_ref` desde .env, tolerante a sufijo `_USER`), `catalogo.py` (resuelve sociedad→conexión→
   entorno desde Postgres; upsert en campo_ingesta preservando `incluido`), `diccionario.py` (OCRD/
   OINV/INV1 → canónico + sugeridos + descripción ES), `fuentes/sap_b1.py` (hdbcli con fallback
@@ -1646,7 +1646,7 @@ campos auto-descriptivamente y llena `metadata.campo_ingesta`.
   Todos**, búsqueda, badges UDF/sugerido/sin-datos + tipo, acciones masivas. Maneja las 421 columnas.
 - **Config real creada por Edwin en el portal**: conexión `Hana GrupoCresta`, sociedad `proavisa`,
   política `clientes` (maestro/versionado/OCRD).
-- Correr: `PYTHONPATH=src .venv/Scripts/python -m cresta_extraccion.main descubrir --sociedad proavisa
+- Correr: `PYTHONPATH=src .venv/Scripts/python -m quilate_extraccion.main descubrir --sociedad proavisa
   --objeto clientes --tabla OCRD` (venv en `data-plane/extraccion/.venv`, POSTGRES_HOST=localhost).
 - **Decisión Edwin:** NO generar permisos read-only; el usuario del .env ya los tiene.
 - **Falta:** trigger desde el portal (botón "Descubrir" → worker), y el extractor dinámico

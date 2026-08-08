@@ -54,6 +54,10 @@ interface ItemNav {
             </a>
           }
         </nav>
+
+        <!-- El portal es white-label: manda la marca del cliente. La del producto va
+             al pie, discreta, para que el usuario sepa sobre qué está trabajando. -->
+        <div class="sidebar__pie">Quilate Analytics</div>
       </aside>
 
       <div class="area">
@@ -131,6 +135,11 @@ interface ItemNav {
 
     .nav { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; flex: 1; }
     .nav__grupo { color: #7f9686; padding: 6px 8px; }
+    .sidebar__pie {
+      margin-top: auto; padding: 14px 16px;
+      font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase;
+      color: color-mix(in srgb, #7f9686 70%, transparent);
+    }
     .nav__item {
       display: flex; align-items: center; gap: 11px;
       padding: 9px 12px; border-radius: 8px;

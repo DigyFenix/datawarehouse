@@ -14,8 +14,8 @@ import { Component } from '@angular/core';
           <span class="marca__anillo"></span>
           <span class="marca__nucleo"></span>
         </div>
-        <span class="eyebrow">Plataforma de bi gobernada</span>
-        <h2>Portal de datos</h2>
+        <span class="eyebrow">Plataforma de BI gobernada</span>
+        <h2>Quilate Analytics</h2>
         <p>
           Para entrar necesitas la dirección de acceso de tu organización.
           Solicítala a tu administrador.

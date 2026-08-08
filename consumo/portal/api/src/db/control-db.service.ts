@@ -71,7 +71,7 @@ export class ControlDbService implements OnModuleDestroy {
    * Consulta genérica de SOLO LECTURA contra la BD de control (catálogo de
    * metadatos, glosario). Único método no acotado a `gobierno.organizaciones`:
    * lo usa el agente de IA (`EjecutorSql.consultarControl`) para leer
-   * `metadatos.*` sin que el paquete `@pulso/agente` conozca `pg`.
+   * `metadatos.*` sin que el paquete `@quilate/agente` conozca `pg`.
    */
   async query<T extends Record<string, unknown> = Record<string, unknown>>(
     sql: string,

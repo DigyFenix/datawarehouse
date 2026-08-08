@@ -5,7 +5,7 @@
 --             coincida se marca es_intercompania en Oro. Sustituye la
 --             lista pasada a mano por línea de comandos (gap conocido
 --             del botón Transformar).
--- Ejecución : sobre la base de control `cresta_dw`.
+-- Ejecución : sobre la base de control `quilate_control`.
 -- Tablas    : gobierno.nits_afiliados (nueva)
 -- Impacto   : bajo; SOLO DDL. Los datos de cada organización se cargan con su
 --             seed (p. ej. organizaciones/grupocresta/seeds/71_nits_afiliados.sql)

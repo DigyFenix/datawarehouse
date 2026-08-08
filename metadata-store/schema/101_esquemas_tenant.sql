@@ -2,7 +2,7 @@
 -- Propósito : Crear las capas medallion DENTRO de la base de datos de un
 --             tenant. Se ejecuta una vez por cada base `dw_<codigo>`.
 -- Ejecución : psql -d dw_<codigo> -f 101_esquemas_tenant.sql
---             (NO se ejecuta sobre la base de control `cresta_dw`)
+--             (NO se ejecuta sobre la base de control `quilate_control`)
 -- Esquemas  : bronce, plata, oro
 -- Nota      : `metadatos` y `gobierno` NO se replican por tenant: viven una sola
 --             vez en la base de control, porque el portal administra a todas las

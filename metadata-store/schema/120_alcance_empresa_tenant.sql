@@ -6,7 +6,7 @@
 --             FAIL-CLOSED: un perfil SIN filas de tipo empresa no ve
 --             ninguna fila vía agente (igual que el RLS de Postgres).
 -- Ejecución : POR CADA base de tenant (sufijo _tenant: el init lo omite):
---               docker exec -i cresta-postgres psql -U <user> -d dw_<codigo> \
+--               docker exec -i quilate-postgres psql -U <user> -d dw_<codigo> \
 --                 -f /opt/metadata-store/schema/120_alcance_empresa_tenant.sql
 -- Impacto   : bajo; amplía un CHECK + compatibilidad de una sola vez:
 --             los perfiles EXISTENTES reciben ('empresa','*') para no

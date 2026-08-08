@@ -5,7 +5,7 @@
 --             estado de certificación) para poder re-renderizarlas sin
 --             volver a consultar ni depender del texto del modelo.
 -- Ejecución : POR CADA base de tenant (sufijo _tenant: el init lo omite):
---               docker exec -i cresta-postgres psql -U <user> -d dw_<codigo> \
+--               docker exec -i quilate-postgres psql -U <user> -d dw_<codigo> \
 --                 -f /opt/metadata-store/schema/121_portal_chat_tenant.sql
 -- Impacto   : bajo; dos tablas nuevas en el esquema portal.
 -- Idempotente: sí.

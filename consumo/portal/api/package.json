@@ -1,5 +1,5 @@
 {
-  "name": "pulso-portal-usuario-api",
+  "name": "quilate-portal-usuario-api",
   "version": "0.1.0",
   "description": "API del portal de usuario (consumo): login por tenant, tableros por perfil y autoadministración de la organización.",
   "license": "UNLICENSED",
@@ -18,7 +18,7 @@
     "@nestjs/core": "^10.3.0",
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/platform-express": "^10.3.0",
-    "@pulso/agente": "file:../../../data-plane/agente",
+    "@quilate/agente": "file:../../../data-plane/agente",
     "argon2": "^0.40.1",
     "pg": "^8.11.3",
     "reflect-metadata": "^0.2.1",

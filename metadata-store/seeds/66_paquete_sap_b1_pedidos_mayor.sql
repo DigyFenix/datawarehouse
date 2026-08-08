@@ -2,7 +2,7 @@
 -- Propósito : EXTENSIÓN del paquete base SAP B1 — PEDIDOS DE VENTA (backlog /
 --             fill rate) y MAYOR CONTABLE COMPLETO (gastos → P&L).
 --             PARAMETRIZADO por organización (onboarding SAP B1).
--- Ejecución : psql -d cresta_dw -v org=<codigo> -f 66_paquete_sap_b1_pedidos_mayor.sql
+-- Ejecución : psql -d quilate_control -v org=<codigo> -f 66_paquete_sap_b1_pedidos_mayor.sql
 --             (después de 58/58b/64)
 -- Tablas    : metadatos.politica_ingesta, metadatos.campo_ingesta
 -- Idempotente: sí.

@@ -6,7 +6,7 @@
 --             Sin este seed, plata_direccion falla en el primer build
 --             (bronce.crd1/ocst no existirían) y el cuadre se desvía en
 --             sociedades que retienen (El Salvador: 1%).
--- Ejecución : psql -d cresta_dw -v org=<codigo> -f 68_paquete_sap_b1_direcciones_retencion.sql
+-- Ejecución : psql -d quilate_control -v org=<codigo> -f 68_paquete_sap_b1_direcciones_retencion.sql
 --             (después de 58/58b/64/66)
 -- Tablas    : metadatos.politica_ingesta, metadatos.campo_ingesta
 -- Idempotente: sí. Aplicado a grupocresta el 2026-08-02 (equivalente manual).

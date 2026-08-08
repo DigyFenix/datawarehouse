@@ -2,7 +2,7 @@
 -- Propósito : EXTENSIÓN del paquete base Odoo — pagos, inventario, valoración,
 --             tipos de cambio y serie de rastreo. PARAMETRIZADO por organización
 --             y compañía: archivo de ONBOARDING para cualquier tenant Odoo nuevo.
--- Ejecución : psql -d cresta_dw -v org=<codigo> -v company=<id> -f 65_paquete_odoo_extension.sql
+-- Ejecución : psql -d quilate_control -v org=<codigo> -v company=<id> -f 65_paquete_odoo_extension.sql
 --             (después de 59_paquete_odoo.sql)
 -- Tablas    : metadatos.politica_ingesta, metadatos.campo_ingesta
 -- Idempotente: sí.

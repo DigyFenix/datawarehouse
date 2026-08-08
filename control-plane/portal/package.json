@@ -1,5 +1,5 @@
 {
-  "name": "cresta-portal-web",
+  "name": "quilate-portal-web",
   "version": "0.1.0",
   "description": "Portal (frontend admin) del plano de control. Angular. Consume la API; sin lógica de gobernanza.",
   "private": true,

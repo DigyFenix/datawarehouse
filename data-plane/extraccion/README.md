@@ -20,7 +20,7 @@ La extracción de objetos SAP B1 (`OINV/INV1/ORCT/OCRD/OITM/...`) se implementa 
 ## Estructura
 
 ```
-src/cresta_extraccion/
+src/quilate_extraccion/
   config.py         # settings desde .env (pydantic-settings)
   destino_bronze.py # escritor a Postgres/bronze
   fuentes/
@@ -39,12 +39,12 @@ metadata-store (conexiones + sociedades) y las credenciales desde el `.env` (`<R
 ```bash
 python -m venv .venv && ./.venv/Scripts/python -m pip install hdbcli "psycopg[binary]" pydantic pydantic-settings structlog
 # .env cargado; POSTGRES_HOST=localhost si se corre desde el host (fuera de Docker)
-PYTHONPATH=src python -m cresta_extraccion.main descubrir --sociedad proavisa --objeto clientes --tabla OCRD
+PYTHONPATH=src python -m quilate_extraccion.main descubrir --sociedad proavisa --objeto clientes --tabla OCRD
 ```
 - `--tabla` es opcional: si se omite, se toman las tablas de la política del objeto (`fuente_objeto`).
 - No pisa la decisión del usuario (`incluido`); solo enriquece metadatos y `tiene_datos`.
 
 ### Extraer a Bronze — Fase siguiente
 ```bash
-python -m cresta_extraccion.main extraer --empresas proavisa,loreto --dominio ventas   # (pendiente)
+python -m quilate_extraccion.main extraer --empresas proavisa,loreto --dominio ventas   # (pendiente)
 ```

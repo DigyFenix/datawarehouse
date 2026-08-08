@@ -1,4 +1,4 @@
-# @pulso/agente — agente de IA gobernado
+# @quilate/agente — agente de IA gobernado
 
 Paquete de **dominio**: tools tipadas, guardas y el loop del agente. No conoce NestJS ni
 `pg` — el host le inyecta un `EjecutorSql` y una función de auditoría. Por eso las guardas se
@@ -36,7 +36,7 @@ de este paquete dejara pasar una empresa no autorizada, la base igual no la devu
 ## Cómo lo usa el host
 
 ```ts
-import { responder } from '@pulso/agente';
+import { responder } from '@quilate/agente';
 
 const { texto, tarjetas } = await responder({
   ejecutor,      // consultarTenant (bajo RLS) + consultarControl (catálogo)

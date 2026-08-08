@@ -1,6 +1,6 @@
 # Plantilla de perfil dbt. Copiar a ~/.dbt/profiles.yml (o exportar DBT_PROFILES_DIR)
 # y completar con los valores del .env. NUNCA versionar el profiles.yml real con credenciales.
-cresta_dw:
+quilate_control:
   target: local
   outputs:
     local:

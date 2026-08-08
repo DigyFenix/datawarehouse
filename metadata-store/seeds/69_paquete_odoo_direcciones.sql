@@ -5,7 +5,7 @@
 --             dimensión con hijos delivery/invoice y coordenadas.
 --             (País/departamento con NOMBRE requieren res_country/
 --             res_country_state: pendiente, quedan null — V1.)
--- Ejecución : psql -d cresta_dw -v org=<codigo> -f 69_paquete_odoo_direcciones.sql
+-- Ejecución : psql -d quilate_control -v org=<codigo> -f 69_paquete_odoo_direcciones.sql
 -- Tablas    : metadatos.campo_ingesta
 -- Idempotente: sí.
 -- =====================================================================

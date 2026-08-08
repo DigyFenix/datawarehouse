@@ -13,7 +13,7 @@ import { AuthService } from '../../core/auth.service';
       <section class="hero">
         <div class="hero__top">
           <div class="logo">P</div>
-          <span class="eyebrow">Pulso · Plano de control</span>
+          <span class="eyebrow">Quilate Analytics · Plano de control</span>
         </div>
 
         <div class="hero__msg">

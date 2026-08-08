@@ -7,7 +7,7 @@
 --             (2) UNA sola versión 'en_revision' por métrica — certificar
 --                 dos versiones en paralelo pisaría la fórmula vigente sin
 --                 comparar versiones (índice único parcial).
--- Ejecución : sobre la base de control `cresta_dw`.
+-- Ejecución : sobre la base de control `quilate_control`.
 -- Tablas    : metadatos.metrica_versiones
 -- Impacto   : bajo; falla a propósito si HOY existieran dos versiones
 --             en_revision de la misma métrica (resolver a mano y re-aplicar).

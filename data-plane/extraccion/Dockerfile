@@ -15,4 +15,4 @@ RUN pip install --no-cache-dir .
 EXPOSE 3010
 
 # Arranca el worker HTTP.
-CMD ["uvicorn", "cresta_extraccion.worker:app", "--host", "0.0.0.0", "--port", "3010"]
+CMD ["uvicorn", "quilate_extraccion.worker:app", "--host", "0.0.0.0", "--port", "3010"]

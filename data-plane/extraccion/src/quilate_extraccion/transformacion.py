@@ -156,7 +156,7 @@ def _escribir_profiles(cfg: ConfigPostgres, base_datos: str, target: str) -> Non
     bronce/plata/oro mediante la macro generate_schema_name.
     """
     contenido = (
-        "cresta_dw:\n"
+        "quilate_control:\n"
         f"  target: {target}\n"
         "  outputs:\n"
         f"    {target}:\n"

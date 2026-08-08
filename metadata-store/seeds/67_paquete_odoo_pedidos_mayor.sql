@@ -3,7 +3,7 @@
 --             fill rate) y P&L desde el mayor (que Odoo YA extrae completo en
 --             el objeto `movimientos`, sin filtro por cuenta).
 --             PARAMETRIZADO por organización y compañía (onboarding Odoo).
--- Ejecución : psql -d cresta_dw -v org=<codigo> -v company=<id> -f 67_paquete_odoo_pedidos_mayor.sql
+-- Ejecución : psql -d quilate_control -v org=<codigo> -v company=<id> -f 67_paquete_odoo_pedidos_mayor.sql
 --             (después de 59/65)
 -- Tablas    : metadatos.politica_ingesta, metadatos.campo_ingesta
 -- Idempotente: sí.

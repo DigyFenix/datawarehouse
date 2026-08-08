@@ -4,7 +4,7 @@
 --             que las 4 tablas de línea (INV1/RIN1/PCH1/RPC1): el mapeo se define
 --             UNA vez y se cruza con los objetos. Verificado contra SBOPROAVISA_.
 -- Tablas    : metadatos.campo_ingesta
--- Ejecución : psql -d cresta_dw -v org=grupocresta -f 58b_paquete_sap_b1_documentos.sql
+-- Ejecución : psql -d quilate_control -v org=grupocresta -f 58b_paquete_sap_b1_documentos.sql
 -- Idempotente: sí.
 -- Ref       : data-plane/canonico/DISENO-plata-oro.md §2.2, §2.3
 -- =====================================================================

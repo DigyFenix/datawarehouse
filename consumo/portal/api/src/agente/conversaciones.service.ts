@@ -5,7 +5,7 @@
  * si intenta otra (no se distingue "no existe" de "no es tuya").
  */
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { MensajeHistorial, TarjetaDato } from '@pulso/agente';
+import type { MensajeHistorial, TarjetaDato } from '@quilate/agente';
 import { Pool } from 'pg';
 
 import { SesionService } from '../auth/sesion.service';

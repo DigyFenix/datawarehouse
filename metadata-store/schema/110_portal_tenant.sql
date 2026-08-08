@@ -5,7 +5,7 @@
 --             Los tableros son URLs de Power BI (Publish to Web) dadas de
 --             alta por el proveedor desde el portal admin.
 -- Ejecución : psql -d dw_<codigo> -f 110_portal_tenant.sql
---             (NO se ejecuta sobre la base de control `cresta_dw`)
+--             (NO se ejecuta sobre la base de control `quilate_control`)
 -- Tablas    : portal.usuarios, portal.perfiles, portal.usuario_perfiles,
 --             portal.tableros, portal.perfil_tableros, portal.perfil_alcances,
 --             portal.auditoria

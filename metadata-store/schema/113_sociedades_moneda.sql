@@ -4,7 +4,7 @@
 --             demás en GTQ. La maestra de empresas del plano de datos
 --             (plata_organizacion) toma este valor por sociedad en vez de
 --             la var global moneda_local.
--- Ejecución : sobre la base de control `cresta_dw`.
+-- Ejecución : sobre la base de control `quilate_control`.
 -- Tablas    : gobierno.sociedades (+ moneda)
 -- Impacto   : bajo; columna nueva opcional (ISO 4217: GTQ, USD).
 -- Idempotente: sí.

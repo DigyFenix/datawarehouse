@@ -16,7 +16,7 @@ from .introspeccion import descubrir
 from .transformacion import transformar_objeto
 
 log = structlog.get_logger()
-app = FastAPI(title="cresta-extraccion-worker")
+app = FastAPI(title="quilate-extraccion-worker")
 
 
 class DescubrirReq(BaseModel):

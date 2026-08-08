@@ -1,7 +1,7 @@
 [project]
-name = "cresta-extraccion"
+name = "quilate-extraccion"
 version = "0.1.0"
-description = "Extracción read-only SAP Business One / HANA -> Bronze (Postgres). Motor agnóstico, instancia Grupo Cresta."
+description = "Extracción read-only del ERP (SAP Business One / HANA, Odoo) hacia Bronce (Postgres). Motor agnóstico de Quilate Analytics: la organización se resuelve en tiempo de ejecución."
 requires-python = ">=3.10"
 dependencies = [
   "hdbcli>=2.19",           # driver oficial SAP HANA (read-only)

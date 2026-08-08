@@ -1,5 +1,5 @@
 {
-  "name": "pulso-portal-usuario-web",
+  "name": "quilate-portal-usuario-web",
   "version": "0.1.0",
   "description": "Portal de usuario (consumo): tableros de Power BI por perfil y autoadministración de la organización. Angular.",
   "private": true,

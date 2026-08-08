@@ -3,7 +3,7 @@
 --             distinguía tenant: GET /auditoria devolvía el log completo a
 --             cualquier usuario. La columna permite filtrar por membresía
 --             y paginar por organización.
--- Ejecución : sobre la base de control `cresta_dw`.
+-- Ejecución : sobre la base de control `quilate_control`.
 -- Tablas    : gobierno.auditoria (+ organizacion_id nullable — los eventos
 --             globales como login/bootstrap no pertenecen a una organización)
 -- Impacto   : bajo; columna nueva sin backfill (la historia previa queda

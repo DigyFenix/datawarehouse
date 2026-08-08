@@ -1,5 +1,5 @@
 {
-  "name": "@pulso/agente",
+  "name": "@quilate/agente",
   "version": "0.1.0",
   "description": "Agente de IA gobernado: tools tipadas + guardas + loop, sin acceso directo a BD (recibe el ejecutor inyectado)",
   "private": true,

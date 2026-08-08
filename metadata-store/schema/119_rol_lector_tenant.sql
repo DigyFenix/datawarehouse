@@ -5,7 +5,7 @@
 --             SIN acceso a bronce ni plata (el agente jamás toca crudos).
 -- Ejecución : POR CADA base de tenant (sufijo _tenant: el init de la base
 --             de control lo omite):
---               docker exec -i cresta-postgres psql -U <user> -d dw_<codigo> \
+--               docker exec -i quilate-postgres psql -U <user> -d dw_<codigo> \
 --                 -f /opt/metadata-store/schema/119_rol_lector_tenant.sql
 --             Requiere el rol creado (infra/local/init/03_rol_lector.sh o
 --             a mano en instalaciones previas).

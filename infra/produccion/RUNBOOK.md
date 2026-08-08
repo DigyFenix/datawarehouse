@@ -57,8 +57,8 @@ ufw enable
 -- Rol dedicado del portal de USUARIO (nunca el admin del clúster):
 CREATE ROLE portal_app LOGIN PASSWORD '<PORTAL_DB_PASSWORD>';
 -- Base de control: solo resolver hash → tenant + branding.
-GRANT CONNECT ON DATABASE cresta_dw TO portal_app;
-\c cresta_dw
+GRANT CONNECT ON DATABASE quilate_control TO portal_app;
+\c quilate_control
 GRANT USAGE ON SCHEMA gobierno TO portal_app;
 GRANT SELECT ON gobierno.organizaciones TO portal_app;
 -- Cada base de tenant: el esquema portal completo (repetir por dw_*):
@@ -77,15 +77,15 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA portal GRANT USAGE ON SEQUENCES TO portal_app
 
 ```bash
 # En la máquina local (una por base):
-docker exec cresta-postgres pg_dump -U cresta_admin -Fc cresta_dw        > cresta_dw.dump
-docker exec cresta-postgres pg_dump -U cresta_admin -Fc dw_grupocresta  > dw_grupocresta.dump
-docker exec cresta-postgres pg_dump -U cresta_admin -Fc dw_ironnetwork  > dw_ironnetwork.dump
+docker exec quilate-postgres pg_dump -U quilate_admin -Fc quilate_control        > quilate_control.dump
+docker exec quilate-postgres pg_dump -U quilate_admin -Fc dw_grupocresta  > dw_grupocresta.dump
+docker exec quilate-postgres pg_dump -U quilate_admin -Fc dw_ironnetwork  > dw_ironnetwork.dump
 
 # Copiar al VPS (scp) y restaurar:
 docker exec -i prod-postgres createdb -U $POSTGRES_USER dw_grupocresta
 docker exec -i prod-postgres pg_restore -U $POSTGRES_USER -d dw_grupocresta --no-owner < dw_grupocresta.dump
-# (igual para dw_ironnetwork; cresta_dw se restaura sobre la base creada por el compose:)
-docker exec -i prod-postgres pg_restore -U $POSTGRES_USER -d cresta_dw --no-owner --clean --if-exists < cresta_dw.dump
+# (igual para dw_ironnetwork; quilate_control se restaura sobre la base creada por el compose:)
+docker exec -i prod-postgres pg_restore -U $POSTGRES_USER -d quilate_control --no-owner --clean --if-exists < quilate_control.dump
 ```
 
 **Verificación post-migración:**
@@ -133,6 +133,6 @@ no sobrevive a la pérdida del VPS.
 cd datawarehouse && git pull
 cd infra/produccion && docker compose up -d --build
 # DDL nuevo del metadata-store (control):
-docker exec prod-postgres psql -U $POSTGRES_USER -d cresta_dw -f /opt/metadata-store/schema/<archivo>.sql
+docker exec prod-postgres psql -U $POSTGRES_USER -d quilate_control -f /opt/metadata-store/schema/<archivo>.sql
 # DDL de tenant (*_tenant.sql): aplicar a CADA dw_*.
 ```

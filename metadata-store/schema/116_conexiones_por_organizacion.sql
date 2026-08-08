@@ -4,7 +4,7 @@
 --             usuario autenticado del portal admin veía host/puerto/base y
 --             secreto_ref de TODOS los tenants. La columna habilita el
 --             scoping por membresía (guard @AlcanceOrg + filtro en servicio).
--- Ejecución : sobre la base de control `cresta_dw`.
+-- Ejecución : sobre la base de control `quilate_control`.
 -- Tablas    : gobierno.conexiones (+ organizacion_id NOT NULL,
 --             UNIQUE(organizacion_id, nombre) en vez de UNIQUE(nombre))
 -- Impacto   : bajo; backfill derivado de las sociedades que ya apuntan a

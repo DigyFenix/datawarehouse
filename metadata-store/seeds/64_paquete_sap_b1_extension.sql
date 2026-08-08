@@ -2,7 +2,7 @@
 -- Propósito : EXTENSIÓN del paquete base SAP B1 — pagos, inventario, tipos de
 --             cambio y serie de rastreo. PARAMETRIZADO por organización: es el
 --             archivo de ONBOARDING para cualquier tenant SAP B1 nuevo.
--- Ejecución : psql -d cresta_dw -v org=<codigo> -f 64_paquete_sap_b1_extension.sql
+-- Ejecución : psql -d quilate_control -v org=<codigo> -f 64_paquete_sap_b1_extension.sql
 --             (después de 58_paquete_sap_b1.sql y 58b_..._documentos.sql)
 -- Tablas    : metadatos.politica_ingesta, metadatos.campo_ingesta
 -- Idempotente: sí.

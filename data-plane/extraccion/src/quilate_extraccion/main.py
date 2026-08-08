@@ -2,7 +2,7 @@
 
 Comandos:
   descubrir   Introspecta el origen de una sociedad y llena metadatos.campo_ingesta.
-              python -m cresta_extraccion.main descubrir --sociedad proavisa --objeto clientes [--tabla OCRD]
+              python -m quilate_extraccion.main descubrir --sociedad proavisa --objeto clientes [--tabla OCRD]
 
   (extraer)   Extracción read-only ERP -> Bronze (Fase siguiente).
 """

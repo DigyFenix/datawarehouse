@@ -6,7 +6,7 @@
 --             sociedad (ORTT en SAP / rates en Odoo); sin tasa válida no
 --             se convierte y la sociedad solo se lee en su moneda — quien
 --             quiera consolidar, captura su tasa en el ERP.
--- Ejecución : sobre la base de control `cresta_dw`.
+-- Ejecución : sobre la base de control `quilate_control`.
 -- Tablas    : gobierno.sociedades (+ moneda_presentacion)
 -- Impacto   : bajo; columna nueva con backfill = moneda local.
 -- Idempotente: sí.

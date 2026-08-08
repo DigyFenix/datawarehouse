@@ -1,10 +1,10 @@
-name: cresta_dw
+name: quilate_control
 version: "0.2.0"
 config-version: 2
 
 # Perfil de conexión (ver profiles.yml.example). El profiles.yml real va fuera del repo
 # o en ~/.dbt/ y NUNCA se versiona con credenciales.
-profile: cresta_dw
+profile: quilate_control
 
 model-paths: ["models"]
 seed-paths: ["seeds"]
@@ -26,7 +26,7 @@ vars:
 # Plata es la costura agnóstica (CLAUDE.md §6): no se salta.
 # Nomenclatura española sin mezcla (canónico v2 §1).
 models:
-  cresta_dw:
+  quilate_control:
     plata:
       +schema: plata
       +materialized: table
@@ -46,7 +46,7 @@ models:
 # Reemplazados por el canónico v2: data-plane/canonico/DISENO-plata-oro.md
 # La extracción real desde HANA y Odoo alimenta `bronce` directamente.
 seeds:
-  cresta_dw:
+  quilate_control:
     +schema: bronce
     # Calendario oficial de feriados por PAÍS (referencia del motor, no dato del ERP).
     # dim_tiempo cruza las filas del país del tenant (var `pais_feriados`, default GT)

@@ -14,7 +14,7 @@
 -- =====================================================================
 
 -- 1) Base de datos destino del plano de datos, por organización.
---    Convención: dw_<codigo>. La base actual (cresta_dw) queda como PLANO DE
+--    Convención: dw_<codigo>. La base actual (quilate_control) queda como PLANO DE
 --    CONTROL (metadatos + gobierno) y deja de recibir datos de negocio.
 ALTER TABLE gobierno.organizaciones
   ADD COLUMN IF NOT EXISTS base_datos_dw text;

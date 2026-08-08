@@ -1,5 +1,5 @@
 /**
- * Cableado del agente de IA (@pulso/agente, CLAUDE.md §11) al portal de usuario.
+ * Cableado del agente de IA (@quilate/agente, CLAUDE.md §11) al portal de usuario.
  * Este servicio NO reimplementa lógica del agente: arma el `EjecutorSql` (RLS vía
  * `portal_lector`), el `ConfigAgente` (empresas/glosario/frescura del tenant) y
  * persiste la conversación. El paquete decide qué tool invocar; este código valida
@@ -7,8 +7,8 @@
  */
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ConfigAgente, EjecutorSql, EventoAuditoria, ResultadoAgente } from '@pulso/agente';
-import { leerGlosario, responder } from '@pulso/agente';
+import type { ConfigAgente, EjecutorSql, EventoAuditoria, ResultadoAgente } from '@quilate/agente';
+import { leerGlosario, responder } from '@quilate/agente';
 import { Pool } from 'pg';
 
 import { AuditoriaPortalService } from '../auditoria/auditoria-portal.service';
@@ -72,7 +72,7 @@ export class AgenteService {
       fechaActual: new Date().toISOString().slice(0, 10),
     };
 
-    // (e) El loop del agente vive en @pulso/agente; aquí solo se inyectan datos y auditoría.
+    // (e) El loop del agente vive en @quilate/agente; aquí solo se inyectan datos y auditoría.
     const resultado = await responder({
       ejecutor,
       config: configAgente,

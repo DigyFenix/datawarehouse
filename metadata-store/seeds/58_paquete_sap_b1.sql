@@ -5,7 +5,7 @@
 -- Tablas    : metadatos.politica_ingesta, metadatos.campo_ingesta
 -- Organización: parámetro :org (código del tenant). Reutilizable en cualquier
 --             cliente SAP B1: solo cambian las cuentas de cartera (ver §CARTERA).
--- Ejecución : psql -d cresta_dw -v org=grupocresta -f 58_paquete_sap_b1.sql
+-- Ejecución : psql -d quilate_control -v org=grupocresta -f 58_paquete_sap_b1.sql
 -- Idempotente: sí.
 -- Validado  : columnas verificadas contra SBOPROAVISA_ (2026-07-26).
 -- Ref       : data-plane/canonico/DISENO-plata-oro.md §2, §4

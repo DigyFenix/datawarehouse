@@ -1,12 +1,12 @@
 # Plano de datos local — Grupo Cresta (Fase 0)
 # Levanta Postgres (medallion + metadata) y pgAdmin para inspección.
 # Todos los valores sensibles vienen del .env de la raíz del repo (NO versionado).
-name: cresta-dw
+name: quilate
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: cresta-postgres
+    container_name: quilate-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -37,7 +37,7 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: cresta-pgadmin
+    container_name: quilate-pgadmin
     restart: unless-stopped
     profiles: ["tools"]   # opcional: `docker compose --profile tools up -d`
     environment:
@@ -57,7 +57,7 @@ services:
   api:
     build:
       context: ../../control-plane/api
-    container_name: cresta-portal-api
+    container_name: quilate-portal-api
     restart: unless-stopped
     profiles: ["portal"]
     environment:
@@ -92,7 +92,7 @@ services:
   web:
     build:
       context: ../../control-plane/portal
-    container_name: cresta-portal-web
+    container_name: quilate-portal-web
     restart: unless-stopped
     profiles: ["portal"]
     ports:
@@ -104,13 +104,13 @@ services:
   # el esquema `portal` de la base de cada tenant.
   api-usuario:
     build:
-      # Contexto en la RAÍZ del repo: la API depende de @pulso/agente vía
+      # Contexto en la RAÍZ del repo: la API depende de @quilate/agente vía
       # "file:../../../data-plane/agente" (consumo/portal/api/package.json), y el
       # Dockerfile necesita ambas carpetas con la misma estructura relativa que en
       # desarrollo local (ver comentario al inicio del Dockerfile).
       context: ../../
       dockerfile: consumo/portal/api/Dockerfile
-    container_name: cresta-portal-usuario-api
+    container_name: quilate-portal-usuario-api
     restart: unless-stopped
     profiles: ["portal"]
     environment:
@@ -143,7 +143,7 @@ services:
   web-usuario:
     build:
       context: ../../consumo/portal/web
-    container_name: cresta-portal-usuario-web
+    container_name: quilate-portal-usuario-web
     restart: unless-stopped
     profiles: ["portal"]
     ports:
@@ -155,7 +155,7 @@ services:
   worker:
     build:
       context: ../../data-plane/extraccion
-    container_name: cresta-worker
+    container_name: quilate-worker
     restart: unless-stopped
     profiles: ["portal"]
     environment:

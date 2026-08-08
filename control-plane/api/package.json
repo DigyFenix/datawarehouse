@@ -1,5 +1,5 @@
 {
-  "name": "cresta-portal-api",
+  "name": "quilate-portal-api",
   "version": "0.1.0",
   "description": "API del portal (plano de control) sobre el metadata-store. Motor común, agnóstico al tenant.",
   "license": "UNLICENSED",

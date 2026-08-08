@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Propósito : PAQUETE BASE ODOO 18 — plantilla de onboarding para un cliente Odoo.
 -- Tablas    : metadatos.politica_ingesta, metadatos.campo_ingesta
--- Ejecución : psql -d cresta_dw -v org=ironnetwork -v company=1 -f 59_paquete_odoo.sql
+-- Ejecución : psql -d quilate_control -v org=ironnetwork -v company=1 -f 59_paquete_odoo.sql
 -- Idempotente: sí.
 -- Validado  : columnas verificadas contra Odoo 18.0.1.3 de Iron Network (2026-07-26).
 --

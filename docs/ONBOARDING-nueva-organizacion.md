@@ -42,23 +42,23 @@ sale como **advertencia** y el tenant queda usable — solo el agente de IA espe
 <summary>Equivalente manual por consola (si el portal no está disponible)</summary>
 
 ```bash
-docker exec cresta-postgres createdb -U $POSTGRES_USER dw_<codigo>
+docker exec quilate-postgres createdb -U $POSTGRES_USER dw_<codigo>
 for f in 101_esquemas_tenant 110_portal_tenant 119_rol_lector_tenant 120_alcance_empresa_tenant 121_portal_chat_tenant; do
-  docker exec cresta-postgres psql -U $POSTGRES_USER -d dw_<codigo> -f /opt/metadata-store/schema/$f.sql
+  docker exec quilate-postgres psql -U $POSTGRES_USER -d dw_<codigo> -f /opt/metadata-store/schema/$f.sql
 done
 
 # SAP B1 — `corte` es la fecha desde la que se traen los flujos (YYYY-01-01 del año en curso)
-psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/58_paquete_sap_b1.sql
-psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/58b_paquete_sap_b1_documentos.sql
-psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/64_paquete_sap_b1_extension.sql
-psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/66_paquete_sap_b1_pedidos_mayor.sql
-psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/68_paquete_sap_b1_direcciones_retencion.sql  # OBLIGATORIO: sin él, plata_direccion falla en el primer build
+psql -d quilate_control -v org=<codigo> -v corte=2026-01-01 -f seeds/58_paquete_sap_b1.sql
+psql -d quilate_control -v org=<codigo> -v corte=2026-01-01 -f seeds/58b_paquete_sap_b1_documentos.sql
+psql -d quilate_control -v org=<codigo> -v corte=2026-01-01 -f seeds/64_paquete_sap_b1_extension.sql
+psql -d quilate_control -v org=<codigo> -v corte=2026-01-01 -f seeds/66_paquete_sap_b1_pedidos_mayor.sql
+psql -d quilate_control -v org=<codigo> -v corte=2026-01-01 -f seeds/68_paquete_sap_b1_direcciones_retencion.sql  # OBLIGATORIO: sin él, plata_direccion falla en el primer build
 
 # Odoo
-psql -d cresta_dw -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/59_paquete_odoo.sql
-psql -d cresta_dw -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/65_paquete_odoo_extension.sql
-psql -d cresta_dw -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/67_paquete_odoo_pedidos_mayor.sql
-psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/69_paquete_odoo_direcciones.sql
+psql -d quilate_control -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/59_paquete_odoo.sql
+psql -d quilate_control -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/65_paquete_odoo_extension.sql
+psql -d quilate_control -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/67_paquete_odoo_pedidos_mayor.sql
+psql -d quilate_control -v org=<codigo> -v corte=2026-01-01 -f seeds/69_paquete_odoo_direcciones.sql
 ```
 
 </details>
@@ -97,8 +97,8 @@ las dimensiones: con el warehouse vacío fallan por dependencias que otro objeto
 construyó. La primera vez se corre el proyecto completo:
 
 ```bash
-docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo>      # proyecto COMPLETO (seeds incluidos)
-docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo> "plata_socio_negocio+"  # selección puntual
+docker exec quilate-worker python3 /dbt/herramientas/correr.py <codigo>      # proyecto COMPLETO (seeds incluidos)
+docker exec quilate-worker python3 /dbt/herramientas/correr.py <codigo> "plata_socio_negocio+"  # selección puntual
 ```
 
 `correr.py` vive en el repo (data-plane/transformacion/herramientas, montado en /dbt) y lee

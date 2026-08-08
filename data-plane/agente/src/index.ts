@@ -1,5 +1,5 @@
 /**
- * @pulso/agente — agente de IA gobernado (CLAUDE.md §11).
+ * @quilate/agente — agente de IA gobernado (CLAUDE.md §11).
  *
  * Paquete de DOMINIO: no conoce NestJS ni pg. El host (API del portal de
  * usuario) inyecta el ejecutor de SQL y persiste la auditoría; aquí viven las

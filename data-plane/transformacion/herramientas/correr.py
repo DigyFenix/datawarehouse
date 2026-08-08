@@ -7,7 +7,7 @@ este vive en el repo (montado en /dbt/herramientas) y lee TODO de la base de con
 que el worker: erp, base del tenant, nits_grupo y sociedades (nombre/NIT/moneda/presentación).
 
 Uso (desde el host):
-    docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo_org> [seleccion] [threads]
+    docker exec quilate-worker python3 /dbt/herramientas/correr.py <codigo_org> [seleccion] [threads]
 
     <codigo_org>  código de la organización (gobierno.organizaciones.codigo)
     [seleccion]   selección dbt; sin este argumento corre el PROYECTO COMPLETO
@@ -25,8 +25,8 @@ from __future__ import annotations
 import json
 import sys
 
-from cresta_extraccion.config import cargar_postgres
-from cresta_extraccion.transformacion import (
+from quilate_extraccion.config import cargar_postgres
+from quilate_extraccion.transformacion import (
     PROFILES_DIR,
     PROYECTO_DBT,
     _destino_organizacion,

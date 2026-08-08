@@ -3,7 +3,7 @@
 --             hash de tenant (su URL de ingreso es portal/<hash>/...) y su
 --             marca completa (color existente + logo) administrada desde el
 --             portal admin y consumida por el portal de usuario.
--- Ejecución : sobre la base de control `cresta_dw`.
+-- Ejecución : sobre la base de control `quilate_control`.
 -- Tablas    : gobierno.organizaciones (+ hash_tenant, logo, logo_mime)
 -- Impacto   : bajo; columnas nuevas con backfill idempotente.
 -- Idempotente: sí.
