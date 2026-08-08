@@ -1,6 +1,59 @@
 # SESSION — datawarehouse
 
-## ══════ SESIÓN 18 (2026-08-07/08) — TODAS LAS FASES CERRADAS EN LOCAL — leer esto primero ══════
+## ══════ SESIÓN 19 (2026-08-08) — EL AGENTE HABLÓ POR PRIMERA VEZ — leer esto primero ══════
+
+Edwin puso la `ANTHROPIC_API_KEY` y se levantó el stack para revisar cómo quedó todo. La
+primera conversación real contra el modelo destapó un **bug que ningún test podía ver**.
+
+### `empresa_id` es TEXTO, y el agente lo trataba como entero
+
+En las 49 tablas de Oro `empresa_id` es la clave de sociedad del ERP (`proavisa`,
+`ironnetwork`, `ensayo18`), tipo `text`. El paquete `@pulso/agente` la trataba como número:
+`::bigint[]` en las 7 consultas, `Number()` al resolver el alcance, `Map<number,string>` en el
+contexto. Toda consulta moría con **«operator does not exist: text = bigint»**: el agente no
+habría devuelto una sola cifra en ningún tenant, nunca.
+
+**Por qué los 12 tests estaban en verde:** el ejecutor falso devolvía `empresa_id: 1`, una
+forma que la base no produce jamás. Y el único E2E previo corrió con un usuario sin alcances,
+que corta por fail-closed **antes** de llegar al SQL. El camino feliz no se había ejecutado
+nunca contra Postgres.
+
+Segundo desajuste en el mismo camino: `leerEmpresas` leía `dim_organizacion.organizacion_clave`
+(la surrogate key, `1`/`-1`) en vez de `empresa_id`, así que el universo del alcance universal
+no cruzaba con los hechos y la consulta salía vacía aun con el cast bueno.
+
+Corregido en `f1de01c` con test de regresión sobre el cast y fixtures con claves reales (13/13).
+
+### Verificación real del agente (tenant `ensayo18`)
+
+- «¿Cuáles fueron las ventas netas de 2026?» → **8 tarjetas certificadas**, total 2 386 111,36
+  que **cuadra al centavo** con `select sum(valor) from oro.metrica_valor`.
+- Empresa de otro tenant (`proavisa`) → denegada sin insinuar que exista.
+- Cartera pedida por un usuario con alcance solo de ventas → denegada, y orienta con las 4
+  métricas que sí tiene.
+- «¿Cómo vamos?» → pide precisión, cero cifras.
+
+También se ajustó el prompt: la tool de aging ya exigía `saldo_cxc`/`saldo_cxp`, pero el
+agente **ofrecía** la cartera y después la denegaba. Ahora declara si está autorizada.
+
+### Hueco operativo encontrado (NO resuelto — decisión de Edwin)
+
+**No hay forma de restablecer la contraseña del primer admin de un tenant desde el producto.**
+`POST /organizaciones/:id/portal/admin` falla si ya existe admin, el portal de usuario no tiene
+«olvidé mi contraseña» y el reset por API exige ser admin de ese mismo portal. Hoy la única
+salida es un `UPDATE` a mano sobre `portal.usuarios` — que es lo que hubo que hacer en esta
+sesión. Con un cliente real eso es una llamada de soporte con acceso a la base.
+
+### Estado del stack al cierre
+
+6 contenedores arriba y sanos (`/api/health` en verde en las tres APIs). Tres bases:
+`dw_grupocresta` 4.4 GB, `dw_ironnetwork` 23 MB, `dw_ensayo18` 22 MB, las tres con 49 tablas en
+Oro y **49 policies RLS**. Cresta e Iron marcan «Desactualizado» porque su última extracción es
+del 1-2 de agosto (el entorno estuvo apagado), no por defecto del pipeline.
+
+---
+
+## ══════ SESIÓN 18 (2026-08-07/08) — TODAS LAS FASES CERRADAS EN LOCAL ══════
 
 **Foco: cerrar el roadmap completo sin salir de local. Gobernanza real (IDOR, RLS,
 certificación), agente de IA (Fase 4, que estaba pospuesta), UX profesional del portal de
