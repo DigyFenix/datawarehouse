@@ -1,8 +1,13 @@
 # STATE — Quilate Analytics · Power BI Product
 
 FASE_ACTUAL: F1 (siguiente; no iniciada)
-ULTIMA_ACTUALIZACION: 2026-08-08
+ULTIMA_ACTUALIZACION: 2026-08-08 (sesión 21)
 GATE_ANTERIOR: PASA (F0 cerrada)
+
+> **Datos bajo el modelo, al 2026-08-08:** Grupo Cresta refrescado end-to-end (4.66M filas,
+> `dbt build` 195/195, cuadre 70/70 sin desvíos) y PBIP regenerado — 36 tablas de datos /
+> 98 relaciones / 294 medidas, TMDL válido. F1 arranca sobre datos vigentes, no de hace una
+> semana. Iron Network queda sin refrescar (es un comando; ver `.claude/SESSION.md`).
 
 > Fuente de verdad del progreso. Si el contexto de una sesión y este archivo
 > discrepan, gana este archivo (§0.3 del contrato).
@@ -37,12 +42,13 @@ GATE_ANTERIOR: PASA (F0 cerrada)
 | 3 | El tema es del PRODUCTO, no del cliente: `quilate-theme.json` | Edwin autorizó un tema genérico ahora y el de cada sociedad después. Se deriva de los tokens que ya usan los portales, así que tableros y portal se ven de la misma familia | GATE 0 |
 | 4 | No se instala ningún MCP ni herramienta **por iniciativa propia** | §3.5. Los gaps se reportan con su candidato y se espera autorización | F0 |
 | 5 | Se instala `@microsoft/powerbi-modeling-mcp` **con autorización explícita de Edwin** | Estaba en la lista blanca de §3.5. Elimina el ida y vuelta manual de validación DAX, pero NO elimina la dependencia de Power BI Desktop: el MCP habla XMLA con la instancia de Analysis Services que levanta Desktop al abrir el archivo | F0 |
+| 6 | El MCP se usa como **lectura y validación**, no como vía de cambio del modelo | Arranca en modo `ReadWrite` y el propio paquete advierte que se respalde el modelo semántico. El modelo se genera con `generar_pbip.py` (reproducible, versionado); un cambio escrito por XMLA se perdería en la siguiente regeneración y además convive con visuales hechos a mano | F0 |
 
 ## Bloqueos abiertos
 
 | # | Bloqueo | Requiere de | Desde |
 |---|---|---|---|
-| B4 | ~~Sin ejecución DAX~~ **RESUELTO PARCIALMENTE**: MCP instalado con autorización. Queda que el modelo esté abierto en Power BI Desktop para que exista motor XMLA al que conectarse | Edwin: abrir `organizaciones/grupocresta/powerbi/PulsoCresta.pbip` cuando toque validar | 2026-08-08 |
+| B4 | ~~Sin ejecución DAX~~ **RESUELTO**: el MCP estaba instalado pero **no conectaba** — se registró sin el argumento `--start`, y sin él el wrapper imprime un banner y hace `Console.ReadKey()`, que revienta con stdin redirigido (`-32000: Connection closed`). Re-registrado como `npx -y @microsoft/powerbi-modeling-mcp@latest --start` → conecta. Queda la dependencia real: el modelo abierto en Power BI Desktop para que exista motor XMLA | Edwin: abrir `organizaciones/grupocresta/powerbi/PulsoCresta.pbip` cuando toque validar | 2026-08-08 |
 | B5 | Sin render del reporte: F6.3 depende de capturas | Edwin, al cerrar cada ola de páginas (ya previsto en §9.8) | 2026-08-08 |
 
 ## Presupuesto consumido

@@ -91,13 +91,34 @@ sola vez** para los dos.
 | Fase | Nombre | Estado | Cerrada |
 |------|--------|--------|---------|
 | 0 | Fundación agnóstica | ✅ completada | 2026-07-19 |
-| 1 | Datos (Bronce/Plata/Oro) | ✅ **completada — order-to-cash Y procure-to-pay con DATOS REALES de DOS ERPs**: ventas, compras, CxC, CxP, **pagos (cobranza vs tesorería), inventario con valor, tipos de cambio y campos de usuario (UDF, 2.6M de valores)**. Cuadre 7/7 al centavo en ambos tenants, datos al día (2026-08-01) | 2026-08-01 |
+| 1 | Datos (Bronce/Plata/Oro) | ✅ **completada — order-to-cash Y procure-to-pay con DATOS REALES de DOS ERPs**: ventas, compras, CxC, CxP, **pagos (cobranza vs tesorería), inventario con valor, tipos de cambio y campos de usuario (UDF, 2.6M de valores)**. Cuadre 7/7 al centavo en ambos tenants. **Refrescado el 2026-08-08: Cresta al día (4.66M filas, 70/70 conceptos cuadrados)**; Iron Network queda pendiente de refresco | 2026-08-01 |
 | 2 | Semántica (métricas + catálogo) | ✅ **completada 2026-08-06** — **293 medidas DAX** (de 180) en 11 familias nuevas: ciclo de conversión de efectivo, fugas de margen, precio-volumen-mezcla, inventario ocioso/quiebre, rotación de clientes, ritmo y proyección, inflación de insumos, cumplimiento de pedidos, estructura de P&L, caja proyectada y frescura del dato. **`oro.metrica_valor` de 14 a 28 métricas** en 6 dominios. **Catálogo del portal REPARADO**: apuntaba a dos hechos que nunca existieron (era imposible registrar una métrica real); ahora 15 hechos reales + 28 fichas con fórmula | 2026-08-06 |
 | 3 | Gobernanza (linaje, roles, RLS, certificación) | ✅ **completada 2026-08-08** — **IDOR cerrado** (roles frescos de BD por request, tres APP_GUARD, scoping por PK, conexiones con `organizacion_id`, auditoría paginada y filtrada; 8 pruebas en verde). **Certificación multi-aprobador real**: 8 huecos cerrados, 7 reglas duras probadas por API, **7 métricas certificadas** por el flujo. **RLS híbrido**: rol `portal_lector` NOBYPASSRLS + policies recreadas por dbt en cada build, fail-closed sin `app.empresas`; eje empresa en `perfil_alcances` | 2026-08-08 |
 | 4 | Agente (tools tipadas + 4 restricciones) | ✅ **construido 2026-08-08** — paquete `@quilate/agente` (dominio puro) + módulo en el portal de usuario. **4 tools tipadas** con SQL constante parametrizado, **las 4 restricciones con test cada una (12/12)**, tarjeta de dato armada del catálogo y no del texto del modelo, conversaciones persistidas y chat en el portal. **Verificado contra el modelo real (2026-08-08)**: responde con tarjetas certificadas que cuadran al centavo con `oro.metrica_valor`, y deniega empresa ajena / métrica fuera de alcance / pregunta ambigua sin inventar una cifra. En esa verificación se descubrió y corrigió que el paquete trataba `empresa_id` como entero cuando en Oro es texto — el agente no habría devuelto un solo dato en ningún tenant (13 tests) | 2026-08-08 |
 | 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos; **NITs afiliados en el portal** (migración 112). **2026-08-08**: baja de organización reparada (chocaba con las FK y devolvía 500), quitar rol ya respeta el alcance (borraba el rol en TODAS las organizaciones), Usuarios filtra por la organización activa y **nueva pantalla de Autorizaciones** — el API de grants existía desde la fase 3 pero ninguna pantalla lo consumía. Falta la UI del canónico v2 y el filtro por campo | — |
-| 6 | Consumo (Power BI) | ✅ **modelo "versión completa": 25 tablas / 67 relaciones / 140 medidas** (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
+| 6 | Consumo (Power BI) | ✅ **modelo vigente (2026-08-08): 36 tablas de datos / 98 relaciones / 294 medidas** — 43 archivos `.tmdl` contando el grupo de cálculo y los 6 parámetros de campo. Las cifras «25/67/140» de este renglón eran de una versión anterior y se corrigieron al regenerar contra el Oro nuevo (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
 | 7 | Validación (4 criterios) | ✅ **completada 2026-08-08** — consistencia (cuadres al centavo), **seguridad/RLS** (IDOR 8/8, RLS fail-closed, certificación 7/7, guardas del agente 12/12), trazabilidad (auditoría por organización, cada consulta del agente auditada) y explicabilidad (toda respuesta lleva métrica, período y estado de certificación). **Onboarding de tenant nuevo validado E2E**: alta → provisionar → extraer 12 objetos → build 195/195 → cuadre 0 desvíos, sin un solo paso a mano | 2026-08-08 |
+
+## Avance 2026-08-08 (sesión 21) — Cresta al día + herramienta de refresco + navegación del repo
+
+- **Grupo Cresta actualizado end-to-end**: 180 extracciones (10 sociedades × 18 objetos) desde
+  HANA, **4,656,070 filas**, cero fallos; `dbt build` **195/195 PASS** en 36 min; control de
+  cuadre **70/70 sin un solo desvío**. Datos al 2026-08-08.
+- **`herramientas/actualizar.py`** (nuevo): el portal solo extrae por par (sociedad, objeto) —
+  180 clics para refrescar Cresta. La herramienta lee sociedades, objetos y conexión de la base
+  de control (igual que `correr.py`) y encadena extracción → build. **Si una extracción falla,
+  el build no corre**: un Oro construido sobre Bronce incompleto cuadra contra sí mismo y no
+  contra el ERP, que es justo lo que el control de cuadre existe para atrapar.
+- **PBIP regenerado** contra el Oro nuevo: 36 tablas de datos / 98 relaciones / 294 medidas,
+  TMDL válido, reporte OK (1 página, 3 visuales de Edwin intactos). El TMDL no cambió ni un
+  byte — el esquema de Oro es el mismo, lo que cambió son los datos.
+- **MCP de Power BI reparado**: estaba registrado sin `--start`, y sin ese argumento el wrapper
+  imprime un banner y hace `Console.ReadKey()`, que revienta con stdin redirigido. Eso era el
+  `-32000: Connection closed`. Ver `docs/powerbi/STATE.md` (bloqueo B4).
+- **Navegación del repo**: `docs/MAPA-REPO.md` (qué vive dónde + comandos reales + reglas que
+  muerden) y dos skills de proyecto en `.claude/skills/`: `stack-local` y `guardar-sesion`.
+- **Migración 122 estaba aplicada** desde el 2026-08-08 (base `quilate_control`, rol
+  `quilate_admin`, sin `migrador_temporal` suelto); `SESSION.md` la listaba como pendiente.
 
 ## Avance 2026-08-06 (sesión 17) — CAPA SEMÁNTICA AMPLIADA + catálogo de gobierno reparado
 

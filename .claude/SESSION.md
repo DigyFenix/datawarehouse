@@ -1,5 +1,101 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 21 (2026-08-08) — CRESTA AL DÍA, MCP REPARADO Y EL REPO MAPEADO — leer esto primero ══════
+
+Sesión de puesta a punto antes de entrar a F1 del contrato Power BI. Lo importante no es lo que
+se construyó, sino lo que se descubrió: **dos cosas estaban mal y ninguna daba señal de error**.
+
+### El MCP de Power BI nunca conectó (y la instalación se dio por buena)
+
+La sesión 20 lo instaló con autorización y lo dio por instalado. Estaba instalado y **no
+conectaba**: se registró como `npx -y @microsoft/powerbi-modeling-mcp@latest`, **sin `--start`**.
+Sin ese argumento el wrapper no arranca el servidor — imprime un banner y llama
+`Console.ReadKey()`, que con stdin redirigido lanza
+`System.InvalidOperationException: Cannot read keys...` y cierra el proceso. Eso era el
+`-32000: Connection closed`.
+
+Re-registrado en la config local del proyecto:
+
+    npx -y @microsoft/powerbi-modeling-mcp@latest --start     → ✔ Connected
+
+**Lección:** «instalado» no es «conectado». Un MCP se verifica con `claude mcp list`, y si falla,
+el diagnóstico es correrlo a mano con stdin redirigido (`< /dev/null`) — el error real solo
+aparece ahí, no en el mensaje del harness.
+
+Queda la dependencia real que no se puede quitar: el MCP habla XMLA con la instancia de Analysis
+Services que **Power BI Desktop** levanta al abrir el archivo. Sin Desktop abierto, conecta pero
+no ve modelo. Decisión registrada en `docs/powerbi/STATE.md`: se usa como **lectura y validación
+de DAX**, nunca como vía de cambio — arranca en modo `ReadWrite`, y lo que escriba por XMLA lo
+pisa la siguiente corrida de `generar_pbip.py`.
+
+### La migración 122 ya estaba aplicada
+
+`SESSION.md` la listaba como PENDIENTE bloqueada por el `.env`. La base viva dice otra cosa:
+`quilate_control` + `quilate_admin`, sin `cresta_dw`, sin `cresta_admin` y **sin el
+`migrador_temporal` suelto**; los contenedores ya arrancan con esos nombres, o sea que el `.env`
+también se actualizó. El propio script lo dice en sus comentarios («Comprobado al aplicarlo el
+2026-08-08»).
+
+**Lección:** el estado escrito de memoria al cerrar una sesión envejece mal. Verificar contra la
+base antes de escribirlo — ahora está en la skill `guardar-sesion`.
+
+### Grupo Cresta actualizado end-to-end
+
+- **180 extracciones** (10 sociedades × 18 objetos) desde HANA · **4,656,070 filas** · 0 fallos.
+- **`dbt build` 195/195 PASS** en 36 min con 4 hilos.
+- **Cuadre 70/70 sin un solo desvío.** Datos al 2026-08-08.
+- Frescura: ventas, compras, pagos, pedidos y cartera al día. Las fechas «futuras»
+  (cartera 2026-08-10, contabilidad 2026-08-31, tipos de cambio 2027) son vencimientos y series
+  proyectadas del propio ERP, no un error de carga — ya se comportaban así antes.
+
+### `herramientas/actualizar.py` — la pieza que faltaba
+
+El portal extrae **por par (sociedad, objeto)**: correcto para corregir algo puntual, inviable
+para el refresco periódico (180 corridas a mano en Cresta). `correr.py` ya cubría el build; esto
+cubre la extracción y las encadena.
+
+    docker exec quilate-worker python3 /dbt/herramientas/actualizar.py grupocresta
+
+Lee sociedades activas, objetos con política activa, conexión, ERP y base del tenant **de la base
+de control** — no recibe listas por argumento, porque el portal es la fuente de verdad. Opciones:
+`--solo-extraer`, `--solo-build`, `--sociedad`, `--objeto`, `--desde/--hasta`, `--threads`.
+
+**Regla dura que lleva dentro:** si una extracción falla, **el build no corre**. Un Oro construido
+sobre un Bronce incompleto cuadra contra sí mismo y no contra el ERP — exactamente el error que
+el control de cuadre existe para atrapar, y correr el build igual lo enmascara. `--forzar-build`
+existe para asumirlo a conciencia.
+
+### PBIP regenerado
+
+`generar_pbip.py` contra `dw_grupocresta`: **36 tablas de datos / 98 relaciones / 294 medidas**
+(43 `.tmdl` contando grupo de cálculo y los 6 parámetros de campo), TMDL válido, y el validador
+del reporte en verde: 1 página / 3 visuales, todas las referencias existen. **El TMDL no cambió
+ni un byte** — el esquema de Oro es el mismo; lo que cambió son los datos. Los visuales de Edwin,
+intactos.
+
+`ESTADO.md` decía «25 tablas / 67 relaciones / 140 medidas» en la fila de Fase 6: cifras de una
+versión vieja. Corregidas.
+
+### Navegación del repo (para no re-explorarlo cada sesión)
+
+- **`docs/MAPA-REPO.md`** — tabla «quiero X → andá a Y», estructura comentada de los seis árboles,
+  los comandos que se usan de verdad y las 7 reglas que muerden. `CLAUDE.md` apunta a él.
+- **`.claude/skills/stack-local`** — levantar/verificar/bajar/diagnosticar el stack, con servicios
+  y puertos reales, comandos del worker, chequeo de cuadre y las dos trampas (`down -v` y el
+  renombre del proyecto compose).
+- **`.claude/skills/guardar-sesion`** — qué va en `SESSION.md` vs `ESTADO.md` vs
+  `docs/powerbi/STATE.md`, el formato del bloque de bitácora y la verificación previa a cerrar.
+
+### PENDIENTE
+
+1. **Iron Network sin refrescar.** Es un solo comando, misma herramienta:
+   `docker exec quilate-worker python3 /dbt/herramientas/actualizar.py ironnetwork`
+   (1 sociedad × 11 objetos). Se dejó fuera a propósito: la sesión es de Cresta.
+2. **F1 del contrato Power BI, no iniciada.** Entrada `docs/powerbi/inventario-modelo.md`;
+   producir `docs/powerbi/model-exploitation-map.md` cubriendo las 43 tablas. **No re-auditar.**
+3. **Nada commiteado.** Cambios sin versionar: `CLAUDE.md`, `ESTADO.md`, `docs/powerbi/STATE.md`,
+   `docs/MAPA-REPO.md`, `.claude/skills/`, `herramientas/actualizar.py`, este archivo.
+
 ## ══════ SESIÓN 20 (2026-08-08) — EL PRODUCTO SE LLAMA QUILATE ANALYTICS — leer esto primero ══════
 
 **El proyecto deja de ser «el datawarehouse de Cresta» y pasa a ser un producto con nombre

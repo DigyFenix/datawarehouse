@@ -5,6 +5,10 @@ Es la fuente de verdad de decisiones de arquitectura, convenciones y restriccion
 
 > La documentación de arquitectura detallada vive en `docs/arquitectura/` (fuente de verdad
 > ampliada). Este archivo es el resumen operativo.
+>
+> **Para ubicarte rápido en el repo: `docs/MAPA-REPO.md`** — qué vive dónde, los comandos que
+> se usan de verdad y las reglas que muerden. Las skills del proyecto (`.claude/skills/`)
+> cubren levantar el entorno (`stack-local`) y cerrar la sesión (`guardar-sesion`).
 
 ---
 
