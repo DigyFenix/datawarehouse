@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
 import { Rol, RolDeUsuario, Usuario } from '../../core/modelos';
+import { OrganizacionService } from '../../core/organizacion.service';
 import { ToastService } from '../../core/toast.service';
 
 @Component({
@@ -74,20 +75,41 @@ import { ToastService } from '../../core/toast.service';
 
           <h4 style="margin:22px 0 12px;">Roles</h4>
           <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
-            @for (r of rolesActuales(); track r.rolId) {
+            @for (r of rolesActuales(); track r.rolId + '-' + r.organizacionId) {
               <span class="badge badge--pill" style="gap:8px;">
                 {{ r.clave }}
+                @if (r.organizacionId === null) {
+                  <span class="badge badge--global">Global</span>
+                } @else {
+                  <span style="font-size:11.5px; color:var(--faint);">· {{ nombreOrganizacion(r.organizacionId) }}</span>
+                }
                 <button class="icono" style="padding:0 2px; font-size:13px;" (click)="quitarRol(r.rolId)" aria-label="Quitar">✕</button>
               </span>
             } @empty { <span style="color:var(--faint); font-size:13px;">Sin roles asignados.</span> }
           </div>
+          <div class="campo">
+            <label>Agregar rol</label>
+            <select name="rol" [(ngModel)]="rolAsignar">
+              @for (r of roles(); track r.id) { <option [value]="r.id">{{ r.nombre }}</option> }
+            </select>
+          </div>
           <div style="display:flex; gap:8px; align-items:flex-end;">
             <div class="campo" style="flex:1; margin:0;">
-              <label>Agregar rol</label>
-              <select name="rol" [(ngModel)]="rolAsignar">
-                @for (r of roles(); track r.id) { <option [value]="r.id">{{ r.nombre }}</option> }
+              <label>Alcance</label>
+              <select name="alcance" [(ngModel)]="rolAlcance">
+                <option value="global">Global (todas las organizaciones)</option>
+                <option value="organizacion">Una organización específica</option>
               </select>
             </div>
+            @if (rolAlcance === 'organizacion') {
+              <div class="campo" style="flex:1; margin:0;">
+                <label>Organización</label>
+                <select name="rolOrganizacionId" [(ngModel)]="rolOrganizacionId">
+                  <option [ngValue]="null" disabled>Elige…</option>
+                  @for (o of orgs.organizaciones(); track o.id) { <option [ngValue]="o.id">{{ o.nombre }}</option> }
+                </select>
+              </div>
+            }
             <button type="button" (click)="asignar()">Agregar</button>
           </div>
         }
@@ -98,6 +120,7 @@ import { ToastService } from '../../core/toast.service';
 export class UsuariosComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+  readonly orgs = inject(OrganizacionService);
 
   readonly usuarios = signal<Usuario[]>([]);
   readonly roles = signal<Rol[]>([]);
@@ -111,6 +134,12 @@ export class UsuariosComponent implements OnInit {
   nuevoU = { email: '', nombre: '', password: '' };
   datos = { nombre: '', activo: true };
   rolAsignar: number | null = null;
+  rolAlcance: 'global' | 'organizacion' = 'global';
+  rolOrganizacionId: number | null = null;
+
+  nombreOrganizacion(id: number): string {
+    return this.orgs.organizaciones().find((o) => o.id === id)?.nombre ?? `#${id}`;
+  }
 
   ngOnInit(): void {
     this.api.get<Rol[]>('/roles').subscribe({ next: (d) => this.roles.set(d) });
@@ -148,6 +177,8 @@ export class UsuariosComponent implements OnInit {
     this.datos = { nombre: u.nombre, activo: u.activo };
     this.rolesActuales.set(this.rolesPorUsuario()[u.id] ?? []);
     this.rolAsignar = this.roles()[0]?.id ?? null;
+    this.rolAlcance = 'global';
+    this.rolOrganizacionId = null;
     this.abierto.set(true);
   }
 
@@ -192,7 +223,12 @@ export class UsuariosComponent implements OnInit {
   asignar(): void {
     const u = this.editando();
     if (!u || this.rolAsignar === null) return;
-    this.api.post(`/usuarios/${u.id}/roles`, { rolId: Number(this.rolAsignar) }).subscribe({
+    if (this.rolAlcance === 'organizacion' && this.rolOrganizacionId === null) {
+      this.toast.error('Falta la organización', 'Elige la organización para el alcance del rol.');
+      return;
+    }
+    const organizacionId = this.rolAlcance === 'global' ? null : this.rolOrganizacionId;
+    this.api.post(`/usuarios/${u.id}/roles`, { rolId: Number(this.rolAsignar), organizacionId }).subscribe({
       next: () => {
         this.toast.exito('Rol asignado', u.email);
         this.cargarRoles(u.id);

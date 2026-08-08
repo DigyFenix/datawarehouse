@@ -38,6 +38,19 @@ export const subirLogoSchema = z.object({
   datosBase64: z.string().min(1).max(600_000), // ~450 KB de binario máx. antes del límite duro
 });
 
+// Provisionamiento: solo Odoo necesita un dato extra — el id de compañía
+// (res_company) con el que se filtran todos sus objetos de ingesta.
+export const provisionarSchema = z.object({
+  companyId: z.coerce.number().int().positive().optional(),
+  // Fecha desde la que se extraen los flujos del ERP. Por defecto el 1 de enero
+  // del año en curso; se envía solo cuando el cliente quiere más historia.
+  corte: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'formato esperado YYYY-MM-DD')
+    .optional(),
+});
+
 export type CrearOrganizacionDto = z.infer<typeof crearOrganizacionSchema>;
 export type ActualizarOrganizacionDto = z.infer<typeof actualizarOrganizacionSchema>;
 export type SubirLogoDto = z.infer<typeof subirLogoSchema>;
+export type ProvisionarDto = z.infer<typeof provisionarSchema>;

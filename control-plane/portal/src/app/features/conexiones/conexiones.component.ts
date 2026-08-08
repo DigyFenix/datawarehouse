@@ -4,9 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
 import { Conexion, Entorno } from '../../core/modelos';
+import { OrganizacionService } from '../../core/organizacion.service';
 import { ToastService } from '../../core/toast.service';
 
 interface FormConexion {
+  organizacionId: number | null;
   nombre: string;
   entornoClave: string;
   host: string;
@@ -34,11 +36,12 @@ interface FormConexion {
     <div class="tarjeta" style="padding:0;">
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Conexión</th><th>Entorno</th><th>Host</th><th>Secreto</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Conexión</th><th>Organización</th><th>Entorno</th><th>Host</th><th>Secreto</th><th>Estado</th><th></th></tr></thead>
           <tbody>
             @for (c of conexiones(); track c.id) {
               <tr>
                 <td><strong>{{ c.nombre }}</strong></td>
+                <td>{{ nombreOrganizacion(c.organizacionId) }}</td>
                 <td>{{ nombreEntorno(c.entornoClave) }}</td>
                 <td><code>{{ c.host }}:{{ c.puerto }}</code></td>
                 <td><code>{{ c.secretoRef }}</code></td>
@@ -46,7 +49,7 @@ interface FormConexion {
                 <td style="text-align:right;"><button class="secundario pequeno" (click)="editar(c)">Editar</button></td>
               </tr>
             } @empty {
-              <tr><td colspan="6"><div class="vacio"><strong>Sin conexiones</strong>Crea la conexión a tu servidor de origen para empezar.</div></td></tr>
+              <tr><td colspan="7"><div class="vacio"><strong>Sin conexiones</strong>Crea la conexión a tu servidor de origen para empezar.</div></td></tr>
             }
           </tbody>
         </table>
@@ -56,6 +59,15 @@ interface FormConexion {
     @if (abierto()) {
       <app-drawer [titulo]="edicionId() ? 'Editar conexión' : 'Nueva conexión'" eyebrow="Conexiones" (cerrar)="abierto.set(false)">
         <form (ngSubmit)="guardar()">
+          @if (!edicionId()) {
+            <div class="campo">
+              <label>Organización</label>
+              <select name="organizacionId" [(ngModel)]="form.organizacionId" required>
+                <option [ngValue]="null" disabled>Elige…</option>
+                @for (o of orgs.organizaciones(); track o.id) { <option [ngValue]="o.id">{{ o.nombre }}</option> }
+              </select>
+            </div>
+          }
           <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="form.nombre" required placeholder="HANA Servidor Principal" /></div>
           <div class="campo"><label>Entorno de ejecución</label>
             <select name="entornoClave" [(ngModel)]="form.entornoClave" (ngModelChange)="onEntorno()" required>
@@ -93,6 +105,7 @@ interface FormConexion {
 export class ConexionesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+  readonly orgs = inject(OrganizacionService);
 
   readonly conexiones = signal<Conexion[]>([]);
   readonly entornos = signal<Entorno[]>([]);
@@ -108,7 +121,14 @@ export class ConexionesComponent implements OnInit {
   }
 
   private vacio(): FormConexion {
-    return { nombre: '', entornoClave: '', host: '', puerto: null, baseDatos: '', secretoRef: '', notas: '', activo: true };
+    return {
+      organizacionId: this.orgs.activaId(),
+      nombre: '', entornoClave: '', host: '', puerto: null, baseDatos: '', secretoRef: '', notas: '', activo: true,
+    };
+  }
+
+  nombreOrganizacion(id: number): string {
+    return this.orgs.organizaciones().find((o) => o.id === id)?.nombre ?? `#${id}`;
   }
 
   cargar(): void {
@@ -140,6 +160,7 @@ export class ConexionesComponent implements OnInit {
 
   editar(c: Conexion): void {
     this.form = {
+      organizacionId: c.organizacionId,
       nombre: c.nombre, entornoClave: c.entornoClave, host: c.host, puerto: c.puerto,
       baseDatos: c.baseDatos ?? '', secretoRef: c.secretoRef, notas: c.notas ?? '', activo: c.activo,
     };
@@ -161,6 +182,8 @@ export class ConexionesComponent implements OnInit {
       secretoRef: this.form.secretoRef,
       notas: this.form.notas || undefined,
       activo: this.form.activo,
+      // La organización solo se fija al crear: una conexión no se reasigna de organización (backend la omite en editar).
+      ...(id ? {} : { organizacionId: this.form.organizacionId }),
     };
     const accion = id
       ? this.api.put<Conexion>(`/conexiones/${id}`, cuerpo)

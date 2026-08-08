@@ -70,6 +70,7 @@ export interface EntradaAuditoria {
   id: number;
   ocurridoEn: string;
   usuarioEmail: string | null;
+  organizacionId: number | null;
   accion: string;
   entidad: string;
   entidadId: string | null;
@@ -131,6 +132,19 @@ export interface MetricaDetalle extends Metrica {
   versiones: VersionMetrica[];
 }
 
+/** Versión en revisión que espera el voto del usuario actual (GET /metricas/pendientes-de-mi-voto). */
+export interface PendienteVoto {
+  metricaId: number;
+  clave: string;
+  nombreOficial: string;
+  versionId: number;
+  version: number;
+  formula: string;
+  definicionNegocio: string;
+  creadoPor: string | null;
+  creadoEn: string;
+}
+
 export interface PoliticaIngesta {
   id: number;
   organizacionId: number;
@@ -184,6 +198,7 @@ export interface Entorno {
 
 export interface Conexion {
   id: number;
+  organizacionId: number;
   nombre: string;
   entornoClave: string;
   host: string;

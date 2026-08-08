@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
-import { Hecho, Metrica, MetricaDetalle, VersionMetrica } from '../../core/modelos';
+import { Hecho, Metrica, MetricaDetalle, PendienteVoto, VersionMetrica } from '../../core/modelos';
 import { ToastService } from '../../core/toast.service';
 
 interface FormMetrica {
@@ -28,6 +28,27 @@ interface FormMetrica {
       <button (click)="nueva()">+ Nueva métrica</button>
     </div>
 
+    @if (pendientes().length) {
+      <div class="tarjeta pendientes">
+        <div class="card__titulo">
+          <span class="eyebrow">Certificación</span>
+        </div>
+        <h3 style="margin-bottom:10px;">Pendientes de mi voto ({{ pendientes().length }})</h3>
+        <div class="pendientes__lista">
+          @for (p of pendientes(); track p.versionId) {
+            <button type="button" class="pendiente" (click)="votarPendiente(p)">
+              <div>
+                <strong>{{ p.nombreOficial }}</strong>
+                <span style="color:var(--muted); font-size:12.5px;"> · v{{ p.version }}</span>
+              </div>
+              <code style="font-size:12px; color:var(--muted);">{{ p.formula }}</code>
+              <span style="font-size:11.5px; color:var(--faint);">Creado por {{ p.creadoPor ?? 'desconocido' }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
     <div class="tarjeta" style="padding:0;">
       <div class="tabla-wrap">
         <table>
@@ -44,6 +65,9 @@ interface FormMetrica {
                 <td style="text-align:right; white-space:nowrap;">
                   <button class="secundario pequeno" (click)="editar(m)">Editar</button>
                   <button class="secundario pequeno" (click)="gestionar(m)">Gestionar</button>
+                  @if (m.estado === 'certificada') {
+                    <button class="secundario pequeno peligro" (click)="deprecar(m)">Deprecar</button>
+                  }
                 </td>
               </tr>
             } @empty {
@@ -140,6 +164,14 @@ interface FormMetrica {
     .votos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
     .version__acciones { display: flex; gap: 8px; margin-top: 12px; }
     .version__acciones:empty { display: none; }
+    .pendientes { margin-bottom: 20px; border-color: var(--brand-300); background: var(--brand-50); }
+    .pendientes__lista { display: flex; flex-direction: column; gap: 8px; }
+    .pendiente {
+      display: flex; flex-direction: column; gap: 3px; text-align: left; width: 100%;
+      background: var(--surface); color: var(--text); border: 1px solid var(--border-2);
+      border-radius: var(--r-sm); padding: 10px 13px; font-weight: 400;
+    }
+    .pendiente:hover { background: var(--surface-2); border-color: var(--brand-500); }
   `],
 })
 export class MetricasComponent implements OnInit {
@@ -148,6 +180,7 @@ export class MetricasComponent implements OnInit {
 
   readonly metricas = signal<Metrica[]>([]);
   readonly hechos = signal<Hecho[]>([]);
+  readonly pendientes = signal<PendienteVoto[]>([]);
   readonly detalle = signal<MetricaDetalle | null>(null);
   readonly formAbierto = signal(false);
   readonly edicionId = signal<number | null>(null);
@@ -173,6 +206,22 @@ export class MetricasComponent implements OnInit {
       },
     });
     this.cargar();
+    this.cargarPendientes();
+  }
+
+  cargarPendientes(): void {
+    this.api.get<PendienteVoto[]>('/metricas/pendientes-de-mi-voto').subscribe({
+      next: (d) => this.pendientes.set(d),
+      error: () => {},
+    });
+  }
+
+  /** Abre el drawer de certificación de la métrica de un pendiente, para votar ahí mismo. */
+  votarPendiente(p: PendienteVoto): void {
+    this.api.get<MetricaDetalle>(`/metricas/${p.metricaId}`).subscribe({
+      next: (d) => this.detalle.set(d),
+      error: (e: Error) => this.toast.error('No se pudo abrir la métrica', e.message),
+    });
   }
 
   private vacio(): FormMetrica {
@@ -291,7 +340,20 @@ export class MetricasComponent implements OnInit {
       next: (d) => {
         this.detalle.set(d);
         this.cargar();
+        this.cargarPendientes();
       },
+    });
+  }
+
+  /** Deprecar es definitivo: el único camino de vuelta es nueva versión + recertificación (§9). */
+  deprecar(m: Metrica): void {
+    if (!confirm(`¿Deprecar la métrica "${m.nombreOficial}"? Deja de estar disponible para el agente; solo se reactiva certificando una versión nueva.`)) return;
+    this.api.post<Metrica>(`/metricas/${m.id}/deprecar`, {}).subscribe({
+      next: (d) => {
+        this.toast.exito('Métrica deprecada', d.nombreOficial);
+        this.cargar();
+      },
+      error: (e: Error) => this.toast.error('No se pudo deprecar', e.message),
     });
   }
 }

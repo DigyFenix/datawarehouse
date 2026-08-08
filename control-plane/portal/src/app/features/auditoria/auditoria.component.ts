@@ -5,7 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
 import { EntradaAuditoria } from '../../core/modelos';
+import { OrganizacionService } from '../../core/organizacion.service';
 import { ToastService } from '../../core/toast.service';
+
+const LIMITE_PAGINA = 50;
 
 interface CambioCampo {
   campo: string;
@@ -26,6 +29,13 @@ interface CambioCampo {
     </div>
 
     <div class="filtros">
+      <div class="campo">
+        <label>Organización</label>
+        <select [(ngModel)]="fOrganizacionId" (ngModelChange)="cambiarOrganizacion()">
+          <option value="">Todas</option>
+          @for (o of orgs.organizaciones(); track o.id) { <option [value]="o.id">{{ o.nombre }}</option> }
+        </select>
+      </div>
       <div class="campo">
         <label>Acción</label>
         <select [(ngModel)]="fAccion" (ngModelChange)="sincronizar()">
@@ -69,6 +79,14 @@ interface CambioCampo {
           </tbody>
         </table>
       </div>
+      <div class="paginacion">
+        <span class="contador">{{ entradas().length }} registro(s) cargado(s)</span>
+        @if (hayMas()) {
+          <button class="secundario" (click)="cargarMas()" [disabled]="cargandoMas()">
+            {{ cargandoMas() ? 'Cargando…' : 'Cargar más' }}
+          </button>
+        }
+      </div>
     </div>
 
     @if (detalle(); as e) {
@@ -102,6 +120,8 @@ interface CambioCampo {
   styles: [`
     .filtros { display: flex; gap: 14px; align-items: flex-end; margin-bottom: 18px; flex-wrap: wrap; }
     .filtros .campo { margin: 0; min-width: 150px; }
+    .paginacion { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 15px; border-top: 1px solid var(--border); }
+    .paginacion .contador { font-size: 12.5px; color: var(--muted); }
     .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; margin: 0; }
     .meta dt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); }
     .meta dd { margin: 2px 0 0; font-size: 13.5px; }
@@ -113,13 +133,18 @@ interface CambioCampo {
 export class AuditoriaComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+  readonly orgs = inject(OrganizacionService);
 
   readonly entradas = signal<EntradaAuditoria[]>([]);
   readonly detalle = signal<EntradaAuditoria | null>(null);
+  readonly cargandoMas = signal(false);
+  // Si la última página trajo menos que el límite, no hay más por cargar.
+  readonly hayMas = signal(true);
 
   fAccion = '';
   fEntidad = '';
   fTexto = '';
+  fOrganizacionId = '';
   // Espejo en signals para que los computed reaccionen a los ngModel.
   private readonly _accion = signal('');
   private readonly _entidad = signal('');
@@ -149,10 +174,46 @@ export class AuditoriaComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.api.get<EntradaAuditoria[]>('/auditoria').subscribe({
-      next: (d) => this.entradas.set(d),
-      error: (e: Error) => this.toast.error('No se pudo cargar la auditoría', e.message),
-    });
+    this.cargarPrimeraPagina();
+  }
+
+  /** Reinicia el listado desde la primera página (cambio de organización o carga inicial). */
+  private cargarPrimeraPagina(): void {
+    this.entradas.set([]);
+    this.hayMas.set(true);
+    this.cargarPagina();
+  }
+
+  private cargarPagina(desdeId?: number): void {
+    this.cargandoMas.set(true);
+    this.api
+      .get<EntradaAuditoria[]>('/auditoria', {
+        organizacionId: this.fOrganizacionId ? Number(this.fOrganizacionId) : undefined,
+        limite: LIMITE_PAGINA,
+        desdeId,
+      })
+      .subscribe({
+        next: (d) => {
+          this.entradas.update((actuales) => (desdeId ? [...actuales, ...d] : d));
+          this.hayMas.set(d.length === LIMITE_PAGINA);
+          this.cargandoMas.set(false);
+        },
+        error: (e: Error) => {
+          this.toast.error('No se pudo cargar la auditoría', e.message);
+          this.cargandoMas.set(false);
+        },
+      });
+  }
+
+  /** Cursor: la página siguiente pide lo anterior al id más bajo ya cargado (orden id DESC). */
+  cargarMas(): void {
+    const ultima = this.entradas().at(-1);
+    if (!ultima) return;
+    this.cargarPagina(ultima.id);
+  }
+
+  cambiarOrganizacion(): void {
+    this.cargarPrimeraPagina();
   }
 
   // Sincroniza ngModel -> signals en cada cambio de filtro.

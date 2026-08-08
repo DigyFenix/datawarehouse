@@ -18,37 +18,54 @@ read-only al ERP del cliente.
 3. **Sociedad** (Sociedades): `empresa_id` (único GLOBAL — es la etiqueta de trazabilidad en
    Bronce), NIT, conexión y `esquema_origen` (`SBOXXX_` en HANA; `public` en Odoo).
 
-## 2. Base del plano de datos (infraestructura, una vez)
+## 2 y 3. Provisionar (un botón en el portal)
+
+En **Organizaciones → Provisionar**. En una sola operación, auditada e idempotente:
+
+1. crea la base del plano de datos (`dw_<codigo>`),
+2. le aplica el DDL de tenant (`101` esquemas, `110` portal de usuario, `119` rol de lectura
+   del agente, `120` alcance por empresa, `121` chat),
+3. siembra el paquete de ingesta completo del ERP de la organización.
+
+Solo Odoo pide un dato extra: el **id de compañía** (`res_company`) con el que se filtran sus
+objetos. La **fecha de corte** de los flujos es, por defecto, el 1 de enero del año en curso;
+se puede indicar otra para arrastrar más historia.
+
+Se puede repetir cuantas veces haga falta: la base se conserva, el DDL usa `IF NOT EXISTS` y
+los seeds `ON CONFLICT`. Si el rol `portal_lector` aún no existe en el clúster, el paso `119`
+sale como **advertencia** y el tenant queda usable — solo el agente de IA espera a que se cree.
+
+> Requiere que el contenedor del API tenga montado `metadata-store` (ya está en el compose).
+> Se aplican los MISMOS archivos versionados del repo: no hay una segunda copia del esquema.
+
+<details>
+<summary>Equivalente manual por consola (si el portal no está disponible)</summary>
 
 ```bash
 docker exec cresta-postgres createdb -U $POSTGRES_USER dw_<codigo>
-docker exec cresta-postgres psql -U $POSTGRES_USER -d dw_<codigo> -f /opt/metadata-store/schema/101_esquemas_tenant.sql
-docker exec cresta-postgres psql -U $POSTGRES_USER -d dw_<codigo> -f /opt/metadata-store/schema/110_portal_tenant.sql
-```
+for f in 101_esquemas_tenant 110_portal_tenant 119_rol_lector_tenant 120_alcance_empresa_tenant 121_portal_chat_tenant; do
+  docker exec cresta-postgres psql -U $POSTGRES_USER -d dw_<codigo> -f /opt/metadata-store/schema/$f.sql
+done
 
-> `110_portal_tenant.sql` crea el esquema `portal` (usuarios finales, perfiles, tableros,
-> auditoría) del **portal de usuario**. Los archivos `*_tenant.sql` NUNCA se aplican a la base
-> de control (el init de Docker los omite automáticamente).
-
-## 3. Paquete base + extensión (config de ingesta completa)
-
-```bash
-# SAP B1
-psql -d cresta_dw -v org=<codigo> -f seeds/58_paquete_sap_b1.sql
-psql -d cresta_dw -v org=<codigo> -f seeds/58b_paquete_sap_b1_documentos.sql
-psql -d cresta_dw -v org=<codigo> -f seeds/64_paquete_sap_b1_extension.sql   # pagos, inventario, TC, series
-psql -d cresta_dw -v org=<codigo> -f seeds/66_paquete_sap_b1_pedidos_mayor.sql
-psql -d cresta_dw -v org=<codigo> -f seeds/68_paquete_sap_b1_direcciones_retencion.sql  # OBLIGATORIO: sin él, plata_direccion falla en el primer build
+# SAP B1 — `corte` es la fecha desde la que se traen los flujos (YYYY-01-01 del año en curso)
+psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/58_paquete_sap_b1.sql
+psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/58b_paquete_sap_b1_documentos.sql
+psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/64_paquete_sap_b1_extension.sql
+psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/66_paquete_sap_b1_pedidos_mayor.sql
+psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/68_paquete_sap_b1_direcciones_retencion.sql  # OBLIGATORIO: sin él, plata_direccion falla en el primer build
 
 # Odoo
-psql -d cresta_dw -v org=<codigo> -v company=<id> -f seeds/59_paquete_odoo.sql
-psql -d cresta_dw -v org=<codigo> -v company=<id> -f seeds/65_paquete_odoo_extension.sql
-psql -d cresta_dw -v org=<codigo> -v company=<id> -f seeds/67_paquete_odoo_pedidos_mayor.sql
-psql -d cresta_dw -v org=<codigo> -f seeds/69_paquete_odoo_direcciones.sql
+psql -d cresta_dw -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/59_paquete_odoo.sql
+psql -d cresta_dw -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/65_paquete_odoo_extension.sql
+psql -d cresta_dw -v org=<codigo> -v company=<id> -v corte=2026-01-01 -f seeds/67_paquete_odoo_pedidos_mayor.sql
+psql -d cresta_dw -v org=<codigo> -v corte=2026-01-01 -f seeds/69_paquete_odoo_direcciones.sql
 ```
 
-Después, en el portal se AJUSTA encima (filtros de fecha del tenant, campos extra, UDFs).
-Los seeds 60–63 son historia aplicada a los dos primeros tenants: el onboarding usa 64+/65+.
+</details>
+
+Después, en el portal se AJUSTA encima (filtros extra, campos, UDFs). Los seeds 60–63 son
+historia aplicada a los dos primeros tenants y viven en `seeds/historicos/`: el onboarding usa
+58/58b/59 y 64–69.
 
 En **Sociedades** capturar también `moneda` y `moneda de presentación` (se leen de OADM /
 res_company al dar de alta; si difieren, ver la regla multi-moneda del paso 5) y los **NITs
@@ -80,7 +97,7 @@ las dimensiones: con el warehouse vacío fallan por dependencias que otro objeto
 construyó. La primera vez se corre el proyecto completo:
 
 ```bash
-docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo>      # build completo "plata oro"
+docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo>      # proyecto COMPLETO (seeds incluidos)
 docker exec cresta-worker python3 /dbt/herramientas/correr.py <codigo> "plata_socio_negocio+"  # selección puntual
 ```
 

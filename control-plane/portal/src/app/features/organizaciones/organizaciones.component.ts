@@ -16,6 +16,16 @@ interface FormOrg {
   colorMarca: string;
 }
 
+/** Lo que devuelve POST /organizaciones/:id/provisionar. */
+interface ResultadoProvision {
+  baseDatos: string;
+  baseCreada: boolean;
+  corte: string;
+  ddlAplicado: string[];
+  seedsAplicados: string[];
+  advertencias: string[];
+}
+
 @Component({
   selector: 'app-organizaciones',
   standalone: true,
@@ -42,7 +52,15 @@ interface FormOrg {
                 <td>{{ o.nombre }}</td>
                 <td><span class="badge badge--pill">{{ o.erpTipo }}</span></td>
                 <td><span class="badge badge--{{ o.estado }}">{{ o.estado }}</span></td>
-                <td style="text-align:right;"><button class="secundario pequeno" (click)="editar(o)">Editar</button></td>
+                <td class="acciones-fila">
+                  @if (provisionDisponible()) {
+                    <button class="secundario pequeno" [disabled]="provisionando() === o.id"
+                            (click)="abrirProvision(o)">
+                      {{ provisionando() === o.id ? 'Provisionando…' : 'Provisionar' }}
+                    </button>
+                  }
+                  <button class="secundario pequeno" (click)="editar(o)">Editar</button>
+                </td>
               </tr>
             } @empty {
               <tr><td colspan="5"><div class="vacio"><strong>Sin organizaciones</strong>Registra la primera con “Nueva organización”.</div></td></tr>
@@ -96,7 +114,59 @@ interface FormOrg {
         </form>
       </app-drawer>
     }
+
+    @if (orgProvision(); as org) {
+      <app-drawer titulo="Provisionar organización" [eyebrow]="org.codigo" (cerrar)="cerrarProvision()">
+        <p class="ayuda">
+          Crea la base del plano de datos, le aplica el DDL de tenant y siembra el paquete de
+          ingesta de <strong>{{ org.erpTipo }}</strong>. Se puede repetir sin duplicar nada.
+        </p>
+
+        @if (org.erpTipo === 'odoo') {
+          <div class="campo">
+            <label>Id de compañía (res_company)</label>
+            <input type="number" min="1" [(ngModel)]="companyId" name="companyId"
+                   placeholder="1" [ngModelOptions]="{ standalone: true }" />
+            <span class="ayuda">Odoo filtra todos sus objetos por esta compañía.</span>
+          </div>
+        }
+
+        <div class="campo">
+          <label>Fecha de corte de los flujos</label>
+          <input type="date" [(ngModel)]="corte" name="corte" [ngModelOptions]="{ standalone: true }" />
+          <span class="ayuda">
+            Desde cuándo se traen ventas, compras, pagos y pedidos. Por defecto, el 1 de enero
+            del año en curso.
+          </span>
+        </div>
+
+        @if (errorProvision()) { <p class="error">{{ errorProvision() }}</p> }
+
+        @if (resultado(); as r) {
+          <div class="tarjeta" style="margin-top:16px;">
+            <p><strong>Base:</strong> <code>{{ r.baseDatos }}</code>
+               {{ r.baseCreada ? '(creada)' : '(ya existía)' }}</p>
+            <p><strong>Corte:</strong> {{ r.corte }}</p>
+            <p><strong>DDL aplicado:</strong> {{ r.ddlAplicado.length }} archivos</p>
+            <p><strong>Seeds aplicados:</strong> {{ r.seedsAplicados.length }} archivos</p>
+            @for (a of r.advertencias; track a) {
+              <p class="error" style="margin-top:8px;">{{ a }}</p>
+            }
+          </div>
+        }
+
+        <div class="acciones">
+          <button type="button" class="secundario" (click)="cerrarProvision()">Cerrar</button>
+          <button type="button" [disabled]="provisionando() !== null" (click)="provisionar(org)">
+            {{ provisionando() !== null ? 'Provisionando…' : (resultado() ? 'Repetir' : 'Provisionar') }}
+          </button>
+        </div>
+      </app-drawer>
+    }
   `,
+  styles: [
+    `.acciones-fila { text-align: right; white-space: nowrap; display: flex; gap: 6px; justify-content: flex-end; }`,
+  ],
 })
 export class OrganizacionesComponent implements OnInit {
   private readonly api = inject(ApiService);
@@ -109,10 +179,61 @@ export class OrganizacionesComponent implements OnInit {
   readonly errorForm = signal<string | null>(null);
   readonly guardando = signal(false);
 
+  // Provisionamiento: sustituye los pasos manuales de consola del onboarding.
+  readonly provisionDisponible = signal(false);
+  readonly orgProvision = signal<Organizacion | null>(null);
+  readonly provisionando = signal<number | null>(null);
+  readonly errorProvision = signal<string | null>(null);
+  readonly resultado = signal<ResultadoProvision | null>(null);
+  companyId: number | null = null;
+  corte = '';
+
   form: FormOrg = this.vacio();
 
   ngOnInit(): void {
     this.cargar();
+    // Sin el metadata-store montado en el API no hay archivos que aplicar:
+    // el botón no se ofrece en vez de fallar a medio camino.
+    this.api
+      .get<{ disponible: boolean }>('/organizaciones/provisionar/disponible')
+      .subscribe({
+        next: (d) => this.provisionDisponible.set(d.disponible),
+        error: () => this.provisionDisponible.set(false),
+      });
+  }
+
+  abrirProvision(o: Organizacion): void {
+    this.orgProvision.set(o);
+    this.errorProvision.set(null);
+    this.resultado.set(null);
+    this.companyId = null;
+    this.corte = `${new Date().getFullYear()}-01-01`;
+  }
+
+  cerrarProvision(): void {
+    this.orgProvision.set(null);
+  }
+
+  provisionar(o: Organizacion): void {
+    this.errorProvision.set(null);
+    this.provisionando.set(o.id);
+    const cuerpo = {
+      ...(o.erpTipo === 'odoo' && this.companyId ? { companyId: this.companyId } : {}),
+      ...(this.corte ? { corte: this.corte } : {}),
+    };
+    this.api.post<ResultadoProvision>(`/organizaciones/${o.id}/provisionar`, cuerpo).subscribe({
+      next: (r) => {
+        this.resultado.set(r);
+        this.provisionando.set(null);
+        const detalle = `${r.ddlAplicado.length} DDL · ${r.seedsAplicados.length} seeds`;
+        if (r.advertencias.length) this.toast.info(`${o.nombre} provisionada con avisos`, detalle);
+        else this.toast.exito(`${o.nombre} provisionada`, detalle);
+      },
+      error: (e: Error) => {
+        this.errorProvision.set(e.message);
+        this.provisionando.set(null);
+      },
+    });
   }
 
   private vacio(): FormOrg {

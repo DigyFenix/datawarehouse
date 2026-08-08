@@ -1,5 +1,5 @@
 /* =====================================================================
-   Sistema de diseño — "Mesa de gobierno" · Portal Grupo Cresta
+   Sistema de diseño — "Mesa de gobierno" · Pulso (plataforma de BI gobernada)
    Instrumento de confianza en el dato: preciso, de archivo, no un SaaS blando.
    · Color primario CONFIGURABLE por organización (--marca; los tonos derivan).
    · Metales medallion (bronce/plata/oro) = firma, ligados a las capas de datos.
@@ -202,6 +202,9 @@ td .mono, td code { color: var(--brand-700); }
 .badge--pendiente  { color: var(--muted); background: var(--surface-2); border-color: var(--border-2); }
 .badge--pill       { color: var(--brand-700); background: var(--amber-100); border-color: #f0dcae; }
 .badge--pill::before { display: none; }
+/* Alcance global de un rol (usuarios.component): distinto de un alcance por organización. */
+.badge--global     { color: var(--brand-700); background: var(--brand-100); border-color: var(--brand-300); padding: 1px 8px; font-size: 10.5px; }
+.badge--global::before { display: none; }
 
 /* ---------- Encabezado de página ---------- */
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
