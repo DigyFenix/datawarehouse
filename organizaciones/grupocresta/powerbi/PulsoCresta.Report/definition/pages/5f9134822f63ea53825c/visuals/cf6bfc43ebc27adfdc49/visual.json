@@ -71,11 +71,11 @@
         }
       ]
     },
+    "syncGroup": {
+      "groupName": "empresa",
+      "fieldChanges": true,
+      "filterChanges": true
+    },
     "drillFilterOtherVisuals": true
-  },
-  "syncGroup": {
-    "groupName": "empresa",
-    "fieldChanges": true,
-    "filterChanges": true
   }
 }

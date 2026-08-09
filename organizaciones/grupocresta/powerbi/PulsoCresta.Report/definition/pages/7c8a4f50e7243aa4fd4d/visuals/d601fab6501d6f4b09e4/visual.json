@@ -113,11 +113,11 @@
         }
       ]
     },
+    "syncGroup": {
+      "groupName": "periodo",
+      "fieldChanges": true,
+      "filterChanges": true
+    },
     "drillFilterOtherVisuals": true
-  },
-  "syncGroup": {
-    "groupName": "periodo",
-    "fieldChanges": true,
-    "filterChanges": true
   }
 }

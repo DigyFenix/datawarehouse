@@ -91,6 +91,13 @@ TIPOS_SIN_TITULO = {"shape", "textbox", "card", "kpi", "slicer", "actionButton",
 # cualquier otro dígito en un título es un número escrito a mano (§3.2).
 _PREFIJO_PAGINA = re.compile(r"^\d\d · ")
 
+# Propiedades que el esquema visualContainer admite en la raíz. Cualquier otra la rechaza
+# Desktop al abrir ("propiedad adicional") — p. ej. syncGroup, que va DENTRO de `visual`.
+# Verificado contra el esquema oficial (2.9.0/2.11.0) el 2026-08-08.
+RAIZ_VISUAL_PERMITIDA = {"$schema", "name", "position", "visual", "visualGroup",
+                         "parentGroupName", "filterConfig", "isHidden", "annotations",
+                         "howCreated"}
+
 
 def _hex_fuera_de_paleta(nodo, etq: str, fallos: list[str]) -> None:
     if isinstance(nodo, dict):
@@ -125,6 +132,17 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
     nombres_vistos: dict[str, str] = {}
     n_vis = 0
 
+    # report.json: si hay tema custom, el esquema exige name + type + reportVersionAtImport
+    # (Desktop se niega a abrir sin él — pasó el 2026-08-08).
+    ruta_rj = defi_rep / "report.json"
+    if ruta_rj.exists():
+        tema = json.loads(ruta_rj.read_text(encoding="utf-8")) \
+            .get("themeCollection", {}).get("customTheme")
+        if tema:
+            for req in ("name", "type", "reportVersionAtImport"):
+                if req not in tema:
+                    fallos.append(f"report.json: customTheme sin la propiedad requerida '{req}'")
+
     # pages.json debe registrar exactamente las carpetas que existen.
     ruta_pages = defi_rep / "pages" / "pages.json"
     if ruta_pages.exists():
@@ -152,6 +170,11 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
             vis = cfg.get("visual", {})
             tipo = vis.get("visualType", "?")
             etq = f"{nombre}/{tipo}"
+
+            # propiedades fuera del esquema en la raíz del contenedor
+            for extra_prop in set(cfg) - RAIZ_VISUAL_PERMITIDA:
+                fallos.append(f"{etq}: propiedad '{extra_prop}' no admitida en la raíz del "
+                              f"visual.json (¿va dentro de 'visual'?)")
 
             # unicidad e integridad del id
             vid = cfg.get("name", "")

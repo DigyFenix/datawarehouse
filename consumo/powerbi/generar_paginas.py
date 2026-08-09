@@ -111,17 +111,18 @@ def visual(nombre: str, tipo: str, x: int, y: int, w: int, h: int, *, z: int, ta
         v["objects"] = objects
     if vc_objects:
         v["visualContainerObjects"] = vc_objects
+    if sync_group:
+        # Sincroniza el segmentador entre páginas (§3 transversal). Va DENTRO de `visual`
+        # (visualConfiguration.syncGroup, solo slicers) — en la raíz del contenedor Desktop lo
+        # rechaza como propiedad extra; verificado contra el esquema oficial el 2026-08-08.
+        v["syncGroup"] = {"groupName": sync_group, "fieldChanges": True, "filterChanges": True}
     v["drillFilterOtherVisuals"] = True
-    contenedor = {
+    return {
         "$schema": SCHEMA_VISUAL,
         "name": nombre,
         "position": _pos(x, y, w, h, z, tab),
         "visual": v,
     }
-    if sync_group:
-        # Sincroniza el segmentador entre páginas (período/empresa/moneda — §3 transversal).
-        contenedor["syncGroup"] = {"groupName": sync_group, "fieldChanges": True, "filterChanges": True}
-    return contenedor
 
 
 def titulo_vc(texto_o_fx, subtitulo_o_fx=None) -> dict:
@@ -455,8 +456,13 @@ def registrar_tema(rep: Path, tema_origen: Path) -> str:
 
     ruta_rj = rep / "definition" / "report.json"
     rj = json.loads(ruta_rj.read_text(encoding="utf-8"))
+    # `reportVersionAtImport` es obligatorio en customTheme (esquema report 3.3.0). Se hereda
+    # del baseTheme que Desktop ya escribió — son las versiones máximas que este reporte usa.
+    versiones = (rj.get("themeCollection", {}).get("baseTheme", {})
+                 .get("reportVersionAtImport")) or {
+        "visual": "2.11.0", "report": "3.3.0", "page": "2.1.0"}
     rj.setdefault("themeCollection", {})["customTheme"] = {
-        "name": nombre, "type": "RegisteredResources"}
+        "name": nombre, "reportVersionAtImport": versiones, "type": "RegisteredResources"}
     paquetes = rj.setdefault("resourcePackages", [])
     registrados = next((p for p in paquetes if p.get("type") == "RegisteredResources"), None)
     if registrados is None:

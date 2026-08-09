@@ -71,11 +71,11 @@
         }
       ]
     },
+    "syncGroup": {
+      "groupName": "moneda",
+      "fieldChanges": true,
+      "filterChanges": true
+    },
     "drillFilterOtherVisuals": true
-  },
-  "syncGroup": {
-    "groupName": "moneda",
-    "fieldChanges": true,
-    "filterChanges": true
   }
 }
