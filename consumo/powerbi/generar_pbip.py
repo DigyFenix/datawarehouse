@@ -1941,8 +1941,8 @@ MEDIDAS_POR_TABLA["estado_carga"] = r"""
 		formatString: dd/MM/yyyy
 		displayFolder: 01 Frescura
 
-	/// Cuántos dominios llevan más de tres días sin extraerse. Distinto de cero significa que hay tableros mostrando datos viejos.
-	measure 'Dominios desactualizados' = CALCULATE(COUNTROWS('Estado de carga'), KEEPFILTERS('Estado de carga'[estado_frescura] = "Desactualizado"))
+	/// Cuántos dominios llevan más de tres días sin extraerse. Distinto de cero significa que hay tableros mostrando datos viejos. El «+ 0» es a propósito: sin él, cero dominios devuelve BLANK y la tarjeta muestra «(En blanco)» — en la página de confianza, un cero tiene que decir 0.
+	measure 'Dominios desactualizados' = CALCULATE(COUNTROWS('Estado de carga'), KEEPFILTERS('Estado de carga'[estado_frescura] = "Desactualizado")) + 0
 		formatString: #,0
 		displayFolder: 01 Frescura
 
@@ -2000,14 +2000,13 @@ MEDIDAS_POR_TABLA["dim_tiempo"] = rf"""
 """
 
 MEDIDAS_POR_TABLA["estado_carga"] += rf"""
-	/// Hasta dónde se puede confiar: el dominio que va MÁS ATRASADO, no el que va más adelante. El máximo global no sirve como respuesta — en Cresta lo fija tipos de cambio, que trae tasas hasta julio de 2027, y contabilidad, con asientos del cierre por delante. El máximo POR DOMINIO ignora a la sociedad que no operó esos días; el mínimo entre dominios encuentra el eslabón débil.
-	measure '_Dato más rezagado' = MINX(VALUES('Estado de carga'[dominio]), CALCULATE(MAX('Estado de carga'[fecha_dato_mas_reciente])))
+	/// Hasta dónde se puede confiar: el dominio que va MÁS ATRASADO, no el que va más adelante. Es la medida para el KPI de frescura de una página — NO usar 'Último dato del ERP' como KPI global: es un máximo y lo infla tipos de cambio, que trae tasas hasta julio de 2027 (mostraría una fecha futura como si fuera frescura). El máximo POR DOMINIO ignora a la sociedad que no operó esos días; el mínimo entre dominios encuentra el eslabón débil.
+	measure 'Dato completo hasta' = MINX(VALUES('Estado de carga'[dominio]), CALCULATE(MAX('Estado de carga'[fecha_dato_mas_reciente])))
 		formatString: dd/MM/yyyy
-		displayFolder: _Auxiliar
-		isHidden
+		displayFolder: 01 Frescura
 
 	/// Banda del pie de todas las páginas. Responde "¿hasta cuándo llega esto que estoy viendo?" antes de que el usuario tenga que preguntarlo, con los DOS relojes que el modelo distingue: el del pipeline (¿corrió la extracción?) y el de la operación (¿hasta cuándo hay dato?). Y avisa si algún dominio quedó rezagado, que es cuando un tablero correcto muestra una cifra vieja.
-	measure 'Pie de frescura' = VAR f = [_Dato más rezagado] VAR d = [Días desde última extracción] VAR n = [Dominios desactualizados] RETURN IF(ISBLANK(f), "Sin datos cargados", "Dato del ERP al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmmm") & " de " & FORMAT(f, "yyyy") & " · extraído hace " & FORMAT(d, "0") & IF(d = 1, " día", " días") & IF(n > 0, " · " & FORMAT(n, "0") & IF(n = 1, " dominio desactualizado", " dominios desactualizados"), ""))
+	measure 'Pie de frescura' = VAR f = [Dato completo hasta] VAR d = [Días desde última extracción] VAR n = [Dominios desactualizados] RETURN IF(ISBLANK(f), "Sin datos cargados", "Dato del ERP al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmmm") & " de " & FORMAT(f, "yyyy") & " · extraído hace " & FORMAT(d, "0") & IF(d = 1, " día", " días") & IF(n > 0, " · " & FORMAT(n, "0") & IF(n = 1, " dominio desactualizado", " dominios desactualizados"), ""))
 		displayFolder: _Narrativa
 
 	/// Título de la página 00.

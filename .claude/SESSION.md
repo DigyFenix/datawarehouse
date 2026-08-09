@@ -1,6 +1,275 @@
 # SESSION — datawarehouse
 
-## ══════ SESIÓN 21 (2026-08-08) — CRESTA AL DÍA, MCP REPARADO Y EL REPO MAPEADO — leer esto primero ══════
+## ══════ SESIÓN 23 (2026-08-08/09) — F4 CERRADO AL CENTAVO, Y LA OLA 1 GENERADA… Y ABORTADA — leer esto primero ══════
+
+Dos historias en una sesión. La primera termina bien: **el lote 1 de F4 quedó cerrado y validado
+contra el motor DAX al centavo** (GAP-01 + GAP-03, el modelo pasó de 294 a **316 medidas**). La
+segunda define cómo se trabaja de aquí en adelante: **se generó la ola 1 completa en PBIR (3
+páginas, 55 visuales) y Edwin la abortó al verla** — la división de trabajo vuelve a ser la de
+siempre y queda reafirmada: **él construye los dashboards a mano, el agente es dueño del modelo,
+la guía y la validación.**
+
+### F4 lote 1 — cerrado y ejecutado contra el motor
+
+- **PBIP regenerado** con las 3 medidas de GAP-01 que estaban solo en el generador.
+- **GAP-03: 12 medidas `_Narrativa`** (títulos de página, subtítulos por visual, pie de
+  frescura), más 5 alertas narrativas para la fila de focos. Ejecutadas contra el motor vía MCP
+  con el PBIP abierto: las cifras contrastadas contra SQL a `oro` dieron **0.0000%** de desvío
+  (`Ventas netas` 402,294,765.80 · `Por cobrar terceros hoy` 30,324,254.7583 · `Vencido terceros
+  hoy` 9,649,732.9944 · `Ventas a terceros` 287,308,093.49).
+- **Cuatro regresiones del generador corregidas**: reescribía lo que Desktop migra al guardar
+  (`definition.pbir` 4.0→1.0, `.pbism` 4.2→4.0, `$schema` del `.pbip`, y `compatibilityLevel`
+  1606→1567 — ahora es un piso que nunca baja). `escribir_conservando()` en `generar_pbip.py`.
+
+### Cuatro defectos nuevos, todos de la familia «el calendario llega al futuro»
+
+| # | Defecto | Corrección |
+|---|---|---|
+| D1 | `Último dato del ERP` (MAX global) decía **03/07/2027** — lo inflan las tasas futuras de tipos de cambio | Medida **`Dato completo hasta`** = MIN entre dominios del MAX por dominio → 2026-08-08. Es EL KPI de frescura; el MAX crudo solo sirve por dominio |
+| D2 | `Proyección de cierre de mes` sin filtro de mes: **≈Q9.8M** plausible y falso (reparte la historia entre todos los días hábiles) | Guarda `DISTINCTCOUNT(anio_mes) <> 1 → BLANK()`; el subtítulo pide elegir un mes |
+| D3 | El visual «año vs año anterior» de la página 01 no se puede construir: **Oro no tiene 2025** (regla de corte) | Decisión de Edwin: serie mensual del año en curso + media móvil; NO se amplía el corte. Contrato corregido |
+| D4 | `FORMAT(v, "Q#,0.0")` devuelve **«1#,0.0»** — DAX lee la `q` como código de TRIMESTRE de un formato de fecha, sin error y sin BLANK | El símbolo de moneda se concatena FUERA del FORMAT (`dax_importe_abreviado`) y sale del token `@SIM@` que `aplicar_moneda` sustituye siempre |
+
+Y del render real salió otro: `Dominios desactualizados` mostraba **«(En blanco)»** en vez de 0
+(un `COUNTROWS` vacío es BLANK). Lleva `+ 0` — en la página de confianza, el cero dice 0.
+
+### La ola 1 generada por código — y por qué se abortó
+
+Edwin autorizó explícitamente que el agente generara el reporte («la instrucción de que yo haga
+las visuales está obsoleta»). Se construyó `generar_paginas.py` (emisor PBIR declarativo, IDs
+deterministas sha1[:20], esquemas exactos de Desktop), el tema de marca quedó registrado como
+`customTheme`, y salieron las 3 páginas del contrato con 55 visuales. El gate F6.1 se implementó
+en `validar_reporte.py` y atrapó un solape real de 8px antes del primer commit.
+
+Desktop la rechazó dos veces y el esquema oficial (`microsoft/json-schemas`) resolvió ambas:
+**`syncGroup` va DENTRO de `visual`** (no en la raíz del contenedor) y **`customTheme` exige
+`reportVersionAtImport`**. Con eso abrió… a medias: chrome, tema, KPIs y las 4 gráficas
+funcionaron con datos reales, pero **las `tableEx` reventaban el render** (TypeError `queryName`
+en PivotTableVisuals) y **los `actionButton` con texto dinámico salían vacíos**.
+
+Edwin lo vio y decidió: *«aborta la parte de que tú crees los dashboards; mejor tú te encargarás
+del modelo y yo de construir los dashboards»*. Se ejecutó completo:
+
+- Las 3 páginas retiradas; el reporte quedó con una página vacía (`68daa5275525aa7c47c9`) y **el
+  tema de marca registrado** (eso sí se queda — era requisito del contrato y funciona).
+- `generar_paginas.py` **retirado del repo** (recuperable en `f01c0cd`). La lección de
+  `generar_reporte.py` aplica: un script capaz de pisar el trabajo manual no se queda como
+  trampa viva.
+- La página vieja «Compras y Pagos» ya se había eliminado antes por decisión de Edwin
+  (recuperable en `e629af3` y anteriores).
+- `validar_reporte.py` conserva todo: referencias/esquema/ids/navegación/customTheme corren
+  siempre; la grilla de 8, solapes, hex y dígitos quedan detrás de `--gate-f61` (solo para
+  páginas generadas — a las manuales no se les exige la grilla).
+
+### Otros artefactos de la sesión
+
+- **`docs/powerbi/prompt-diseno-ola1.md`** — prompt autocontenido para diseñar los mockups de la
+  ola 1 en Claude (cifras reales, sistema visual, contratos, formato de entrega). Edwin lo va a
+  usar; lo que traiga sirve de guía para SU construcción manual.
+- `docs/powerbi/qa/visual-qa-checklist.md` (F6.3) y `docs/powerbi/qa/structural-qa.md` (acta del
+  validador) quedan como marco de QA para las páginas que Edwin construya.
+- Memorias actualizadas: `powerbi-division-trabajo` (reafirmada con el antecedente completo) y
+  `powerbi-pbip-tmdl` (lecciones PBIR: syncGroup, customTheme, tableEx roto, D4 del FORMAT).
+
+### Estado al cierre
+
+`dbt` sin tocar (los datos son los de la sesión 22: build 219/219, cuadre **70/70 verificado al
+cierre**). Modelo en **316 medidas**, TMDL válido, validador en verde (1 página vacía, 0
+visuales). Commits de la sesión: `e629af3` (F4 lote 1) · `794fa21` (ola 1 escrita) · `f01c0cd`
+(fix de esquemas) · el cierre de sesión con la limpieza. Presupuesto del contrato: 22/40
+medidas, 0/12 páginas, 0/2 rondas.
+
+### PENDIENTE
+
+1. **Edwin construye la ola 1 en Desktop** (00 · 01 · 09). Guía de contenido:
+   `docs/powerbi/report-architecture.md`; mockups con `docs/powerbi/prompt-diseno-ola1.md`.
+   Medidas clave: títulos `Título de <página>`, subtítulos `_Narrativa`, KPI de frescura
+   **`Dato completo hasta`** (no `Último dato del ERP`), agenda de cobro
+   `Cobro que vence en el período`.
+2. **Cuando haya páginas: F6.2 vía MCP** (PBIP abierto) — cifra de cada visual contra el motor
+   y contra SQL a `oro`. El agente lo corre; es el mismo ciclo que validó GAP-03.
+3. `Sobrecosto por precio de compra` ≈ 0: causa probable D3 (no hay año anterior que comparar).
+   Verificar al llegar a la página 08.
+4. GAP-02 / GAP-04 / GAP-05 / GAP-07 siguen pendientes (olas posteriores del contrato); GAP-05
+   puede exigir tabla auxiliar = cambio de modelo con autorización previa (§3.1).
+
+## ══════ SESIÓN 22 (2026-08-08) — EL DISEÑO DE LOS INFORMES, Y UN KPI QUE MENTÍA — leer esto primero ══════
+
+Sesión de diseño: **F1, F2 y F3 del contrato Power BI cerradas** y GAP-01 implementado. Pero lo
+que hay que leer primero no es eso: es que **ejecutar el DAX contra el motor por primera vez
+destapó un KPI que mostraba lo contrario de la realidad**, y que Power BI Desktop borró los
+visuales de Edwin dos veces en la misma sesión.
+
+### El ciclo de conversión de efectivo marcaba −41.7 días. El real es 80.2
+
+Primera vez que las 294 medidas se ejecutan contra el motor DAX (pendiente desde la sesión 17;
+el MCP lo permitió). `DM_Calendario` llegaba a **2032** para alojar vencimientos y series
+proyectadas del ERP, y la última venta real es del 2026-08-10. Ocho medidas anclaban su ventana
+móvil en `MAX(Calendario[fecha])`, que **sin filtro de período es el 31-dic-2032**: la ventana
+caía en un futuro vacío y devolvía BLANK.
+
+Lo grave no es el BLANK. `Ciclo de conversión de efectivo` suma sus tres patas, y DAX trata el
+BLANK como cero:
+
+    antes      23.2 + (BLANK) − 64.9  =  −41.7 días
+    corregido  23.2 +  121.9  − 64.9  =   80.2 días
+
+Un CCC de −41.7 se lee como «los proveedores financian la operación, excelente». El real son
+**80.2 días de capital atrapado**. Es el KPI central de una página P0, y habría ido a una
+demo comercial diciendo justo lo contrario de lo que pasa.
+
+Corregido en `generar_pbip.py` con la medida auxiliar oculta `_Fecha ancla móvil` =
+`MIN(fin del contexto, última fecha con dato)`, usada por las 8. Con un período filtrado el
+ancla sigue siendo el fin del período, que es el comportamiento correcto.
+
+**Lección:** un calendario que se extiende al futuro —y este lo hacía a propósito— convierte
+`MAX(fecha)` en una trampa silenciosa. Y una medida que compone otras puede transformar un BLANK
+honesto en un número plausible y falso, que es peor que no mostrar nada.
+
+### Power BI Desktop borró los visuales de Edwin DOS veces
+
+Dos causas distintas, mismo resultado: página vacía, cero visuales.
+
+1. **PBIR estaba desactivado** en Opciones. Al guardar, Desktop convirtió el reporte de formato
+   PBIR (`definition/` con carpeta por página y por visual) al legacy (`report.json` monolítico)
+   y en el camino se llevó los 3 visuales.
+2. Con PBIR ya activado, Desktop **abrió el reporte sin leer lo restaurado en disco**: creó una
+   página con GUID nuevo (`55982fd3…` en vez de `0ddb6f45…`) y al guardar escribió esa página
+   vacía. Sospechoso principal: su caché de sesión, `.pbi/localSettings.json` —ya eliminado y
+   agregado al `.gitignore`.
+
+Los esquemas de `page.json` y `pages.json` **no cambian** entre versiones del `.pbir`
+(`page/2.1.0`, `pagesMetadata/1.1.0`), así que restaurar entre formatos es directo:
+`git checkout <commit> -- <ruta del .Report>` con Desktop **cerrado**. La migración del
+`definition.pbir` a 4.0 sí se conservó, que es lo que conviene.
+
+**Y una del lado de Claude:** el primer borrado entró al repo porque se hizo `git add -A` sin
+mirar el diff. Con el PBIP en juego, revisar `git status` antes de commitear.
+
+### F1 — Mapa de explotación (43/43 tablas)
+
+`docs/powerbi/model-exploitation-map.md`. Tres conclusiones que ordenaron todo lo demás:
+
+1. **El modelo está sobre-instrumentado en venta y sub-explotado en vencimiento.** 54 medidas
+   miran la facturación y **ninguna** miraba el calendario de cobro y entrega, teniendo las 5
+   relaciones inactivas ya construidas.
+2. **Lo más valioso ya calculado no lo mostraba ningún visual.** El cuello de botella es de
+   presentación, no de cálculo.
+3. Las tablas de **foto** y las de **serie** exigen contratos de página explícitos: mezclar
+   flujo y foto bajo un mismo segmentador es el error de lectura más caro del modelo.
+
+También se corrigió ahí un defecto que bloqueaba el refresco: `DM_Dirección de entrega` con
+`direccion_clave` duplicada. `OCST` (catálogo de departamentos de SAP) tiene clave compuesta
+`(Code, Country)` —el código 12 es *Petén* en Guatemala y *San Miguel* en El Salvador— y la
+ingesta solo extraía `Code`. **`dbt build` pasaba 195/195 con la dimensión rota** porque ninguna
+dimensión de Oro tenía test de unicidad sobre su clave; se agregó `not_null, unique` a las 12
+que faltaban.
+
+### F2 — Matriz de oportunidad (32 filas, 11 P0)
+
+`docs/powerbi/analytics-opportunity-matrix.md`. Cada fila es una pregunta que un gerente hace,
+no un título de reporte. **Ocho de las once P0 no necesitan una sola medida nueva.**
+
+Cifras medidas contra el motor, no estimadas: quiebre **Q57.0M en 98 productos** · bajo costo
+**Q46.5M (11.5% de la venta)** con Q18.4M de margen perdido · backlog vencido **Q5.7M de Q12.5M**
+· **79 clientes** en riesgo valioso con **Q22.0M**.
+
+### F3 — Arquitectura del reporte (12 páginas) y el sistema visual
+
+`docs/powerbi/report-architecture.md` + los contratos en `docs/powerbi/contracts/`
+(`sistema-visual.md`, `naming-conventions.md`). 12 páginas con contrato completo y coordenadas
+en grilla, 11/11 P0 cubiertos, capital inmovilizado y riesgo de faltante en páginas separadas,
+ni un donut.
+
+**Tema de Grupo Cresta** con su paleta oficial (azul `#0043af`, rojo `#d51c29`):
+`organizaciones/grupocresta/powerbi/theme/grupocresta-theme.json`.
+
+La decisión de fondo: **el rojo corporativo nunca identifica una serie, se reserva para estado
+crítico.** Así la marca y la semántica empujan en la misma dirección en vez de pelearse, y el
+azul lleva la identidad. Paleta categórica de 8 slots validada con el validador de la skill
+`dataviz`: peor par adyacente CVD ΔE **9.1** (mínimo 8) y visión normal **19.6** (mínimo 15).
+
+Corrección aritmética al contrato: §5.1 dice columnas de 84 px, pero con margen 24 y gutter 16
+eso cierra en 1232 y deja 48 px muertos. Se usa **88 px**, que cierra exacto en 1280.
+
+### Calendario de rango dinámico (decisión de Edwin)
+
+Era fijo 2020→2032. Ahora se calcula del dato: **3 años atrás → última fecha real del modelo +
+1 mes**, con piso en el cierre del año en curso. Resultado: **2023-01-01 → 2027-01-31**, 1492
+días contra 4749.
+
+El extremo futuro sale del dato porque el negocio tiene fechas por delante que **no son error**:
+vencimientos, entregas comprometidas (hasta diciembre) y proyección de caja. Un corte a «mes
+actual + 1» habría dejado incompleto el backlog por fecha de entrega, que es un P0.
+
+`plata_tipo_cambio` quedó **fuera** del cálculo del extremo: SAP guarda tasas hasta julio 2027 y
+estiraban el calendario siete meses por una tabla de diagnóstico. Sus 3 filas futuras van al
+miembro No definido y **entrarán solas** al llegar 2027 — el rango se recalcula contra
+`current_date` en cada corrida. Ningún importe se ve afectado: la conversión une por `fecha`,
+nunca por la clave de tiempo (`hecho_venta_linea.sql:94`).
+
+Macro nueva **`clave_tiempo()`** (12 claves migradas en 9 hechos): una fecha fuera del calendario
+va al miembro No definido, nunca queda huérfana. En Cresta son 132 partidas de CxC y 90 de CxP
+con vencimiento anterior a 2023, la más vieja de **2017**. Su saldo sigue sumando (Q3.84M dentro
+de los Q119.3M de cartera) y el aging las sigue mostrando en «+90 días», que se calcula sobre
+`dias_vencido` y no sobre el calendario.
+
+> **Hallazgo de negocio para Edwin:** hay **Q4.14M de cartera con más de 3 años de vencida**.
+> Es saldo vivo en el balance que probablemente nadie ha depurado.
+
+### F4 — GAP-01 implementado y validado al centavo
+
+Tres medidas que conmutan el calendario de fecha de documento a fecha de **vencimiento** con
+`USERELATIONSHIP`, usando las relaciones inactivas que nadie usaba:
+
+| Medida | Tabla | Relación |
+|---|---|---|
+| `Cobro que vence en el período` | Cartera por cobrar | rel_029 |
+| `Pago que vence en el período` | Cartera por pagar | rel_037 |
+| `Entrega comprometida en el período` | Pedidos | rel_085 |
+
+Validación contra el origen (§7), vencimiento de agosto 2026 en CxC de terceros:
+DAX `19,447,201.9301` vs SQL `19,447,201.93` → **diferencia 0.0000%** (tolerancia 0.5%).
+
+Lo que destapan: **agosto vence con Q26.1M por pagar contra Q19.4M por cobrar.** La presión de
+caja del mes se ve antes de que ocurra.
+
+### Estado al cierre
+
+Árbol **limpio**, 7 commits (`a3bc834` … `6c04402`). `dbt build` **219/219** (219 y no 195: los
+24 tests de unicidad nuevos ya corren), control de cuadre **70/70 sin desvíos**, Iron Network
+refrescado (195/195, cuadre 7/7, dato al 2026-08-07).
+
+### PENDIENTE
+
+1. **Regenerar el PBIP — lo primero de la próxima sesión.** Las 3 medidas de GAP-01 están en
+   `generar_pbip.py` pero **todavía no en el TMDL**: no se regeneró porque Desktop estaba
+   abierto. Con Desktop **cerrado**:
+
+   ```powershell
+   $env:POSTGRES_HOST="localhost"
+   python consumo/powerbi/generar_pbip.py dw_grupocresta PulsoCresta organizaciones/grupocresta/powerbi
+   python consumo/powerbi/validar_reporte.py organizaciones/grupocresta/powerbi PulsoCresta
+   ```
+
+   Después verificar que los 3 visuales de Edwin siguen ahí (el validador los cuenta).
+
+2. **GAP-03 — narrativa (~10 medidas).** Cierra el lote 1 de F4. Lo exige §3.2: ningún número
+   escrito a mano en un título; todos desde una medida en el display folder `_Narrativa`.
+   Necesarias para las tres páginas de la ola 1.
+
+3. **Ola 1 de páginas (F5): 00 Inicio · 01 Dirección · 09 Cartera y cobranza.** Contratos
+   completos con coordenadas en `docs/powerbi/report-architecture.md`. **Desktop cerrado**
+   mientras se escriben páginas en el `.Report`.
+
+4. **`Sobrecosto por precio de compra` da ≈ 0** (5.99e-08) sin filtro de período. Puede ser
+   correcto (se anula al agregar todo) o un defecto como el del ancla. Verificar al construir la
+   página 08, que es donde se usa. No bloquea la ola 1.
+
+5. **GAP-05 (waterfall de P&L) puede requerir una tabla auxiliar** en el generador — eso es un
+   cambio al modelo y §3.1 exige autorización previa. Decidir antes de la ola 4.
+
+## ══════ SESIÓN 21 (2026-08-08) — CRESTA AL DÍA, MCP REPARADO Y EL REPO MAPEADO ══════
 
 Sesión de puesta a punto antes de entrar a F1 del contrato Power BI. Lo importante no es lo que
 se construyó, sino lo que se descubrió: **dos cosas estaban mal y ninguna daba señal de error**.

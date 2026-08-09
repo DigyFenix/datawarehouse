@@ -4,10 +4,13 @@
 > Organizaciones activas: **Grupo Cresta** (SAP B1) e **Iron Network** (Odoo 18). Ninguna es
 > «la del proyecto»: el motor no privilegia a ninguna.
 >
-> **Al 2026-08-08 el cuello de botella no es construcción, es CONTENIDO:** los dos portales
-> tienen **cero tableros**. Todo lo construido sirve para mostrar algo que aún no existe.
+> **Al 2026-08-08 (sesión 23) el cuello de botella sigue siendo CONTENIDO, y la construcción es
+> de Edwin:** el intento de generar las páginas por código (PBIR) se abortó por decisión suya —
+> Edwin construye los dashboards a mano en Desktop sobre los contratos de
+> `docs/powerbi/report-architecture.md`; Claude se queda con el modelo (316 medidas, todas las
+> del lote 1 de F4 validadas contra el motor al centavo), la guía y la validación.
 > El producto Power BI se rige por su propio contrato (`CLAUDE_POWERBI_ANALYTICS_PRODUCT_MASTER_V3.md`);
-> su progreso vive en `docs/powerbi/STATE.md` — **F0 cerrada, sigue F1**.
+> su progreso vive en `docs/powerbi/STATE.md` — **F0 a F4-lote-1 cerradas; F5 en manos de Edwin**.
 
 Tablero maestro de avance. Fuente de verdad del progreso. Se actualiza al cerrar cada fase.
 Regla: cada fase se valida contra su **DoD** antes de avanzar (salvo instrucción de entregar
@@ -98,6 +101,36 @@ sola vez** para los dos.
 | 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos; **NITs afiliados en el portal** (migración 112). **2026-08-08**: baja de organización reparada (chocaba con las FK y devolvía 500), quitar rol ya respeta el alcance (borraba el rol en TODAS las organizaciones), Usuarios filtra por la organización activa y **nueva pantalla de Autorizaciones** — el API de grants existía desde la fase 3 pero ninguna pantalla lo consumía. Falta la UI del canónico v2 y el filtro por campo | — |
 | 6 | Consumo (Power BI) | ✅ **modelo vigente (2026-08-08): 36 tablas de datos / 98 relaciones / 294 medidas** — 43 archivos `.tmdl` contando el grupo de cálculo y los 6 parámetros de campo. Las cifras «25/67/140» de este renglón eran de una versión anterior y se corrigieron al regenerar contra el Oro nuevo (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
 | 7 | Validación (4 criterios) | ✅ **completada 2026-08-08** — consistencia (cuadres al centavo), **seguridad/RLS** (IDOR 8/8, RLS fail-closed, certificación 7/7, guardas del agente 12/12), trazabilidad (auditoría por organización, cada consulta del agente auditada) y explicabilidad (toda respuesta lleva métrica, período y estado de certificación). **Onboarding de tenant nuevo validado E2E**: alta → provisionar → extraer 12 objetos → build 195/195 → cuadre 0 desvíos, sin un solo paso a mano | 2026-08-08 |
+
+## Avance 2026-08-08 (sesión 22) — diseño de los informes + un KPI que mostraba lo contrario
+
+**F1, F2 y F3 del contrato Power BI cerradas**, GAP-01 implementado y validado. El plano de los
+12 tableros existe; falta construirlos.
+
+- **Un KPI mostraba lo contrario de la realidad.** Primera ejecución del DAX contra el motor
+  (pendiente desde la sesión 17). El calendario llegaba a 2032 y ocho medidas anclaban su
+  ventana móvil en `MAX(fecha)`, cayendo en un futuro vacío → BLANK. El **ciclo de conversión
+  de efectivo** convertía ese BLANK en cero y marcaba **−41.7 días** («los proveedores financian
+  la operación») cuando el real son **80.2 días de capital atrapado**. Corregido con la medida
+  auxiliar `_Fecha ancla móvil`.
+- **`dim_direccion` tenía la clave duplicada** y rompía el refresco de Power BI: `OCST` tiene
+  clave compuesta `(Code, Country)` y la ingesta solo extraía `Code`. `dbt build` pasaba
+  195/195 con la dimensión rota porque **ninguna dimensión de Oro tenía test de unicidad**;
+  se agregó `not_null, unique` a las 12 que faltaban (build ahora 219/219).
+- **Calendario de rango dinámico**: 2023-01-01 → 2027-01-31 (1492 días contra 4749). El extremo
+  futuro se calcula del dato porque hay fechas por delante que no son error. Macro
+  `clave_tiempo()` manda al miembro No definido lo que caiga fuera, sin claves huérfanas.
+- **F2** — 32 oportunidades con pregunta de negocio explícita, 11 P0. **Ocho de las once no
+  necesitan una sola medida nueva**: el modelo ya las responde y ningún visual las muestra.
+- **F3** — 12 páginas con contrato y coordenadas, 11/11 P0. Tema de Grupo Cresta con su paleta
+  oficial; el **rojo corporativo se reserva para estado crítico** y nunca identifica una serie.
+- **GAP-01** — tres medidas de eje de vencimiento (`USERELATIONSHIP` sobre las relaciones
+  inactivas). Validadas contra SQL con **0.0000% de diferencia**. Destapan que agosto vence con
+  **Q26.1M por pagar contra Q19.4M por cobrar**.
+- **Hallazgo de negocio:** **Q4.14M de cartera con más de 3 años de vencida**, la más antigua de
+  2017. Saldo vivo en el balance, probablemente sin depurar.
+- Power BI Desktop borró los visuales del reporte **dos veces**; restaurados desde git ambas.
+  `.pbi/localSettings.json` fuera del repo.
 
 ## Avance 2026-08-08 (sesión 21) — Cresta al día + herramienta de refresco + navegación del repo
 

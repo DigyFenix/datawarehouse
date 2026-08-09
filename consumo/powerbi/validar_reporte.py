@@ -122,10 +122,14 @@ def _texto_literal(props: dict) -> str | None:
 
 
 def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
-    """Valida el reporte PBIR contra el gate F6.1 del contrato: referencias al modelo, lienzo,
-    grilla en múltiplos de 8, solapes, hex fuera de paleta, unicidad de ids, destinos de
-    navegación, números escritos a mano en texto estático y visuales de análisis sin título.
-    Escribe el acta en docs/powerbi/qa/structural-qa.md si la carpeta docs/ existe."""
+    """Valida el reporte PBIR. Siempre: referencias al modelo, propiedades fuera del esquema,
+    unicidad de ids, destinos de navegación, pages.json y customTheme — lo que rompe el reporte
+    o deja un visual vacío. Con `--gate-f61` agrega las reglas de estilo del contrato (lienzo,
+    múltiplos de 8, solapes, hex fuera de paleta, dígitos en texto estático, títulos): aplican a
+    páginas GENERADAS; las páginas construidas a mano en Desktop (división de trabajo vigente
+    desde 2026-08-08: Edwin construye los dashboards) llevan coordenadas libres y no se les
+    exige la grilla. Escribe el acta en docs/powerbi/qa/structural-qa.md si docs/ existe."""
+    estricto = "--gate-f61" in sys.argv
     fallos: list[str] = []
     paginas = sorted(defi_rep.glob("pages/*/page.json"))
     ids_pagina = {pj.parent.name for pj in paginas}
@@ -187,35 +191,37 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
             # referencias al modelo
             _refs_pbir(cfg, tablas, columnas, medidas, etq, fallos)
 
-            # geometría: lienzo y grilla de 8
+            # geometría: lienzo y grilla de 8 (solo en modo estricto — páginas generadas)
             pos = cfg.get("position", {})
             x, y = pos.get("x", 0), pos.get("y", 0)
             w, h = pos.get("width", 0), pos.get("height", 0)
-            if x < 0 or y < 0 or x + w > LIENZO_W + 0.5 or y + h > LIENZO_H + 0.5:
-                fallos.append(f"{etq}: se sale del lienzo (x={x} y={y} w={w} h={h})")
-            for eje, valor in (("x", x), ("y", y), ("w", w), ("h", h)):
-                if valor != int(valor) or int(valor) % 8:
-                    fallos.append(f"{etq}: {eje}={valor} no es múltiplo de 8")
+            if estricto:
+                if x < 0 or y < 0 or x + w > LIENZO_W + 0.5 or y + h > LIENZO_H + 0.5:
+                    fallos.append(f"{etq}: se sale del lienzo (x={x} y={y} w={w} h={h})")
+                for eje, valor in (("x", x), ("y", y), ("w", w), ("h", h)):
+                    if valor != int(valor) or int(valor) % 8:
+                        fallos.append(f"{etq}: {eje}={valor} no es múltiplo de 8")
             cajas.append((etq, x, y, w, h, tipo))
 
-            # color fuera de paleta
-            _hex_fuera_de_paleta(cfg, etq, fallos)
-
-            # números escritos a mano en texto estático (título, subtítulo, botones)
             vc = vis.get("visualContainerObjects", {}) or {}
-            textos = [p.get("properties", {}) for clave in ("title", "subTitle")
-                      for p in vc.get(clave, [])]
-            textos += [p.get("properties", {}) for p in (vis.get("objects", {}) or {}).get("text", [])]
-            for props in textos:
-                texto = _texto_literal(props)
-                if texto and re.search(r"\d", _PREFIJO_PAGINA.sub("", texto)):
-                    fallos.append(f"{etq}: número escrito a mano en texto estático: «{texto}» (§3.2)")
+            if estricto:
+                # color fuera de paleta
+                _hex_fuera_de_paleta(cfg, etq, fallos)
 
-            # título obligatorio en visuales de análisis
-            if tipo not in TIPOS_SIN_TITULO:
-                tiene_titulo = any("text" in p.get("properties", {}) for p in vc.get("title", []))
-                if not tiene_titulo:
-                    fallos.append(f"{etq}: visual de análisis sin título propio")
+                # números escritos a mano en texto estático (título, subtítulo, botones)
+                textos = [p.get("properties", {}) for clave in ("title", "subTitle")
+                          for p in vc.get(clave, [])]
+                textos += [p.get("properties", {}) for p in (vis.get("objects", {}) or {}).get("text", [])]
+                for props in textos:
+                    texto = _texto_literal(props)
+                    if texto and re.search(r"\d", _PREFIJO_PAGINA.sub("", texto)):
+                        fallos.append(f"{etq}: número escrito a mano en texto estático: «{texto}» (§3.2)")
+
+                # título obligatorio en visuales de análisis
+                if tipo not in TIPOS_SIN_TITULO:
+                    tiene_titulo = any("text" in p.get("properties", {}) for p in vc.get("title", []))
+                    if not tiene_titulo:
+                        fallos.append(f"{etq}: visual de análisis sin título propio")
 
             # destinos de navegación
             for enlace in (vis.get("objects", {}) or {}).get("visualLink", []):
@@ -225,8 +231,8 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
                 if destino and destino not in ids_pagina:
                     fallos.append(f"{etq}: navega a la página '{destino}' que no existe")
 
-        # solapes dentro de la página
-        for i in range(len(cajas)):
+        # solapes dentro de la página (solo en modo estricto)
+        for i in range(len(cajas) if estricto else 0):
             for j in range(i + 1, len(cajas)):
                 e1, x1, y1, w1, h1, t1 = cajas[i]
                 e2, x2, y2, w2, h2, t2 = cajas[j]

@@ -1,8 +1,17 @@
 # STATE — Quilate Analytics · Power BI Product
 
-FASE_ACTUAL: F4 (lote 1 escrito y en el TMDL — falta ejecutarlo contra el motor DAX)
-ULTIMA_ACTUALIZACION: 2026-08-08 (sesión 23)
-GATE_ANTERIOR: PASA (F1, F2 y F3 cerradas)
+FASE_ACTUAL: F5 (construcción MANUAL por Edwin — el modo de ejecución del contrato cambió, ver decisión 15)
+ULTIMA_ACTUALIZACION: 2026-08-09 (sesión 23)
+GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
+
+> **CAMBIO DE RUMBO (2026-08-08, decisión de Edwin):** la ola 1 se generó completa por código
+> (PBIR, 3 páginas, 55 visuales) y Edwin la abortó tras verla en Desktop — tablas rotas, botones
+> vacíos, estándar visual insuficiente. **Edwin construye los dashboards a mano en Desktop; el
+> agente se queda con el modelo, la guía y la validación.** Las páginas generadas se retiraron
+> (recuperables en git `f01c0cd`); el reporte quedó con una página vacía y **el tema de marca ya
+> registrado**. Los contratos de F3 siguen siendo la guía de QUÉ construir; el gate F6.1
+> estricto queda como opción del validador (`--gate-f61`), no como exigencia a las páginas
+> manuales. F6.2 (cifras contra el motor vía MCP) sigue vigente y es del agente.
 
 > **Datos bajo el modelo, al 2026-08-08:** Grupo Cresta refrescado end-to-end (4.66M filas,
 > `dbt build` 195/195, cuadre 70/70 sin desvíos) y PBIP regenerado — 36 tablas de datos /
@@ -57,6 +66,9 @@ GATE_ANTERIOR: PASA (F1, F2 y F3 cerradas)
 | 12 | El generador **conserva** lo que Desktop migra al guardar: `definition.pbir`, `definition.pbism`, el `.pbip` y el `compatibilityLevel` (que es un piso, nunca baja) | Reescribía los cuatro con valores de una versión anterior del formato. El `compatibilityLevel` caía de 1606 a 1567 —degradar el nivel rompe cualquier medida que use funciones del nivel nuevo— y degradar el `.pbir` es la misma clase de cambio de formato que ya borró los visuales dos veces (B6). Verificado idempotente: segunda corrida sin diff | F4 |
 | 13 | Los importes de las medidas de narrativa se abrevian K/M y su símbolo sale del token `@SIM@`, nunca de una `"Q"` literal | §4 del contrato visual exige abreviatura en tarjetas (la venta anual de Cresta está en cientos de millones). El token lo sustituye `aplicar_moneda` **siempre**, también en GTQ: `aplicar_moneda` solo alcanzaba el `formatString`, así que una `"Q"` escrita dentro del DAX habría llegado intacta a un tenant en dólares | F4 |
 | 14 | El texto narrativo **no conmuta** con `MD_Moneda de análisis`: siempre habla en moneda de presentación | Una medida de texto ya formateó el importe cuando el grupo de cálculo actúa, así que cae en el fallback `SELECTEDMEASURE()` y devuelve el texto tal cual. Es correcto y predecible, pero al leer un visual en "Moneda original" el título sigue en moneda de presentación. Se declara aquí en vez de disfrazarlo | F4 |
+| 15 | **Edwin construye los dashboards a mano; el agente no genera páginas** | Decisión de Edwin (2026-08-08) tras ver la ola 1 generada: «mejor tú te encargarás del modelo y yo de construir los dashboards». Es la segunda vez que un intento de generación visual no alcanza su estándar (la primera: `generar_reporte.py`, 2026-08-02). `generar_paginas.py` retirado del repo | F5 |
+| 16 | El gate F6.1 estricto (grilla de 8, solapes, hex, dígitos) pasa a ser **opcional** en el validador (`--gate-f61`) | Esas reglas existen para páginas generadas; exigirle múltiplos de 8 a un visual arrastrado a mano en Desktop haría fallar cada corrida e inutilizaría el validador. Las reglas que rompen el reporte de verdad (referencias, esquema, ids, navegación, customTheme) corren siempre | F5 |
+| 17 | El KPI global de frescura es **`Dato completo hasta`**, nunca `Último dato del ERP` | Verificado en render real: el MAX crudo mostraba 03/07/2027 (las tasas futuras de tipos de cambio). `Último dato del ERP` solo sirve POR DOMINIO en la tabla de frescura. Y `Dominios desactualizados` lleva `+ 0`: la tarjeta de confianza no puede decir «(En blanco)» | F5 |
 
 ## Bloqueos abiertos
 
@@ -64,13 +76,15 @@ GATE_ANTERIOR: PASA (F1, F2 y F3 cerradas)
 |---|---|---|---|
 | B4 | ~~Sin ejecución DAX~~ **RESUELTO**: el MCP estaba instalado pero **no conectaba** — se registró sin el argumento `--start`, y sin él el wrapper imprime un banner y hace `Console.ReadKey()`, que revienta con stdin redirigido (`-32000: Connection closed`). Re-registrado como `npx -y @microsoft/powerbi-modeling-mcp@latest --start` → conecta. Queda la dependencia real: el modelo abierto en Power BI Desktop para que exista motor XMLA | Edwin: abrir `organizaciones/grupocresta/powerbi/PulsoCresta.pbip` cuando toque validar | 2026-08-08 |
 | B5 | Sin render del reporte: F6.3 depende de capturas | Edwin, al cerrar cada ola de páginas (ya previsto en §9.8) | 2026-08-08 |
-| B6 | **Power BI Desktop borró los visuales del `.Report` dos veces** (PBIR desactivado la primera; caché de sesión la segunda). Restaurados desde git ambas veces y validados. Mitigado —PBIR activado, `.pbi/localSettings.json` fuera del repo— pero **no cerrado**: F5 escribe páginas en el `.Report` y exige Desktop cerrado, con `validar_reporte.py` después de cada escritura | Disciplina de trabajo: Desktop cerrado al escribir, `git status` antes de commitear | 2026-08-08 |
+| B6 | **Power BI Desktop borró los visuales del `.Report` dos veces** (PBIR desactivado la primera; caché de sesión la segunda). Restaurados desde git ambas veces. Con la decisión 15 el riesgo baja: el agente ya no escribe páginas; solo `generar_pbip.py` toca el proyecto (nunca los visuales) y sigue exigiendo Desktop cerrado. `git status` antes de commitear sigue vigente — ahora protege el trabajo manual de Edwin | Disciplina de trabajo | 2026-08-08 |
 
 ## Presupuesto consumido
 
-- Páginas construidas: **0 / 12** (las 12 tienen contrato en `report-architecture.md`)
-- Medidas nuevas creadas: **16 / 40** — GAP-01 (3) + `_Fecha ancla móvil` (auxiliar) +
-  GAP-03 (12). El modelo pasó de 294 a **310 medidas**
+- Páginas construidas: **0 / 12** (las 12 tienen contrato en `report-architecture.md`; la
+  construcción es de Edwin desde la decisión 15)
+- Medidas nuevas creadas: **22 / 40** — GAP-01 (3) + `_Fecha ancla móvil` (auxiliar) +
+  GAP-03 (12) + 5 alertas narrativas + `Dato completo hasta` (antes `_Dato más rezagado`,
+  promovida a visible). El modelo pasó de 294 a **316 medidas**
 - Rondas de iteración: 0 / 2
 
 ## F2 y F3 — cerradas (2026-08-08)
@@ -175,16 +189,15 @@ Verificado en Cresta e Iron Network.
 
 ## Siguiente paso
 
-1. **Validar las 12 medidas de GAP-03 contra el motor DAX.** Es el único paso que no se puede
-   hacer solo: exige abrir `organizaciones/grupocresta/powerbi/PulsoCresta.pbip` en Desktop para
-   que exista instancia XMLA (B4). Al abrir, **verificar que los 3 visuales siguen ahí antes de
-   guardar** (B6). Ninguna medida se ha ejecutado todavía; la validación DAX de GAP-01 es la del
-   valor, hecha antes de este lote.
-2. **F5 ola 1: páginas 00 Inicio · 01 Dirección · 09 Cartera y cobranza.** Contratos con
-   coordenadas en `docs/powerbi/report-architecture.md`. **Desktop cerrado** mientras se escriben
-   páginas en el `.Report`. Al cerrar la ola: F6 completa sobre esas 3 páginas, commit y
-   checkpoint humano (§9.8).
-3. **`Sobrecosto por precio de compra` da ≈ 0** (5.99e-08) sin filtro de período. Con D3 a la
-   vista, la causa probable ya no es un defecto de la medida sino la falta de año anterior:
-   compara contra un precio que no existe. Verificar al construir la página 08. No bloquea la
-   ola 1.
+1. **Edwin construye la ola 1 en Desktop** (00 Inicio · 01 Dirección · 09 Cartera y cobranza)
+   usando los contratos de `docs/powerbi/report-architecture.md` como guía de contenido y el
+   tema ya registrado. Referencias útiles del modelo: títulos desde `Título de <página>`,
+   subtítulos desde las medidas `_Narrativa`, KPI de frescura = `Dato completo hasta`,
+   agenda de cobro = `Cobro que vence en el período` (GAP-01). El mockup de diseño puede salir
+   del prompt `docs/powerbi/prompt-diseno-ola1.md`.
+2. **Cuando haya páginas construidas, el agente corre F6.2 vía MCP** (PBIP abierto en Desktop):
+   cifra de cada visual contra el motor DAX y contra SQL a `oro` (conteos 0 · montos ≤0.5% ·
+   ratios ≤0.1pp).
+3. **`Sobrecosto por precio de compra` da ≈ 0** (5.99e-08) sin filtro de período. Causa probable:
+   no hay año anterior en el modelo (D3) — compara contra un precio que no existe. Verificar al
+   llegar a la página 08.
