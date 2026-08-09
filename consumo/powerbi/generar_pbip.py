@@ -945,6 +945,11 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
 		formatString: #,0.0
 		displayFolder: 04 Riesgo
 
+	/// LA AGENDA DE COBRO. El calendario filtra por fecha de DOCUMENTO en todo el modelo; esta medida lo conmuta a la fecha de VENCIMIENTO con la relación inactiva, y es la única forma de responder "¿qué tengo que cobrar esta semana?". El resto de la página sigue leyéndose por fecha de documento: el cambio de eje vive dentro de la medida y no se propaga.
+	measure 'Cobro que vence en el período' = CALCULATE([Saldo por cobrar terceros], USERELATIONSHIP('Cartera por cobrar'[tiempo_vencimiento_clave], Calendario[tiempo_clave]))
+		formatString: "Q" #,0
+		displayFolder: 07 Agenda de vencimiento
+
 	/// Partidas sin fecha de vencimiento pactada: no son ni corrientes ni vencidas, y suelen ser anticipos o ajustes sin depurar.
 	measure 'Saldo sin vencimiento' = CALCULATE([Saldo por cobrar], KEEPFILTERS('Antigüedad'[rango_aging] = "sin_vencimiento"))
 		formatString: "Q" #,0
@@ -1031,6 +1036,11 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] = r"""
 	measure 'Rotación de cuentas por pagar' = DIVIDE(365, [Días de pago terceros])
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
+
+	/// Lo que hay que pagar en el período, por fecha de VENCIMIENTO y no de documento. Leída junto a 'Cobro que vence en el período' dice si la semana entra en positivo o en negativo antes de que ocurra: en Cresta, agosto vence con Q26.1M por pagar contra Q19.4M por cobrar.
+	measure 'Pago que vence en el período' = CALCULATE([Saldo por pagar terceros], USERELATIONSHIP('Cartera por pagar'[tiempo_vencimiento_clave], Calendario[tiempo_clave]))
+		formatString: "Q" #,0
+		displayFolder: 06 Agenda de vencimiento
 
 	/// CICLO DE CONVERSIÓN DE EFECTIVO: días que el dinero pasa atrapado en el negocio antes de volver a caja. Cobrar + inventario − pagar. Bajarlo libera capital de trabajo sin pedir un préstamo; es la métrica de liquidez que más mueve la aguja en una PyME. Negativo significa que los proveedores financian la operación.
 	measure 'Ciclo de conversión de efectivo' = [Días de cartera terceros] + [Días de inventario] - [Días de pago terceros]
@@ -1467,6 +1477,11 @@ MEDIDAS_POR_TABLA["hecho_pedido_linea"] = r"""
 	/// Qué parte del compromiso pendiente ya está en incumplimiento.
 	measure '% Backlog vencido' = DIVIDE([Backlog vencido], [Backlog])
 		formatString: 0.0%
+		displayFolder: 03 Cumplimiento
+
+	/// Lo que hay que ENTREGAR en el período, por fecha de entrega prometida y no de pedido. Es la carga de trabajo comprometida de la operación: 'Backlog' dice cuánto se debe, esta dice cuándo toca. Sin ella no hay forma de preguntar "¿qué prometí entregar la semana entrante?".
+	measure 'Entrega comprometida en el período' = CALCULATE([Backlog], USERELATIONSHIP(Pedidos[tiempo_vencimiento_clave], Calendario[tiempo_clave]))
+		formatString: "Q" #,0
 		displayFolder: 03 Cumplimiento
 
 	/// Días que se promete al cliente entre el pedido y la entrega. Si sube, la promesa comercial se está estirando.
