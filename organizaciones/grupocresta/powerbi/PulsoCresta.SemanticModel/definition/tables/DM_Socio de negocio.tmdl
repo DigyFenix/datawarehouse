@@ -1,122 +1,99 @@
 table 'DM_Socio de negocio'
-	lineageTag: 6d343630-9212-43c8-ba0f-b218f486ce48
 
 	column socio_clave
 		dataType: int64
 		isHidden
-		lineageTag: e6bc2fc5-8f4d-4cd0-98ed-6a9527a76ddf
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 1b60426b-3c78-469f-bfc7-305faa68dc38
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column socio_codigo
 		dataType: string
-		lineageTag: 8033808a-0150-4096-aa3e-8a70536423a2
 		summarizeBy: none
 		sourceColumn: socio_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 722f73fb-fc22-44e5-9509-b379d3c59058
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column socio_unificado
 		dataType: string
-		lineageTag: 56eef8b9-ecf3-4711-a41c-39069874a5de
 		summarizeBy: none
 		sourceColumn: socio_unificado
 
 	column nit
 		dataType: string
-		lineageTag: 22bcfc0e-ab28-4afb-9c2f-be0f6bc14d9b
 		summarizeBy: none
 		sourceColumn: nit
 
 	column grupo_codigo
 		dataType: string
-		lineageTag: 603df4b8-4212-4244-83c8-a71cd33a24fb
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column condicion_pago_codigo
 		dataType: string
-		lineageTag: 81954a12-ca04-44df-9f4e-a909794f2132
 		summarizeBy: none
 		sourceColumn: condicion_pago_codigo
 
 	column pais
 		dataType: string
-		lineageTag: 74b0eff9-908c-4390-a06c-d40b12ee5b46
 		summarizeBy: none
 		sourceColumn: pais
 
 	column region
 		dataType: string
-		lineageTag: d540067b-5f0a-4558-b4a6-ebce3685a812
 		summarizeBy: none
 		sourceColumn: region
 
 	column es_cliente
 		dataType: boolean
-		lineageTag: b29a4998-165c-4732-9d2e-d961b5bf672e
 		summarizeBy: none
 		sourceColumn: es_cliente
 
 	column es_proveedor
 		dataType: boolean
-		lineageTag: 408d21b5-3e4e-45fd-9133-d1619cf42140
 		summarizeBy: none
 		sourceColumn: es_proveedor
 
 	column es_cliente_y_proveedor
 		dataType: boolean
-		lineageTag: 6762e05a-950a-4972-83ff-8156bb68979f
 		summarizeBy: none
 		sourceColumn: es_cliente_y_proveedor
 
 	column es_intercompania
 		dataType: boolean
-		lineageTag: b1ac4846-fe75-44a7-8199-27db962cd1ee
 		summarizeBy: none
 		sourceColumn: es_intercompania
 
 	column activo
 		dataType: boolean
-		lineageTag: 13fff9ff-c531-4992-a41a-9347b0e6e860
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: a878a6a2-00e5-47fd-bbd0-36863580f2f6
 		summarizeBy: none
 		sourceColumn: valido_desde
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: 09427fa0-f3fc-4b2b-841b-fc8a27ee8a5d
 		summarizeBy: none
 		sourceColumn: valido_hasta
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 27b0600f-659f-4a1e-aa00-3f801bf4a678
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -128,4 +105,3 @@ table 'DM_Socio de negocio'
 				    Tabla = Origen{[Schema="oro",Item="dim_socio_negocio"]}[Data]
 				in
 				    Tabla
-

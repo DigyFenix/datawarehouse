@@ -1,83 +1,67 @@
 table 'FC_Tipo de cambio'
-	lineageTag: 58709925-dbed-41af-b276-0419b26e4801
-
-	/// Tasa promedio del período filtrado (moneda local por 1 unidad). Filtrar una moneda para leerla.
-	measure 'Tipo de cambio promedio' = AVERAGE('FC_Tipo de cambio'[tasa])
-		formatString: #,0.0000
-		displayFolder: 01 Tasa
-		lineageTag: 9b7dc1ec-2aed-4acd-a25a-6a203870ed42
-
-	/// La tasa del último día con registro dentro del filtro.
-	measure 'Tipo de cambio de cierre' = CALCULATE(AVERAGE('FC_Tipo de cambio'[tasa]), LASTDATE('FC_Tipo de cambio'[fecha]))
-		formatString: #,0.0000
-		displayFolder: 01 Tasa
-		lineageTag: f1425606-3a8f-4f48-8a16-c18bb83d56cb
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: 234920aa-598f-46e7-a407-b324fcf513b6
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: dae5a9c8-dfb9-4546-89a1-8d2980642db9
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: a02871fd-cfc9-4958-8dea-0196dc88059d
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 67ded554-b18a-4ddc-8c40-2c04321f32af
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column fecha
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 8f56194d-5652-4f00-bbaa-e858332279fa
 		summarizeBy: none
 		sourceColumn: fecha
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column moneda_codigo
 		dataType: string
-		lineageTag: cad888ad-db5c-4aeb-9253-2dd39422239d
 		summarizeBy: none
 		sourceColumn: moneda_codigo
 
 	column tasa
-		dataType: double
-		formatString: #,0.00
-		lineageTag: e7254dad-127c-4c1f-b9b5-c28cfed3cc8c
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: tasa
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 0fd23084-b624-4b35-b226-0f5a1a9df873
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: d2f353b8-87f8-4953-a5c2-c1ca2c19ded6
 		summarizeBy: none
 		sourceColumn: version_proceso
+
+	/// Tasa promedio del período filtrado (moneda local por 1 unidad). Filtrar una moneda para leerla.
+	measure 'Tipo de cambio promedio' = AVERAGE('FC_Tipo de cambio'[tasa])
+		formatString: #,0.0000
+		displayFolder: 01 Tasa
+
+	/// La tasa del último día con registro dentro del filtro.
+	measure 'Tipo de cambio de cierre' = CALCULATE(AVERAGE('FC_Tipo de cambio'[tasa]), LASTDATE('FC_Tipo de cambio'[fecha]))
+		formatString: #,0.0000
+		displayFolder: 01 Tasa
 
 	partition 'FC_Tipo de cambio' = m
 		mode: import
@@ -87,4 +71,3 @@ table 'FC_Tipo de cambio'
 				    Tabla = Origen{[Schema="oro",Item="tipo_cambio"]}[Data]
 				in
 				    Tabla
-

@@ -1,62 +1,49 @@
 table 'DM_Centro de costo'
-	lineageTag: 7259294e-66ec-4dfc-984c-53323e4f9fb6
 
 	column centro_costo_clave
 		dataType: int64
 		isHidden
-		lineageTag: bb0369cf-a71f-440b-b2a3-b7a0762fbfbc
 		summarizeBy: none
 		sourceColumn: centro_costo_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 3bac2870-da40-4c8f-bb81-3964c0009ffb
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column centro_costo_codigo
 		dataType: string
-		lineageTag: f2996b1c-f608-4cb6-befe-378626da99be
 		summarizeBy: none
 		sourceColumn: centro_costo_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 679d7a42-283c-48f5-8c4e-d3a69bc97bb2
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
-		lineageTag: c0a41a7f-bbfd-45f6-93b8-a3ce4f0d6b6a
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: 5be0de8c-69a4-4d13-8cc5-8d97f8a54d32
 		summarizeBy: none
 		sourceColumn: valido_desde
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: ebe34a05-1d42-4657-a2a3-e9398c5ff266
 		summarizeBy: none
 		sourceColumn: valido_hasta
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 04c853aa-091c-44f9-b99d-5854abe6dd7c
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -68,4 +55,3 @@ table 'DM_Centro de costo'
 				    Tabla = Origen{[Schema="oro",Item="dim_centro_costo"]}[Data]
 				in
 				    Tabla
-

@@ -22,6 +22,33 @@ for _p in [Path.cwd(), *Path.cwd().parents]:
         load_dotenv(_p / ".env")
         break
 
+# Nivel mínimo que exige el modelo generado. Es un PISO, no un valor fijo: Desktop migra el
+# proyecto al nivel que soporta en cuanto lo abre y bajarlo en la siguiente corrida deja un
+# diff perpetuo y puede romper medidas que usen funciones del nivel nuevo. Ver escribir_conservando.
+COMPATIBILITY_LEVEL_MINIMO = 1567
+
+
+def escribir_conservando(ruta: Path, base: dict, claves_propias: tuple[str, ...] = ()) -> None:
+    """Escribe un JSON de proyecto sin pisar lo que Power BI Desktop haya migrado.
+
+    Desktop reescribe estos archivos al guardar: agrega `$schema` y sube `version` al esquema
+    vigente. Regenerar el modelo NO debe deshacer eso — es una regresión de formato, la misma
+    clase de cambio que ya borró los visuales hechos a mano dos veces. Del archivo existente se
+    conserva todo, y solo se imponen las claves que este generador es dueño de definir
+    (`claves_propias`), porque apuntan a rutas que él controla.
+    """
+    contenido = base
+    if ruta.exists():
+        try:
+            contenido = json.loads(ruta.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            print(f"  [!] {ruta.name} ilegible — se reescribe con el formato base")
+            contenido = dict(base)
+        for k in claves_propias:
+            contenido[k] = base[k]
+    ruta.write_text(json.dumps(contenido, indent=2), encoding="utf-8")
+
+
 # ---------------------------------------------------------------- qué entra al modelo
 DIMENSIONES = [
     "dim_tiempo", "dim_cliente", "dim_proveedor", "dim_socio_negocio", "dim_direccion",
@@ -60,6 +87,33 @@ NOMBRE_MONEDA = {
     "HNL": "Lempiras", "NIO": "Córdobas", "CRC": "Colones", "PAB": "Balboas",
     "DOP": "Pesos", "COP": "Pesos", "PEN": "Soles",
 }
+
+# Marcador para el símbolo de moneda DENTRO de una expresión DAX (medidas de narrativa, que
+# formatean el importe con FORMAT en vez de con formatString). Se sustituye siempre, también en
+# GTQ: un tenant en dólares no puede recibir un título que diga "Q".
+TOKEN_SIMBOLO = "@SIM@"
+
+
+def dax_importe_abreviado(var: str) -> str:
+    """Fragmento DAX que convierte un importe en texto abreviado para un título narrativo.
+
+    Los importes de Cresta están en cientos de millones: escribirlos completos en un título lo
+    hace ilegible (§4 del contrato visual exige abreviatura K/M en tarjetas). `var` debe ser un
+    VAR ya calculado, no una medida, para no evaluarla cinco veces.
+
+    El símbolo se concatena FUERA del FORMAT y el signo se antepone a mano. Meterlo dentro del
+    patrón produce basura silenciosa: `FORMAT(402.3, "Q#,0.0")` devuelve `1#,0.0` porque DAX lee
+    la `q` como el código de trimestre de un formato de FECHA y emite el resto como literal.
+    Verificado contra el motor el 2026-08-08.
+    """
+    signo = f'IF({var} < 0, "-", "")'
+    abs_ = f'ABS({var})'
+    # El corte de K está en 10 000 y no en 1 000: abreviar 1 234 como "Q1K" pierde la cifra
+    # entera para no ganar nada de espacio.
+    return (f'({signo} & "{TOKEN_SIMBOLO}" & SWITCH(TRUE(), '
+            f'{abs_} >= 1000000, FORMAT({abs_} / 1000000, "#,##0.0") & "M", '
+            f'{abs_} >= 10000, FORMAT({abs_} / 1000, "#,##0") & "K", '
+            f'FORMAT({abs_}, "#,##0")))')
 
 
 def moneda_presentacion_de(base: str) -> str:
@@ -107,10 +161,13 @@ def aplicar_moneda(tmdl: str, moneda: str) -> str:
     del calculation group (CONTAINSSTRING sobre el formatString) y el nombre del modo local
     ('Quetzales (local)'). Las cifras "Q…" dentro de descripciones /// no se tocan.
     """
-    if moneda == "GTQ":
-        return tmdl
     simbolo = SIMBOLO_MONEDA.get(moneda, moneda)
     nombre = NOMBRE_MONEDA.get(moneda, moneda)
+    # El token de las medidas de narrativa se sustituye SIEMPRE, también en GTQ: vive dentro de
+    # la expresión DAX y ninguna de las tres formas de abajo lo alcanzaría.
+    tmdl = tmdl.replace(TOKEN_SIMBOLO, simbolo)
+    if moneda == "GTQ":
+        return tmdl
     return (
         tmdl
         .replace('CONTAINSSTRING(SELECTEDMEASUREFORMATSTRING(), "Q")',
@@ -1365,8 +1422,8 @@ MEDIDAS_POR_TABLA["metrica_venta_diaria"] = r"""
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo
 
-	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado, y solo mientras el mes está en curso.
-	measure 'Proyección de cierre de mes' = DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(Calendario), KEEPFILTERS(Calendario[es_dia_habil] = TRUE), KEEPFILTERS(Calendario[fecha] <= TODAY()))) * MAX(Calendario[dias_habiles_del_mes])
+	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado: con el período abierto devolvía la venta de toda la historia repartida entre todos los días hábiles del calendario — un número plausible y falso (≈Q9.8M contra una venta mensual real cercana a Q50M). Ahora se calla en vez de mentir.
+	measure 'Proyección de cierre de mes' = IF(DISTINCTCOUNT(Calendario[anio_mes]) <> 1, BLANK(), DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(Calendario), KEEPFILTERS(Calendario[es_dia_habil] = TRUE), KEEPFILTERS(Calendario[fecha] <= TODAY()))) * MAX(Calendario[dias_habiles_del_mes]))
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo
 
@@ -1917,6 +1974,89 @@ MEDIDAS_POR_TABLA["tipo_cambio"] = r"""
 	measure 'Tipo de cambio de cierre' = CALCULATE(AVERAGE('Tipo de cambio'[tasa]), LASTDATE('Tipo de cambio'[fecha]))
 		formatString: #,0.0000
 		displayFolder: 01 Tasa
+"""
+
+# ---------------------------------------------------------------------------------------------
+# GAP-03 · NARRATIVA (§3.2 del contrato Power BI)
+#
+# Ningún número visible en un título, subtítulo o etiqueta puede estar escrito a mano: todos
+# salen de estas medidas, que devuelven TEXTO. Viven en la carpeta `_Narrativa` de la tabla cuyo
+# dato narran, y se nombran `Título de <página>` / `Subtítulo de <visual>` para que el panel de
+# campos diga a qué visual pertenece cada una.
+#
+# Tres reglas que llevan dentro:
+#   · Los importes se abrevian con `dax_importe_abreviado` y el símbolo sale del token @SIM@,
+#     nunca de una "Q" literal — un tenant en dólares recibiría un título mintiendo la moneda.
+#   · Nada de causalidad (§3.3): concentra, representa, exige. Nunca "por culpa de" ni "se debe a".
+#   · Cifras de distinta naturaleza NO se suman para inventar un total mayor. Es la trampa fácil
+#     de un título ejecutivo y produce exactamente la cifra que nadie puede reconstruir.
+# ---------------------------------------------------------------------------------------------
+_ABR = dax_importe_abreviado
+
+MEDIDAS_POR_TABLA["dim_tiempo"] = rf"""
+	/// El período que el usuario tiene seleccionado, dicho como lo diría una persona: "agosto 2026", "2026" o "todo el histórico". Todos los títulos de página lo usan, así que nadie tiene que mirar el segmentador para saber qué está viendo.
+	measure 'Período activo' = VAR ini = MIN(Calendario[fecha]) VAR fin = MAX(Calendario[fecha]) VAR tini = CALCULATE(MIN(Calendario[fecha]), ALL(Calendario)) VAR tfin = CALCULATE(MAX(Calendario[fecha]), ALL(Calendario)) RETURN SWITCH(TRUE(), ini = tini && fin = tfin, "todo el histórico", YEAR(ini) = YEAR(fin) && ini = DATE(YEAR(ini), 1, 1) && fin = DATE(YEAR(fin), 12, 31), FORMAT(ini, "yyyy"), ini = DATE(YEAR(ini), MONTH(ini), 1) && fin = EOMONTH(ini, 0), FORMAT(ini, "mmmm") & " " & FORMAT(ini, "yyyy"), FORMAT(ini, "dd/MM/yyyy") & " – " & FORMAT(fin, "dd/MM/yyyy"))
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["estado_carga"] += rf"""
+	/// Hasta dónde se puede confiar: el dominio que va MÁS ATRASADO, no el que va más adelante. El máximo global no sirve como respuesta — en Cresta lo fija tipos de cambio, que trae tasas hasta julio de 2027, y contabilidad, con asientos del cierre por delante. El máximo POR DOMINIO ignora a la sociedad que no operó esos días; el mínimo entre dominios encuentra el eslabón débil.
+	measure '_Dato más rezagado' = MINX(VALUES('Estado de carga'[dominio]), CALCULATE(MAX('Estado de carga'[fecha_dato_mas_reciente])))
+		formatString: dd/MM/yyyy
+		displayFolder: _Auxiliar
+		isHidden
+
+	/// Banda del pie de todas las páginas. Responde "¿hasta cuándo llega esto que estoy viendo?" antes de que el usuario tenga que preguntarlo, con los DOS relojes que el modelo distingue: el del pipeline (¿corrió la extracción?) y el de la operación (¿hasta cuándo hay dato?). Y avisa si algún dominio quedó rezagado, que es cuando un tablero correcto muestra una cifra vieja.
+	measure 'Pie de frescura' = VAR f = [_Dato más rezagado] VAR d = [Días desde última extracción] VAR n = [Dominios desactualizados] RETURN IF(ISBLANK(f), "Sin datos cargados", "Dato del ERP al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmmm") & " de " & FORMAT(f, "yyyy") & " · extraído hace " & FORMAT(d, "0") & IF(d = 1, " día", " días") & IF(n > 0, " · " & FORMAT(n, "0") & IF(n = 1, " dominio desactualizado", " dominios desactualizados"), ""))
+		displayFolder: _Narrativa
+
+	/// Título de la página 00.
+	measure 'Título de Inicio' = "00 · Inicio · " & [Período activo]
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += rf"""
+	/// Título de la página 01.
+	measure 'Título de Dirección' = "01 · Dirección · " & [Período activo]
+		displayFolder: _Narrativa
+
+	/// Subtítulo del visual de ejercicio (página 01). Habla de la serie del año en curso, no de un comparativo: el modelo arranca en 2026 y no hay año anterior que comparar (decisión de Edwin, 2026-08-08). Señala el mejor mes, que es la referencia contra la que el resto se lee.
+	measure 'Subtítulo del ejercicio' = VAR t = [Ventas netas] VAR meses = VALUES(Calendario[anio_mes]) VAR n = COUNTROWS(meses) VAR mejor = MAXX(meses, CALCULATE([Ventas netas])) VAR etiq = CONCATENATEX(TOPN(1, meses, CALCULATE([Ventas netas]), DESC), CALCULATE(MAX(Calendario[mes_anio_etiqueta])), ", ") RETURN SWITCH(TRUE(), ISBLANK(t) || t = 0, "Sin venta en el período seleccionado", n <= 1, {_ABR('t')} & " en el período", {_ABR('t')} & " en el período · mejor mes: " & etiq & " con " & {_ABR('mejor')})
+		displayFolder: _Narrativa
+
+	/// Subtítulo de la tabla de alertas (página 01). Cuenta focos, NO suma sus importes: venta en riesgo, margen perdido, saldo vencido y backlog son cifras de distinta naturaleza y sumarlas produce un total que nadie puede reconstruir.
+	measure 'Subtítulo de focos de la semana' = VAR n = IF([Venta anual en riesgo por quiebre] > 0, 1, 0) + IF([Margen perdido bajo costo] > 0, 1, 0) + IF([Vencido terceros hoy] > 0, 1, 0) + IF([Backlog vencido] > 0, 1, 0) + IF([Flujo neto próximas 4 semanas] < 0, 1, 0) RETURN IF(n = 0, "Ningún foco exige acción esta semana", FORMAT(n, "0") & IF(n = 1, " foco exige acción", " focos exigen acción") & " · cada uno se lee en su propia unidad, no se suman entre sí")
+		displayFolder: _Narrativa
+
+	/// Subtítulo del aporte por sociedad (página 01). Cuánto concentra la mayor: en un grupo de diez sociedades, la dependencia de una sola es la lectura que no da el ERP.
+	measure 'Subtítulo de aporte por sociedad' = VAR t = [Ventas a terceros] VAR soc = FILTER(VALUES(Empresa[nombre]), [Ventas a terceros] <> 0) VAR n = COUNTROWS(soc) VAR mayor = MAXX(soc, [Ventas a terceros]) RETURN IF(ISBLANK(t) || t = 0, "Sin venta a terceros en el período", FORMAT(n, "0") & IF(n = 1, " sociedad con venta a terceros · ", " sociedades con venta a terceros · ") & "la mayor concentra " & FORMAT(DIVIDE(mayor, t), "0.0%"))
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["metrica_venta_diaria"] += rf"""
+	/// Subtítulo del ritmo del mes (página 01). El dato que decide DENTRO del mes: lo que va, contra los días hábiles ya trabajados y los que faltan. Con el período abierto lo dice en vez de mostrar una proyección que no significa nada — la proyección exige un mes.
+	measure 'Subtítulo del ritmo del mes' = VAR meses = DISTINCTCOUNT(Calendario[anio_mes]) VAR proy = [Proyección de cierre de mes] VAR acum = [Ventas acumuladas mes] VAR hab = MAX(Calendario[dias_habiles_del_mes]) VAR trans = MAX(Calendario[dias_habiles_transcurridos]) RETURN SWITCH(TRUE(), meses <> 1, "Seleccioná un mes: la proyección de cierre se calcula sobre los días hábiles de un solo mes", ISBLANK(proy) || proy = 0, "Sin venta registrada en el mes", "Cierre proyectado " & {_ABR('proy')} & " · van " & {_ABR('acum')} & " en " & FORMAT(trans, "0") & " de " & FORMAT(hab, "0") & " días hábiles")
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += rf"""
+	/// Título de la página 09.
+	measure 'Título de Cartera y cobranza' = "09 · Cartera y cobranza · " & [Período activo]
+		displayFolder: _Narrativa
+
+	/// Subtítulo del aging (página 09). Declara la salvedad que más se malinterpreta en el tablero: el saldo es una FOTO y las tarjetas ignoran el período a propósito — recortarlo escondería las facturas viejas, que son justo las que hay que cobrar.
+	measure 'Subtítulo del aging de terceros' = VAR s = [Por cobrar terceros hoy] VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(s) || s = 0, "Sin saldo por cobrar de terceros", {_ABR('s')} & " por cobrar de terceros · " & {_ABR('v')} & " vencido (" & FORMAT(p, "0.0%") & ") · foto de hoy, ignora el período seleccionado")
+		displayFolder: _Narrativa
+
+	/// Subtítulo de la agenda de cobro (página 09). Lo que vence en el período elegido, por fecha de VENCIMIENTO y no de documento: es la diferencia entre "qué facturé" y "qué tengo que cobrar".
+	measure 'Subtítulo de la agenda de cobro' = VAR c = [Cobro que vence en el período] RETURN IF(ISBLANK(c) || c = 0, "Nada vence en " & [Período activo], {_ABR('c')} & " vence en " & [Período activo] & " · por fecha de vencimiento, no de documento")
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["hecho_cartera_cobrar_diaria"] += rf"""
+	/// Subtítulo de la tendencia de cobranza (página 09). La serie necesita cortes acumulados para decir algo: mientras haya pocos, el subtítulo lo declara en vez de dejar que una línea de tres puntos se lea como tendencia.
+	measure 'Subtítulo de tendencia de cobranza' = VAR cortes = DISTINCTCOUNT('Cartera cobrar histórico'[fecha_corte]) RETURN SWITCH(TRUE(), ISBLANK(cortes) || cortes = 0, "Sin cortes acumulados todavía", cortes < 8, "Serie en formación · " & FORMAT(cortes, "0") & IF(cortes = 1, " corte acumulado", " cortes acumulados") & " · la tendencia gana sentido con las semanas", FORMAT(cortes, "0") & " cortes acumulados · porcentaje vencido sobre el total por cobrar de cada corte")
+		displayFolder: _Narrativa
 """
 
 
@@ -2472,8 +2612,21 @@ def main() -> int:
         'IsParameterQueryRequired=true]\n'
         "\tlineageTag: par-basedatos\n", encoding="utf-8")
 
-    (defi / "database.tmdl").write_text(
-        f"database {proyecto}\n\tcompatibilityLevel: 1567\n", encoding="utf-8")
+    # El compatibilityLevel NUNCA baja: al abrir el proyecto, Desktop migra el modelo al nivel
+    # que soporta (1606 al 2026-08) y volver a escribir 1567 lo degradaría en cada corrida —
+    # diff perpetuo y, si alguna medida usara una función del nivel nuevo, un modelo que no abre.
+    nivel, encabezado = COMPATIBILITY_LEVEL_MINIMO, f"database {proyecto}"
+    db_path = defi / "database.tmdl"
+    if db_path.exists():
+        previo = db_path.read_text(encoding="utf-8")
+        m = re.search(r"compatibilityLevel:\s*(\d+)", previo)
+        if m:
+            nivel = max(nivel, int(m.group(1)))
+        # Desktop deja la declaración sin nombre; ambas formas son TMDL válido, así que se
+        # respeta la existente para no generar un diff en cada corrida.
+        if previo.lstrip().startswith("database"):
+            encabezado = previo.lstrip().splitlines()[0].rstrip()
+    db_path.write_text(f"{encabezado}\n\tcompatibilityLevel: {nivel}\n", encoding="utf-8")
 
     refs = "\n".join(f"ref table {tmdl_nombre(ETIQUETA.get(t, t))}" for t in presentes)
     refs += f"\nref table {tmdl_nombre(GRUPO_MONEDA_NOMBRE)}"
@@ -2494,13 +2647,12 @@ def main() -> int:
         "annotation PBI_QueryOrder = [\"Servidor\",\"BaseDatos\"]\n\n"
         f"{refs}\n", encoding="utf-8")
 
-    (sm / "definition.pbism").write_text(
-        json.dumps({"version": "4.0", "settings": {}}, indent=2), encoding="utf-8")
+    escribir_conservando(sm / "definition.pbism", {"version": "4.0", "settings": {}})
 
-    (rep / "definition.pbir").write_text(json.dumps({
+    escribir_conservando(rep / "definition.pbir", {
         "version": "1.0",
         "datasetReference": {"byPath": {"path": f"../{proyecto}.SemanticModel"}},
-    }, indent=2), encoding="utf-8")
+    }, claves_propias=("datasetReference",))
 
     # SOLO si no existe NINGÚN formato de reporte: regenerar el modelo NUNCA debe pisar las
     # páginas y visuales que el usuario haya construido. OJO: al guardar desde Desktop, el
@@ -2527,11 +2679,11 @@ def main() -> int:
             "publicCustomVisuals": [],
         }, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    (salida / f"{proyecto}.pbip").write_text(json.dumps({
+    escribir_conservando(salida / f"{proyecto}.pbip", {
         "version": "1.0",
         "artifacts": [{"report": {"path": f"{proyecto}.Report"}}],
         "settings": {"enableAutoRecovery": True},
-    }, indent=2), encoding="utf-8")
+    }, claves_propias=("artifacts",))
 
     fallos = problemas_datos + validar_tmdl(defi) + validar_referencias(defi)
     if fallos:

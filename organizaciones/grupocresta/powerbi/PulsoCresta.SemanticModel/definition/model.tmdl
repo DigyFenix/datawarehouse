@@ -9,9 +9,7 @@ model Model
 
 annotation __PBI_TimeIntelligenceEnabled = 0
 
-annotation PBI_QueryOrder = ["Servidor","BaseDatos","DM_Calendario","DM_Cliente","DM_Proveedor","DM_Socio de negocio","DM_Dirección de entrega","DM_Producto","DM_Vendedor","DM_Empresa","DM_Bodega","DM_Moneda","DM_Cuenta contable","DM_Centro de costo","DM_Tipo de documento","DM_Antigüedad","DM_Clasificación ABC","DM_Clasificación ABC Proveedor","DM_Clasificación RFM","DM_Comportamiento de pago","DM_Análisis de producto","DM_Año de clasificación","FC_Ventas","FC_Compras","FC_Cartera por cobrar","FC_Cartera por pagar","FC_Cartera cobrar histórico","FC_Cartera pagar histórico","FC_Pagos recibidos","FC_Pagos efectuados","FC_Inventario","FC_Tipo de cambio","FC_Campos de usuario","FC_Venta diaria","FC_Proyección de caja","FC_Pedidos","FC_Resultados contables","FC_Estado de carga"]
-
-annotation PBI_ProTooling = ["DevMode"]
+annotation PBI_QueryOrder = ["Servidor","BaseDatos"]
 
 ref table DM_Calendario
 ref table DM_Cliente
@@ -56,4 +54,3 @@ ref table 'MD_Vista de compras'
 ref table 'MD_Vista de liquidez'
 ref table 'MD_Vista de inventario'
 ref table 'MD_Vista de rentabilidad'
-

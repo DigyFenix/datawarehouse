@@ -104,7 +104,7 @@ estos bajan a `y = 144` con alto 88. Se indica en cada contrato.
 |---|---|---|---|---|
 | 1-4 | Las cuatro cifras que mandan | 4 tarjetas con comparativo | KPIs de arriba | 24 / 336 / 648 / 960, 144, 296, 88 |
 | 5 | ¿Vamos a llegar al mes? | columnas + línea de proyección | `Venta por día hábil` por día, `Proyección de cierre de mes` | 24, 248, 608, 216 |
-| 6 | ¿Cómo va el ejercicio? | línea, 2 series | `Ventas acumuladas año` vs `Ventas acumuladas año anterior` por mes | 648, 248, 632, 216 |
+| 6 | ¿Cómo va el ejercicio? | línea + media móvil | `Ventas netas` por mes con `Media móvil 3 meses` | 648, 248, 632, 216 |
 | 7 | ¿Qué exige acción, y cuánto vale? | tabla de alertas con navegación | 5 filas: quiebre, bajo costo, vencido, backlog vencido, caja negativa — cada una con su medida y botón | 24, 480, 816, 216 |
 | 8 | ¿Qué sociedad aporta? | barras horizontales ordenadas | `Ventas a terceros` por `DM_Empresa` | 856, 480, 424, 216 |
 
@@ -112,6 +112,16 @@ estos bajan a `y = 144` con alto 88. Se indica en cada contrato.
   las tarjetas (son lectura, no control).
 - **Filtros de página:** `es_intercompania = 0` implícito por el uso de medidas `terceros`.
 - **Oportunidades:** O-06, O-18, O-20. **GAP-03** para los cinco títulos.
+- **Corrección al contrato (2026-08-08, decisión de Edwin).** El visual 6 se definió como
+  comparativo año contra año anterior; **el modelo no tiene 2025** — Oro arranca el 2026-01-01
+  por la regla de corte, así que `Ventas acumuladas año anterior` es BLANK siempre. Se cambia a
+  la **serie mensual del año en curso con su media móvil de 3 meses**, que es lo que el dato
+  sostiene. El comparativo año contra año vuelve solo cuando haya un ejercicio cerrado de
+  historia; no se amplía la regla de corte para conseguirlo. **O-18 queda parcialmente cubierto**
+  (la mitad "cómo va el ejercicio"; no la mitad "contra el año pasado").
+- **Y el KPI `Proyección de cierre de mes` exige UN mes seleccionado**: con el período abierto
+  devuelve BLANK a propósito (defecto D2 en `STATE.md`). El segmentador de período de esta página
+  arranca en el mes en curso.
 
 ### 02 · Ventas · ritmo y drivers
 

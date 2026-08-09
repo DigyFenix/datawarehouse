@@ -1,189 +1,152 @@
 table 'FC_Venta diaria'
-	lineageTag: f2ea9ec5-2817-47f1-a761-cdcf43cd6c74
-
-	/// Serie continua (un día sin ventas es un CERO, no un hueco): la única base correcta para tendencias.
-	measure 'Venta diaria neta' = SUM('FC_Venta diaria'[ventas_netas])
-		formatString: "Q" #,0
-		displayFolder: 01 Serie
-		lineageTag: e116f8c0-c4d2-422a-987c-df0e35452b0d
-
-	/// Suaviza el efecto del día de semana. Útil para ver la tendencia corta sin el ruido del fin de semana.
-	measure 'Venta media móvil 7d' = AVERAGEX(DATESINPERIOD('DM_Calendario'[fecha], [_Fecha ancla móvil], -7, DAY), CALCULATE(SUM('FC_Venta diaria'[ventas_netas])))
-		formatString: "Q" #,0
-		displayFolder: 01 Serie
-		lineageTag: 47dfe1a5-a747-4ff7-af55-5177a54967e9
-
-	/// Tendencia de fondo, ya sin efecto semanal ni de quincena.
-	measure 'Venta media móvil 30d' = AVERAGEX(DATESINPERIOD('DM_Calendario'[fecha], [_Fecha ancla móvil], -30, DAY), CALCULATE(SUM('FC_Venta diaria'[ventas_netas])))
-		formatString: "Q" #,0
-		displayFolder: 01 Serie
-		lineageTag: 57ff12af-14c8-41f1-9ec4-07f8a0e40124
-
-	/// Promedio solo de los días que SÍ se vendió (excluye ceros): el ritmo real de un día operado.
-	measure 'Venta promedio día operado' = CALCULATE(AVERAGE('FC_Venta diaria'[ventas_netas]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
-		formatString: "Q" #,0
-		displayFolder: 01 Serie
-		lineageTag: ee29a634-2723-454d-afb6-67bab01bd695
-
-	/// Días del período sin ninguna facturación. Un pico aquí suele ser paro, feriado o problema de captura.
-	measure 'Días sin venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = TRUE))
-		formatString: #,0
-		displayFolder: 02 Actividad
-		lineageTag: 71a7965e-f0f2-4855-bbc0-752ec3dd0a41
-
-	/// Cuántos clientes distintos compran en un día operado promedio.
-	measure 'Clientes activos por día' = CALCULATE(AVERAGE('FC_Venta diaria'[clientes_activos]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
-		formatString: #,0
-		displayFolder: 02 Actividad
-		lineageTag: bc796af6-7d3a-4880-a4be-807865db6b85
-
-	/// Días del período con facturación real.
-	measure 'Días con venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
-		formatString: #,0
-		displayFolder: 02 Actividad
-		lineageTag: df82319f-0bf1-4004-9397-22a52b9ccaa1
-
-	/// Ritmo real: dividir entre días NATURALES castiga a los meses con muchos feriados y hace parecer que la operación cayó cuando solo hubo menos días de trabajo.
-	measure 'Venta por día hábil' = DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE)))
-		formatString: "Q" #,0
-		displayFolder: 03 Ritmo
-		lineageTag: 334c1fe2-623f-4836-bd8b-b461ca460fee
-
-	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado, y solo mientras el mes está en curso.
-	measure 'Proyección de cierre de mes' = DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE), KEEPFILTERS(DM_Calendario[fecha] <= TODAY()))) * MAX(DM_Calendario[dias_habiles_del_mes])
-		formatString: "Q" #,0
-		displayFolder: 03 Ritmo
-		lineageTag: f10f8ba0-6bc6-4963-b374-5fb9b91c0fcc
-
-	/// Cuánto se despega el período del promedio mensual de su propio año. 1.0 es un mes normal; 1.3 es un pico estacional.
-	measure 'Índice de estacionalidad' = DIVIDE([Venta diaria neta], DIVIDE(CALCULATE([Venta diaria neta], ALLEXCEPT(DM_Calendario, DM_Calendario[anio])), 12))
-		formatString: #,0.00
-		displayFolder: 03 Ritmo
-		lineageTag: 74be2444-8f51-43fb-8b69-cecd7eedb4a3
-
-	/// Acumulado dentro de la semana ISO en curso.
-	measure 'Venta acumulada semana' = CALCULATE([Venta diaria neta], FILTER(ALL(DM_Calendario), DM_Calendario[anio_semana_orden] = MAX(DM_Calendario[anio_semana_orden]) && DM_Calendario[fecha] <= MAX(DM_Calendario[fecha])))
-		formatString: "Q" #,0
-		displayFolder: 03 Ritmo
-		lineageTag: ab2ffda2-58eb-4437-8930-73588afa6b82
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: c10a3820-077a-4e0f-b345-264afdd4b0f8
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: 1b67d886-79e1-47d7-8913-2a62bb64bc7d
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column fecha
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 11d78632-2ac9-4eba-8acb-7833c221c613
 		summarizeBy: none
 		sourceColumn: fecha
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: b0af2682-bb9b-4f7a-b5bd-5f377023feb7
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column ventas_brutas
-		dataType: double
-		formatString: #,0.00
-		lineageTag: 6e9817ab-7dad-47e2-896d-3b85313f0109
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: ventas_brutas
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column devoluciones
-		dataType: double
-		formatString: #,0.00
-		lineageTag: b360dea8-8598-42db-9140-749c7efb3daa
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: devoluciones
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column ventas_netas
-		dataType: double
-		formatString: #,0.00
-		lineageTag: 9592333e-1ec7-4a89-8c38-23f9e2a39556
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: ventas_netas
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column costo
-		dataType: double
-		formatString: #,0.00
-		lineageTag: d76907bd-1e05-437f-a22b-6eb79ebfd175
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: costo
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column margen
-		dataType: double
-		formatString: #,0.00
-		lineageTag: f394e4fa-40d6-4552-ab6c-b8a1a54fbc44
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: margen
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column cantidad_vendida
-		dataType: double
-		formatString: #,0.00
-		lineageTag: bb2d012c-60d4-41d3-8fe7-f88059012ea1
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: cantidad_vendida
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column documentos
 		dataType: int64
-		formatString: #,0
-		lineageTag: 84157241-d52a-43f5-8ba3-9a750653033f
 		summarizeBy: none
 		sourceColumn: documentos
+		formatString: #,0
 
 	column clientes_activos
 		dataType: int64
-		formatString: #,0
-		lineageTag: 8d7ac586-69cc-4cdf-99a7-106b42e1ea6a
 		summarizeBy: none
 		sourceColumn: clientes_activos
+		formatString: #,0
 
 	column es_dia_sin_venta
 		dataType: boolean
-		lineageTag: e0fd57d4-7b5a-48f0-8995-d401255d60d5
 		summarizeBy: none
 		sourceColumn: es_dia_sin_venta
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 6503b0d5-482b-4524-a297-2f92b7d89c05
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 1511dfe7-c09e-4f21-9cfa-32fd879a6605
 		summarizeBy: none
 		sourceColumn: version_proceso
+
+	/// Serie continua (un día sin ventas es un CERO, no un hueco): la única base correcta para tendencias.
+	measure 'Venta diaria neta' = SUM('FC_Venta diaria'[ventas_netas])
+		formatString: "Q" #,0
+		displayFolder: 01 Serie
+
+	/// Suaviza el efecto del día de semana. Útil para ver la tendencia corta sin el ruido del fin de semana.
+	measure 'Venta media móvil 7d' = AVERAGEX(DATESINPERIOD('DM_Calendario'[fecha], [_Fecha ancla móvil], -7, DAY), CALCULATE(SUM('FC_Venta diaria'[ventas_netas])))
+		formatString: "Q" #,0
+		displayFolder: 01 Serie
+
+	/// Tendencia de fondo, ya sin efecto semanal ni de quincena.
+	measure 'Venta media móvil 30d' = AVERAGEX(DATESINPERIOD('DM_Calendario'[fecha], [_Fecha ancla móvil], -30, DAY), CALCULATE(SUM('FC_Venta diaria'[ventas_netas])))
+		formatString: "Q" #,0
+		displayFolder: 01 Serie
+
+	/// Promedio solo de los días que SÍ se vendió (excluye ceros): el ritmo real de un día operado.
+	measure 'Venta promedio día operado' = CALCULATE(AVERAGE('FC_Venta diaria'[ventas_netas]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
+		formatString: "Q" #,0
+		displayFolder: 01 Serie
+
+	/// Días del período sin ninguna facturación. Un pico aquí suele ser paro, feriado o problema de captura.
+	measure 'Días sin venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Actividad
+
+	/// Cuántos clientes distintos compran en un día operado promedio.
+	measure 'Clientes activos por día' = CALCULATE(AVERAGE('FC_Venta diaria'[clientes_activos]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
+		formatString: #,0
+		displayFolder: 02 Actividad
+
+	/// Días del período con facturación real.
+	measure 'Días con venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
+		formatString: #,0
+		displayFolder: 02 Actividad
+
+	/// Ritmo real: dividir entre días NATURALES castiga a los meses con muchos feriados y hace parecer que la operación cayó cuando solo hubo menos días de trabajo.
+	measure 'Venta por día hábil' = DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE)))
+		formatString: "Q" #,0
+		displayFolder: 03 Ritmo
+
+	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado: con el período abierto devolvía la venta de toda la historia repartida entre todos los días hábiles del calendario — un número plausible y falso (≈Q9.8M contra una venta mensual real cercana a Q50M). Ahora se calla en vez de mentir.
+	measure 'Proyección de cierre de mes' = IF(DISTINCTCOUNT(DM_Calendario[anio_mes]) <> 1, BLANK(), DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE), KEEPFILTERS(DM_Calendario[fecha] <= TODAY()))) * MAX(DM_Calendario[dias_habiles_del_mes]))
+		formatString: "Q" #,0
+		displayFolder: 03 Ritmo
+
+	/// Cuánto se despega el período del promedio mensual de su propio año. 1.0 es un mes normal; 1.3 es un pico estacional.
+	measure 'Índice de estacionalidad' = DIVIDE([Venta diaria neta], DIVIDE(CALCULATE([Venta diaria neta], ALLEXCEPT(DM_Calendario, DM_Calendario[anio])), 12))
+		formatString: #,0.00
+		displayFolder: 03 Ritmo
+
+	/// Acumulado dentro de la semana ISO en curso.
+	measure 'Venta acumulada semana' = CALCULATE([Venta diaria neta], FILTER(ALL(DM_Calendario), DM_Calendario[anio_semana_orden] = MAX(DM_Calendario[anio_semana_orden]) && DM_Calendario[fecha] <= MAX(DM_Calendario[fecha])))
+		formatString: "Q" #,0
+		displayFolder: 03 Ritmo
+
+	/// Subtítulo del ritmo del mes (página 01). El dato que decide DENTRO del mes: lo que va, contra los días hábiles ya trabajados y los que faltan. Con el período abierto lo dice en vez de mostrar una proyección que no significa nada — la proyección exige un mes.
+	measure 'Subtítulo del ritmo del mes' = VAR meses = DISTINCTCOUNT(DM_Calendario[anio_mes]) VAR proy = [Proyección de cierre de mes] VAR acum = [Ventas acumuladas mes] VAR hab = MAX(DM_Calendario[dias_habiles_del_mes]) VAR trans = MAX(DM_Calendario[dias_habiles_transcurridos]) RETURN SWITCH(TRUE(), meses <> 1, "Seleccioná un mes: la proyección de cierre se calcula sobre los días hábiles de un solo mes", ISBLANK(proy) || proy = 0, "Sin venta registrada en el mes", "Cierre proyectado " & (IF(proy < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(proy) >= 1000000, FORMAT(ABS(proy) / 1000000, "#,##0.0") & "M", ABS(proy) >= 10000, FORMAT(ABS(proy) / 1000, "#,##0") & "K", FORMAT(ABS(proy), "#,##0"))) & " · van " & (IF(acum < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(acum) >= 1000000, FORMAT(ABS(acum) / 1000000, "#,##0.0") & "M", ABS(acum) >= 10000, FORMAT(ABS(acum) / 1000, "#,##0") & "K", FORMAT(ABS(acum), "#,##0"))) & " en " & FORMAT(trans, "0") & " de " & FORMAT(hab, "0") & " días hábiles")
+		displayFolder: _Narrativa
 
 	partition 'FC_Venta diaria' = m
 		mode: import
@@ -193,4 +156,3 @@ table 'FC_Venta diaria'
 				    Tabla = Origen{[Schema="oro",Item="metrica_venta_diaria"]}[Data]
 				in
 				    Tabla
-

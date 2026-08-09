@@ -1,68 +1,54 @@
 table 'DM_Tipo de documento'
-	lineageTag: 1228e0f3-d4b6-4bc5-85d2-cba45f3d5c6b
 
 	column tipo_documento_clave
 		dataType: int64
 		isHidden
-		lineageTag: 39341ebb-5780-43a7-9721-0d718977e868
 		summarizeBy: none
 		sourceColumn: tipo_documento_clave
 
 	column tipo_documento_codigo
 		dataType: string
-		lineageTag: e8c4d02e-f4b8-40ce-8c55-8c60b4566f00
 		summarizeBy: none
 		sourceColumn: tipo_documento_codigo
 
 	column flujo
 		dataType: string
-		lineageTag: 1f64fcfe-5dca-486a-8285-a384f878910f
 		summarizeBy: none
 		sourceColumn: flujo
 
 	column tipo_documento
 		dataType: string
-		lineageTag: 835b8cda-cb8e-4542-98f2-a42ad27db83a
 		summarizeBy: none
 		sourceColumn: tipo_documento
 
 	column nombre
 		dataType: string
-		lineageTag: 96fbe428-d243-42e0-8871-dfc8d1a96570
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column signo
 		dataType: int64
-		formatString: #,0
-		lineageTag: 32ab50af-7bcb-4a1c-89ee-f6a541ff6a76
 		summarizeBy: none
 		sourceColumn: signo
+		formatString: #,0
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: fe3fad82-8372-4f69-b1cd-b38af38af7d1
 		summarizeBy: none
 		sourceColumn: valido_desde
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: f6c5bccb-1d44-4bbc-bd97-94b704b17a30
 		summarizeBy: none
 		sourceColumn: valido_hasta
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: f2e5b083-e2d4-4c0f-a75c-fd8ac671c194
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -74,4 +60,3 @@ table 'DM_Tipo de documento'
 				    Tabla = Origen{[Schema="oro",Item="dim_tipo_documento"]}[Data]
 				in
 				    Tabla
-

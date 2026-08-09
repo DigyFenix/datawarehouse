@@ -1,173 +1,144 @@
 table 'FC_Cartera cobrar histórico'
-	lineageTag: 910d6514-21dc-4e3a-acf0-e7076b86dc1b
-
-	/// Saldo por cobrar a la fecha de corte de la foto. Ya está en MONEDA DE PRESENTACIÓN pese al nombre de la columna (es incremental y no se renombró).
-	measure 'Saldo histórico por cobrar' = SUM('FC_Cartera cobrar histórico'[saldo_pendiente_local])
-		formatString: "Q" #,0
-		displayFolder: 01 Evolución
-		lineageTag: f8efeeb8-5483-453d-8d1d-abe8e93b6a52
-
-	/// Mora en la fecha de corte de la foto. Es la serie que muestra si la cobranza mejora o se deteriora.
-	measure 'Vencido histórico por cobrar' = CALCULATE([Saldo histórico por cobrar], KEEPFILTERS('FC_Cartera cobrar histórico'[dias_vencido] > 0))
-		formatString: "Q" #,0
-		displayFolder: 01 Evolución
-		lineageTag: 8969d643-ddc6-48eb-877c-9ee1f81c4eea
-
-	/// Proporción vencida en cada corte: la tendencia importa más que el valor de un día.
-	measure '% Vencido histórico' = DIVIDE([Vencido histórico por cobrar], [Saldo histórico por cobrar])
-		formatString: 0.0%
-		displayFolder: 01 Evolución
-		lineageTag: 30cbeb70-15cd-456d-ac20-a4ab7791fdbc
-
-	/// Saldo en el PRIMER corte del período filtrado: el punto de partida contra el que se mide la gestión de cobranza.
-	measure 'Cartera al inicio del período' = CALCULATE([Saldo histórico por cobrar], FIRSTDATE(DM_Calendario[fecha]))
-		formatString: "Q" #,0
-		displayFolder: 02 Gestión
-		lineageTag: 0173dd4f-d514-4574-bc98-2a9eadadb623
-
-	/// Saldo en el ÚLTIMO corte del período filtrado.
-	measure 'Cartera al cierre del período' = CALCULATE([Saldo histórico por cobrar], LASTDATE(DM_Calendario[fecha]))
-		formatString: "Q" #,0
-		displayFolder: 02 Gestión
-		lineageTag: 8e331d15-2fd9-40bb-991f-a92bc03632d0
-
-	/// Cuánto creció o bajó la cartera en el período. Que suba mientras la venta no sube es la señal temprana de que se está cobrando peor.
-	measure 'Variación de cartera' = [Cartera al cierre del período] - [Cartera al inicio del período]
-		formatString: "Q" #,0
-		displayFolder: 02 Gestión
-		lineageTag: 32c56397-1114-4a94-9143-a4e029e5dea3
-
-	/// Índice de efectividad de cobranza: del total cobrable del período (cartera inicial + lo facturado), qué porcentaje se cobró. 100% sería cobrar todo lo exigible; por debajo de 80% la cobranza va perdiendo terreno.
-	measure 'Efectividad de cobranza' = DIVIDE([Cartera al inicio del período] + [Ventas netas con IVA] - [Cartera al cierre del período], [Cartera al inicio del período] + [Ventas netas con IVA])
-		formatString: 0.0%
-		displayFolder: 02 Gestión
-		lineageTag: e4a4b1aa-e3ee-48ef-aa78-dfbf5a44c587
 
 	column fecha_corte
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 7f18afc6-3d6e-4fd9-a592-97c03bb24d5e
 		summarizeBy: none
 		sourceColumn: fecha_corte
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column fecha_corte_clave
 		dataType: int64
 		isHidden
-		lineageTag: c0605777-844c-4159-bc5e-40aa5ff2210b
 		summarizeBy: none
 		sourceColumn: fecha_corte_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: da932621-64b3-43b4-b043-bdb3d94a8449
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column partida_id
 		dataType: string
-		lineageTag: ef06eefd-b1ca-4ff0-b2ac-e4041cd7c42c
 		summarizeBy: none
 		sourceColumn: partida_id
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: fd9248e2-7b1f-4e71-8f0a-b505e8c65040
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: 330d059f-5236-4076-942b-66b5d09d0ca2
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: 60fc62e6-655d-462b-bda9-91ea24fcf434
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
-		lineageTag: f2fcddd2-71e6-439b-b0ed-bd82920ebf37
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column tiempo_vencimiento_clave
 		dataType: int64
 		isHidden
-		lineageTag: 997874ba-f4bc-47dc-bac8-e49b791ad078
 		summarizeBy: none
 		sourceColumn: tiempo_vencimiento_clave
 
 	column fecha_vencimiento
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 4c4c37d8-58f6-4619-bd89-ac4eea9738db
 		summarizeBy: none
 		sourceColumn: fecha_vencimiento
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column saldo_pendiente_local
-		dataType: double
-		formatString: #,0.00
-		lineageTag: 12d090b6-cf14-4213-a19f-76a926935e00
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: saldo_pendiente_local
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column saldo_pendiente_doc
-		dataType: double
-		formatString: #,0.00
-		lineageTag: 2e5e1b62-9a72-4330-8c1c-6a2e9400358f
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: saldo_pendiente_doc
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column dias_vencido
 		dataType: int64
-		formatString: #,0
-		lineageTag: 395579b1-89dd-47d5-ab49-c3d21afff5d5
 		summarizeBy: none
 		sourceColumn: dias_vencido
+		formatString: #,0
 
 	column rango_aging
 		dataType: string
 		isHidden
-		lineageTag: b3c04738-1883-47f1-b77e-1c62ebb92201
 		summarizeBy: none
 		sourceColumn: rango_aging
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 064ea9d4-118c-4684-9fef-581a80e7ad39
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 74e841e8-79f4-4e9e-9e22-c7c7e25145d1
 		summarizeBy: none
 		sourceColumn: version_proceso
 
 	column rango_aging_clave
 		dataType: int64
 		isHidden
-		lineageTag: c7832096-5ca0-47ac-8f3f-f54c6fe36c7a
 		summarizeBy: none
 		sourceColumn: rango_aging_clave
+
+	/// Saldo por cobrar a la fecha de corte de la foto. Ya está en MONEDA DE PRESENTACIÓN pese al nombre de la columna (es incremental y no se renombró).
+	measure 'Saldo histórico por cobrar' = SUM('FC_Cartera cobrar histórico'[saldo_pendiente_local])
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	/// Mora en la fecha de corte de la foto. Es la serie que muestra si la cobranza mejora o se deteriora.
+	measure 'Vencido histórico por cobrar' = CALCULATE([Saldo histórico por cobrar], KEEPFILTERS('FC_Cartera cobrar histórico'[dias_vencido] > 0))
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	/// Proporción vencida en cada corte: la tendencia importa más que el valor de un día.
+	measure '% Vencido histórico' = DIVIDE([Vencido histórico por cobrar], [Saldo histórico por cobrar])
+		formatString: 0.0%
+		displayFolder: 01 Evolución
+
+	/// Saldo en el PRIMER corte del período filtrado: el punto de partida contra el que se mide la gestión de cobranza.
+	measure 'Cartera al inicio del período' = CALCULATE([Saldo histórico por cobrar], FIRSTDATE(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 02 Gestión
+
+	/// Saldo en el ÚLTIMO corte del período filtrado.
+	measure 'Cartera al cierre del período' = CALCULATE([Saldo histórico por cobrar], LASTDATE(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 02 Gestión
+
+	/// Cuánto creció o bajó la cartera en el período. Que suba mientras la venta no sube es la señal temprana de que se está cobrando peor.
+	measure 'Variación de cartera' = [Cartera al cierre del período] - [Cartera al inicio del período]
+		formatString: "Q" #,0
+		displayFolder: 02 Gestión
+
+	/// Índice de efectividad de cobranza: del total cobrable del período (cartera inicial + lo facturado), qué porcentaje se cobró. 100% sería cobrar todo lo exigible; por debajo de 80% la cobranza va perdiendo terreno.
+	measure 'Efectividad de cobranza' = DIVIDE([Cartera al inicio del período] + [Ventas netas con IVA] - [Cartera al cierre del período], [Cartera al inicio del período] + [Ventas netas con IVA])
+		formatString: 0.0%
+		displayFolder: 02 Gestión
+
+	/// Subtítulo de la tendencia de cobranza (página 09). La serie necesita cortes acumulados para decir algo: mientras haya pocos, el subtítulo lo declara en vez de dejar que una línea de tres puntos se lea como tendencia.
+	measure 'Subtítulo de tendencia de cobranza' = VAR cortes = DISTINCTCOUNT('FC_Cartera cobrar histórico'[fecha_corte]) RETURN SWITCH(TRUE(), ISBLANK(cortes) || cortes = 0, "Sin cortes acumulados todavía", cortes < 8, "Serie en formación · " & FORMAT(cortes, "0") & IF(cortes = 1, " corte acumulado", " cortes acumulados") & " · la tendencia gana sentido con las semanas", FORMAT(cortes, "0") & " cortes acumulados · porcentaje vencido sobre el total por cobrar de cada corte")
+		displayFolder: _Narrativa
 
 	partition 'FC_Cartera cobrar histórico' = m
 		mode: import
@@ -177,4 +148,3 @@ table 'FC_Cartera cobrar histórico'
 				    Tabla = Origen{[Schema="oro",Item="hecho_cartera_cobrar_diaria"]}[Data]
 				in
 				    Tabla
-

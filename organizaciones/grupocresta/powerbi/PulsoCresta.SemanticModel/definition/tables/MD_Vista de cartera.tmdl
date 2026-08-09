@@ -1,23 +1,18 @@
 table 'MD_Vista de cartera'
-	lineageTag: 322735f9-fd54-4a80-b933-a2bc53549787
 
 	column 'Vista de cartera'
 		dataType: string
-		lineageTag: 36a359c6-17c3-46c4-8d86-98911f01f6a7
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de cartera · orden'
-
 		relatedColumnDetails
 			groupByColumn: 'Vista de cartera · campo'
 
 	column 'Vista de cartera · campo'
 		dataType: string
 		isHidden
-		lineageTag: bcbcff91-1c59-4e66-9176-e59bcf576458
 		summarizeBy: none
 		sourceColumn: [Value2]
-
 		extendedProperty ParameterMetadata =
 				{
 				  "version": 3,
@@ -27,7 +22,6 @@ table 'MD_Vista de cartera'
 	column 'Vista de cartera · orden'
 		dataType: int64
 		isHidden
-		lineageTag: 81a82373-a61e-4069-8c2a-c4f147f25c3c
 		summarizeBy: none
 		sourceColumn: [Value3]
 
@@ -43,4 +37,3 @@ table 'MD_Vista de cartera'
 				  ("Saldo por pagar", NAMEOF('FC_Cartera por pagar'[Saldo por pagar]), 5),
 				  ("Posición neta", NAMEOF('FC_Cartera por pagar'[Posición neta]), 6)
 				}
-

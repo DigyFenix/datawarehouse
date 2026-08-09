@@ -1,62 +1,49 @@
 table DM_Empresa
-	lineageTag: 874cfbbb-04cc-4b3e-ba36-dcbac543d1d5
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: 22a2ad62-390d-49d4-a1d7-9bc26bf9d0a1
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: ebb58da3-d2d8-4ec9-bb14-86e74740831d
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column nombre
 		dataType: string
-		lineageTag: 7c9f6b19-684a-4d34-bc09-6b94e1703963
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column nit
 		dataType: string
-		lineageTag: b53dbcdc-edb1-40cf-b2a4-ba431a230530
 		summarizeBy: none
 		sourceColumn: nit
 
 	column moneda_local
 		dataType: string
-		lineageTag: f2d96069-572e-43d5-9185-97f457ea5378
 		summarizeBy: none
 		sourceColumn: moneda_local
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: 987511b6-aa43-4cf1-a481-c8c45bde7cca
 		summarizeBy: none
 		sourceColumn: valido_desde
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: d6063deb-2b7d-4ae0-9288-e3c5164e0ae9
 		summarizeBy: none
 		sourceColumn: valido_hasta
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 5e793765-5324-4ede-a587-fceb11e08d17
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -68,4 +55,3 @@ table DM_Empresa
 				    Tabla = Origen{[Schema="oro",Item="dim_organizacion"]}[Data]
 				in
 				    Tabla
-

@@ -1,163 +1,131 @@
 table 'FC_Proyección de caja'
-	lineageTag: 38cb0cf9-663e-44c7-8878-f29334e02b3e
-
-	/// Proyección CONTRACTUAL: si cada partida abierta se paga en su vencimiento. No es un pronóstico.
-	measure 'Entradas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "entrada"))
-		formatString: "Q" #,0
-		displayFolder: 01 Proyección
-		lineageTag: 22b46993-27a1-40e8-b997-a46a2a5b1c3d
-
-	/// Pagos comprometidos por semana de vencimiento.
-	measure 'Salidas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "salida"))
-		formatString: "Q" #,0
-		displayFolder: 01 Proyección
-		lineageTag: 10a6ef01-d8d0-4bc5-bf01-483823b7f932
-
-	/// Entradas menos salidas de la semana. Negativo sostenido es un problema de caja antes de ser un problema contable.
-	measure 'Flujo neto proyectado' = [Entradas proyectadas] - [Salidas proyectadas]
-		formatString: "Q" #,0
-		displayFolder: 01 Proyección
-		lineageTag: 2494a7c4-0bd7-4500-9e9d-6a004efa3977
-
-	/// Ya venció y sigue abierto: en teoría es cobrable HOY. La brecha con lo programado mide la gestión de cobro.
-	measure 'Entradas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "entrada"), KEEPFILTERS('FC_Proyección de caja'[estado_vencimiento] = "vencido"))
-		formatString: "Q" #,0
-		displayFolder: 02 Vencido
-		lineageTag: 43096bf3-52c3-4170-a280-d534aeadbf4c
-
-	/// Pagos cuya fecha ya pasó: exigibles ahora mismo.
-	measure 'Salidas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "salida"), KEEPFILTERS('FC_Proyección de caja'[estado_vencimiento] = "vencido"))
-		formatString: "Q" #,0
-		displayFolder: 02 Vencido
-		lineageTag: 08e484db-458b-4104-a118-6e6e7f6751e9
-
-	/// Flujo acumulado semana a semana: la curva que muestra en qué semana la caja se pone negativa si nada cambia. Es la pregunta que hace un gerente el lunes por la mañana.
-	measure 'Posición proyectada acumulada' = CALCULATE([Flujo neto proyectado], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] <= MAX('FC_Proyección de caja'[semana_offset])))
-		formatString: "Q" #,0
-		displayFolder: 03 Acumulado
-		lineageTag: 4a63e091-b999-4040-a245-242ea3d6967a
-
-	/// Horizonte corto: lo que entra y sale en las próximas 4 semanas, sin contar lo ya vencido.
-	measure 'Entradas próximas 4 semanas' = CALCULATE([Entradas proyectadas], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] >= 0 && 'FC_Proyección de caja'[semana_offset] <= 3))
-		formatString: "Q" #,0
-		displayFolder: 03 Acumulado
-		lineageTag: 123c8b8f-d70b-4dcf-966c-b71b1152a399
-
-	/// Compromisos de pago del horizonte corto.
-	measure 'Salidas próximas 4 semanas' = CALCULATE([Salidas proyectadas], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] >= 0 && 'FC_Proyección de caja'[semana_offset] <= 3))
-		formatString: "Q" #,0
-		displayFolder: 03 Acumulado
-		lineageTag: 814e2bc7-d0c5-451b-af81-63ddd50c6376
-
-	/// Lo que queda en caja del mes si todo se cumple como está pactado.
-	measure 'Flujo neto próximas 4 semanas' = [Entradas próximas 4 semanas] - [Salidas próximas 4 semanas]
-		formatString: "Q" #,0
-		displayFolder: 03 Acumulado
-		lineageTag: f7c69abc-9ac3-4283-820c-a99b9a471c0f
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 1cd7d4df-b331-47ca-8593-ad09e785b545
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: 0cd8289d-ff96-40c7-8e7d-de1c66eddd85
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column flujo
 		dataType: string
-		lineageTag: e6cd5464-231a-4cc9-9b38-f764676543e2
 		summarizeBy: none
 		sourceColumn: flujo
 
 	column estado_vencimiento
 		dataType: string
-		lineageTag: ac340534-f75b-45f4-baec-a6d330cf714b
 		summarizeBy: none
 		sourceColumn: estado_vencimiento
 
 	column semana_inicio
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 7106a473-ccb8-453e-9876-eb1ad2e83674
 		summarizeBy: none
 		sourceColumn: semana_inicio
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column semana_fin
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 21ac2cff-a74b-4a74-8857-7aa35cd8eecb
 		summarizeBy: none
 		sourceColumn: semana_fin
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: d0007124-2c1e-4355-a32f-7c654a77d685
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column semana_offset
 		dataType: int64
-		formatString: #,0
-		lineageTag: ce3f660c-1fd5-49f5-8c5d-2a5a4cff408a
 		summarizeBy: none
 		sourceColumn: semana_offset
+		formatString: #,0
 
 	column semana_etiqueta
 		dataType: string
-		lineageTag: 5b9adff9-ad43-4bb3-9cff-b8358b79c3dc
 		summarizeBy: none
 		sourceColumn: semana_etiqueta
 		sortByColumn: semana_offset
 
 	column partidas
 		dataType: int64
-		formatString: #,0
-		lineageTag: 0123e4df-fcad-4948-bf04-bd7a8bdb4379
 		summarizeBy: none
 		sourceColumn: partidas
+		formatString: #,0
 
 	column monto
-		dataType: double
-		formatString: #,0.00
-		lineageTag: 7e5c7cdc-79ca-474b-9b3a-704d7f2e3b7e
-		summarizeBy: sum
+		dataType: decimal
+		summarizeBy: none
 		sourceColumn: monto
-
-		annotation SummarizationSetBy = Automatic
+		formatString: #,0.00
 
 	column fecha_corte
 		dataType: dateTime
-		formatString: dd/MM/yyyy
-		lineageTag: 67ec727f-9dd5-4fc5-a6b1-28dd83647ed3
 		summarizeBy: none
 		sourceColumn: fecha_corte
-
-		annotation UnderlyingDateTimeDataType = Date
+		formatString: dd/MM/yyyy
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 63b524f3-d913-414b-939e-e8ce287b78ca
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: eb588f50-1434-4dc0-9a55-4c3e0a57b166
 		summarizeBy: none
 		sourceColumn: version_proceso
+
+	/// Proyección CONTRACTUAL: si cada partida abierta se paga en su vencimiento. No es un pronóstico.
+	measure 'Entradas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "entrada"))
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	/// Pagos comprometidos por semana de vencimiento.
+	measure 'Salidas proyectadas' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "salida"))
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	/// Entradas menos salidas de la semana. Negativo sostenido es un problema de caja antes de ser un problema contable.
+	measure 'Flujo neto proyectado' = [Entradas proyectadas] - [Salidas proyectadas]
+		formatString: "Q" #,0
+		displayFolder: 01 Proyección
+
+	/// Ya venció y sigue abierto: en teoría es cobrable HOY. La brecha con lo programado mide la gestión de cobro.
+	measure 'Entradas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "entrada"), KEEPFILTERS('FC_Proyección de caja'[estado_vencimiento] = "vencido"))
+		formatString: "Q" #,0
+		displayFolder: 02 Vencido
+
+	/// Pagos cuya fecha ya pasó: exigibles ahora mismo.
+	measure 'Salidas vencidas (exigible)' = CALCULATE(SUM('FC_Proyección de caja'[monto]), KEEPFILTERS('FC_Proyección de caja'[flujo] = "salida"), KEEPFILTERS('FC_Proyección de caja'[estado_vencimiento] = "vencido"))
+		formatString: "Q" #,0
+		displayFolder: 02 Vencido
+
+	/// Flujo acumulado semana a semana: la curva que muestra en qué semana la caja se pone negativa si nada cambia. Es la pregunta que hace un gerente el lunes por la mañana.
+	measure 'Posición proyectada acumulada' = CALCULATE([Flujo neto proyectado], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] <= MAX('FC_Proyección de caja'[semana_offset])))
+		formatString: "Q" #,0
+		displayFolder: 03 Acumulado
+
+	/// Horizonte corto: lo que entra y sale en las próximas 4 semanas, sin contar lo ya vencido.
+	measure 'Entradas próximas 4 semanas' = CALCULATE([Entradas proyectadas], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] >= 0 && 'FC_Proyección de caja'[semana_offset] <= 3))
+		formatString: "Q" #,0
+		displayFolder: 03 Acumulado
+
+	/// Compromisos de pago del horizonte corto.
+	measure 'Salidas próximas 4 semanas' = CALCULATE([Salidas proyectadas], FILTER(ALL('FC_Proyección de caja'[semana_offset]), 'FC_Proyección de caja'[semana_offset] >= 0 && 'FC_Proyección de caja'[semana_offset] <= 3))
+		formatString: "Q" #,0
+		displayFolder: 03 Acumulado
+
+	/// Lo que queda en caja del mes si todo se cumple como está pactado.
+	measure 'Flujo neto próximas 4 semanas' = [Entradas próximas 4 semanas] - [Salidas próximas 4 semanas]
+		formatString: "Q" #,0
+		displayFolder: 03 Acumulado
 
 	partition 'FC_Proyección de caja' = m
 		mode: import
@@ -167,4 +135,3 @@ table 'FC_Proyección de caja'
 				    Tabla = Origen{[Schema="oro",Item="proyeccion_caja_semanal"]}[Data]
 				in
 				    Tabla
-
