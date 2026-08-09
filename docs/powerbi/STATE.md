@@ -1,7 +1,7 @@
 # STATE — Quilate Analytics · Power BI Product
 
 FASE_ACTUAL: F5 (construcción MANUAL por Edwin — el modo de ejecución del contrato cambió, ver decisión 15)
-ULTIMA_ACTUALIZACION: 2026-08-09 (sesión 23)
+ULTIMA_ACTUALIZACION: 2026-08-09 (sesión 24)
 GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
 
 > **CAMBIO DE RUMBO (2026-08-08, decisión de Edwin):** la ola 1 se generó completa por código
@@ -47,6 +47,7 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 | Contrato del sistema visual | `docs/powerbi/contracts/sistema-visual.md` | F3 | cerrado |
 | Convención de nombres | `docs/powerbi/contracts/naming-conventions.md` | F3 | cerrada |
 | Tema de Grupo Cresta | `organizaciones/grupocresta/powerbi/theme/grupocresta-theme.json` | F3 | creado con la paleta oficial |
+| Guía de construcción (referencia para Edwin) | `docs/powerbi/guia-construccion-tableros.html` | F5 | derivada de F3 + correcciones de este archivo (D1–D3, decisión 17); no sustituye al contrato |
 
 ## Decisiones tomadas
 

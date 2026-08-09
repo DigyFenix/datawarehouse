@@ -1,5 +1,40 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 24 (2026-08-09) — LA GUÍA DE CONSTRUCCIÓN DE LOS TABLEROS — leer esto primero ══════
+
+Sesión corta, sin tocar datos, modelo ni portal (Docker apagado toda la sesión). Edwin pidió un
+mapa de las 12 hojas del informe como referencia para SU construcción manual (F5). **No se
+rediseñó nada**: se produjo una guía práctica **derivada** del contrato F3
+(`docs/powerbi/report-architecture.md`) con las correcciones vigentes de `STATE.md` que el
+contrato aún no refleja.
+
+### La guía de construcción — artifact + copia local
+
+- **Artifact publicado** (link permanente, privado de Edwin):
+  `https://claude.ai/code/artifact/b271d2d7-05bb-4190-89a5-7a19ac31c3cd`
+- **Copia local versionada**: `docs/powerbi/guia-construccion-tableros.html` (autocontenida,
+  tema claro/oscuro, con esqueleto html para abrir directo en el navegador).
+- Contenido: tesis y 3 reglas de oro · las 4 olas con dependencias de GAPs · chrome común con
+  diagrama del canvas y coordenadas · **hoja 00 ampliada** (identidad → confianza → urgencia,
+  lo que Edwin pidió para "capturar a la audiencia") · fichas 01–11 (pregunta, audiencia, KPIs
+  con medida exacta, visuales con tipo/campos/posición, salvedades, badge lista/espera-GAP) ·
+  reglas de diseño del contrato visual y disciplina anti-borrado de Desktop.
+- **Correcciones que la guía incorpora y el contrato F3 no** (van a la fuente si alguien edita
+  `report-architecture.md`): hoja 00 usa `Dato completo hasta` (no `Último dato del ERP`, D1);
+  hoja 01 visual 6 = serie mensual + media móvil (D3, sin 2025); `Proyección de cierre de mes`
+  exige un mes filtrado (D2); hojas 06/11 marcadas esperando GAP-07/GAP-05; hoja 08 marcada con
+  la verificación pendiente de `Sobrecosto por precio de compra` ≈ 0.
+
+### PENDIENTE (sin cambios respecto a la sesión 23)
+
+1. **Edwin construye la ola 1 en Desktop** (00 · 01 · 09) — ahora con la guía como referencia
+   rápida y `report-architecture.md` como contrato. Mockups: `docs/powerbi/prompt-diseno-ola1.md`.
+2. Con páginas construidas: **F6.2 vía MCP** (PBIP abierto) — cifras contra motor y contra SQL.
+3. Iron Network sin refrescar:
+   `docker exec quilate-worker python3 /dbt/herramientas/actualizar.py ironnetwork`
+4. `Sobrecosto por precio de compra` ≈ 0: verificar al llegar a la página 08.
+5. GAP-02/04/05/07 pendientes (GAP-05 puede exigir tabla auxiliar = autorización previa §3.1).
+
 ## ══════ SESIÓN 23 (2026-08-08/09) — F4 CERRADO AL CENTAVO, Y LA OLA 1 GENERADA… Y ABORTADA — leer esto primero ══════
 
 Dos historias en una sesión. La primera termina bien: **el lote 1 de F4 quedó cerrado y validado

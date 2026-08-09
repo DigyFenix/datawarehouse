@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía de construcción — Tableros Grupo Cresta</title>
+<style>
+  :root {
+    --bg: #f7f9fc;
+    --surface: #ffffff;
+    --surface-2: #eef3fa;
+    --ink: #182234;
+    --ink-2: #5b6472;
+    --ink-3: #8a9099;
+    --line: #dfe5ee;
+    --accent: #0043af;
+    --accent-soft: #d6e6ff;
+    --band-bg: #0043af;
+    --band-ink: #ffffff;
+    --good: #0ca30c;
+    --warn: #b97e00;
+    --serious: #c9531f;
+    --critical: #d51c29;
+    --critical-bg: #fdeced;
+    --warn-bg: #fdf4e0;
+    --good-bg: #e9f6e9;
+    --chip-bg: #eef3fa;
+    --code-bg: #eef2f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d141f;
+      --surface: #141e2d;
+      --surface-2: #1a2637;
+      --ink: #e8edf5;
+      --ink-2: #a7b2c4;
+      --ink-3: #71809a;
+      --line: #273549;
+      --accent: #7fb0ff;
+      --accent-soft: #1c3054;
+      --band-bg: #0043af;
+      --band-ink: #ffffff;
+      --good: #4cc44c;
+      --warn: #e8b64a;
+      --serious: #f08a5c;
+      --critical: #ff6b74;
+      --critical-bg: #3a1a20;
+      --warn-bg: #33290f;
+      --good-bg: #14301a;
+      --chip-bg: #1a2637;
+      --code-bg: #1c2940;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d141f;
+    --surface: #141e2d;
+    --surface-2: #1a2637;
+    --ink: #e8edf5;
+    --ink-2: #a7b2c4;
+    --ink-3: #71809a;
+    --line: #273549;
+    --accent: #7fb0ff;
+    --accent-soft: #1c3054;
+    --band-bg: #0043af;
+    --band-ink: #ffffff;
+    --good: #4cc44c;
+    --warn: #e8b64a;
+    --serious: #f08a5c;
+    --critical: #ff6b74;
+    --critical-bg: #3a1a20;
+    --warn-bg: #33290f;
+    --good-bg: #14301a;
+    --chip-bg: #1a2637;
+    --code-bg: #1c2940;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  code {
+    font-family: Consolas, "Cascadia Mono", ui-monospace, monospace;
+    font-size: 0.88em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+    display: grid;
+    grid-template-columns: 216px minmax(0, 1fr);
+    gap: 36px;
+  }
+  @media (max-width: 960px) {
+    .shell { grid-template-columns: minmax(0, 1fr); }
+    nav.toc { position: static !important; max-height: none !important; border-right: none !important; padding-top: 0 !important; }
+  }
+
+  /* ── encabezado ── */
+  header.masthead {
+    grid-column: 1 / -1;
+    padding: 44px 0 28px;
+    border-bottom: 3px solid var(--band-bg);
+    margin-bottom: 8px;
+  }
+  .masthead .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  .masthead h1 {
+    margin: 0 0 10px;
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 650;
+    line-height: 1.15;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .masthead p.lede { margin: 0; max-width: 62ch; color: var(--ink-2); font-size: 16px; }
+  .masthead .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+    margin-top: 18px; font-size: 12.5px; color: var(--ink-3);
+  }
+  .masthead .meta b { color: var(--ink-2); font-weight: 600; }
+
+  /* ── nav lateral ── */
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: 100vh;
+    overflow-y: auto;
+    padding: 24px 16px 24px 0;
+    border-right: 1px solid var(--line);
+    font-size: 13px;
+  }
+  nav.toc .toc-label {
+    text-transform: uppercase; letter-spacing: 0.12em;
+    font-size: 10.5px; font-weight: 600; color: var(--ink-3);
+    margin: 18px 0 6px;
+  }
+  nav.toc .toc-label:first-child { margin-top: 0; }
+  nav.toc a {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 4px 8px; border-radius: 6px;
+    color: var(--ink-2); text-decoration: none;
+  }
+  nav.toc a:hover { background: var(--surface-2); color: var(--ink); }
+  nav.toc a .num {
+    font-family: Consolas, ui-monospace, monospace;
+    font-size: 11px; color: var(--accent); min-width: 20px; font-weight: 600;
+  }
+  nav.toc a .ola-dot { margin-left: auto; font-size: 10px; color: var(--ink-3); }
+
+  main { min-width: 0; padding-top: 24px; }
+  main > section { margin-bottom: 52px; }
+  h2 {
+    font-size: 21px; font-weight: 650; margin: 0 0 6px;
+    letter-spacing: -0.005em; text-wrap: balance;
+  }
+  h2 .sec-num { color: var(--accent); font-weight: 600; margin-right: 6px; }
+  .sec-sub { color: var(--ink-2); margin: 0 0 20px; max-width: 68ch; }
+  h3 { font-size: 16px; font-weight: 650; margin: 26px 0 8px; }
+
+  /* ── tarjetas y tablas ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .table-wrap { overflow-x: auto; }
+  th {
+    text-align: left; font-weight: 600; font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-3); padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+  td:first-child, th:first-child { padding-left: 16px; }
+  td:last-child, th:last-child { padding-right: 16px; }
+  tr:last-child td { border-bottom: none; }
+  td b, td strong { color: var(--ink); font-weight: 600; }
+  .num-col { font-family: Consolas, ui-monospace, monospace; font-size: 12px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+
+  /* ── reglas de oro ── */
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .rule {
+    background: var(--surface); border: 1px solid var(--line);
+    border-top: 3px solid var(--band-bg);
+    border-radius: 10px; padding: 16px 18px;
+  }
+  .rule h4 { margin: 0 0 6px; font-size: 14px; font-weight: 650; }
+  .rule p { margin: 0; font-size: 13px; color: var(--ink-2); }
+
+  /* ── badges ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+    padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .badge.lista { background: var(--good-bg); color: var(--good); }
+  .badge.lista .dot { background: var(--good); }
+  .badge.espera { background: var(--warn-bg); color: var(--warn); }
+  .badge.espera .dot { background: var(--warn); }
+  .badge.ola { background: var(--chip-bg); color: var(--ink-2); }
+  .badge.ola .dot { background: var(--accent); }
+
+  /* ── diagrama del canvas ── */
+  .canvas-diagram {
+    aspect-ratio: 16 / 9;
+    max-width: 640px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    font-size: 11.5px;
+  }
+  .canvas-diagram .band {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px; border-bottom: 1px dashed var(--line);
+  }
+  .canvas-diagram .band:last-child { border-bottom: none; }
+  .canvas-diagram .band .y { font-family: Consolas, ui-monospace, monospace; font-size: 10px; color: var(--ink-3); }
+  .cd-header { flex: 0 0 10%; background: var(--band-bg); color: var(--band-ink); font-weight: 600; }
+  .cd-header .y { color: rgba(255,255,255,0.75); }
+  .cd-kpi { flex: 0 0 15.5%; background: var(--surface-2); color: var(--ink-2); font-weight: 600; }
+  .cd-analysis { flex: 1 1 auto; color: var(--ink-2); font-weight: 600; }
+  .cd-footer { flex: 0 0 6%; background: var(--surface-2); color: var(--ink-3); }
+
+  /* ── fichas de página ── */
+  .ficha { margin-bottom: 30px; scroll-margin-top: 16px; }
+  .ficha .banda {
+    background: var(--band-bg); color: var(--band-ink);
+    padding: 13px 20px;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  }
+  .ficha .banda .pnum {
+    font-family: Consolas, ui-monospace, monospace;
+    font-size: 14px; font-weight: 700; opacity: 0.85;
+  }
+  .ficha .banda h3 { margin: 0; font-size: 16.5px; font-weight: 650; color: var(--band-ink); }
+  .ficha .banda .pregunta { flex-basis: 100%; font-size: 13px; opacity: 0.88; font-style: italic; }
+  .ficha .estado-row {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+    padding: 10px 20px; background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .ficha .estado-row .aud b { font-weight: 600; color: var(--ink); }
+  .ficha .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px; padding: 14px 20px 4px;
+  }
+  .kpi {
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; background: var(--surface);
+  }
+  .kpi .kpi-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-3); font-weight: 600; margin-bottom: 3px;
+  }
+  .kpi code { background: transparent; padding: 0; font-size: 12.5px; color: var(--ink); white-space: normal; }
+  .kpi.critico { border-left: 3px solid var(--critical); }
+  .ficha .cuerpo { padding: 6px 20px 18px; }
+  .ficha .cuerpo table { font-size: 13px; }
+  .ficha .cuerpo td:first-child, .ficha .cuerpo th:first-child { padding-left: 0; }
+  .ficha .cuerpo td:last-child, .ficha .cuerpo th:last-child { padding-right: 0; }
+
+  /* ── callouts ── */
+  .callout {
+    border-radius: 8px; padding: 11px 14px; margin-top: 12px;
+    font-size: 13px; color: var(--ink-2);
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+  .callout b { color: var(--ink); }
+  .callout.alerta { background: var(--warn-bg); border-color: transparent; }
+  .callout.alerta b { color: var(--warn); }
+  .callout.critico { background: var(--critical-bg); border-color: transparent; }
+  .callout.critico b { color: var(--critical); }
+
+  /* ── paleta de estado ── */
+  .estado-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  .estado-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 12px; font-size: 12.5px; background: var(--surface); color: var(--ink-2);
+  }
+  .estado-chip .sw { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+
+  .footer-note {
+    border-top: 1px solid var(--line); padding-top: 18px;
+    font-size: 12.5px; color: var(--ink-3); max-width: 70ch;
+  }
+  .footer-note code { white-space: normal; }
+</style>
+
+<div class="shell">
+  <header class="masthead">
+    <p class="eyebrow">Quilate Analytics · Grupo Cresta · Power BI</p>
+    <h1>Guía de construcción de los tableros</h1>
+    <p class="lede">Las 12 hojas del informe: qué pregunta responde cada una, qué medidas del modelo usa y qué gráficas la componen. Derivada del contrato F3 (<code>report-architecture.md</code>) con las correcciones vigentes de <code>STATE.md</code>. Referencia para la construcción manual en Desktop.</p>
+    <div class="meta">
+      <span><b>12</b> páginas · <b>4</b> olas</span>
+      <span>Modelo: <b>316 medidas</b> · 36 tablas · 98 relaciones</span>
+      <span>Tema registrado: <b>grupocresta-theme.json</b></span>
+      <span>Actualizada: 2026-08-09</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Contenido">
+    <p class="toc-label">Marco</p>
+    <a href="#tesis"><span class="num">§1</span> La tesis y las reglas</a>
+    <a href="#olas"><span class="num">§2</span> Orden de construcción</a>
+    <a href="#chrome"><span class="num">§3</span> Chrome común</a>
+    <p class="toc-label">Ola 1 — la demo</p>
+    <a href="#p00"><span class="num">00</span> Inicio</a>
+    <a href="#p01"><span class="num">01</span> Dirección</a>
+    <a href="#p09"><span class="num">09</span> Cartera y cobranza</a>
+    <p class="toc-label">Ola 2 — las cifras ocultas</p>
+    <a href="#p03"><span class="num">03</span> Rentabilidad</a>
+    <a href="#p05"><span class="num">05</span> Productos · quiebre</a>
+    <a href="#p07"><span class="num">07</span> Pedidos</a>
+    <p class="toc-label">Ola 3 — análisis comercial</p>
+    <a href="#p02"><span class="num">02</span> Ventas</a>
+    <a href="#p04"><span class="num">04</span> Clientes</a>
+    <a href="#p08"><span class="num">08</span> Compras</a>
+    <p class="toc-label">Ola 4 — ciclo financiero</p>
+    <a href="#p06"><span class="num">06</span> Inventario · capital</a>
+    <a href="#p10"><span class="num">10</span> Capital y caja</a>
+    <a href="#p11"><span class="num">11</span> Finanzas · P&amp;L</a>
+    <p class="toc-label">Al construir</p>
+    <a href="#diseno"><span class="num">§4</span> Reglas de diseño</a>
+  </nav>
+
+  <main>
+
+    <!-- ════════ §1 TESIS ════════ -->
+    <section id="tesis">
+      <h2><span class="sec-num">§1</span>La tesis del reporte</h2>
+      <p class="sec-sub">No es un reporte de «qué pasó». Cada página responde <b>una pregunta que hoy nadie puede responder con el ERP</b> y termina en una lista de nombres: qué producto reponer, a qué cliente llamar, qué precio revisar, qué factura cobrar esta semana.</p>
+      <div class="rules">
+        <div class="rule">
+          <h4>Sin páginas de resumen sin pregunta</h4>
+          <p>La página 01 no es «un dashboard bonito»: es la lista de las cifras que obligan a actuar esta semana, cada una con navegación a su página de detalle.</p>
+        </div>
+        <div class="rule">
+          <h4>Foto y flujo no se mezclan sin decirlo</h4>
+          <p>Las páginas de saldo (cartera, inventario, caja) llevan la salvedad en el subtítulo y usan las medidas <code>hoy</code> cuando la cifra debe ignorar el período.</p>
+        </div>
+        <div class="rule">
+          <h4>Capital inmovilizado ≠ riesgo de faltante</h4>
+          <p>Son problemas opuestos y viven en páginas distintas (05 y 06). Mezclarlos produce «tenemos demasiado inventario y nos falta inventario» en el mismo visual.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ §2 OLAS ════════ -->
+    <section id="olas">
+      <h2><span class="sec-num">§2</span>Orden de construcción — 4 olas de 3 páginas</h2>
+      <p class="sec-sub">Al cerrar cada ola: QA estructural con <code>validar_reporte.py</code> y validación de cifras contra el motor (F6.2, la corre el agente vía MCP con el PBIP abierto).</p>
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Ola</th><th>Páginas</th><th>Por qué en este orden</th><th>Dependencias</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="num-col">1</td>
+              <td><b>00 Inicio · 01 Dirección · 09 Cartera</b></td>
+              <td>Es la demo completa: la entrada, la lectura de dirección y el dolor más universal de una PyME. Si esta ola convence, el producto se vende.</td>
+              <td><span class="badge lista"><span class="dot"></span>GAP-01 y GAP-03 listos</span></td>
+            </tr>
+            <tr>
+              <td class="num-col">2</td>
+              <td><b>03 Rentabilidad · 05 Productos · 07 Pedidos</b></td>
+              <td>Las tres cifras grandes ya calculadas que hoy nadie ve: Q46.5M vendidos bajo costo, Q57.0M de venta en riesgo por quiebre, Q5.7M de backlog vencido.</td>
+              <td><span class="badge lista"><span class="dot"></span>Sin dependencias</span></td>
+            </tr>
+            <tr>
+              <td class="num-col">3</td>
+              <td><b>02 Ventas · 04 Clientes · 08 Compras</b></td>
+              <td>El análisis comercial clásico, ya con el marco visual probado en las dos primeras olas.</td>
+              <td><span class="badge espera"><span class="dot"></span>08: verificar Sobrecosto ≈ 0</span></td>
+            </tr>
+            <tr>
+              <td class="num-col">4</td>
+              <td><b>06 Inventario · 10 Capital y caja · 11 Finanzas</b></td>
+              <td>Cierran el ciclo financiero.</td>
+              <td><span class="badge espera"><span class="dot"></span>GAP-07 (pág. 06) y GAP-05 (pág. 11) pendientes</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <b>GAPs pendientes del modelo:</b> GAP-02, GAP-04, GAP-05 y GAP-07 se implementan en lotes posteriores de F4, antes de la ola que los necesita. GAP-05 (waterfall de P&amp;L) puede exigir una tabla auxiliar — eso es cambio de modelo y requiere autorización previa. Presupuesto de medidas consumido: 22 de 40.
+      </div>
+    </section>
+
+    <!-- ════════ §3 CHROME ════════ -->
+    <section id="chrome">
+      <h2><span class="sec-num">§3</span>Chrome común — se construye una vez, se replica en las 12</h2>
+      <p class="sec-sub">Canvas <b>1280 × 720</b>, margen 24 px, 12 columnas de 88 px con gutter 16 (<code>x = 24 + (n−1)×104</code>, ancho <code>= 104n − 16</code>). Todas las alturas y posiciones verticales son múltiplo de 8.</p>
+
+      <div class="canvas-diagram" role="img" aria-label="Diagrama de las bandas verticales del canvas: encabezado 0 a 72, segmentadores y KPI 88 a 200, análisis 216 a 696, pie 700 a 720">
+        <div class="band cd-header"><span>Banda de marca · título (medida) · navegación</span><span class="y">y 0–72</span></div>
+        <div class="band cd-kpi"><span>Segmentadores sincronizados — o tarjetas KPI (los KPIs bajan a y=144 si hay ambos)</span><span class="y">y 88–200</span></div>
+        <div class="band cd-analysis"><span>Área de análisis · 2 filas de 232 px (216→448 · 464→696)</span><span class="y">y 216–696</span></div>
+        <div class="band cd-footer"><span>Pie de frescura (medida)</span><span class="y">y 700–720</span></div>
+      </div>
+
+      <div class="card table-wrap" style="margin-top:16px">
+        <table>
+          <thead><tr><th>Elemento</th><th>Tipo</th><th>Posición (x, y, w, h)</th><th>Nota</th></tr></thead>
+          <tbody>
+            <tr><td><b>Banda de encabezado</b></td><td>rectángulo <code>#0043af</code></td><td class="num-col">0, 0, 1280, 72</td><td>Color de marca; sangra el canvas.</td></tr>
+            <tr><td><b>Título de página</b></td><td>tarjeta de medida</td><td class="num-col">24, 16, 608, 40</td><td>Medida <code>Título de &lt;página&gt;</code> (carpeta <code>_Narrativa</code>) — incluye el período activo. Texto blanco.</td></tr>
+            <tr><td><b>Navegación</b></td><td>navegador de páginas</td><td class="num-col">648, 20, 504, 32</td><td>Horizontal, tinta blanca sobre azul.</td></tr>
+            <tr><td><b>Segmentador de período</b></td><td><code>DM_Calendario</code></td><td class="num-col">24, 88, 296, 40</td><td><b>Sincronizado en las 12 páginas.</b></td></tr>
+            <tr><td><b>Segmentador de empresa</b></td><td><code>DM_Empresa.nombre</code></td><td class="num-col">336, 88, 296, 40</td><td>Sincronizado; por defecto todas.</td></tr>
+            <tr><td><b>Moneda de análisis</b></td><td><code>MD_Moneda de análisis</code></td><td class="num-col">1064, 88, 192, 40</td><td>Sincronizado. El texto narrativo no conmuta: siempre habla en moneda de presentación.</td></tr>
+            <tr><td><b>Pie de frescura</b></td><td>tarjeta de medida</td><td class="num-col">24, 700, 1256, 20</td><td>Medida <code>Pie de frescura</code>: «Dato del ERP al … · extraído hace … días».</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><b>Ningún número escrito a mano en la capa visual.</b> Todo título, subtítulo o cifra de texto viene de una medida DAX en la carpeta <code>_Narrativa</code> — las 12 del lote 1 ya están en el modelo y validadas al centavo contra SQL.</div>
+    </section>
+
+    <!-- ════════ 00 INICIO ════════ -->
+    <section id="p00" class="ficha card">
+      <div class="banda">
+        <span class="pnum">00</span><h3>Inicio — la hoja de presentación</h3>
+        <span class="pregunta">¿Por dónde empiezo, y puedo confiar en lo que voy a ver?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 1</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> todos — es la puerta de entrada del portal de usuario</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI de frescura</div><code>Dato completo hasta</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Días desde última extracción</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Dominios desactualizados</code></div>
+      </div>
+      <div class="cuerpo">
+        <p style="color:var(--ink-2); font-size:13.5px; max-width:70ch">Esta hoja captura a la audiencia con <b>tres mensajes en orden</b>: identidad (el tema de marca ya registrado hace que el tablero se vea «de la casa» desde el primer segundo), <b>confianza</b> (la frescura del dato como primer contenido: «esto está al día y se puede creer») y <b>urgencia</b> (tres alertas con quetzales concretos que invitan a entrar: «hay Q57M en riesgo → mirá»). No lleva segmentadores de análisis: la frescura es global.</p>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1</td><td><b>¿Adónde voy?</b></td><td>6 botones de navegación (grid 3×2 de 400×112)</td><td>acción → página destino</td><td class="num-col">24, 216, 1256, 232</td></tr>
+            <tr><td class="num-col">2</td><td><b>¿Hasta cuándo llega cada dominio?</b></td><td>tabla</td><td><code>FC_Estado de carga</code>: dominio, <code>Último dato del ERP</code>, <code>Días desde última extracción</code></td><td class="num-col">24, 464, 608, 232</td></tr>
+            <tr><td class="num-col">3</td><td><b>¿Qué exige atención ya?</b></td><td>3 tarjetas de alerta</td><td><code>Venta anual en riesgo por quiebre</code> · <code>Vencido terceros hoy</code> · <code>Backlog vencido</code></td><td class="num-col">648, 464, 632, 232</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout critico"><b>Corrección vigente (decisión 17 de STATE.md):</b> el KPI global de frescura es <code>Dato completo hasta</code>, <u>nunca</u> <code>Último dato del ERP</code> — el MAX crudo muestra 03/07/2027 porque lo inflan las tasas futuras de tipos de cambio. El MAX por dominio solo se usa dentro de la tabla (visual 2). Y <code>Dominios desactualizados</code> lleva <code>+ 0</code>: en la página de confianza, el cero dice 0, no «(En blanco)».</div>
+      </div>
+    </section>
+
+    <!-- ════════ 01 DIRECCIÓN ════════ -->
+    <section id="p01" class="ficha card">
+      <div class="banda">
+        <span class="pnum">01</span><h3>Dirección</h3>
+        <span class="pregunta">¿Qué exige mi atención esta semana y cuánto dinero hay en juego?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 1</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> dirección general y gerencias</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI · exige 1 mes filtrado</div><code>Proyección de cierre de mes</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Variación acumulada vs año anterior</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Posición neta hoy</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Ciclo de conversión de efectivo</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>Las cuatro cifras que mandan</b></td><td>4 tarjetas con comparativo</td><td>los KPIs de arriba</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Vamos a llegar al mes?</b></td><td>columnas + línea de proyección</td><td><code>Venta por día hábil</code> por día · <code>Proyección de cierre de mes</code></td><td class="num-col">24, 248, 608, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Cómo va el ejercicio?</b></td><td>línea + media móvil</td><td><code>Ventas netas</code> por mes · <code>Media móvil 3 meses</code></td><td class="num-col">648, 248, 632, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Qué exige acción, y cuánto vale?</b></td><td>tabla de alertas con navegación</td><td>5 filas: quiebre, bajo costo, vencido, backlog vencido, caja negativa — cada una con su medida y botón a su página</td><td class="num-col">24, 480, 816, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Qué sociedad aporta?</b></td><td>barras horizontales ordenadas</td><td><code>Ventas a terceros</code> por <code>DM_Empresa</code></td><td class="num-col">856, 480, 424, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout alerta"><b>Dos correcciones vigentes:</b> (D3) el visual 6 <u>no</u> es «año contra año anterior» — Oro arranca el 2026-01-01 por la regla de corte y no hay 2025; es la serie mensual del año en curso con su media móvil. El comparativo vuelve cuando exista un ejercicio cerrado. (D2) <code>Proyección de cierre de mes</code> devuelve BLANK a propósito si no hay exactamente UN mes seleccionado — el segmentador de esta página arranca en el mes en curso.</div>
+        <div class="callout">Subtítulos desde medidas: <code>Subtítulo del ritmo del mes</code> · <code>Subtítulo del ejercicio</code> · <code>Subtítulo de focos de la semana</code> · <code>Subtítulo de aporte por sociedad</code>. El subtítulo de la tabla de alertas <b>cuenta focos, no suma importes</b> (son cifras de distinta naturaleza). Las tarjetas KPI no filtran; la tabla de alertas navega.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 09 CARTERA ════════ -->
+    <section id="p09" class="ficha card">
+      <div class="banda">
+        <span class="pnum">09</span><h3>Cartera y cobranza</h3>
+        <span class="pregunta">¿Quién me debe, desde cuándo, y qué tengo que cobrar esta semana?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 1</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> cobranza, finanzas, dirección</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI · foto</div><code>Por cobrar terceros hoy</code></div>
+        <div class="kpi critico"><div class="kpi-label">KPI · foto · crítico</div><code>Vencido terceros hoy</code></div>
+        <div class="kpi"><div class="kpi-label">KPI · foto</div><code>% Vencido terceros hoy</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Días de cartera terceros</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>La foto de hoy</b></td><td>4 tarjetas (la 2ª en estado crítico)</td><td>medidas <code>hoy</code> — ignoran el período a propósito</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Desde cuándo me deben?</b></td><td>barras apiladas por tramo</td><td><code>DM_Antigüedad</code> × <code>Saldo por cobrar terceros</code></td><td class="num-col">24, 248, 504, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Qué cobro esta semana?</b> ★</td><td>tabla por semana de vencimiento</td><td><code>Cobro que vence en el período</code> (GAP-01, eje de vencimiento): cliente, documento, vence, saldo</td><td class="num-col">544, 248, 736, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿A quién no le despacho?</b></td><td>tabla de riesgo</td><td><code>Clientes en vencido crítico</code>: cliente, saldo, vencido, días vencido, perfil de pago</td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Mejora la cobranza?</b></td><td>línea</td><td><code>% Vencido histórico</code> por corte</td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout"><b>Salvedades obligatorias:</b> las tarjetas usan medidas <code>hoy</code> a propósito — el saldo es una foto; recortarlo al período ocultaría las facturas viejas abiertas. El visual 8 requiere historia acumulada de cortes: al arrancar tendrá pocos puntos y el subtítulo lo declara. Subtítulos desde <code>Subtítulo del aging de terceros</code>, <code>Subtítulo de la agenda de cobro</code> y <code>Subtítulo de tendencia de cobranza</code>.</div>
+        <div class="callout alerta"><b>Contexto de negocio:</b> agosto vence con Q26.1M por pagar contra Q19.4M por cobrar, y hay Q4.14M de cartera con más de 3 años de vencida (la más antigua de 2017) — el aging la muestra en «+90 días».</div>
+      </div>
+    </section>
+
+    <!-- ════════ 03 RENTABILIDAD ════════ -->
+    <section id="p03" class="ficha card">
+      <div class="banda">
+        <span class="pnum">03</span><h3>Rentabilidad · fugas de margen</h3>
+        <span class="pregunta">¿Dónde estoy regalando margen sin que nadie lo haya autorizado?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 2</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> dirección comercial y finanzas</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Ventas bajo costo</code></div>
+        <div class="kpi critico"><div class="kpi-label">KPI · crítico</div><code>Margen perdido bajo costo</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Ventas bajo costo</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Margen terceros</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>El tamaño de la fuga</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Qué clientes?</b></td><td>barras horizontales ordenadas</td><td><code>Margen perdido bajo costo</code> por <code>DM_Cliente</code> (top 15)</td><td class="num-col">24, 248, 608, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Qué productos?</b></td><td>barras horizontales ordenadas</td><td><code>Margen perdido bajo costo</code> por <code>DM_Producto</code> (top 15)</td><td class="num-col">648, 248, 632, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Se erosiona el precio?</b></td><td>2 líneas apiladas en visuales separados (nunca eje dual)</td><td><code>% Descuento</code> y <code>Unidades vendidas</code> por mes</td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>Las líneas concretas</b></td><td>tabla de detalle</td><td>documento, fecha, cliente, producto, cantidad, precio, costo, margen</td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout"><b>Interacción:</b> clic en cliente o producto filtra la tabla 8; drill-through a detalle de documento. <b>Salvedad obligatoria en el subtítulo:</b> «Costo registrado en la línea al facturar. En Odoo esta página sale en cero: la línea no trae costo».</div>
+        <div class="callout alerta"><b>La cifra que justifica la página:</b> 11.5% de la venta va por debajo del costo — Q46.5M vendidos con Q18.4M de margen perdido.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 05 PRODUCTOS ════════ -->
+    <section id="p05" class="ficha card">
+      <div class="banda">
+        <span class="pnum">05</span><h3>Productos · quiebre</h3>
+        <span class="pregunta">¿Qué venta estoy perdiendo ahora mismo por no tener producto?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 2</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> compras y operaciones</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Productos en quiebre</code></div>
+        <div class="kpi critico"><div class="kpi-label">KPI · crítico</div><code>Venta anual en riesgo por quiebre</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Cobertura promedio en días</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Venta en productos A</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>El tamaño del problema</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Qué repongo primero?</b></td><td>tabla ordenada por venta en riesgo</td><td>producto, clase ABC, venta 12m, última venta, existencia, cobertura</td><td class="num-col">24, 248, 816, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Dónde está la venta?</b></td><td>Pareto (barras + curva acumulada)</td><td><code>Ventas netas</code> · <code>% acumulado de venta productos</code></td><td class="num-col">856, 248, 424, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Cobertura contra importancia?</b></td><td>dispersión (máx. 3 series: clase A/B/C)</td><td>x = <code>dias_cobertura</code> · y = <code>venta_12m</code> · color = clase ABC</td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Cómo se reparte el catálogo?</b></td><td>barras apiladas</td><td>conteo de productos por <code>estado_producto</code></td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout"><b>Regla de la página:</b> aquí solo vive el <b>riesgo de faltante</b>. El capital inmovilizado es la página 06 y no se menciona. Contexto: 98 productos en quiebre con Q57.0M de venta anual en riesgo.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 07 PEDIDOS ════════ -->
+    <section id="p07" class="ficha card">
+      <div class="banda">
+        <span class="pnum">07</span><h3>Pedidos · cumplimiento</h3>
+        <span class="pregunta">¿Qué prometí y no he entregado, y cuánto ya está incumplido?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 2</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> operaciones y comercial</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Backlog</code></div>
+        <div class="kpi critico"><div class="kpi-label">KPI · crítico</div><code>Backlog vencido</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Fill rate</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Lead time prometido</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>Compromiso y cumplimiento</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿A quién le estoy quedando mal?</b></td><td>barras horizontales ordenadas</td><td><code>Backlog vencido</code> por <code>DM_Cliente</code></td><td class="num-col">24, 248, 608, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Qué debo entregar y cuándo?</b></td><td>tabla por semana de entrega</td><td><code>Entrega comprometida en el período</code> (GAP-01, eje de entrega)</td><td class="num-col">648, 248, 632, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Se represa la demanda?</b></td><td>línea, 2 series</td><td><code>Monto pedido</code> y <code>Ventas netas</code> por mes</td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Quién capta y quién convierte?</b></td><td>dispersión</td><td>x = <code>Monto pedido</code> · y = <code>Ventas netas</code> por vendedor</td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout"><b>Nota honesta (visual 8):</b> la cobranza no es atribuible al vendedor en este modelo (<code>DM_Vendedor</code> no cuelga de cartera) — no se presenta como si lo fuera. Contexto: backlog vencido Q5.7M de Q12.5M.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 02 VENTAS ════════ -->
+    <section id="p02" class="ficha card">
+      <div class="banda">
+        <span class="pnum">02</span><h3>Ventas · ritmo y drivers</h3>
+        <span class="pregunta">¿Vamos a llegar, y el cambio viene de precio, de volumen o de mezcla?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 3</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> dirección comercial</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Ventas netas</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Variación vs año anterior</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Venta por día hábil</code></div>
+        <div class="kpi"><div class="kpi-label">KPI · exige 1 mes filtrado</div><code>Proyección de cierre de mes</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>Cifras del período</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿De dónde viene la variación?</b></td><td>waterfall</td><td><code>Efecto precio</code> · <code>Efecto volumen</code> · <code>Efecto mezcla</code> — suman exacto la variación</td><td class="num-col">24, 248, 608, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Cuál es la tendencia real?</b></td><td>línea + media móvil</td><td><code>Venta diaria neta</code> · <code>Venta media móvil 30d</code></td><td class="num-col">648, 248, 632, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Qué meses se despegan?</b></td><td>columnas + línea de referencia</td><td><code>Ventas netas</code> por mes · <code>Índice de estacionalidad</code></td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Por dónde cortar la venta?</b></td><td>barras con field parameter</td><td><code>MD_Vista de ventas</code> × <code>Ventas a terceros</code></td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout alerta"><b>Advertencia D3:</b> las medidas contra «año anterior» devuelven BLANK mientras el modelo no tenga historia de 2025 (regla de corte, Oro arranca 2026-01-01). Es honesto, no un bug — pero revisá qué muestra cada visual que las use antes de darlo por bueno.</div>
+        <div class="callout">El field parameter del visual 8 evita 4 visuales gemelos. Drill-through a detalle de documento desde cualquier barra.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 04 CLIENTES ════════ -->
+    <section id="p04" class="ficha card">
+      <div class="banda">
+        <span class="pnum">04</span><h3>Clientes</h3>
+        <span class="pregunta">¿De qué clientes dependo, y a cuáles valiosos estoy perdiendo?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 3</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> dirección comercial y cobranza</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Venta en top 10 clientes</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Clientes en riesgo valiosos</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Venta 12m en riesgo</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Clientes activos</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>Concentración y riesgo</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Cuánta venta concentran los mayores?</b></td><td>Pareto (barras + curva acumulada)</td><td><code>Ventas a terceros</code> · <code>% acumulado de venta clientes</code></td><td class="num-col">24, 248, 608, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Cómo está segmentada la cartera?</b></td><td>matriz de calor</td><td><code>DM_Clasificación RFM.segmento</code> × conteo y monto</td><td class="num-col">648, 248, 632, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿A quién llamo primero?</b></td><td>tabla ordenada por monto</td><td>clientes en riesgo valiosos: nombre, última compra, venta 12m, saldo, perfil de pago</td><td class="num-col">24, 480, 816, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Se renueva la cartera?</b></td><td>línea, 2 series</td><td><code>Clientes nuevos</code> y <code>Clientes perdidos</code> por mes</td><td class="num-col">856, 480, 424, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout"><b>Nota de lectura:</b> el RFM es una <b>foto</b> (mide recencia contra la última venta): no se compara entre años. Clic en segmento RFM filtra la tabla 7; drill-through a ficha de cliente. Contexto: 79 clientes en riesgo valioso con Q22.0M en juego.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 08 COMPRAS ════════ -->
+    <section id="p08" class="ficha card">
+      <div class="banda">
+        <span class="pnum">08</span><h3>Compras y proveedores</h3>
+        <span class="pregunta">¿Cuánto subió lo que compro, y de qué proveedores dependo para operar?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 3</span>
+        <span class="badge espera"><span class="dot"></span>Verificar Sobrecosto ≈ 0 antes de construir</span>
+        <span class="aud"><b>Audiencia:</b> compras y finanzas</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Variación de precio de compra</code></div>
+        <div class="kpi"><div class="kpi-label">KPI · en verificación</div><code>Sobrecosto por precio de compra</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Compra en el mayor proveedor</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Compras a terceros</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>Inflación y dependencia</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Qué insumo subió más?</b></td><td>barras horizontales ordenadas</td><td><code>Sobrecosto por precio de compra</code> por <code>DM_Producto</code></td><td class="num-col">24, 248, 608, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿De quién dependo?</b></td><td>Pareto de proveedores</td><td><code>Compras a terceros</code> · <code>% acumulado de compra proveedores</code></td><td class="num-col">648, 248, 632, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Se acelera el abastecimiento?</b></td><td>línea + media móvil</td><td><code>Compras netas</code> · <code>Media móvil 3 meses compras</code></td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Cómo evolucionó el precio de un insumo?</b></td><td>línea (exige 1 producto filtrado)</td><td><code>Precio promedio de compra</code> vs <code>Precio de compra año anterior</code></td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout alerta"><b>Pendiente antes de esta página:</b> <code>Sobrecosto por precio de compra</code> da ≈ 0 sin filtro de período — causa probable D3 (no hay año anterior contra el que comparar). Verificar con el agente al llegar aquí. <b>Salvedad del visual 8:</b> el precio promedio solo significa algo con UN producto filtrado; el subtítulo lo declara y el visual muestra un mensaje con más de un producto en contexto.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 06 INVENTARIO ════════ -->
+    <section id="p06" class="ficha card">
+      <div class="banda">
+        <span class="pnum">06</span><h3>Inventario · capital</h3>
+        <span class="pregunta">¿Cuánto capital tengo dormido en bodega, y cuánto de eso es accionable?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 4</span>
+        <span class="badge espera"><span class="dot"></span>Espera GAP-07 (variación de inventario)</span>
+        <span class="aud"><b>Audiencia:</b> finanzas y compras</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Valor de inventario</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Valor de inventario ocioso</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Rotación de inventario 12M</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Inventario sobre ventas</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>Capital y rotación</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Creció el inventario?</b></td><td>línea</td><td><code>Valor de inventario</code> por mes + variación (<b>GAP-07</b>, pendiente)</td><td class="num-col">24, 248, 608, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Qué está ocioso y es accionable?</b></td><td>tabla ordenada por valor</td><td>producto, valor, días sin venta, última venta</td><td class="num-col">648, 248, 632, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Dónde está el valor?</b></td><td>barras horizontales</td><td><code>Valor de inventario</code> por <code>DM_Bodega</code></td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Ocioso o sin rotación comercial?</b></td><td>2 tarjetas grandes con nota</td><td><code>Valor de inventario ocioso</code> vs <code>Valor sin rotación comercial</code></td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout critico"><b>Salvedad obligatoria (visual 8):</b> ocioso ≠ sin rotación comercial. Lo segundo son insumos de producción que se consumen sin pasar por factura — en Cresta, Q92.6M que <u>no</u> son alarma. Sin esta distinción el 95% del inventario aparecería en rojo.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 10 CAJA ════════ -->
+    <section id="p10" class="ficha card">
+      <div class="banda">
+        <span class="pnum">10</span><h3>Capital de trabajo y caja</h3>
+        <span class="pregunta">¿En qué semana se me pone negativa la caja si todo se cumple como está pactado?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 4</span>
+        <span class="badge lista"><span class="dot"></span>Lista para construir</span>
+        <span class="aud"><b>Audiencia:</b> dirección y finanzas</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Ciclo de conversión de efectivo</code></div>
+        <div class="kpi"><div class="kpi-label">KPI · foto</div><code>Posición neta hoy</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Flujo neto próximas 4 semanas</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Entradas vencidas (exigible)</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>Liquidez estructural</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Cuándo se pone negativa la caja?</b> ★</td><td>línea acumulada con cruce por cero marcado</td><td><code>Posición proyectada acumulada</code> por semana</td><td class="num-col">24, 248, 816, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿Qué pata empeora el ciclo?</b></td><td>waterfall de 3 patas</td><td><code>Días de cartera terceros</code> + <code>Días de inventario</code> − <code>Días de pago terceros</code></td><td class="num-col">856, 248, 424, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Qué entra y qué sale por semana?</b></td><td>columnas agrupadas</td><td><code>Entradas proyectadas</code> y <code>Salidas proyectadas</code> por semana</td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿A quién le debo y desde cuándo?</b></td><td>barras apiladas por tramo</td><td><code>DM_Antigüedad</code> × <code>Saldo por pagar terceros</code></td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout"><b>Salvedad obligatoria:</b> «Proyección contractual: supone que cada partida se paga en su vencimiento. No es un pronóstico, y no incluye saldos bancarios». La proyección no dice <i>quién</i> compone cada semana; el detalle se alcanza navegando a la página 09. El CCC real de Cresta: <b>80.2 días de capital atrapado</b>.</div>
+      </div>
+    </section>
+
+    <!-- ════════ 11 FINANZAS ════════ -->
+    <section id="p11" class="ficha card">
+      <div class="banda">
+        <span class="pnum">11</span><h3>Finanzas · P&amp;L</h3>
+        <span class="pregunta">¿Gano dinero según contabilidad, y la estructura crece más rápido que el ingreso?</span>
+      </div>
+      <div class="estado-row">
+        <span class="badge ola"><span class="dot"></span>Ola 4</span>
+        <span class="badge espera"><span class="dot"></span>Espera GAP-05 (waterfall — puede exigir tabla auxiliar, con autorización previa)</span>
+        <span class="aud"><b>Audiencia:</b> dirección, finanzas, contabilidad</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Resultado acumulado año</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Margen operativo</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>% Gasto sobre ingreso</code></div>
+        <div class="kpi"><div class="kpi-label">KPI</div><code>Variación de gasto vs año anterior</code></div>
+      </div>
+      <div class="cuerpo">
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pregunta que responde</th><th>Visual</th><th>Campos / medidas</th><th>Posición</th></tr></thead>
+          <tbody>
+            <tr><td class="num-col">1–4</td><td><b>El resultado y su estructura</b></td><td>4 tarjetas</td><td>KPIs</td><td class="num-col">24/336/648/960, 144, 296, 88</td></tr>
+            <tr><td class="num-col">5</td><td><b>¿Cómo se forma el resultado?</b></td><td>waterfall (<b>GAP-05</b>, pendiente)</td><td>ingresos → costo → gasto → resultado</td><td class="num-col">24, 248, 608, 216</td></tr>
+            <tr><td class="num-col">6</td><td><b>¿La estructura crece más rápido?</b></td><td>línea, 2 series indexadas a base 100</td><td><code>Ingresos contables</code> y <code>Gasto operativo</code> por mes</td><td class="num-col">648, 248, 632, 216</td></tr>
+            <tr><td class="num-col">7</td><td><b>¿Qué consume la estructura?</b></td><td>matriz jerárquica</td><td><code>DM_Cuenta contable</code> (jerarquía de 5 niveles) × <code>Gasto operativo</code></td><td class="num-col">24, 480, 608, 216</td></tr>
+            <tr><td class="num-col">8</td><td><b>¿Por centro de costo?</b></td><td>barras horizontales + control de brecha</td><td><code>Gasto operativo</code> por <code>DM_Centro de costo</code> · tarjeta <code>% Brecha contable</code></td><td class="num-col">648, 480, 632, 216</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="callout"><b>Salvedad:</b> solo cuentas de resultado — no hay balance general y la página no insinúa que lo haya. <code>% Brecha contable</code> es un <b>control, no un KPI</b>: debería rondar cero; cuando se despega hay que buscar anticipos, ajustes o cuentas mal clasificadas.</div>
+      </div>
+    </section>
+
+    <!-- ════════ §4 DISEÑO ════════ -->
+    <section id="diseno">
+      <h2><span class="sec-num">§4</span>Reglas de diseño al construir</h2>
+      <p class="sec-sub">Del contrato visual (<code>docs/powerbi/contracts/sistema-visual.md</code>). Un visual que no las cumple es un defecto, no una preferencia. Tema: <code>grupocresta-theme.json</code>, ya registrado en el reporte.</p>
+
+      <h3>Color: el rojo nunca identifica una serie</h3>
+      <p style="color:var(--ink-2); max-width:70ch">El azul <code>#0043af</code> lleva la identidad (chrome, encabezados, KPI, primera serie). El rojo <code>#d51c29</code> se reserva para <b>estado crítico</b> — así la marca y la semántica empujan en la misma dirección. Todo estado viaja con icono + etiqueta: el color solo nunca carga el significado.</p>
+      <div class="estado-chips">
+        <span class="estado-chip"><span class="sw" style="background:#0ca30c"></span>bueno — al día, dentro de meta</span>
+        <span class="estado-chip"><span class="sw" style="background:#eda100"></span>advertencia — 1–30 días</span>
+        <span class="estado-chip"><span class="sw" style="background:#eb6834"></span>serio — 31–90 días</span>
+        <span class="estado-chip"><span class="sw" style="background:#d51c29"></span>crítico — +90, vencido, bajo costo</span>
+      </div>
+      <p style="color:var(--ink-2); max-width:70ch; font-size:13.5px">Paleta categórica de 8 slots en orden fijo, nunca ciclada: azul <code>#004ec9</code> · naranja <code>#eb6834</code> · aqua <code>#1baf7a</code> · ámbar <code>#eda100</code> · magenta <code>#e87ba4</code> · verde <code>#008300</code> · violeta <code>#4a3aa7</code> · cian <code>#0093ab</code>. Más de 8 series no existen: la novena se pliega a «Otros». En dispersión y mapa, solo los 3 primeros slots. Cero hex escritos a mano en visuales: todo sale del tema.</p>
+
+      <h3>Elección de visual por patrón</h3>
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Patrón a revelar</th><th>Visual correcto</th><th>Lo que NO se usa</th></tr></thead>
+          <tbody>
+            <tr><td>Contribución al cambio</td><td><b>waterfall</b></td><td>barras apiladas</td></tr>
+            <tr><td>Concentración</td><td><b>Pareto</b> con curva acumulada</td><td>donut</td></tr>
+            <tr><td>Magnitud entre categorías</td><td><b>barras horizontales ordenadas</b></td><td>barras verticales con etiquetas rotadas</td></tr>
+            <tr><td>Evolución</td><td><b>línea</b> de 2 px</td><td>barras por período</td></tr>
+            <tr><td>Un número que manda</td><td><b>tarjeta con comparativo y tendencia</b></td><td>tarjeta sola</td></tr>
+            <tr><td>Relación entre dos medidas</td><td><b>dispersión</b> (máx. 3 series)</td><td>eje dual — <b>nunca</b>, en ningún caso</td></tr>
+            <tr><td>Distribución por dos ejes</td><td><b>matriz de calor</b></td><td>tabla con colores de fondo</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Texto e interacción</h3>
+      <div class="card table-wrap">
+        <table>
+          <tbody>
+            <tr><td><b>Títulos de visual</b></td><td>La pregunta o el hallazgo, no la descripción del eje. Correcto: «Q54.1M de venta anual en riesgo por 94 productos agotados» (desde medida). Incorrecto: «Ventas por producto».</td></tr>
+            <tr><td><b>Subtítulos</b></td><td>La unidad, el alcance y la salvedad («terceros, sin intercompañía»). Prohibido afirmar causalidad: <i>explica, concentra, está asociado a</i> — nunca <i>causa, provoca</i>.</td></tr>
+            <tr><td><b>Formato</b></td><td>Moneda <code>Q#,##0</code> en KPI y ejes, abreviado K/M (la venta anual está en cientos de millones); 2 decimales solo en detalle de documento. Calendario natural.</td></tr>
+            <tr><td><b>Segmentadores</b></td><td>Período, empresa y moneda sincronizados en las 12 páginas. Ningún otro se sincroniza.</td></tr>
+            <tr><td><b>Filtros cruzados</b></td><td>Las tarjetas KPI no filtran (son lectura). Barras y Pareto sí filtran las tablas de su página.</td></tr>
+            <tr><td><b>Drill-through</b></td><td>Un único destino de detalle de documento, alcanzable desde ventas, compras, cartera y pedidos.</td></tr>
+            <tr><td><b>Medidas nuevas</b></td><td>Se escriben en <code>generar_pbip.py</code>, nunca a mano en el <code>.tmdl</code> (el generador lo reescribe). Antes de crear una: ¿existe ya? ¿se compone? ¿la resuelve un field parameter?</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Disciplina de trabajo (aprendida a golpes)</h3>
+      <div class="callout critico"><b>Desktop borró los visuales dos veces.</b> Antes de trabajar: verificar que PBIR esté activado en Opciones. Antes de guardar y antes de cualquier <code>git add</code>: mirar el diff del <code>.Report</code>. Restauración: <code>git checkout &lt;commit&gt; -- &lt;ruta del .Report&gt;</code> con Desktop <b>cerrado</b>. Y <code>generar_pbip.py</code> solo se corre con Desktop cerrado — nunca toca los visuales, pero sí el resto del proyecto.</div>
+      <div class="callout">Al cerrar cada ola: correr <code>validar_reporte.py</code> (referencias, esquema, navegación) y pedir F6.2 al agente — cifra de cada visual contra el motor DAX y contra SQL a <code>oro</code> (conteos exactos, montos ≤0.5%, ratios ≤0.1pp). Es el mismo ciclo que validó GAP-03 al centavo.</div>
+
+      <p class="footer-note" style="margin-top:28px">Fuentes: <code>docs/powerbi/report-architecture.md</code> (contrato F3, cerrado) · <code>docs/powerbi/contracts/sistema-visual.md</code> · <code>docs/powerbi/contracts/naming-conventions.md</code> · <code>docs/powerbi/STATE.md</code> (decisiones 15–17 y defectos D1–D4). Esta guía no sustituye al contrato: si discrepan, ganan <code>STATE.md</code> y el contrato. Los mockups de la ola 1 salen de <code>docs/powerbi/prompt-diseno-ola1.md</code>.</p>
+    </section>
+
+  </main>
+</div>
+</html>
