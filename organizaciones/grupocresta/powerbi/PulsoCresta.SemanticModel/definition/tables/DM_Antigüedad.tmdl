@@ -1,20 +1,24 @@
 table DM_Antigüedad
+	lineageTag: 49a173d2-18ef-4262-9436-163264721730
 
 	column rango_aging_clave
 		dataType: int64
 		isHidden
+		lineageTag: c0a29eeb-69c5-4c8a-8f72-58f45d9db20e
 		summarizeBy: none
 		sourceColumn: rango_aging_clave
 
 	column rango_aging
 		dataType: string
 		isHidden
+		lineageTag: d3e03161-ed2e-4da2-8a69-d78a2213e48e
 		summarizeBy: none
 		sourceColumn: rango_aging
 		sortByColumn: rango_aging_orden
 
 	column rango_aging_nombre
 		dataType: string
+		lineageTag: 7214c0fa-f728-4d0b-8f14-fef4b4d6bee4
 		summarizeBy: none
 		sourceColumn: rango_aging_nombre
 		sortByColumn: rango_aging_orden
@@ -22,49 +26,61 @@ table DM_Antigüedad
 	column rango_aging_orden
 		dataType: int64
 		isHidden
+		formatString: #,0
+		lineageTag: bd5ea42c-c2c4-4b1e-b4f0-914e387e5dd0
 		summarizeBy: none
 		sourceColumn: rango_aging_orden
-		formatString: #,0
 
 	column dias_desde
 		dataType: int64
+		formatString: #,0
+		lineageTag: 1bf9aa41-7116-4ade-a21d-eeb961dbbc66
 		summarizeBy: none
 		sourceColumn: dias_desde
-		formatString: #,0
 
 	column dias_hasta
 		dataType: int64
+		formatString: #,0
+		lineageTag: efc386a5-6ab5-4477-afea-bd5871c207b5
 		summarizeBy: none
 		sourceColumn: dias_hasta
-		formatString: #,0
 
 	column es_vencido
 		dataType: boolean
+		lineageTag: 279a78ca-6adc-42d5-b383-42a5b0e67c78
 		summarizeBy: none
 		sourceColumn: es_vencido
 
 	column severidad
 		dataType: string
+		lineageTag: 7b926fd9-f2d2-4dab-8156-5cce9cbe0223
 		summarizeBy: none
 		sourceColumn: severidad
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 9d6e7ceb-e034-4712-af53-cb1edf9bc1c8
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: c65f81f2-c41a-4781-ac60-b50d3f17f195
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: 257a8555-fcac-41c9-bdd6-e751b5f07311
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -76,3 +92,4 @@ table DM_Antigüedad
 				    Tabla = Origen{[Schema="oro",Item="dim_rango_aging"]}[Data]
 				in
 				    Tabla
+

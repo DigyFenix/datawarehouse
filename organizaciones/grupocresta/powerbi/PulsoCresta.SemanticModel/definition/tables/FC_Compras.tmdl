@@ -1,359 +1,448 @@
 table FC_Compras
+	lineageTag: dcf38278-9687-47c3-80b2-02be1db50987
+
+	/// Compra sin impuestos en MONEDA DE PRESENTACIÓN (consolidable entre sociedades).
+	measure 'Compras netas' = SUM(FC_Compras[monto_sin_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 87e3e739-d09f-4a1c-a77b-f33d2147b43a
+
+	/// Compra con impuesto incluido, desde la cabecera del documento por la misma razón que en ventas.
+	measure 'Compras netas con IVA' = SUM(FC_Compras[monto_con_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: c714dabe-081f-4af0-a560-6bc880305547
+
+	/// IVA soportado en las compras, en moneda local.
+	measure 'Impuesto de compras' = SUM(FC_Compras[monto_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: e025b49a-1766-42c3-9e9c-014668264922
+
+	/// Saldo pendiente de pago de las facturas de compra, prorrateado por línea. INFORMATIVO: la cartera oficial sale del mayor.
+	measure 'Saldo de facturas de compra' = SUM(FC_Compras[saldo_pendiente])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 8f6746f1-bf8d-443d-aa4c-ba3445d2b42b
+
+	/// Compra a proveedores reales, sin el movimiento entre empresas del grupo.
+	measure 'Compras a terceros' = CALCULATE([Compras netas], DM_Proveedor[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 02 Terceros vs grupo
+		lineageTag: c6a689bd-999d-4b2e-b261-62d7a2390a79
+
+	/// Compra a otras empresas del propio grupo: traslado interno, no abastecimiento.
+	measure 'Compras al grupo' = CALCULATE([Compras netas], DM_Proveedor[es_intercompania] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 02 Terceros vs grupo
+		lineageTag: fdeeb651-4a3c-4a2f-83d8-7fabf72dc924
+
+	/// Qué parte del abastecimiento es interno.
+	measure '% Compra al grupo' = DIVIDE([Compras al grupo], [Compras netas])
+		formatString: 0.0%
+		displayFolder: 02 Terceros vs grupo
+		lineageTag: d6aa296a-2954-4980-adb1-e0bb962ee8a6
+
+	/// Cantidad neta recibida; la nota de crédito a proveedor resta.
+	measure 'Unidades compradas' = SUM(FC_Compras[cantidad])
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: 1a2a8714-8ebf-44d2-b4a4-c174ecce356c
+
+	/// Número de líneas de documento de compra.
+	measure 'Líneas de compra' = COUNTROWS(FC_Compras)
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: f238272a-b7db-4427-b9b5-74abc62c06fc
+
+	/// Facturas y notas de crédito de compra distintas del período.
+	measure 'Documentos de compra' = DISTINCTCOUNT(FC_Compras[documento_id])
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: 14a741c6-38a7-4e09-a85f-3f0f02d5f521
+
+	/// Proveedores distintos con movimiento en el período.
+	measure 'Proveedores con compra' = CALCULATE(DISTINCTCOUNT(FC_Compras[proveedor_clave]), KEEPFILTERS(FC_Compras[monto_sin_impuesto] <> 0))
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: 2cfdb5ca-ce6f-4b49-b166-72080f1bdfcf
+
+	/// Tamaño medio de la factura de compra.
+	measure 'Compra promedio por documento' = DIVIDE([Compras netas], [Documentos de compra])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+		lineageTag: c5f7f802-d941-4d8c-bf34-52cc7931b04f
+
+	/// Cuánto se le compra en promedio a cada proveedor activo.
+	measure 'Compra promedio por proveedor' = DIVIDE([Compras netas], [Proveedores con compra])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+		lineageTag: b4c7267e-6e1d-4d0e-b117-409a3e3954ee
+
+	/// Promedio sobre los días que SÍ hubo compra.
+	measure 'Compra promedio diaria' = DIVIDE([Compras netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Compras))
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+		lineageTag: 5588cb93-41df-463f-ae35-7138975f2b09
+
+	/// Compra del mes previo, para ver si el abastecimiento se aceleró.
+	measure 'Compras mes anterior' = CALCULATE([Compras netas], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+		lineageTag: 7cd79042-4891-4ef6-b798-b1235b7840e8
+
+	/// Mismo período del año pasado, libre de estacionalidad.
+	measure 'Compras año anterior' = CALCULATE([Compras netas], DATEADD(DM_Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+		lineageTag: 2bc3989a-925e-4a1b-9c47-99024d67fb81
+
+	/// Acumulado desde el primer día del mes.
+	measure 'Compras acumuladas mes' = TOTALMTD([Compras netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+		lineageTag: 0efacf75-75ee-478e-8a2e-5651b69fcf08
+
+	/// Acumulado del ejercicio.
+	measure 'Compras acumuladas año' = TOTALYTD([Compras netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+		lineageTag: 29077b8f-c0ca-4240-a5d5-4f01e4152553
+
+	/// Acumulado del ejercicio anterior a la misma altura del año.
+	measure 'Compras acumuladas año anterior' = CALCULATE(TOTALYTD([Compras netas], DM_Calendario[fecha]), DATEADD(DM_Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+		lineageTag: 548c331a-fb67-4ecc-8fc5-141e47b63fb5
+
+	/// Cambio contra el mes previo.
+	measure 'Variación compras vs mes anterior' = DIVIDE([Compras netas] - [Compras mes anterior], [Compras mes anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 05 Comparativos
+		lineageTag: 87ea6a68-69b5-4b09-b446-e9cfb8198ee4
+
+	/// Cambio contra el mismo período del año pasado.
+	measure 'Variación compras vs año anterior' = DIVIDE([Compras netas] - [Compras año anterior], [Compras año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 05 Comparativos
+		lineageTag: 0496b909-5fb9-4913-bc45-1ff0f8ff56f4
+
+	/// Suaviza el ruido mensual del abastecimiento. Promedia MESES, no días.
+	measure 'Media móvil 3 meses compras' = CALCULATE(AVERAGEX(VALUES(DM_Calendario[anio_mes]), [Compras netas]), DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -3, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+		lineageTag: 1b579577-4bf0-4c50-8ddd-0ff999ceb678
+
+	/// Compra de líneas sin código de artículo (servicios, fletes, gastos). En operaciones con mucho gasto indirecto puede ser la mayoría de las líneas de compra.
+	measure 'Compras de servicios' = CALCULATE([Compras netas], KEEPFILTERS(DM_Producto[producto_codigo] = "SERVICIO"))
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: b704a436-0b36-42d2-b16a-b6d106abfdf5
+
+	/// Posición del proveedor por compra dentro del filtro vigente.
+	measure 'Ranking de proveedor por compra' = RANKX(ALLSELECTED(DM_Proveedor), [Compras a terceros])
+		formatString: #,0
+		displayFolder: 06 Pareto
+		lineageTag: 826dbb4d-92c6-46a6-85df-d57b9397c6a8
+
+	/// Curva de Pareto: % de la compra a terceros que acumulan este proveedor y los mayores que él.
+	measure '% acumulado de compra proveedores' = VAR base = ADDCOLUMNS(ALLSELECTED(DM_Proveedor), "@v", [Compras a terceros]) VAR actual = [Compras a terceros] VAR total = SUMX(base, [@v]) VAR acum = SUMX(FILTER(base, [@v] >= actual), [@v]) RETURN DIVIDE(acum, total)
+		formatString: 0.0%
+		displayFolder: 06 Pareto
+		lineageTag: 2bb7bece-7f10-499c-977f-e7317e69259b
+
+	/// Dependencia del proveedor más grande. Un número alto es riesgo de suministro y cero poder de negociación.
+	measure '% Compra en el mayor proveedor' = DIVIDE(MAXX(ALLSELECTED(DM_Proveedor), [Compras a terceros]), CALCULATE([Compras a terceros], ALLSELECTED(DM_Proveedor)))
+		formatString: 0.0%
+		displayFolder: 06 Pareto
+		lineageTag: a6093b34-072c-450c-aed7-35ef13c73081
+
+	/// Concentración del abastecimiento en los diez mayores proveedores.
+	measure '% Compra en top 10 proveedores' = DIVIDE(CALCULATE([Compras a terceros], TOPN(10, ALLSELECTED(DM_Proveedor), [Compras a terceros])), CALCULATE([Compras a terceros], ALLSELECTED(DM_Proveedor)))
+		formatString: 0.0%
+		displayFolder: 06 Pareto
+		lineageTag: 44904f65-0390-479d-bbfc-f9a8657def7d
+
+	/// Faltaba el espejo del acumulado trimestral de ventas.
+	measure 'Compras acumuladas trimestre' = TOTALQTD([Compras netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+		lineageTag: 4ff588f8-408d-43ff-8f88-f876af641d4d
+
+	/// Compra de los últimos doce meses. Es la base de la rotación de inventario y de los días de pago.
+	measure 'Compras 12 meses móviles' = CALCULATE([Compras netas], DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -12, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+		lineageTag: 314fd407-4156-4d7f-9ca9-90055f7b7846
+
+	/// Cómo va el abastecimiento del ejercicio completo contra el anterior.
+	measure 'Variación compras acumulada vs año anterior' = DIVIDE([Compras acumuladas año] - [Compras acumuladas año anterior], [Compras acumuladas año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 05 Comparativos
+		lineageTag: 20264d48-9cd2-4e53-8f5e-7510b656db63
+
+	/// Precio unitario promedio pagado. Filtrar un producto para que signifique algo: mezclado entre artículos distintos no dice nada.
+	measure 'Precio promedio de compra' = DIVIDE([Compras netas], [Unidades compradas])
+		formatString: "Q" #,0.00
+		displayFolder: 07 Inflación de insumos
+		lineageTag: 0fc224c6-6cd6-4927-8d60-7ba8396bd489
+
+	/// Precio unitario medio pagado el año pasado, base de la comparación de inflación de insumos.
+	measure 'Precio de compra año anterior' = CALCULATE([Precio promedio de compra], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0.00
+		displayFolder: 07 Inflación de insumos
+		lineageTag: 553d2b00-619b-4759-8078-ce28c981f583
+
+	/// Cuánto subió lo que compramos. Es la inflación REAL del negocio, medida sobre lo pagado, no sobre un índice.
+	measure '% Variación de precio de compra' = DIVIDE([Precio promedio de compra] - [Precio de compra año anterior], [Precio de compra año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 07 Inflación de insumos
+		lineageTag: cf3969d4-c4f9-443b-a7d0-cc8720e33717
+
+	/// Lo que costó de más comprar el volumen de hoy a los precios de hoy en vez de a los del año pasado.
+	measure 'Sobrecosto por precio de compra' = ([Precio promedio de compra] - [Precio de compra año anterior]) * [Unidades compradas]
+		formatString: "Q" #,0
+		displayFolder: 07 Inflación de insumos
+		lineageTag: e68d351f-f8b1-4826-b099-d8c58a97f4c5
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 77082ca6-2690-4401-80b5-33d35e921b5e
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
+		lineageTag: c28a280e-54ca-4d45-aac4-58d73881ae57
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column socio_clave
 		dataType: int64
 		isHidden
+		lineageTag: 20d05d04-e906-430b-8395-5ba032802ccf
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: b124d0ec-302a-49bf-827e-ac0363c4f9ae
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: 2f579b81-8990-441b-bb86-f2743c086b9f
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column almacen_clave
 		dataType: int64
 		isHidden
+		lineageTag: 1bb8d1ae-b01a-400d-b3a0-3e372cee4f27
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
+		lineageTag: 43edd7e5-ba4c-4f4c-b0ca-bcd4b936db92
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
+		lineageTag: f85f972c-9750-4d02-b073-93f15414b1ba
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column centro_costo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 4027c25e-b784-45eb-947d-bdd7d2b5179b
 		summarizeBy: none
 		sourceColumn: centro_costo_clave
 
 	column tipo_documento_clave
 		dataType: int64
 		isHidden
+		lineageTag: de33fe58-8cfd-4eaa-bbff-853091d761f9
 		summarizeBy: none
 		sourceColumn: tipo_documento_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 0cec7c53-c607-407e-82d3-947487579415
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column documento_id
 		dataType: string
+		lineageTag: d7b7de87-9155-4478-9b4d-238747166299
 		summarizeBy: none
 		sourceColumn: documento_id
 
 	column documento_numero
 		dataType: string
+		lineageTag: 65e021db-9ee5-4650-b0ad-90f660cb1358
 		summarizeBy: none
 		sourceColumn: documento_numero
 
 	column serie_codigo
 		dataType: string
+		lineageTag: 572f6f22-fe47-4032-97c8-273d8e690d17
 		summarizeBy: none
 		sourceColumn: serie_codigo
 
 	column tipo_documento_origen
 		dataType: string
+		lineageTag: 5bb3185f-fba2-46c4-99fd-0372c530add9
 		summarizeBy: none
 		sourceColumn: tipo_documento_origen
 
 	column referencia_externa
 		dataType: string
+		lineageTag: c231ae42-3439-426c-bded-503586f33be7
 		summarizeBy: none
 		sourceColumn: referencia_externa
 
 	column linea_numero
 		dataType: int64
+		formatString: #,0
+		lineageTag: 876c9415-7e41-49f8-b4d3-5f8bf5013566
 		summarizeBy: none
 		sourceColumn: linea_numero
-		formatString: #,0
 
 	column tipo_documento
 		dataType: string
+		lineageTag: 7e29778c-e5ec-4a9b-9a85-4443f89dc23b
 		summarizeBy: none
 		sourceColumn: tipo_documento
 
 	column fecha_documento
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 2d56d119-b963-495b-8e03-a92cba7f721b
 		summarizeBy: none
 		sourceColumn: fecha_documento
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column cantidad
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: cantidad
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 8a411cd2-0088-4a86-acbd-394d997056f1
+		summarizeBy: sum
+		sourceColumn: cantidad
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_sin_impuesto
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_sin_impuesto
+		dataType: double
 		formatString: #,0.00
+		lineageTag: e9190508-6baf-4024-900e-ef0720a492c9
+		summarizeBy: sum
+		sourceColumn: monto_sin_impuesto
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_impuesto
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_impuesto
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 397369e9-025e-4052-b60a-71769050b5f3
+		summarizeBy: sum
+		sourceColumn: monto_impuesto
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_con_impuesto
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_con_impuesto
+		dataType: double
 		formatString: #,0.00
+		lineageTag: b1baec33-4eff-4e58-80f1-5bfc8e46217c
+		summarizeBy: sum
+		sourceColumn: monto_con_impuesto
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_sin_impuesto_doc
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_sin_impuesto_doc
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 938a803a-6553-4a8f-bbd5-9395901fd95a
+		summarizeBy: sum
+		sourceColumn: monto_sin_impuesto_doc
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_impuesto_doc
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_impuesto_doc
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 7c8e8044-a20f-41b1-900a-8ec649578377
+		summarizeBy: sum
+		sourceColumn: monto_impuesto_doc
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_con_impuesto_doc
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_con_impuesto_doc
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 34b8dbc8-cadb-4364-ad10-ba30be73612e
+		summarizeBy: sum
+		sourceColumn: monto_con_impuesto_doc
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_descuento
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_descuento
+		dataType: double
 		formatString: #,0.00
+		lineageTag: b01b50d5-45eb-4da9-a6ee-59d46ab699c3
+		summarizeBy: sum
+		sourceColumn: monto_descuento
+
+		annotation SummarizationSetBy = Automatic
 
 	column descuento_pct
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: descuento_pct
+		dataType: double
 		formatString: 0.0"%"
+		lineageTag: b6eb5894-24c9-43e5-bbbc-a15b9b52622f
+		summarizeBy: sum
+		sourceColumn: descuento_pct
+
+		annotation SummarizationSetBy = Automatic
 
 	column saldo_pendiente
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: saldo_pendiente
+		dataType: double
 		formatString: #,0.00
+		lineageTag: e248c543-9d82-4d2e-9f8d-bfcfb2e67eda
+		summarizeBy: sum
+		sourceColumn: saldo_pendiente
+
+		annotation SummarizationSetBy = Automatic
 
 	column estado_pago
 		dataType: string
+		lineageTag: 3e12e111-e2ba-4d38-b572-eb0e82ef6d46
 		summarizeBy: none
 		sourceColumn: estado_pago
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 6ef955ab-a973-4a27-af48-1d8d1ef149a3
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: 30e0da26-e314-498e-a9a3-32b7a8c12115
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Compra sin impuestos en MONEDA DE PRESENTACIÓN (consolidable entre sociedades).
-	measure 'Compras netas' = SUM(FC_Compras[monto_sin_impuesto])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Compra con impuesto incluido, desde la cabecera del documento por la misma razón que en ventas.
-	measure 'Compras netas con IVA' = SUM(FC_Compras[monto_con_impuesto])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// IVA soportado en las compras, en moneda local.
-	measure 'Impuesto de compras' = SUM(FC_Compras[monto_impuesto])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Saldo pendiente de pago de las facturas de compra, prorrateado por línea. INFORMATIVO: la cartera oficial sale del mayor.
-	measure 'Saldo de facturas de compra' = SUM(FC_Compras[saldo_pendiente])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Compra a proveedores reales, sin el movimiento entre empresas del grupo.
-	measure 'Compras a terceros' = CALCULATE([Compras netas], DM_Proveedor[es_intercompania] = FALSE)
-		formatString: "Q" #,0
-		displayFolder: 02 Terceros vs grupo
-
-	/// Compra a otras empresas del propio grupo: traslado interno, no abastecimiento.
-	measure 'Compras al grupo' = CALCULATE([Compras netas], DM_Proveedor[es_intercompania] = TRUE)
-		formatString: "Q" #,0
-		displayFolder: 02 Terceros vs grupo
-
-	/// Qué parte del abastecimiento es interno.
-	measure '% Compra al grupo' = DIVIDE([Compras al grupo], [Compras netas])
-		formatString: 0.0%
-		displayFolder: 02 Terceros vs grupo
-
-	/// Cantidad neta recibida; la nota de crédito a proveedor resta.
-	measure 'Unidades compradas' = SUM(FC_Compras[cantidad])
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Número de líneas de documento de compra.
-	measure 'Líneas de compra' = COUNTROWS(FC_Compras)
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Facturas y notas de crédito de compra distintas del período.
-	measure 'Documentos de compra' = DISTINCTCOUNT(FC_Compras[documento_id])
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Proveedores distintos con movimiento en el período.
-	measure 'Proveedores con compra' = CALCULATE(DISTINCTCOUNT(FC_Compras[proveedor_clave]), KEEPFILTERS(FC_Compras[monto_sin_impuesto] <> 0))
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Tamaño medio de la factura de compra.
-	measure 'Compra promedio por documento' = DIVIDE([Compras netas], [Documentos de compra])
-		formatString: "Q" #,0
-		displayFolder: 04 Promedios
-
-	/// Cuánto se le compra en promedio a cada proveedor activo.
-	measure 'Compra promedio por proveedor' = DIVIDE([Compras netas], [Proveedores con compra])
-		formatString: "Q" #,0
-		displayFolder: 04 Promedios
-
-	/// Promedio sobre los días que SÍ hubo compra.
-	measure 'Compra promedio diaria' = DIVIDE([Compras netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Compras))
-		formatString: "Q" #,0
-		displayFolder: 04 Promedios
-
-	/// Compra del mes previo, para ver si el abastecimiento se aceleró.
-	measure 'Compras mes anterior' = CALCULATE([Compras netas], DATEADD(DM_Calendario[fecha], -1, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 05 Comparativos
-
-	/// Mismo período del año pasado, libre de estacionalidad.
-	measure 'Compras año anterior' = CALCULATE([Compras netas], DATEADD(DM_Calendario[fecha], -1, YEAR))
-		formatString: "Q" #,0
-		displayFolder: 05 Comparativos
-
-	/// Acumulado desde el primer día del mes.
-	measure 'Compras acumuladas mes' = TOTALMTD([Compras netas], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 05 Comparativos
-
-	/// Acumulado del ejercicio.
-	measure 'Compras acumuladas año' = TOTALYTD([Compras netas], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 05 Comparativos
-
-	/// Acumulado del ejercicio anterior a la misma altura del año.
-	measure 'Compras acumuladas año anterior' = CALCULATE(TOTALYTD([Compras netas], DM_Calendario[fecha]), DATEADD(DM_Calendario[fecha], -1, YEAR))
-		formatString: "Q" #,0
-		displayFolder: 05 Comparativos
-
-	/// Cambio contra el mes previo.
-	measure 'Variación compras vs mes anterior' = DIVIDE([Compras netas] - [Compras mes anterior], [Compras mes anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 05 Comparativos
-
-	/// Cambio contra el mismo período del año pasado.
-	measure 'Variación compras vs año anterior' = DIVIDE([Compras netas] - [Compras año anterior], [Compras año anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 05 Comparativos
-
-	/// Suaviza el ruido mensual del abastecimiento. Promedia MESES, no días.
-	measure 'Media móvil 3 meses compras' = CALCULATE(AVERAGEX(VALUES(DM_Calendario[anio_mes]), [Compras netas]), DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -3, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 05 Comparativos
-
-	/// Compra de líneas sin código de artículo (servicios, fletes, gastos). En operaciones con mucho gasto indirecto puede ser la mayoría de las líneas de compra.
-	measure 'Compras de servicios' = CALCULATE([Compras netas], KEEPFILTERS(DM_Producto[producto_codigo] = "SERVICIO"))
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Posición del proveedor por compra dentro del filtro vigente.
-	measure 'Ranking de proveedor por compra' = RANKX(ALLSELECTED(DM_Proveedor), [Compras a terceros])
-		formatString: #,0
-		displayFolder: 06 Pareto
-
-	/// Curva de Pareto: % de la compra a terceros que acumulan este proveedor y los mayores que él.
-	measure '% acumulado de compra proveedores' = VAR base = ADDCOLUMNS(ALLSELECTED(DM_Proveedor), "@v", [Compras a terceros]) VAR actual = [Compras a terceros] VAR total = SUMX(base, [@v]) VAR acum = SUMX(FILTER(base, [@v] >= actual), [@v]) RETURN DIVIDE(acum, total)
-		formatString: 0.0%
-		displayFolder: 06 Pareto
-
-	/// Dependencia del proveedor más grande. Un número alto es riesgo de suministro y cero poder de negociación.
-	measure '% Compra en el mayor proveedor' = DIVIDE(MAXX(ALLSELECTED(DM_Proveedor), [Compras a terceros]), CALCULATE([Compras a terceros], ALLSELECTED(DM_Proveedor)))
-		formatString: 0.0%
-		displayFolder: 06 Pareto
-
-	/// Concentración del abastecimiento en los diez mayores proveedores.
-	measure '% Compra en top 10 proveedores' = DIVIDE(CALCULATE([Compras a terceros], TOPN(10, ALLSELECTED(DM_Proveedor), [Compras a terceros])), CALCULATE([Compras a terceros], ALLSELECTED(DM_Proveedor)))
-		formatString: 0.0%
-		displayFolder: 06 Pareto
-
-	/// Faltaba el espejo del acumulado trimestral de ventas.
-	measure 'Compras acumuladas trimestre' = TOTALQTD([Compras netas], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 05 Comparativos
-
-	/// Compra de los últimos doce meses. Es la base de la rotación de inventario y de los días de pago.
-	measure 'Compras 12 meses móviles' = CALCULATE([Compras netas], DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -12, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 05 Comparativos
-
-	/// Cómo va el abastecimiento del ejercicio completo contra el anterior.
-	measure 'Variación compras acumulada vs año anterior' = DIVIDE([Compras acumuladas año] - [Compras acumuladas año anterior], [Compras acumuladas año anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 05 Comparativos
-
-	/// Precio unitario promedio pagado. Filtrar un producto para que signifique algo: mezclado entre artículos distintos no dice nada.
-	measure 'Precio promedio de compra' = DIVIDE([Compras netas], [Unidades compradas])
-		formatString: "Q" #,0.00
-		displayFolder: 07 Inflación de insumos
-
-	/// Precio unitario medio pagado el año pasado, base de la comparación de inflación de insumos.
-	measure 'Precio de compra año anterior' = CALCULATE([Precio promedio de compra], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
-		formatString: "Q" #,0.00
-		displayFolder: 07 Inflación de insumos
-
-	/// Cuánto subió lo que compramos. Es la inflación REAL del negocio, medida sobre lo pagado, no sobre un índice.
-	measure '% Variación de precio de compra' = DIVIDE([Precio promedio de compra] - [Precio de compra año anterior], [Precio de compra año anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 07 Inflación de insumos
-
-	/// Lo que costó de más comprar el volumen de hoy a los precios de hoy en vez de a los del año pasado.
-	measure 'Sobrecosto por precio de compra' = ([Precio promedio de compra] - [Precio de compra año anterior]) * [Unidades compradas]
-		formatString: "Q" #,0
-		displayFolder: 07 Inflación de insumos
 
 	partition FC_Compras = m
 		mode: import
@@ -363,3 +452,4 @@ table FC_Compras
 				    Tabla = Origen{[Schema="oro",Item="hecho_compra_linea"]}[Data]
 				in
 				    Tabla
+

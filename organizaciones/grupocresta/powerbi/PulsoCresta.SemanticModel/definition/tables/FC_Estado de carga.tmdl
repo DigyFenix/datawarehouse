@@ -1,98 +1,118 @@
 table 'FC_Estado de carga'
+	lineageTag: 210cf3f0-5be7-440b-ad79-fb21c872bd57
+
+	/// Días desde la última extracción del dominio más rezagado. Es el aviso de que el tablero está viejo antes de que alguien tome una decisión con él.
+	measure 'Días desde última extracción' = MAX('FC_Estado de carga'[dias_desde_extraccion])
+		formatString: #,0
+		displayFolder: 01 Frescura
+		lineageTag: 36574ca7-7ceb-4786-a38b-83a074103b44
+
+	/// Momento en que corrió por última vez la extracción del dominio más rezagado.
+	measure 'Última extracción' = MAX('FC_Estado de carga'[ultima_extraccion])
+		formatString: dd/MM/yyyy HH:mm
+		displayFolder: 01 Frescura
+		lineageTag: 21c48fc3-c359-4a4e-88d8-64596f22a711
+
+	/// Fecha del dato más reciente que hay en el ERP. Es un reloj distinto al de la extracción: el pipeline puede estar sano y la operación detenida.
+	measure 'Último dato del ERP' = MAX('FC_Estado de carga'[fecha_dato_mas_reciente])
+		formatString: dd/MM/yyyy
+		displayFolder: 01 Frescura
+		lineageTag: e06b73a2-55b9-47c8-bd3e-7ca50b663bec
+
+	/// Cuántos dominios llevan más de tres días sin extraerse. Distinto de cero significa que hay tableros mostrando datos viejos.
+	measure 'Dominios desactualizados' = CALCULATE(COUNTROWS('FC_Estado de carga'), KEEPFILTERS('FC_Estado de carga'[estado_frescura] = "Desactualizado"))
+		formatString: #,0
+		displayFolder: 01 Frescura
+		lineageTag: 366794cb-919b-4ddc-9051-5d6ffbef34dc
+
+	/// Volumen de filas en el origen, para dimensionar cada dominio.
+	measure 'Filas cargadas' = SUM('FC_Estado de carga'[filas])
+		formatString: #,0
+		displayFolder: 02 Volumen
+		lineageTag: 807c667f-1f21-4b02-9461-9daa9338e767
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 13fa31b2-125c-42a0-b732-90b121783d90
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: 3381869a-1b16-4e00-8159-d3b82bf9f857
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column dominio
 		dataType: string
+		lineageTag: 71d3effd-ad97-4d97-a7a0-ee94f2731d13
 		summarizeBy: none
 		sourceColumn: dominio
 
 	column dominio_nombre
 		dataType: string
+		lineageTag: e56e236a-ad68-4ed7-b972-c493cd78738a
 		summarizeBy: none
 		sourceColumn: dominio_nombre
 
 	column filas
 		dataType: int64
+		formatString: #,0
+		lineageTag: 0652a8ec-4e1e-46d0-ac5e-5f71ed5eb268
 		summarizeBy: none
 		sourceColumn: filas
-		formatString: #,0
 
 	column ultima_extraccion
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 155fbe66-c7b7-422d-970c-90567fd1f199
 		summarizeBy: none
 		sourceColumn: ultima_extraccion
-		formatString: dd/MM/yyyy
 
 	column fecha_dato_mas_reciente
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 3a7ea2f2-759c-432b-a3b5-96c4843dba0f
 		summarizeBy: none
 		sourceColumn: fecha_dato_mas_reciente
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column dias_desde_extraccion
 		dataType: int64
+		formatString: #,0
+		lineageTag: aa4ecd0e-41d7-40f3-8833-f30351293640
 		summarizeBy: none
 		sourceColumn: dias_desde_extraccion
-		formatString: #,0
 
 	column dias_desde_ultimo_dato
 		dataType: int64
+		formatString: #,0
+		lineageTag: 82cba236-0952-40d6-ab89-608e64bd2be4
 		summarizeBy: none
 		sourceColumn: dias_desde_ultimo_dato
-		formatString: #,0
 
 	column estado_frescura
 		dataType: string
+		lineageTag: 8ad3125a-5314-4f08-b3ea-6d6b34514746
 		summarizeBy: none
 		sourceColumn: estado_frescura
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 0ac0fe0d-f71b-4a83-b497-2aaca5c82374
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: bad21b7c-3372-473c-94c5-764765569520
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Días desde la última extracción del dominio más rezagado. Es el aviso de que el tablero está viejo antes de que alguien tome una decisión con él.
-	measure 'Días desde última extracción' = MAX('FC_Estado de carga'[dias_desde_extraccion])
-		formatString: #,0
-		displayFolder: 01 Frescura
-
-	/// Momento en que corrió por última vez la extracción del dominio más rezagado.
-	measure 'Última extracción' = MAX('FC_Estado de carga'[ultima_extraccion])
-		formatString: dd/MM/yyyy HH:mm
-		displayFolder: 01 Frescura
-
-	/// Fecha del dato más reciente que hay en el ERP. Es un reloj distinto al de la extracción: el pipeline puede estar sano y la operación detenida.
-	measure 'Último dato del ERP' = MAX('FC_Estado de carga'[fecha_dato_mas_reciente])
-		formatString: dd/MM/yyyy
-		displayFolder: 01 Frescura
-
-	/// Cuántos dominios llevan más de tres días sin extraerse. Distinto de cero significa que hay tableros mostrando datos viejos.
-	measure 'Dominios desactualizados' = CALCULATE(COUNTROWS('FC_Estado de carga'), KEEPFILTERS('FC_Estado de carga'[estado_frescura] = "Desactualizado"))
-		formatString: #,0
-		displayFolder: 01 Frescura
-
-	/// Volumen de filas en el origen, para dimensionar cada dominio.
-	measure 'Filas cargadas' = SUM('FC_Estado de carga'[filas])
-		formatString: #,0
-		displayFolder: 02 Volumen
 
 	partition 'FC_Estado de carga' = m
 		mode: import
@@ -102,3 +122,4 @@ table 'FC_Estado de carga'
 				    Tabla = Origen{[Schema="oro",Item="estado_carga"]}[Data]
 				in
 				    Tabla
+

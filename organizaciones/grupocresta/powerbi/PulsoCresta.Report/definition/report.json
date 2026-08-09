@@ -2,89 +2,27 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.3.0/schema.json",
   "themeCollection": {
     "baseTheme": {
-      "name": "CY24SU10",
+      "name": "CY26SU07",
       "reportVersionAtImport": {
-        "visual": "1.8.91",
-        "report": "2.0.91",
-        "page": "1.3.91"
+        "visual": "2.11.0",
+        "report": "3.4.0",
+        "page": "2.3.1"
       },
       "type": "SharedResources"
     }
   },
-  "filterConfig": {
-    "filters": [
+  "objects": {
+    "section": [
       {
-        "name": "4b24f6b0a779895e6b93",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DM_Calendario"
+        "properties": {
+          "verticalAlignment": {
+            "expr": {
+              "Literal": {
+                "Value": "'Top'"
               }
-            },
-            "Property": "anio"
+            }
           }
-        },
-        "type": "Advanced",
-        "filter": {
-          "Version": 2,
-          "From": [
-            {
-              "Name": "d",
-              "Entity": "DM_Calendario",
-              "Type": 0
-            }
-          ],
-          "Where": [
-            {
-              "Condition": {
-                "And": {
-                  "Left": {
-                    "Comparison": {
-                      "ComparisonKind": 2,
-                      "Left": {
-                        "Column": {
-                          "Expression": {
-                            "SourceRef": {
-                              "Source": "d"
-                            }
-                          },
-                          "Property": "anio"
-                        }
-                      },
-                      "Right": {
-                        "Literal": {
-                          "Value": "2025L"
-                        }
-                      }
-                    }
-                  },
-                  "Right": {
-                    "Comparison": {
-                      "ComparisonKind": 4,
-                      "Left": {
-                        "Column": {
-                          "Expression": {
-                            "SourceRef": {
-                              "Source": "d"
-                            }
-                          },
-                          "Property": "anio"
-                        }
-                      },
-                      "Right": {
-                        "Literal": {
-                          "Value": "2026L"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          ]
-        },
-        "howCreated": "User"
+        }
       }
     ]
   },
@@ -94,17 +32,19 @@
       "type": "SharedResources",
       "items": [
         {
-          "name": "CY24SU10",
-          "path": "BaseThemes/CY24SU10.json",
+          "name": "CY26SU07",
+          "path": "BaseThemes/CY26SU07.json",
           "type": "BaseTheme"
         }
       ]
     }
   ],
   "settings": {
-    "hideVisualContainerHeader": true,
     "useStylableVisualContainerHeader": true,
+    "exportDataMode": "AllowSummarized",
     "defaultDrillFilterOtherVisuals": true,
-    "useEnhancedTooltips": false
+    "allowChangeFilterTypes": true,
+    "useEnhancedTooltips": true,
+    "useDefaultAggregateDisplayName": true
   }
 }

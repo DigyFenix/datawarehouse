@@ -1,18 +1,23 @@
 table 'MD_Vista de compras'
+	lineageTag: 0464b956-b040-45ce-b931-929d416511d6
 
 	column 'Vista de compras'
 		dataType: string
+		lineageTag: bdf69937-d578-4685-b08c-84a201aa09b1
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de compras · orden'
+
 		relatedColumnDetails
 			groupByColumn: 'Vista de compras · campo'
 
 	column 'Vista de compras · campo'
 		dataType: string
 		isHidden
+		lineageTag: fb936146-a3ff-4011-b49f-d94b4fa51595
 		summarizeBy: none
 		sourceColumn: [Value2]
+
 		extendedProperty ParameterMetadata =
 				{
 				  "version": 3,
@@ -22,6 +27,7 @@ table 'MD_Vista de compras'
 	column 'Vista de compras · orden'
 		dataType: int64
 		isHidden
+		lineageTag: b7956041-7510-44bb-b404-a5639e53dff5
 		summarizeBy: none
 		sourceColumn: [Value3]
 
@@ -37,3 +43,4 @@ table 'MD_Vista de compras'
 				  ("% Variación de precio de compra", NAMEOF(FC_Compras[% Variación de precio de compra]), 5),
 				  ("Sobrecosto por precio de compra", NAMEOF(FC_Compras[Sobrecosto por precio de compra]), 6)
 				}
+

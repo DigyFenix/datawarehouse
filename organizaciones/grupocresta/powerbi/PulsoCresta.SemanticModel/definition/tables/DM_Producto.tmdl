@@ -1,64 +1,80 @@
 table DM_Producto
+	lineageTag: a09436d9-db19-444a-a3ab-2614f89d8cd0
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: c4696d53-0a1c-4f83-9ae8-ebac2586bafb
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 8ae8afe7-2b1f-4e5f-8960-2b7c6c308bd8
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column producto_codigo
 		dataType: string
+		lineageTag: 56c70749-247e-43ef-8b66-6912bf2fcb72
 		summarizeBy: none
 		sourceColumn: producto_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: 2663f247-424b-4672-8887-de79e01b30e2
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column grupo_codigo
 		dataType: string
+		lineageTag: 7e1be930-b25e-4968-a65e-f3294b653401
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column unidad_medida
 		dataType: string
+		lineageTag: 4aa0bdd5-3e2b-4c87-8149-14986994e831
 		summarizeBy: none
 		sourceColumn: unidad_medida
 
 	column tipo_producto
 		dataType: string
+		lineageTag: 973b0606-5118-4dcd-8bd5-c5f4ead3defb
 		summarizeBy: none
 		sourceColumn: tipo_producto
 
 	column activo
 		dataType: boolean
+		lineageTag: dc64c9bc-999f-47e1-b559-091960c6455f
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 5d7298a7-3a74-4cad-9d4f-6bbfb623b852
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 81558d8c-ce35-4ef2-80d8-e2d57d568b8c
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: 10bf114c-215e-4db0-a85d-fa8da9dc5a62
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -70,3 +86,4 @@ table DM_Producto
 				    Tabla = Origen{[Schema="oro",Item="dim_producto"]}[Data]
 				in
 				    Tabla
+
