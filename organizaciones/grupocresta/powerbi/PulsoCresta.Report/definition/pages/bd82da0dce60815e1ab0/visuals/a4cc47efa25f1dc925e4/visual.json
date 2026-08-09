@@ -1,0 +1,81 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "a4cc47efa25f1dc925e4",
+  "position": {
+    "x": 1064,
+    "y": 88,
+    "z": 102,
+    "height": 40,
+    "width": 192,
+    "tabOrder": 4
+  },
+  "visual": {
+    "visualType": "slicer",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "MD_Moneda de análisis"
+                    }
+                  },
+                  "Property": "Moneda de análisis"
+                }
+              },
+              "queryRef": "MD_Moneda de análisis.Moneda de análisis",
+              "nativeQueryRef": "Moneda de análisis",
+              "active": true
+            }
+          ]
+        }
+      }
+    },
+    "expansionStates": [
+      {
+        "roles": [
+          "Values"
+        ],
+        "levels": [
+          {
+            "queryRefs": [
+              "MD_Moneda de análisis.Moneda de análisis"
+            ],
+            "isCollapsed": true,
+            "isPinned": true
+          }
+        ],
+        "root": {}
+      }
+    ],
+    "objects": {
+      "data": [
+        {
+          "properties": {
+            "mode": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Dropdown'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "general": [
+        {
+          "properties": {}
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "syncGroup": {
+    "groupName": "moneda",
+    "fieldChanges": true,
+    "filterChanges": true
+  }
+}

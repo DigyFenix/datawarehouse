@@ -1,0 +1,109 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "5d30ba5d95035edcae46",
+  "position": {
+    "x": 24,
+    "y": 464,
+    "z": 3,
+    "height": 224,
+    "width": 608,
+    "tabOrder": 14
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Estado de carga"
+                    }
+                  },
+                  "Property": "dominio_nombre"
+                }
+              },
+              "queryRef": "FC_Estado de carga.dominio_nombre",
+              "nativeQueryRef": "dominio_nombre",
+              "active": true
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Estado de carga"
+                    }
+                  },
+                  "Property": "Último dato del ERP"
+                }
+              },
+              "queryRef": "FC_Estado de carga.Último dato del ERP",
+              "nativeQueryRef": "Último dato del ERP"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Estado de carga"
+                    }
+                  },
+                  "Property": "Días desde última extracción"
+                }
+              },
+              "queryRef": "FC_Estado de carga.Días desde última extracción",
+              "nativeQueryRef": "Días desde última extracción"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'¿Hasta cuándo llega el dato de cada dominio?'"
+                }
+              }
+            },
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "subTitle": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Dos relojes: el del pipeline y el de la operación en el ERP'"
+                }
+              }
+            },
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "bd82da0dce60815e1ab0",
+  "displayName": "01 · Dirección",
+  "displayOption": "FitToPage",
+  "height": 720,
+  "width": 1280
+}

@@ -292,6 +292,10 @@ table 'FC_Cartera por cobrar'
 	measure 'Subtítulo de la agenda de cobro' = VAR c = [Cobro que vence en el período] RETURN IF(ISBLANK(c) || c = 0, "Nada vence en " & [Período activo], (IF(c < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(c) >= 1000000, FORMAT(ABS(c) / 1000000, "#,##0.0") & "M", ABS(c) >= 10000, FORMAT(ABS(c) / 1000, "#,##0") & "K", FORMAT(ABS(c), "#,##0"))) & " vence en " & [Período activo] & " · por fecha de vencimiento, no de documento")
 		displayFolder: _Narrativa
 
+	/// Texto del foco de cartera vencida (página 01). Foto de hoy: ignora el período a propósito.
+	measure 'Alerta de vencido' = VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Sin cartera vencida de terceros", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " vencido de terceros hoy · " & FORMAT(p, "0.0%") & " de la cartera")
+		displayFolder: _Narrativa
+
 	partition 'FC_Cartera por cobrar' = m
 		mode: import
 		source =

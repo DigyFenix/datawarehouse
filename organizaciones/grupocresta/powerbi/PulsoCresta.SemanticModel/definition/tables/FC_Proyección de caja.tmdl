@@ -127,6 +127,10 @@ table 'FC_Proyección de caja'
 		formatString: "Q" #,0
 		displayFolder: 03 Acumulado
 
+	/// Texto del foco de caja (página 01). El flujo pactado de las próximas 4 semanas: si es negativo, la presión de caja se ve antes de que ocurra.
+	measure 'Alerta de caja' = VAR f = [Flujo neto próximas 4 semanas] RETURN SWITCH(TRUE(), ISBLANK(f), "Sin proyección de caja disponible", f < 0, (IF(f < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(f) >= 1000000, FORMAT(ABS(f) / 1000000, "#,##0.0") & "M", ABS(f) >= 10000, FORMAT(ABS(f) / 1000, "#,##0") & "K", FORMAT(ABS(f), "#,##0"))) & " de flujo pactado en las próximas 4 semanas · sale más de lo que entra", (IF(f < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(f) >= 1000000, FORMAT(ABS(f) / 1000000, "#,##0.0") & "M", ABS(f) >= 10000, FORMAT(ABS(f) / 1000, "#,##0") & "K", FORMAT(ABS(f), "#,##0"))) & " de flujo pactado en las próximas 4 semanas")
+		displayFolder: _Narrativa
+
 	partition 'FC_Proyección de caja' = m
 		mode: import
 		source =

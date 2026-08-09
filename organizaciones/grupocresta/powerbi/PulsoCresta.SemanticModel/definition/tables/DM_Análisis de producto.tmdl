@@ -243,6 +243,10 @@ table 'DM_Análisis de producto'
 		formatString: "Q" #,0
 		displayFolder: 04 Concentración
 
+	/// Texto del foco de quiebre (página 01). La venta anual que depende de productos hoy agotados: demanda de los últimos 12 meses concentrada en artículos sin existencia.
+	measure 'Alerta de quiebre' = VAR v = [Venta anual en riesgo por quiebre] VAR n = [Productos en quiebre] RETURN IF(ISBLANK(v) || v = 0, "Sin venta en riesgo por quiebre", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " de venta anual en riesgo · " & FORMAT(n, "#,0") & IF(n = 1, " producto agotado", " productos agotados"))
+		displayFolder: _Narrativa
+
 	partition 'DM_Análisis de producto' = m
 		mode: import
 		source =

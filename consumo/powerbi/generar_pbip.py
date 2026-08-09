@@ -2053,6 +2053,40 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += rf"""
 		displayFolder: _Narrativa
 """
 
+# --- Alertas de la página 01 (fila de focos con navegación) -----------------------------------
+# Cada una es el texto vivo de un botón: la cifra + qué es + dónde duele. Si el foco no existe,
+# lo dice en positivo — un botón vacío en la demo se lee como tablero roto. Sin causalidad (§3.3).
+
+MEDIDAS_POR_TABLA["analisis_producto"] += rf"""
+	/// Texto del foco de quiebre (página 01). La venta anual que depende de productos hoy agotados: demanda de los últimos 12 meses concentrada en artículos sin existencia.
+	measure 'Alerta de quiebre' = VAR v = [Venta anual en riesgo por quiebre] VAR n = [Productos en quiebre] RETURN IF(ISBLANK(v) || v = 0, "Sin venta en riesgo por quiebre", {_ABR('v')} & " de venta anual en riesgo · " & FORMAT(n, "#,0") & IF(n = 1, " producto agotado", " productos agotados"))
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += rf"""
+	/// Texto del foco de venta bajo costo (página 01). Margen regalado en el período filtrado: líneas facturadas por debajo del costo del artículo.
+	measure 'Alerta de venta bajo costo' = VAR m = [Margen perdido bajo costo] VAR p = [% Ventas bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Sin venta bajo costo en el período", {_ABR('m')} & " de margen perdido vendiendo bajo costo · " & FORMAT(p, "0.0%") & " de la venta")
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += rf"""
+	/// Texto del foco de cartera vencida (página 01). Foto de hoy: ignora el período a propósito.
+	measure 'Alerta de vencido' = VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Sin cartera vencida de terceros", {_ABR('v')} & " vencido de terceros hoy · " & FORMAT(p, "0.0%") & " de la cartera")
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["hecho_pedido_linea"] += rf"""
+	/// Texto del foco de backlog (página 01). Lo comprometido con fecha de entrega ya pasada: cada quetzal aquí es una promesa incumplida hoy.
+	measure 'Alerta de backlog' = VAR v = [Backlog vencido] VAR p = [% Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Sin entregas comprometidas vencidas", {_ABR('v')} & " comprometido y no entregado · " & FORMAT(p, "0.0%") & " del backlog")
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["proyeccion_caja_semanal"] += rf"""
+	/// Texto del foco de caja (página 01). El flujo pactado de las próximas 4 semanas: si es negativo, la presión de caja se ve antes de que ocurra.
+	measure 'Alerta de caja' = VAR f = [Flujo neto próximas 4 semanas] RETURN SWITCH(TRUE(), ISBLANK(f), "Sin proyección de caja disponible", f < 0, {_ABR('f')} & " de flujo pactado en las próximas 4 semanas · sale más de lo que entra", {_ABR('f')} & " de flujo pactado en las próximas 4 semanas")
+		displayFolder: _Narrativa
+"""
+
 MEDIDAS_POR_TABLA["hecho_cartera_cobrar_diaria"] += rf"""
 	/// Subtítulo de la tendencia de cobranza (página 09). La serie necesita cortes acumulados para decir algo: mientras haya pocos, el subtítulo lo declara en vez de dejar que una línea de tres puntos se lea como tendencia.
 	measure 'Subtítulo de tendencia de cobranza' = VAR cortes = DISTINCTCOUNT('Cartera cobrar histórico'[fecha_corte]) RETURN SWITCH(TRUE(), ISBLANK(cortes) || cortes = 0, "Sin cortes acumulados todavía", cortes < 8, "Serie en formación · " & FORMAT(cortes, "0") & IF(cortes = 1, " corte acumulado", " cortes acumulados") & " · la tendencia gana sentido con las semanas", FORMAT(cortes, "0") & " cortes acumulados · porcentaje vencido sobre el total por cobrar de cada corte")

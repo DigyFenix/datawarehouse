@@ -263,6 +263,10 @@ table FC_Pedidos
 		formatString: 0.0%
 		displayFolder: 05 Comparativos
 
+	/// Texto del foco de backlog (página 01). Lo comprometido con fecha de entrega ya pasada: cada quetzal aquí es una promesa incumplida hoy.
+	measure 'Alerta de backlog' = VAR v = [Backlog vencido] VAR p = [% Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Sin entregas comprometidas vencidas", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " comprometido y no entregado · " & FORMAT(p, "0.0%") & " del backlog")
+		displayFolder: _Narrativa
+
 	partition FC_Pedidos = m
 		mode: import
 		source =

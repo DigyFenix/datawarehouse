@@ -501,6 +501,10 @@ table FC_Ventas
 	measure 'Subtítulo de aporte por sociedad' = VAR t = [Ventas a terceros] VAR soc = FILTER(VALUES(DM_Empresa[nombre]), [Ventas a terceros] <> 0) VAR n = COUNTROWS(soc) VAR mayor = MAXX(soc, [Ventas a terceros]) RETURN IF(ISBLANK(t) || t = 0, "Sin venta a terceros en el período", FORMAT(n, "0") & IF(n = 1, " sociedad con venta a terceros · ", " sociedades con venta a terceros · ") & "la mayor concentra " & FORMAT(DIVIDE(mayor, t), "0.0%"))
 		displayFolder: _Narrativa
 
+	/// Texto del foco de venta bajo costo (página 01). Margen regalado en el período filtrado: líneas facturadas por debajo del costo del artículo.
+	measure 'Alerta de venta bajo costo' = VAR m = [Margen perdido bajo costo] VAR p = [% Ventas bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Sin venta bajo costo en el período", (IF(m < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(m) >= 1000000, FORMAT(ABS(m) / 1000000, "#,##0.0") & "M", ABS(m) >= 10000, FORMAT(ABS(m) / 1000, "#,##0") & "K", FORMAT(ABS(m), "#,##0"))) & " de margen perdido vendiendo bajo costo · " & FORMAT(p, "0.0%") & " de la venta")
+		displayFolder: _Narrativa
+
 	partition FC_Ventas = m
 		mode: import
 		source =

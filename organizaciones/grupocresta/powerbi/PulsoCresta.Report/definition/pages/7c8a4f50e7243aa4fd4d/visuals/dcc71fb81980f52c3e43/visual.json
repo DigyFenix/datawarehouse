@@ -1,0 +1,53 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "dcc71fb81980f52c3e43",
+  "position": {
+    "x": 336,
+    "y": 144,
+    "z": 1,
+    "height": 56,
+    "width": 296,
+    "tabOrder": 6
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Estado de carga"
+                    }
+                  },
+                  "Property": "Días desde última extracción"
+                }
+              },
+              "queryRef": "FC_Estado de carga.Días desde última extracción",
+              "nativeQueryRef": "Días desde última extracción"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "categoryLabels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

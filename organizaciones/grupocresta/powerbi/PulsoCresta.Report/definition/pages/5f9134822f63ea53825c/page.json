@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "5f9134822f63ea53825c",
+  "displayName": "09 · Cartera y cobranza",
+  "displayOption": "FitToPage",
+  "height": 720,
+  "width": 1280
+}
