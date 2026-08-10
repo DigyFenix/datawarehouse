@@ -1,7 +1,7 @@
 # STATE — Quilate Analytics · Power BI Product
 
-FASE_ACTUAL: F5 (construcción MANUAL por Edwin — el modo de ejecución del contrato cambió, ver decisión 15)
-ULTIMA_ACTUALIZACION: 2026-08-09 (sesión 24)
+FASE_ACTUAL: F5 (piloto de construcción POR CÓDIGO aprobado por Edwin para la página 00 — decisión 18; la 00 está construida y renderizada, Edwin evalúa el estándar antes de extender a 01 y 09)
+ULTIMA_ACTUALIZACION: 2026-08-10 (sesión 25)
 GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
 
 > **CAMBIO DE RUMBO (2026-08-08, decisión de Edwin):** la ola 1 se generó completa por código
@@ -48,6 +48,10 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 | Convención de nombres | `docs/powerbi/contracts/naming-conventions.md` | F3 | cerrada |
 | Tema de Grupo Cresta | `organizaciones/grupocresta/powerbi/theme/grupocresta-theme.json` | F3 | creado con la paleta oficial |
 | Guía de construcción (referencia para Edwin) | `docs/powerbi/guia-construccion-tableros.html` | F5 | derivada de F3 + correcciones de este archivo (D1–D3, decisión 17); no sustituye al contrato |
+| Contrato maestro v3.1.1 (con playbook §13) | `CLAUDE_POWERBI_ANALYTICS_PRODUCT_MASTER_V3.1.md` | F5 | vigente — V3.0 retirado; §13 = ciclo verificado del piloto |
+| **Página 00 · Inicio (PBIR)** | `…/PulsoCresta.Report/definition/pages/7c8a4f50e7243aa4fd4d/` | F5 | construida por código y renderizada con datos (piloto, sesión 25); 15 visuales; pendiente veredicto visual de Edwin |
+| Generador de la página 00 | `consumo/powerbi/generar_pagina_00.js` | F5 | determinista, GUIDs fijos, idempotente — plantilla para las siguientes páginas |
+| Tema corregido (validador en cero) | `…/theme/grupocresta-theme.json` + copia en `RegisteredResources/` | F5 | ~15 propiedades inválidas eliminadas/corregidas; registro con `.json` en las 3 posiciones |
 
 ## Decisiones tomadas
 
@@ -70,19 +74,22 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 | 15 | **Edwin construye los dashboards a mano; el agente no genera páginas** | Decisión de Edwin (2026-08-08) tras ver la ola 1 generada: «mejor tú te encargarás del modelo y yo de construir los dashboards». Es la segunda vez que un intento de generación visual no alcanza su estándar (la primera: `generar_reporte.py`, 2026-08-02). `generar_paginas.py` retirado del repo | F5 |
 | 16 | El gate F6.1 estricto (grilla de 8, solapes, hex, dígitos) pasa a ser **opcional** en el validador (`--gate-f61`) | Esas reglas existen para páginas generadas; exigirle múltiplos de 8 a un visual arrastrado a mano en Desktop haría fallar cada corrida e inutilizaría el validador. Las reglas que rompen el reporte de verdad (referencias, esquema, ids, navegación, customTheme) corren siempre | F5 |
 | 17 | El KPI global de frescura es **`Dato completo hasta`**, nunca `Último dato del ERP` | Verificado en render real: el MAX crudo mostraba 03/07/2027 (las tasas futuras de tipos de cambio). `Último dato del ERP` solo sirve POR DOMINIO en la tabla de frescura. Y `Dominios desactualizados` lleva `+ 0`: la tarjeta de confianza no puede decir «(En blanco)» | F5 |
+| 18 | **La decisión 15 se reabre con un piloto autorizado por Edwin (2026-08-10):** la página 00 se construyó por código con el flujo nuevo — CLIs `powerbi-report-authoring` (metadatos + validador) y `powerbi-desktop` (bridge: reload + screenshot) — y quedó renderizada con datos reales | La ola abortada de la sesión 23 se generó A CIEGAS; el flujo nuevo cierra el loop: cada cambio se valida y SE VE antes de darse por bueno (7 iteraciones para la 00). Edwin juzga el estándar visual con el render; si aprueba, se extiende a 01 y 09 con el playbook §13 del contrato | F5 |
+| 19 | El tema tenía ~15 propiedades inválidas que Desktop ignoraba en silencio; se corrigieron y el registro exige `.json` en `customTheme.name`, `resourcePackages.name` y `path`, más el `name` interno igual | El validador oficial las acusó todas; un tema «que funciona» a ojo puede estar tirando la mitad de sus estilos. El tema vive en 2 copias (fuente + RegisteredResources) que se sincronizan siempre | F5 |
+| 20 | El lado SQL de §7 lo ejecuta el agente vía `docker exec quilate-postgres psql` con el stack arriba; la vía manual queda de fallback | La Nota B de v3.1 asumía que hacía falta un MCP de Postgres; es falso — así se validó el cuadre desde siempre. Corregido en el contrato v3.1.1 | F5 |
 
 ## Bloqueos abiertos
 
 | # | Bloqueo | Requiere de | Desde |
 |---|---|---|---|
 | B4 | ~~Sin ejecución DAX~~ **RESUELTO**: el MCP estaba instalado pero **no conectaba** — se registró sin el argumento `--start`, y sin él el wrapper imprime un banner y hace `Console.ReadKey()`, que revienta con stdin redirigido (`-32000: Connection closed`). Re-registrado como `npx -y @microsoft/powerbi-modeling-mcp@latest --start` → conecta. Queda la dependencia real: el modelo abierto en Power BI Desktop para que exista motor XMLA | Edwin: abrir `organizaciones/grupocresta/powerbi/PulsoCresta.pbip` cuando toque validar | 2026-08-08 |
-| B5 | Sin render del reporte: F6.3 depende de capturas | Edwin, al cerrar cada ola de páginas (ya previsto en §9.8) | 2026-08-08 |
+| B5 | ~~Sin render del reporte~~ **RESUELTO (2026-08-10):** el Desktop Bridge (`powerbi-desktop screenshot`) captura cada página en segundo plano, sin robar el foco. F6.3 pasa a semi-automática: el agente captura y pre-señala; **el juicio visual sigue siendo de Edwin** | — | 2026-08-08 |
 | B6 | **Power BI Desktop borró los visuales del `.Report` dos veces** (PBIR desactivado la primera; caché de sesión la segunda). Restaurados desde git ambas veces. Con la decisión 15 el riesgo baja: el agente ya no escribe páginas; solo `generar_pbip.py` toca el proyecto (nunca los visuales) y sigue exigiendo Desktop cerrado. `git status` antes de commitear sigue vigente — ahora protege el trabajo manual de Edwin | Disciplina de trabajo | 2026-08-08 |
 
 ## Presupuesto consumido
 
-- Páginas construidas: **0 / 12** (las 12 tienen contrato en `report-architecture.md`; la
-  construcción es de Edwin desde la decisión 15)
+- Páginas construidas: **1 / 12** — la 00 · Inicio (piloto por código, sesión 25; pendiente el
+  veredicto visual de Edwin). Las 12 tienen contrato en `report-architecture.md`
 - Medidas nuevas creadas: **22 / 40** — GAP-01 (3) + `_Fecha ancla móvil` (auxiliar) +
   GAP-03 (12) + 5 alertas narrativas + `Dato completo hasta` (antes `_Dato más rezagado`,
   promovida a visible). El modelo pasó de 294 a **316 medidas**
@@ -190,15 +197,17 @@ Verificado en Cresta e Iron Network.
 
 ## Siguiente paso
 
-1. **Edwin construye la ola 1 en Desktop** (00 Inicio · 01 Dirección · 09 Cartera y cobranza)
-   usando los contratos de `docs/powerbi/report-architecture.md` como guía de contenido y el
-   tema ya registrado. Referencias útiles del modelo: títulos desde `Título de <página>`,
-   subtítulos desde las medidas `_Narrativa`, KPI de frescura = `Dato completo hasta`,
-   agenda de cobro = `Cobro que vence en el período` (GAP-01). El mockup de diseño puede salir
-   del prompt `docs/powerbi/prompt-diseno-ola1.md`.
-2. **Cuando haya páginas construidas, el agente corre F6.2 vía MCP** (PBIP abierto en Desktop):
-   cifra de cada visual contra el motor DAX y contra SQL a `oro` (conteos 0 · montos ≤0.5% ·
-   ratios ≤0.1pp).
-3. **`Sobrecosto por precio de compra` da ≈ 0** (5.99e-08) sin filtro de período. Causa probable:
+1. **Edwin evalúa el render de la página 00** (screenshot entregado en sesión 25; o abre el PBIP
+   y la ve en vivo). Si pasa su estándar → el agente construye **01 Dirección y 09 Cartera** con
+   el playbook §13 del contrato v3.1.1 (`consumo/powerbi/generar_pagina_00.js` como plantilla).
+   Si no pasa → Edwin dicta los ajustes y se iteran sobre la 00 antes de extender.
+2. **Pendientes menores de la 00:** header `dominio_nombre` en la tabla de frescura (la vía
+   limpia es un alias en el TMDL vía `generar_pbip.py`); los 6 botones de navegación sin acción
+   (`visualLink` se cablea cuando existan las páginas destino); dominio Inventario sin fecha en
+   la tabla (dato del origen, no del reporte).
+3. **F6.2 por ola** vía MCP + `docker exec … psql` (conteos 0 · montos ≤0.5% · ratios ≤0.1pp).
+4. **`Sobrecosto por precio de compra` da ≈ 0** (5.99e-08) sin filtro de período. Causa probable:
    no hay año anterior en el modelo (D3) — compara contra un precio que no existe. Verificar al
    llegar a la página 08.
+5. Iron Network sin refrescar:
+   `docker exec quilate-worker python3 /dbt/herramientas/actualizar.py ironnetwork`

@@ -11,6 +11,8 @@ annotation __PBI_TimeIntelligenceEnabled = 0
 
 annotation PBI_QueryOrder = ["Servidor","BaseDatos"]
 
+annotation PBI_ProTooling = ["MCP-PBIModeling","DevMode"]
+
 ref table DM_Calendario
 ref table DM_Cliente
 ref table DM_Proveedor
@@ -54,3 +56,4 @@ ref table 'MD_Vista de compras'
 ref table 'MD_Vista de liquidez'
 ref table 'MD_Vista de inventario'
 ref table 'MD_Vista de rentabilidad'
+

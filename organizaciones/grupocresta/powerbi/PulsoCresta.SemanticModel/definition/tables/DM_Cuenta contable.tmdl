@@ -1,153 +1,191 @@
 table 'DM_Cuenta contable'
+	lineageTag: 2df092b7-01d1-4587-af12-b1ebbf79d6fb
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
+		lineageTag: 09386f16-b8f2-4ce0-ad32-a07058e7b5c0
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 92044f81-cda2-4e6d-9827-a693618a77fe
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cuenta_codigo
 		dataType: string
+		lineageTag: 4e60d311-1ed8-4248-8d38-7fe99a90b070
 		summarizeBy: none
 		sourceColumn: cuenta_codigo
 
 	column cuenta_codigo_visible
 		dataType: string
+		lineageTag: 7bbf8243-152b-48fd-b5cc-2c7c3b80fb31
 		summarizeBy: none
 		sourceColumn: cuenta_codigo_visible
 
 	column nombre
 		dataType: string
+		lineageTag: ed97b36a-e09d-4d60-b377-e59b5bb625a2
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column tipo_cuenta
 		dataType: string
+		lineageTag: 05826118-c2ee-4e1e-b503-c51245243627
 		summarizeBy: none
 		sourceColumn: tipo_cuenta
 
 	column es_cartera_cobrar
 		dataType: boolean
+		lineageTag: 456b9241-eb2c-4cd3-9bd7-51caf67ef299
 		summarizeBy: none
 		sourceColumn: es_cartera_cobrar
 
 	column es_cartera_pagar
 		dataType: boolean
+		lineageTag: 397e3de9-621b-4151-a729-71a7ddd3c4ea
 		summarizeBy: none
 		sourceColumn: es_cartera_pagar
 
 	column es_titulo
 		dataType: boolean
+		lineageTag: 47b7e9a5-966e-4e70-8c24-2e8fc280d8bc
 		summarizeBy: none
 		sourceColumn: es_titulo
 
 	column activa
 		dataType: boolean
+		lineageTag: d17100e6-3972-4f47-a9fb-bf5973539981
 		summarizeBy: none
 		sourceColumn: activa
 
 	column cuenta_padre_codigo
 		dataType: string
+		lineageTag: c89abe98-a823-4a42-a214-142872dff61e
 		summarizeBy: none
 		sourceColumn: cuenta_padre_codigo
 
 	column nivel
 		dataType: int64
+		formatString: #,0
+		lineageTag: 6fc45928-24d8-4251-9edf-dfcd4c56a334
 		summarizeBy: none
 		sourceColumn: nivel
-		formatString: #,0
 
 	column nivel_1_codigo
 		dataType: string
+		lineageTag: 68cebd6f-720e-450d-8703-934fd439909e
 		summarizeBy: none
 		sourceColumn: nivel_1_codigo
 
 	column nivel_1_nombre
 		dataType: string
+		lineageTag: af840972-8ee9-4b19-b920-89cf552d2576
 		summarizeBy: none
 		sourceColumn: nivel_1_nombre
 
 	column nivel_2_codigo
 		dataType: string
+		lineageTag: b6c07bd1-384d-4c93-8e61-4843f3362dbf
 		summarizeBy: none
 		sourceColumn: nivel_2_codigo
 
 	column nivel_2_nombre
 		dataType: string
+		lineageTag: ff26cc30-830b-4b53-8736-7f9d579c9dc8
 		summarizeBy: none
 		sourceColumn: nivel_2_nombre
 
 	column nivel_3_codigo
 		dataType: string
+		lineageTag: 5fd3ac1c-b4f9-4cd3-a13a-902ac59ab3bf
 		summarizeBy: none
 		sourceColumn: nivel_3_codigo
 
 	column nivel_3_nombre
 		dataType: string
+		lineageTag: a4339be9-dbb0-46de-b5a9-1ce28f6daa44
 		summarizeBy: none
 		sourceColumn: nivel_3_nombre
 
 	column nivel_4_codigo
 		dataType: string
+		lineageTag: 18bf5232-70e2-46f5-abde-da271a01eff7
 		summarizeBy: none
 		sourceColumn: nivel_4_codigo
 
 	column nivel_4_nombre
 		dataType: string
+		lineageTag: 5e8d6470-ac21-400b-9ac6-0aaf308c1f66
 		summarizeBy: none
 		sourceColumn: nivel_4_nombre
 
 	column nivel_5_codigo
 		dataType: string
+		lineageTag: 5a83524d-7e2c-4b1f-8e74-4a6149ccaeab
 		summarizeBy: none
 		sourceColumn: nivel_5_codigo
 
 	column nivel_5_nombre
 		dataType: string
+		lineageTag: 49e99d17-398c-403e-9143-647ec00ab839
 		summarizeBy: none
 		sourceColumn: nivel_5_nombre
 
 	column ruta_cuenta
 		dataType: string
+		lineageTag: 7426c65b-f14f-481f-92c4-deffabff9ecc
 		summarizeBy: none
 		sourceColumn: ruta_cuenta
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: a465349b-a4be-4ee3-aec6-0dc810c651ee
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 6610c8bf-7157-4f9b-955f-fa1222b44eb0
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: b64ad6b7-3899-41db-9d1e-99831f7fa038
 		summarizeBy: none
 		sourceColumn: es_vigente
 
 	hierarchy 'Jerarquía contable'
+		lineageTag: e3782ebb-9795-43f3-93f4-075fa895cf2c
+
 		level 'Nivel 1'
+			lineageTag: 6f777d8b-b71f-4b2d-bb7b-761a7b5fcf8b
 			column: nivel_1_nombre
+
 		level 'Nivel 2'
+			lineageTag: 19729625-1acb-4975-b2ae-2090b1b63b6d
 			column: nivel_2_nombre
+
 		level 'Nivel 3'
+			lineageTag: 483d316a-6eec-4c11-b7e6-1e7a40e2d80d
 			column: nivel_3_nombre
+
 		level 'Nivel 4'
+			lineageTag: 1fb34f8c-030f-4869-9d9f-a8a1ca6231c0
 			column: nivel_4_nombre
+
 		level 'Nivel 5'
+			lineageTag: ba7d1b5a-3648-482a-b6ad-f4cf23ae463b
 			column: nivel_5_nombre
 
 	partition 'DM_Cuenta contable' = m
@@ -158,3 +196,4 @@ table 'DM_Cuenta contable'
 				    Tabla = Origen{[Schema="oro",Item="dim_cuenta"]}[Data]
 				in
 				    Tabla
+

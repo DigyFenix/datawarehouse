@@ -1,5 +1,72 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 25 (2026-08-10) — LA PÁGINA 00 CONSTRUIDA POR CÓDIGO: EL FLUJO NUEVO FUNCIONA — leer esto primero ══════
+
+Edwin preguntó si «el MCP de Power BI» podía crear los dashboards. La respuesta correcta fue
+doble: el MCP `powerbi-modeling` NO (solo modelo), pero el plugin `powerbi-authoring` trae dos
+CLIs que cambian el juego: `powerbi-report-author` (metadatos oficiales de visuales + validador
+PBIR) y `powerbi-desktop` (bridge: abre/recarga Desktop y **captura screenshots por página**).
+Edwin autorizó un **piloto con la página 00** — reabre la decisión 15 de STATE.md — y la página
+quedó **construida por código, validada y renderizada con datos reales** en 7 iteraciones.
+La diferencia contra la ola abortada de la sesión 23: esta vez el agente VE lo que construye.
+
+### Qué quedó construido y verificado
+
+- **Página 00 · Inicio completa** (15 visuales): banda de marca con título dinámico, navegador,
+  3 KPIs de frescura (decisión 17 aplicada: `Dato completo hasta` = 08/08/2026, no el MAX del
+  2027), 6 botones de navegación, tabla de frescura por dominio **sin fila Total** (que mostraba
+  el 03/07/2027 del defecto D1), 3 alertas con barra de estado (Q57M/Q10M/Q6M) y pie narrativo.
+- **Cifras contra el motor vía MCP:** `Ventas netas` = 402,294,765.80 — al centavo contra el
+  corte validado de F4.
+- **Generador determinista:** `consumo/powerbi/generar_pagina_00.js` (GUIDs fijos — reutilizó el
+  GUID histórico de la 00 de la ola retirada —, idempotente, helpers de codificación PBIR).
+  Es la plantilla para las siguientes páginas.
+- **Tema corregido:** el validador acusó ~15 propiedades inválidas que Desktop ignoraba en
+  silencio (`labelInfo`, `TopLeft`, `alignment: left`, bloque `kpi`, etc.) y el registro del
+  tema exige `.json` en las 3 posiciones + el `name` interno igual. Fuente y copia en
+  `RegisteredResources/` sincronizadas.
+
+### El contrato: V3.1 gana, V3.0 retirado, y nace el playbook §13
+
+Edwin pidió comparar `CLAUDE_POWERBI_ANALYTICS_PRODUCT_MASTER_V3.1` contra `V3`. V3.1 es
+estrictamente superior (el piloto confirmó en la práctica sus correcciones §0.4, Nota A y §2.4).
+Se le sumó el **addendum v3.1.1**: §13 «Playbook de construcción — ciclo verificado» (el ciclo
+editar→validar→recargar→recalcular→capturar + las 8 trampas PBIR resueltas) y la corrección de
+la Nota B/§7.1 (el SQL contra `oro` SÍ lo corre el agente vía `docker exec quilate-postgres
+psql`; no hace falta MCP de Postgres). **V3.0 eliminado del árbol** (la historia lo conserva).
+
+### Las trampas que costaron iteraciones (el detalle vive en §13.4 del contrato)
+
+1. Reload de Desktop y refresh XMLA **en paralelo tumbaron Desktop** — serializar siempre.
+2. Cada reload re-aplica el TMDL → correr `RefreshWithXMLA Calculate` después, o los banners de
+   «Actualizar ahora» ensucian el screenshot.
+3. `columnProperties` no existe a nivel visual → modal bloqueante; el rename de headers va al TMDL.
+4. El fondo blanco imborrable del `cardVisual` es `layout.backgroundShow`, no el VCO background.
+5. Los visuales con estados (botones, navegador) exigen **dual-entry** (entrada sin selector +
+   por estado) o el formato se ignora en silencio.
+6. El Total de matrix se apaga con `subTotals` **sin selector**; con selector Row/Column no basta.
+7. Con Edwin usando la máquina: prohibido robar foco/mouse — el bridge captura en segundo plano.
+
+### Advertencia: el MCP re-serializó los TMDL del modelo
+
+Al conectar el MCP `powerbi-modeling` (modo ReadWrite) y refrescar, Desktop re-serializó los 47
+archivos del `.SemanticModel`: agregó `lineageTag` a cada objeto y la annotation
+`PBI_ProTooling = ["MCP-PBIModeling","DevMode"]`. **Contenido verificado intacto** (316 medidas,
+`compatibilityLevel` 1606, definiciones idénticas) — pero `generar_pbip.py` debe **conservar los
+`lineageTag`** en la próxima regeneración o el diff será gigante y Desktop los volverá a crear
+(misma familia que la decisión 12: conservar lo que Desktop migra).
+
+### PENDIENTE — por dónde se retoma
+
+1. **Edwin evalúa el render de la 00** (screenshot entregado; o abrir
+   `organizaciones/grupocresta/powerbi/PulsoCresta.pbip`). Veredicto: ¿pasa su estándar visual?
+2. **Si pasa:** construir 01 Dirección y 09 Cartera con el playbook §13, partiendo de
+   `consumo/powerbi/generar_pagina_00.js`. **Si no:** iterar la 00 con sus ajustes.
+3. Menores de la 00: alias del header `dominio_nombre` (vía `generar_pbip.py`), `visualLink` de
+   los 6 botones cuando existan las páginas destino.
+4. Iron Network sin refrescar + `Sobrecosto por precio de compra` ≈ 0 (verificar en página 08) +
+   GAP-02/04/05/07 — sin cambios desde la sesión 24.
+
 ## ══════ SESIÓN 24 (2026-08-09) — LA GUÍA DE CONSTRUCCIÓN DE LOS TABLEROS — leer esto primero ══════
 
 Sesión corta, sin tocar datos, modelo ni portal (Docker apagado toda la sesión). Edwin pidió un

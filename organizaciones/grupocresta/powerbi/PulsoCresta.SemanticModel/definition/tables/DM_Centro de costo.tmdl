@@ -1,49 +1,58 @@
 table 'DM_Centro de costo'
+	lineageTag: 44ad68fe-e77f-4d4d-994a-b9f677524dd9
 
 	column centro_costo_clave
 		dataType: int64
 		isHidden
+		lineageTag: d8281b11-c36d-42d2-84ed-790df9fb4262
 		summarizeBy: none
 		sourceColumn: centro_costo_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 9feed237-4ce7-4e75-8b36-c3c9066a27f0
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column centro_costo_codigo
 		dataType: string
+		lineageTag: a85a736f-c202-4c0b-a255-2804722fa4dc
 		summarizeBy: none
 		sourceColumn: centro_costo_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: 86d10cdc-2376-468b-a777-241772dfbb9d
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
+		lineageTag: 11130f9d-3dae-48db-9bd3-2fb7ee89511f
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 74841185-5dd4-4a8c-bdae-1e1653f685d0
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: ec379424-0f65-45ac-9fb8-06f0e659df29
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: bfd60fd3-83a8-4852-ab12-7c1afc25b5da
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -55,3 +64,4 @@ table 'DM_Centro de costo'
 				    Tabla = Origen{[Schema="oro",Item="dim_centro_costo"]}[Data]
 				in
 				    Tabla
+

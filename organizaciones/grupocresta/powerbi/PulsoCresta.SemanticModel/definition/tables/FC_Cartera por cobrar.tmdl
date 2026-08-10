@@ -1,300 +1,357 @@
 table 'FC_Cartera por cobrar'
+	lineageTag: c5002a5e-bc20-434a-ba71-e03970b3eaec
+
+	/// Saldo del MAYOR CONTABLE, no del documento, en MONEDA DE PRESENTACIÓN (foto convertida a la tasa vigente).
+	measure 'Saldo por cobrar' = SUM('FC_Cartera por cobrar'[saldo_pendiente])
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+		lineageTag: cd4c754d-e189-41a4-ad24-f6d175d25c1f
+
+	/// Lo que deben los clientes reales. Sin separar el grupo, un aging estándar reporta una crisis de cartera que no existe.
+	measure 'Saldo por cobrar terceros' = CALCULATE([Saldo por cobrar], DM_Cliente[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+		lineageTag: 3aac8e80-b57c-4e07-9345-b6cd3a68fe4e
+
+	/// Saldo entre empresas del propio grupo. Leerlo junto al de terceros hace parecer una crisis de cobranza que no existe.
+	measure 'Saldo por cobrar grupo' = CALCULATE([Saldo por cobrar], DM_Cliente[es_intercompania] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+		lineageTag: ededa356-c16f-4fea-a48f-cc61ee855dbc
+
+	/// Número de partidas abiertas en el mayor.
+	measure 'Partidas por cobrar' = COUNTROWS('FC_Cartera por cobrar')
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: dbbba55b-5a89-4a09-88e3-fb766baff34b
+
+	/// Clientes distintos con saldo pendiente.
+	measure 'Clientes con saldo' = DISTINCTCOUNT('FC_Cartera por cobrar'[cliente_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: be3ba302-e728-4cea-8ab7-083e5a1f082b
+
+	/// Exposición media por cliente con deuda.
+	measure 'Saldo promedio por cliente' = DIVIDE([Saldo por cobrar], [Clientes con saldo])
+		formatString: "Q" #,0
+		displayFolder: 02 Conteos
+		lineageTag: 0f9e5119-6a42-418d-a9fa-1b31ae6b9012
+
+	/// Lo que aún no vence: es cobranza futura, no un problema.
+	measure 'Saldo corriente' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = FALSE))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+		lineageTag: 9150793a-07fb-4600-a458-824efba58ecc
+
+	/// Lo que ya pasó su fecha de pago, grupo incluido.
+	measure 'Saldo vencido' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+		lineageTag: fee4b83d-b7d5-4e0c-9c55-7f90fc0ca680
+
+	/// La mora que de verdad hay que cobrar: vencida y fuera del grupo.
+	measure 'Saldo vencido terceros' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE), DM_Cliente[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+		lineageTag: 9702dfc0-966b-4ee5-9a2d-9a9fd9b8c1d6
+
+	/// Qué porción de la cartera está vencida. Mezcla el grupo; para gestión comercial usar la versión de terceros.
+	measure '% Vencido' = DIVIDE([Saldo vencido], [Saldo por cobrar])
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+		lineageTag: 0b9b9965-084d-409c-8761-f802c29670c0
+
+	/// El indicador de salud de cobranza que sí se puede accionar.
+	measure '% Vencido terceros' = DIVIDE([Saldo vencido terceros], [Saldo por cobrar terceros])
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+		lineageTag: 82449d62-10c6-4c6d-b359-049a10c6bacd
+
+	/// Primer tramo de mora: normalmente es olvido o trámite, no riesgo.
+	measure 'Vencido 1 a 30' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "1-30"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+		lineageTag: 47d79fc0-d584-4453-a7e8-652905c3eb14
+
+	/// Segundo tramo: aquí la gestión de cobranza tiene que estar activa.
+	measure 'Vencido 31 a 60' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "31-60"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+		lineageTag: 23eeeffb-320c-4c11-9288-ebe4b4bbb4fe
+
+	/// Tercer tramo: la probabilidad de cobro empieza a caer de verdad.
+	measure 'Vencido 61 a 90' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "61-90"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+		lineageTag: 5cb99ec5-e1d2-4f74-9290-25ca9c8939ec
+
+	/// Deuda vieja. Es la candidata natural a provisión y la que conviene mirar cliente por cliente.
+	measure 'Vencido más de 90' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "+90"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+		lineageTag: e74b1b7c-9542-48c6-a218-5296294e6bc8
+
+	/// Riesgo alto: lo que pasó de 90 días pesa distinto en una provisión que lo que apenas venció.
+	measure '% Crítico más de 90' = DIVIDE([Vencido más de 90], [Saldo por cobrar])
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+		lineageTag: b1fe5afc-c20c-49c8-84d0-e7d03622e589
+
+	/// Días vencidos promedio ponderados por saldo: un promedio simple deja que una partida chica de 400 días arruine el indicador.
+	measure 'Días vencido promedio' = DIVIDE(SUMX('FC_Cartera por cobrar', 'FC_Cartera por cobrar'[saldo_pendiente] * 'FC_Cartera por cobrar'[dias_vencido]), [Saldo por cobrar])
+		formatString: #,0.0
+		displayFolder: 04 Riesgo
+		lineageTag: d33353b9-7150-45ef-93dd-6fbae73d52aa
+
+	/// Días de venta a terceros pendientes de cobro. Mezclar el saldo del grupo lo triplica.
+	measure 'Días de cartera terceros' = DIVIDE([Saldo por cobrar terceros], DIVIDE([Ventas a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas)))
+		formatString: #,0.0
+		displayFolder: 04 Riesgo
+		lineageTag: c599faba-2c44-48d5-a848-d3897f999e62
+
+	/// Foto de HOY: ignora el filtro de fechas de la página. El saldo es una foto, no un flujo — recortarlo al trimestre ocultaría las facturas viejas abiertas.
+	measure 'Por cobrar terceros hoy' = CALCULATE([Saldo por cobrar terceros], REMOVEFILTERS(DM_Calendario))
+		formatString: "Q" #,0
+		displayFolder: 05 Foto de hoy
+		lineageTag: 0b601f54-ae8f-47a1-a928-a93c692d449c
+
+	/// Saldo entre empresas del grupo, foto de hoy. No es riesgo de crédito: es conciliación pendiente.
+	measure 'Por cobrar grupo hoy' = CALCULATE([Saldo por cobrar grupo], REMOVEFILTERS(DM_Calendario))
+		formatString: "Q" #,0
+		displayFolder: 05 Foto de hoy
+		lineageTag: c4b8138b-387c-4ebc-b5a2-178667b4c917
+
+	/// Mora real a hoy, ignorando el filtro de fechas de la página.
+	measure 'Vencido terceros hoy' = CALCULATE([Saldo vencido terceros], REMOVEFILTERS(DM_Calendario))
+		formatString: "Q" #,0
+		displayFolder: 05 Foto de hoy
+		lineageTag: bcfba4fd-3399-4b8b-b0a6-6c90ddd945c5
+
+	/// Salud de la cobranza a día de hoy, sin que el período seleccionado la maquille.
+	measure '% Vencido terceros hoy' = DIVIDE([Vencido terceros hoy], [Por cobrar terceros hoy])
+		formatString: 0.0%
+		displayFolder: 05 Foto de hoy
+		lineageTag: 014dff5d-6a2c-4f6e-af86-f3abb427a944
+
+	/// Veces al año que se cobra la cartera completa. Es el recíproco de los días de cartera, más fácil de comparar entre empresas.
+	measure 'Rotación de cartera' = DIVIDE(365, [Días de cartera terceros])
+		formatString: #,0.0
+		displayFolder: 04 Riesgo
+		lineageTag: af580eb8-27cf-43d4-b936-10d3c69c054d
+
+	/// LA AGENDA DE COBRO. El calendario filtra por fecha de DOCUMENTO en todo el modelo; esta medida lo conmuta a la fecha de VENCIMIENTO con la relación inactiva, y es la única forma de responder "¿qué tengo que cobrar esta semana?". El resto de la página sigue leyéndose por fecha de documento: el cambio de eje vive dentro de la medida y no se propaga.
+	measure 'Cobro que vence en el período' = CALCULATE([Saldo por cobrar terceros], USERELATIONSHIP('FC_Cartera por cobrar'[tiempo_vencimiento_clave], DM_Calendario[tiempo_clave]))
+		formatString: "Q" #,0
+		displayFolder: 07 Agenda de vencimiento
+		lineageTag: c9daab0d-c565-477d-bbf1-1cb3d9751c59
+
+	/// Partidas sin fecha de vencimiento pactada: no son ni corrientes ni vencidas, y suelen ser anticipos o ajustes sin depurar.
+	measure 'Saldo sin vencimiento' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "sin_vencimiento"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+		lineageTag: 084c6bda-17e2-4d66-8034-bd0ef7dc158b
+
+	/// Cuánto nos debe el cliente más expuesto. Si un solo deudor concentra la cartera, el riesgo no está diversificado.
+	measure 'Exposición mayor deudor' = MAXX(ALLSELECTED(DM_Cliente), [Saldo por cobrar terceros])
+		formatString: "Q" #,0
+		displayFolder: 06 Concentración
+		lineageTag: dcbfa351-99c5-4ba6-a428-5e46022a8f8d
+
+	/// Cuánto pesa el cliente que más debe. Si un solo nombre concentra la cartera, el riesgo no está diversificado.
+	measure '% Exposición mayor deudor' = DIVIDE([Exposición mayor deudor], CALCULATE([Saldo por cobrar terceros], ALLSELECTED(DM_Cliente)))
+		formatString: 0.0%
+		displayFolder: 06 Concentración
+		lineageTag: 6398ab91-dcc1-4b96-a809-4b375850d760
+
+	/// Concentración de la deuda en los cinco mayores.
+	measure '% Saldo en top 5 deudores' = DIVIDE(CALCULATE([Saldo por cobrar terceros], TOPN(5, ALLSELECTED(DM_Cliente), [Saldo por cobrar terceros])), CALCULATE([Saldo por cobrar terceros], ALLSELECTED(DM_Cliente)))
+		formatString: 0.0%
+		displayFolder: 06 Concentración
+		lineageTag: 6b1e87d4-0b2a-45b1-8ed1-ebe89429052b
+
+	/// Título de la página 09.
+	measure 'Título de Cartera y cobranza' = "09 · Cartera y cobranza · " & [Período activo]
+		displayFolder: _Narrativa
+		lineageTag: afd4d98b-50bd-4cc4-ae0f-45d7792ad85a
+
+	/// Subtítulo del aging (página 09). Declara la salvedad que más se malinterpreta en el tablero: el saldo es una FOTO y las tarjetas ignoran el período a propósito — recortarlo escondería las facturas viejas, que son justo las que hay que cobrar.
+	measure 'Subtítulo del aging de terceros' = VAR s = [Por cobrar terceros hoy] VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(s) || s = 0, "Sin saldo por cobrar de terceros", (IF(s < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(s) >= 1000000, FORMAT(ABS(s) / 1000000, "#,##0.0") & "M", ABS(s) >= 10000, FORMAT(ABS(s) / 1000, "#,##0") & "K", FORMAT(ABS(s), "#,##0"))) & " por cobrar de terceros · " & (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " vencido (" & FORMAT(p, "0.0%") & ") · foto de hoy, ignora el período seleccionado")
+		displayFolder: _Narrativa
+		lineageTag: ef10d257-eae6-4a1b-b8d0-f20aff24fc09
+
+	/// Subtítulo de la agenda de cobro (página 09). Lo que vence en el período elegido, por fecha de VENCIMIENTO y no de documento: es la diferencia entre "qué facturé" y "qué tengo que cobrar".
+	measure 'Subtítulo de la agenda de cobro' = VAR c = [Cobro que vence en el período] RETURN IF(ISBLANK(c) || c = 0, "Nada vence en " & [Período activo], (IF(c < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(c) >= 1000000, FORMAT(ABS(c) / 1000000, "#,##0.0") & "M", ABS(c) >= 10000, FORMAT(ABS(c) / 1000, "#,##0") & "K", FORMAT(ABS(c), "#,##0"))) & " vence en " & [Período activo] & " · por fecha de vencimiento, no de documento")
+		displayFolder: _Narrativa
+		lineageTag: 76046f61-c49b-4fb6-8ba4-f63ee850e3c6
+
+	/// Texto del foco de cartera vencida (página 01). Foto de hoy: ignora el período a propósito.
+	measure 'Alerta de vencido' = VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Sin cartera vencida de terceros", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " vencido de terceros hoy · " & FORMAT(p, "0.0%") & " de la cartera")
+		displayFolder: _Narrativa
+		lineageTag: 7b329b61-2395-42b4-872d-d1ee80a3601a
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
+		lineageTag: fabf85c3-802a-441a-979b-89b74101c5ef
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column tiempo_vencimiento_clave
 		dataType: int64
 		isHidden
+		lineageTag: 6295ba4d-e272-4814-9047-6f8fd49431e0
 		summarizeBy: none
 		sourceColumn: tiempo_vencimiento_clave
 
 	column cliente_clave
 		dataType: int64
 		isHidden
+		lineageTag: 005ec2a5-726a-4726-8515-ea4b4084c1ff
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column socio_clave
 		dataType: int64
 		isHidden
+		lineageTag: de3ac705-48ff-491e-962d-c2350d7cdd8d
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: 429176f8-111b-44f7-8d47-9ce46bba0430
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
+		lineageTag: 7f27a417-063f-4e6c-a9f7-bc11f1f667b1
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
+		lineageTag: cc2c78d2-1885-4e4f-9a00-fbab55d5f469
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: cb0365f0-54c6-409d-a6c8-d1593f37f01b
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column partida_id
 		dataType: string
+		lineageTag: 0a27e385-f3c8-46cf-ab01-e47c634021b0
 		summarizeBy: none
 		sourceColumn: partida_id
 
 	column documento_origen
 		dataType: string
+		lineageTag: dfc9d38e-a7f3-4be6-8a4b-d0872fc0b37d
 		summarizeBy: none
 		sourceColumn: documento_origen
 
 	column tipo_documento_origen
 		dataType: string
+		lineageTag: 65c3640d-d234-4939-8f6f-871385523f92
 		summarizeBy: none
 		sourceColumn: tipo_documento_origen
 
 	column origen_partida
 		dataType: string
+		lineageTag: 7ce8ba14-978d-42b5-b1cb-06f47f3a6ca5
 		summarizeBy: none
 		sourceColumn: origen_partida
 
 	column fecha_documento
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 9ffa0464-6fa0-482c-a968-0ca884c38743
 		summarizeBy: none
 		sourceColumn: fecha_documento
-		formatString: dd/MM/yyyy
 
 	column fecha_vencimiento
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 28fa7d95-f496-41cd-8703-5d6e65bbe66d
 		summarizeBy: none
 		sourceColumn: fecha_vencimiento
-		formatString: dd/MM/yyyy
 
 	column fecha_corte
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: dd7dd92b-71f8-44d0-b7f5-231192eb04bc
 		summarizeBy: none
 		sourceColumn: fecha_corte
-		formatString: dd/MM/yyyy
 
 	column monto_original
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 49b38163-2647-45a3-9557-02e45be32486
 		summarizeBy: none
 		sourceColumn: monto_original
-		formatString: #,0.00
 
 	column monto_original_doc
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: d7724d51-b79f-4416-a316-8e0ad570c13c
 		summarizeBy: none
 		sourceColumn: monto_original_doc
-		formatString: #,0.00
 
 	column saldo_pendiente
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 876fa05e-196d-4ec9-bb7a-c37702bc7fc4
 		summarizeBy: none
 		sourceColumn: saldo_pendiente
-		formatString: #,0.00
 
 	column saldo_pendiente_doc
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 9da56a5b-cda6-40b0-8302-c4d0fed3aef7
 		summarizeBy: none
 		sourceColumn: saldo_pendiente_doc
-		formatString: #,0.00
 
 	column dias_vencido
 		dataType: int64
+		formatString: #,0
+		lineageTag: 319e6b2a-4fbe-4e1a-be4d-8f4d0bfe3829
 		summarizeBy: none
 		sourceColumn: dias_vencido
-		formatString: #,0
 
 	column rango_aging
 		dataType: string
 		isHidden
+		lineageTag: f5686694-674a-4514-8fff-440d6ba2e996
 		summarizeBy: none
 		sourceColumn: rango_aging
 
 	column rango_aging_clave
 		dataType: int64
 		isHidden
+		lineageTag: 459339dc-6df5-4555-8da1-c364e83f112f
 		summarizeBy: none
 		sourceColumn: rango_aging_clave
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 94ac6508-e628-4880-b028-7524244a0fae
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: 0d6465ef-7044-462e-8bc6-11aa4e9fdf8c
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Saldo del MAYOR CONTABLE, no del documento, en MONEDA DE PRESENTACIÓN (foto convertida a la tasa vigente).
-	measure 'Saldo por cobrar' = SUM('FC_Cartera por cobrar'[saldo_pendiente])
-		formatString: "Q" #,0
-		displayFolder: 01 Saldo
-
-	/// Lo que deben los clientes reales. Sin separar el grupo, un aging estándar reporta una crisis de cartera que no existe.
-	measure 'Saldo por cobrar terceros' = CALCULATE([Saldo por cobrar], DM_Cliente[es_intercompania] = FALSE)
-		formatString: "Q" #,0
-		displayFolder: 01 Saldo
-
-	/// Saldo entre empresas del propio grupo. Leerlo junto al de terceros hace parecer una crisis de cobranza que no existe.
-	measure 'Saldo por cobrar grupo' = CALCULATE([Saldo por cobrar], DM_Cliente[es_intercompania] = TRUE)
-		formatString: "Q" #,0
-		displayFolder: 01 Saldo
-
-	/// Número de partidas abiertas en el mayor.
-	measure 'Partidas por cobrar' = COUNTROWS('FC_Cartera por cobrar')
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Clientes distintos con saldo pendiente.
-	measure 'Clientes con saldo' = DISTINCTCOUNT('FC_Cartera por cobrar'[cliente_clave])
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Exposición media por cliente con deuda.
-	measure 'Saldo promedio por cliente' = DIVIDE([Saldo por cobrar], [Clientes con saldo])
-		formatString: "Q" #,0
-		displayFolder: 02 Conteos
-
-	/// Lo que aún no vence: es cobranza futura, no un problema.
-	measure 'Saldo corriente' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = FALSE))
-		formatString: "Q" #,0
-		displayFolder: 03 Antigüedad
-
-	/// Lo que ya pasó su fecha de pago, grupo incluido.
-	measure 'Saldo vencido' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
-		formatString: "Q" #,0
-		displayFolder: 03 Antigüedad
-
-	/// La mora que de verdad hay que cobrar: vencida y fuera del grupo.
-	measure 'Saldo vencido terceros' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE), DM_Cliente[es_intercompania] = FALSE)
-		formatString: "Q" #,0
-		displayFolder: 03 Antigüedad
-
-	/// Qué porción de la cartera está vencida. Mezcla el grupo; para gestión comercial usar la versión de terceros.
-	measure '% Vencido' = DIVIDE([Saldo vencido], [Saldo por cobrar])
-		formatString: 0.0%
-		displayFolder: 03 Antigüedad
-
-	/// El indicador de salud de cobranza que sí se puede accionar.
-	measure '% Vencido terceros' = DIVIDE([Saldo vencido terceros], [Saldo por cobrar terceros])
-		formatString: 0.0%
-		displayFolder: 03 Antigüedad
-
-	/// Primer tramo de mora: normalmente es olvido o trámite, no riesgo.
-	measure 'Vencido 1 a 30' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "1-30"))
-		formatString: "Q" #,0
-		displayFolder: 03 Antigüedad
-
-	/// Segundo tramo: aquí la gestión de cobranza tiene que estar activa.
-	measure 'Vencido 31 a 60' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "31-60"))
-		formatString: "Q" #,0
-		displayFolder: 03 Antigüedad
-
-	/// Tercer tramo: la probabilidad de cobro empieza a caer de verdad.
-	measure 'Vencido 61 a 90' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "61-90"))
-		formatString: "Q" #,0
-		displayFolder: 03 Antigüedad
-
-	/// Deuda vieja. Es la candidata natural a provisión y la que conviene mirar cliente por cliente.
-	measure 'Vencido más de 90' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "+90"))
-		formatString: "Q" #,0
-		displayFolder: 03 Antigüedad
-
-	/// Riesgo alto: lo que pasó de 90 días pesa distinto en una provisión que lo que apenas venció.
-	measure '% Crítico más de 90' = DIVIDE([Vencido más de 90], [Saldo por cobrar])
-		formatString: 0.0%
-		displayFolder: 03 Antigüedad
-
-	/// Días vencidos promedio ponderados por saldo: un promedio simple deja que una partida chica de 400 días arruine el indicador.
-	measure 'Días vencido promedio' = DIVIDE(SUMX('FC_Cartera por cobrar', 'FC_Cartera por cobrar'[saldo_pendiente] * 'FC_Cartera por cobrar'[dias_vencido]), [Saldo por cobrar])
-		formatString: #,0.0
-		displayFolder: 04 Riesgo
-
-	/// Días de venta a terceros pendientes de cobro. Mezclar el saldo del grupo lo triplica.
-	measure 'Días de cartera terceros' = DIVIDE([Saldo por cobrar terceros], DIVIDE([Ventas a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas)))
-		formatString: #,0.0
-		displayFolder: 04 Riesgo
-
-	/// Foto de HOY: ignora el filtro de fechas de la página. El saldo es una foto, no un flujo — recortarlo al trimestre ocultaría las facturas viejas abiertas.
-	measure 'Por cobrar terceros hoy' = CALCULATE([Saldo por cobrar terceros], REMOVEFILTERS(DM_Calendario))
-		formatString: "Q" #,0
-		displayFolder: 05 Foto de hoy
-
-	/// Saldo entre empresas del grupo, foto de hoy. No es riesgo de crédito: es conciliación pendiente.
-	measure 'Por cobrar grupo hoy' = CALCULATE([Saldo por cobrar grupo], REMOVEFILTERS(DM_Calendario))
-		formatString: "Q" #,0
-		displayFolder: 05 Foto de hoy
-
-	/// Mora real a hoy, ignorando el filtro de fechas de la página.
-	measure 'Vencido terceros hoy' = CALCULATE([Saldo vencido terceros], REMOVEFILTERS(DM_Calendario))
-		formatString: "Q" #,0
-		displayFolder: 05 Foto de hoy
-
-	/// Salud de la cobranza a día de hoy, sin que el período seleccionado la maquille.
-	measure '% Vencido terceros hoy' = DIVIDE([Vencido terceros hoy], [Por cobrar terceros hoy])
-		formatString: 0.0%
-		displayFolder: 05 Foto de hoy
-
-	/// Veces al año que se cobra la cartera completa. Es el recíproco de los días de cartera, más fácil de comparar entre empresas.
-	measure 'Rotación de cartera' = DIVIDE(365, [Días de cartera terceros])
-		formatString: #,0.0
-		displayFolder: 04 Riesgo
-
-	/// LA AGENDA DE COBRO. El calendario filtra por fecha de DOCUMENTO en todo el modelo; esta medida lo conmuta a la fecha de VENCIMIENTO con la relación inactiva, y es la única forma de responder "¿qué tengo que cobrar esta semana?". El resto de la página sigue leyéndose por fecha de documento: el cambio de eje vive dentro de la medida y no se propaga.
-	measure 'Cobro que vence en el período' = CALCULATE([Saldo por cobrar terceros], USERELATIONSHIP('FC_Cartera por cobrar'[tiempo_vencimiento_clave], DM_Calendario[tiempo_clave]))
-		formatString: "Q" #,0
-		displayFolder: 07 Agenda de vencimiento
-
-	/// Partidas sin fecha de vencimiento pactada: no son ni corrientes ni vencidas, y suelen ser anticipos o ajustes sin depurar.
-	measure 'Saldo sin vencimiento' = CALCULATE([Saldo por cobrar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "sin_vencimiento"))
-		formatString: "Q" #,0
-		displayFolder: 03 Antigüedad
-
-	/// Cuánto nos debe el cliente más expuesto. Si un solo deudor concentra la cartera, el riesgo no está diversificado.
-	measure 'Exposición mayor deudor' = MAXX(ALLSELECTED(DM_Cliente), [Saldo por cobrar terceros])
-		formatString: "Q" #,0
-		displayFolder: 06 Concentración
-
-	/// Cuánto pesa el cliente que más debe. Si un solo nombre concentra la cartera, el riesgo no está diversificado.
-	measure '% Exposición mayor deudor' = DIVIDE([Exposición mayor deudor], CALCULATE([Saldo por cobrar terceros], ALLSELECTED(DM_Cliente)))
-		formatString: 0.0%
-		displayFolder: 06 Concentración
-
-	/// Concentración de la deuda en los cinco mayores.
-	measure '% Saldo en top 5 deudores' = DIVIDE(CALCULATE([Saldo por cobrar terceros], TOPN(5, ALLSELECTED(DM_Cliente), [Saldo por cobrar terceros])), CALCULATE([Saldo por cobrar terceros], ALLSELECTED(DM_Cliente)))
-		formatString: 0.0%
-		displayFolder: 06 Concentración
-
-	/// Título de la página 09.
-	measure 'Título de Cartera y cobranza' = "09 · Cartera y cobranza · " & [Período activo]
-		displayFolder: _Narrativa
-
-	/// Subtítulo del aging (página 09). Declara la salvedad que más se malinterpreta en el tablero: el saldo es una FOTO y las tarjetas ignoran el período a propósito — recortarlo escondería las facturas viejas, que son justo las que hay que cobrar.
-	measure 'Subtítulo del aging de terceros' = VAR s = [Por cobrar terceros hoy] VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(s) || s = 0, "Sin saldo por cobrar de terceros", (IF(s < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(s) >= 1000000, FORMAT(ABS(s) / 1000000, "#,##0.0") & "M", ABS(s) >= 10000, FORMAT(ABS(s) / 1000, "#,##0") & "K", FORMAT(ABS(s), "#,##0"))) & " por cobrar de terceros · " & (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " vencido (" & FORMAT(p, "0.0%") & ") · foto de hoy, ignora el período seleccionado")
-		displayFolder: _Narrativa
-
-	/// Subtítulo de la agenda de cobro (página 09). Lo que vence en el período elegido, por fecha de VENCIMIENTO y no de documento: es la diferencia entre "qué facturé" y "qué tengo que cobrar".
-	measure 'Subtítulo de la agenda de cobro' = VAR c = [Cobro que vence en el período] RETURN IF(ISBLANK(c) || c = 0, "Nada vence en " & [Período activo], (IF(c < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(c) >= 1000000, FORMAT(ABS(c) / 1000000, "#,##0.0") & "M", ABS(c) >= 10000, FORMAT(ABS(c) / 1000, "#,##0") & "K", FORMAT(ABS(c), "#,##0"))) & " vence en " & [Período activo] & " · por fecha de vencimiento, no de documento")
-		displayFolder: _Narrativa
-
-	/// Texto del foco de cartera vencida (página 01). Foto de hoy: ignora el período a propósito.
-	measure 'Alerta de vencido' = VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Sin cartera vencida de terceros", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " vencido de terceros hoy · " & FORMAT(p, "0.0%") & " de la cartera")
-		displayFolder: _Narrativa
 
 	partition 'FC_Cartera por cobrar' = m
 		mode: import
@@ -304,3 +361,4 @@ table 'FC_Cartera por cobrar'
 				    Tabla = Origen{[Schema="oro",Item="hecho_cartera_cobrar"]}[Data]
 				in
 				    Tabla
+

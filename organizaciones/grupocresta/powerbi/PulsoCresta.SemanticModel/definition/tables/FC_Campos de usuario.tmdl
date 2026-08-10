@@ -1,75 +1,89 @@
 table 'FC_Campos de usuario'
+	lineageTag: 46d4b3b9-48a1-476b-b6c2-76ecb3eab653
+
+	/// Cuántos valores de campos de usuario hay capturados en el filtro vigente.
+	measure 'Valores de usuario capturados' = COUNTROWS('FC_Campos de usuario')
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: ac91477a-fc12-45bc-8cb9-51c998c36828
+
+	/// Cuántos campos de usuario del ERP tienen valores capturados en el filtro vigente.
+	measure 'Campos de usuario distintos' = DISTINCTCOUNT('FC_Campos de usuario'[campo])
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 94099d48-391b-49ab-824d-d4be8476c44c
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: f6f77168-9b70-4556-a4d0-c94e21ec4093
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column entidad
 		dataType: string
+		lineageTag: 89a291a2-ae61-4b10-8e44-ea11df389e03
 		summarizeBy: none
 		sourceColumn: entidad
 
 	column tabla_origen
 		dataType: string
+		lineageTag: b9af8c04-8035-4676-9031-7029a6a15d32
 		summarizeBy: none
 		sourceColumn: tabla_origen
 
 	column registro_id
 		dataType: string
+		lineageTag: 37102fd0-82e4-4c44-b1a4-81ae0a024a07
 		summarizeBy: none
 		sourceColumn: registro_id
 
 	column campo
 		dataType: string
+		lineageTag: a25eca94-88b6-4e26-8950-dc5019974e5e
 		summarizeBy: none
 		sourceColumn: campo
 
 	column valor
 		dataType: string
+		lineageTag: b8e60721-45ae-47cb-887f-a8cb9a3b4beb
 		summarizeBy: none
 		sourceColumn: valor
 
 	column cliente_clave
 		dataType: int64
 		isHidden
+		lineageTag: 5fc9740d-31c7-4e46-b934-c3777e66eba1
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
+		lineageTag: 78ecd373-f25e-45d7-a50f-b5cd453495f7
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: b789936f-b5a3-4bfb-aa57-ab74a1a07ee1
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 808f2a8f-3142-4974-bacc-751ab72a04b2
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: b1bff64f-3be5-4f5e-b4f9-f4b0de477389
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Cuántos valores de campos de usuario hay capturados en el filtro vigente.
-	measure 'Valores de usuario capturados' = COUNTROWS('FC_Campos de usuario')
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Cuántos campos de usuario del ERP tienen valores capturados en el filtro vigente.
-	measure 'Campos de usuario distintos' = DISTINCTCOUNT('FC_Campos de usuario'[campo])
-		formatString: #,0
-		displayFolder: 01 Conteos
 
 	partition 'FC_Campos de usuario' = m
 		mode: import
@@ -79,3 +93,4 @@ table 'FC_Campos de usuario'
 				    Tabla = Origen{[Schema="oro",Item="campo_usuario"]}[Data]
 				in
 				    Tabla
+

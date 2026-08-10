@@ -1,5 +1,5 @@
 {
-  "name": "Grupo Cresta · Quilate Analytics",
+  "name": "grupocresta-theme.json",
   "$schema": "https://raw.githubusercontent.com/microsoft/powerbi-desktop-samples/main/Report%20Theme%20JSON%20Schema/reportThemeSchema-2.114.json",
 
   "dataColors": [
@@ -35,8 +35,7 @@
     "largeTitle":  { "fontFace": "Segoe UI Semibold", "fontSize": 20, "color": "#1a1a1a" },
     "header":      { "fontFace": "Segoe UI Semibold", "fontSize": 12, "color": "#1a1a1a" },
     "label":       { "fontFace": "Segoe UI",          "fontSize": 10, "color": "#5b6472" },
-    "callout":     { "fontFace": "Segoe UI Semibold", "fontSize": 34, "color": "#0043af" },
-    "labelInfo":   { "fontFace": "Segoe UI",          "fontSize": 9,  "color": "#8a9099" }
+    "callout":     { "fontFace": "Segoe UI Semibold", "fontSize": 34, "color": "#0043af" }
   },
 
   "visualStyles": {
@@ -66,8 +65,7 @@
           "showAxisTitle": false,
           "labelColor":   { "solid": { "color": "#5b6472" } },
           "fontSize": 9,
-          "gridlineShow": false,
-          "lineColor":    { "solid": { "color": "#c9ced6" } }
+          "gridlineShow": false
         }],
         "valueAxis": [{
           "show": true,
@@ -81,7 +79,7 @@
         }],
         "legend": [{
           "show": true,
-          "position": "TopLeft",
+          "position": "Top",
           "showTitle": false,
           "labelColor": { "solid": { "color": "#5b6472" } },
           "fontSize": 9
@@ -110,20 +108,12 @@
       }
     },
 
-    "kpi": {
-      "*": {
-        "indicator":   [{ "fontSize": 28, "fontFamily": "Segoe UI Semibold", "color": { "solid": { "color": "#0043af" } } }],
-        "trendline":   [{ "show": true }],
-        "goals":       [{ "show": true }]
-      }
-    },
-
     "slicer": {
       "*": {
         "background": [{ "show": true, "color": { "solid": { "color": "#ffffff" } } }],
         "border":     [{ "show": true, "color": { "solid": { "color": "#e3e6eb" } }, "radius": 6 }],
-        "header":     [{ "show": true, "fontColor": { "solid": { "color": "#5b6472" } }, "fontSize": 9, "background": { "solid": { "color": "#ffffff" } }, "outline": "None" }],
-        "items":      [{ "fontColor": { "solid": { "color": "#1a1a1a" } }, "fontSize": 10, "background": { "solid": { "color": "#ffffff" } } }],
+        "header":     [{ "show": true, "fontColor": { "solid": { "color": "#5b6472" } }, "background": { "solid": { "color": "#ffffff" } } }],
+        "items":      [{ "fontColor": { "solid": { "color": "#1a1a1a" } }, "background": { "solid": { "color": "#ffffff" } } }],
         "selection":  [{ "strictSingleSelect": false }]
       }
     },
@@ -144,7 +134,7 @@
           "backColor":  { "solid": { "color": "#0043af" } },
           "fontSize": 10,
           "fontFamily": "Segoe UI Semibold",
-          "alignment": "left",
+          "alignment": "Left",
           "autoSizeColumnWidth": false
         }],
         "values": [{
@@ -193,7 +183,7 @@
     "actionButton": {
       "*": {
         "fill":    [{ "show": true, "fillColor": { "solid": { "color": "#ffffff" } }, "transparency": 0 }],
-        "border":  [{ "show": true, "weight": 1, "lineColor": { "solid": { "color": "#e3e6eb" } }, "radius": 6 }],
+        "border":  [{ "show": true, "color": { "solid": { "color": "#e3e6eb" } }, "radius": 6 }],
         "text":    [{ "show": true, "fontColor": { "solid": { "color": "#0043af" } }, "fontSize": 10, "fontFamily": "Segoe UI Semibold" }]
       }
     },

@@ -1,49 +1,58 @@
 table DM_Vendedor
+	lineageTag: 6319beb3-c176-481a-b5d6-221b1c05da74
 
 	column vendedor_clave
 		dataType: int64
 		isHidden
+		lineageTag: 7d90ea39-bcc1-48b8-9531-ba62f3ae950f
 		summarizeBy: none
 		sourceColumn: vendedor_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 5ebf91f5-2fa6-4b10-9df0-e852584e90af
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column vendedor_codigo
 		dataType: string
+		lineageTag: d34523a2-2f68-4108-bb63-0b27fbb877a8
 		summarizeBy: none
 		sourceColumn: vendedor_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: 51c9a924-f4b3-4d03-bf50-a183207ef754
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
+		lineageTag: da099914-e26d-4e0e-b078-25c615775372
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 243abf18-7aea-4e67-aba5-46d9b5b189b2
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: f733de97-618e-4292-9df6-3a52dad0fc4a
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: b803ef55-9604-4bf7-9bcb-85758f355b73
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -55,3 +64,4 @@ table DM_Vendedor
 				    Tabla = Origen{[Schema="oro",Item="dim_vendedor"]}[Data]
 				in
 				    Tabla
+

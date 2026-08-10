@@ -1,64 +1,76 @@
 table DM_Producto
+	lineageTag: 63eb0e47-67fd-48b2-b4e0-b16b604e454c
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: 3c1ad206-5d9b-474f-9569-bf2f8c77e78d
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 03618195-ecb6-4f0c-bd01-c61697bdbad5
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column producto_codigo
 		dataType: string
+		lineageTag: efe1a376-c7d2-40af-b7fd-101af16f48b9
 		summarizeBy: none
 		sourceColumn: producto_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: b11ddf87-80f6-4680-ab53-2b40ae414deb
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column grupo_codigo
 		dataType: string
+		lineageTag: efcca56e-c49b-4087-b780-15ab4abb20dd
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column unidad_medida
 		dataType: string
+		lineageTag: ef50cae2-f096-4402-80ab-86980eb61c92
 		summarizeBy: none
 		sourceColumn: unidad_medida
 
 	column tipo_producto
 		dataType: string
+		lineageTag: cfe20197-e771-4547-a8ef-cee5d47e7f80
 		summarizeBy: none
 		sourceColumn: tipo_producto
 
 	column activo
 		dataType: boolean
+		lineageTag: ac916cab-62a8-4541-aca0-39c9310aefe1
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 5909eb47-d80b-4939-a15e-70f6f1c39b51
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: e61badd1-6674-4f6e-b05a-c2a81125ed85
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: a7031324-cfbf-45a8-965f-562da4b6a001
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -70,3 +82,4 @@ table DM_Producto
 				    Tabla = Origen{[Schema="oro",Item="dim_producto"]}[Data]
 				in
 				    Tabla
+

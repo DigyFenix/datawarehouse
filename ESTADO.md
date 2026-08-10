@@ -4,13 +4,14 @@
 > Organizaciones activas: **Grupo Cresta** (SAP B1) e **Iron Network** (Odoo 18). Ninguna es
 > «la del proyecto»: el motor no privilegia a ninguna.
 >
-> **Al 2026-08-08 (sesión 23) el cuello de botella sigue siendo CONTENIDO, y la construcción es
-> de Edwin:** el intento de generar las páginas por código (PBIR) se abortó por decisión suya —
-> Edwin construye los dashboards a mano en Desktop sobre los contratos de
-> `docs/powerbi/report-architecture.md`; Claude se queda con el modelo (316 medidas, todas las
-> del lote 1 de F4 validadas contra el motor al centavo), la guía y la validación.
-> El producto Power BI se rige por su propio contrato (`CLAUDE_POWERBI_ANALYTICS_PRODUCT_MASTER_V3.md`);
-> su progreso vive en `docs/powerbi/STATE.md` — **F0 a F4-lote-1 cerradas; F5 en manos de Edwin**.
+> **Al 2026-08-10 (sesión 25) el cuello de botella sigue siendo CONTENIDO, pero el modo de
+> construcción está en revisión:** con el toolchain nuevo (validador PBIR oficial + Desktop
+> Bridge con screenshots) **la página 00 se construyó por código y quedó renderizada con datos
+> reales** — Edwin autorizó el piloto y ahora evalúa si el estándar visual le alcanza. Si pasa,
+> el agente construye las 11 restantes con el playbook §13; si no, vuelve la construcción manual.
+> El producto Power BI se rige por su propio contrato (`CLAUDE_POWERBI_ANALYTICS_PRODUCT_MASTER_V3.1.md`,
+> v3.1.1 — V3.0 retirado); su progreso vive en `docs/powerbi/STATE.md` — **F0 a F4-lote-1
+> cerradas; F5 con 1/12 páginas construidas**.
 
 Tablero maestro de avance. Fuente de verdad del progreso. Se actualiza al cerrar cada fase.
 Regla: cada fase se valida contra su **DoD** antes de avanzar (salvo instrucción de entregar
@@ -101,6 +102,22 @@ sola vez** para los dos.
 | 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos; **NITs afiliados en el portal** (migración 112). **2026-08-08**: baja de organización reparada (chocaba con las FK y devolvía 500), quitar rol ya respeta el alcance (borraba el rol en TODAS las organizaciones), Usuarios filtra por la organización activa y **nueva pantalla de Autorizaciones** — el API de grants existía desde la fase 3 pero ninguna pantalla lo consumía. Falta la UI del canónico v2 y el filtro por campo | — |
 | 6 | Consumo (Power BI) | ✅ **modelo vigente (2026-08-08): 36 tablas de datos / 98 relaciones / 294 medidas** — 43 archivos `.tmdl` contando el grupo de cálculo y los 6 parámetros de campo. Las cifras «25/67/140» de este renglón eran de una versión anterior y se corrigieron al regenerar contra el Oro nuevo (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
 | 7 | Validación (4 criterios) | ✅ **completada 2026-08-08** — consistencia (cuadres al centavo), **seguridad/RLS** (IDOR 8/8, RLS fail-closed, certificación 7/7, guardas del agente 12/12), trazabilidad (auditoría por organización, cada consulta del agente auditada) y explicabilidad (toda respuesta lleva métrica, período y estado de certificación). **Onboarding de tenant nuevo validado E2E**: alta → provisionar → extraer 12 objetos → build 195/195 → cuadre 0 desvíos, sin un solo paso a mano | 2026-08-08 |
+
+## Avance 2026-08-10 (sesión 25) — la página 00 construida por código: el flujo nuevo funciona
+
+**Piloto autorizado por Edwin**: con los CLIs del plugin `powerbi-authoring` (`powerbi-report-author`
+= metadatos oficiales + validador PBIR; `powerbi-desktop` = bridge con reload y screenshots) la
+**página 00 · Inicio quedó construida por código, validada y renderizada con datos reales** —
+15 visuales, cifras al centavo contra el motor, 7 iteraciones viendo cada render. Es lo que a la
+ola abortada de la sesión 23 le faltó: el loop cerrado editar→validar→recargar→capturar.
+
+- Contrato maestro: **v3.1.1 vigente** (V3.0 retirado) con el playbook §13 — el ciclo verificado
+  y las 8 trampas PBIR resueltas (reload+XMLA en paralelo tumba Desktop; `layout.backgroundShow`;
+  dual-entry en visuales con estados; subtotales sin selector; registro del tema con `.json`).
+- Tema corregido: ~15 propiedades inválidas que Desktop ignoraba en silencio.
+- Generador plantilla: `consumo/powerbi/generar_pagina_00.js` (determinista, GUIDs fijos).
+- **Decisión pendiente de Edwin**: si el render de la 00 pasa su estándar, el agente construye
+  las 11 páginas restantes con este flujo; si no, vuelve la construcción manual (decisión 15).
 
 ## Avance 2026-08-08 (sesión 22) — diseño de los informes + un KPI que mostraba lo contrario
 

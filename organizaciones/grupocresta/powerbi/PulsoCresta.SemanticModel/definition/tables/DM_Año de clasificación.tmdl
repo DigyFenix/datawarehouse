@@ -1,55 +1,65 @@
 table 'DM_Año de clasificación'
+	lineageTag: ae5ae864-f3ab-439f-8d93-c41ce2d58785
 
 	column anio_clave
 		dataType: int64
 		isHidden
+		lineageTag: fd8f0f4a-f8f8-43ae-b181-c4c8df1b3d9d
 		summarizeBy: none
 		sourceColumn: anio_clave
 
 	column anio
 		dataType: int64
+		formatString: #,0
+		lineageTag: aa400b52-b7bc-49dd-a9d8-3cf457742b27
 		summarizeBy: none
 		sourceColumn: anio
-		formatString: #,0
 
 	column anio_nombre
 		dataType: string
+		lineageTag: 5b6bcac3-0082-4dd4-8911-4628ca205d74
 		summarizeBy: none
 		sourceColumn: anio_nombre
 
 	column es_anio_actual
 		dataType: boolean
+		lineageTag: 79536bbd-8b24-45aa-976a-aa706422f1a9
 		summarizeBy: none
 		sourceColumn: es_anio_actual
 
 	column es_anio_anterior
 		dataType: boolean
+		lineageTag: ab989fd6-e2c5-4992-a0d5-16afcc724a58
 		summarizeBy: none
 		sourceColumn: es_anio_anterior
 
 	column anios_desde_hoy
 		dataType: int64
+		formatString: #,0
+		lineageTag: 388dde6f-ee88-4e62-ab4a-d627462d6756
 		summarizeBy: none
 		sourceColumn: anios_desde_hoy
-		formatString: #,0
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: c8b1b09d-44cb-4c58-8dba-78b5d3bb56ce
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 5c8d2cf2-9f42-415f-bc5f-648278707d94
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: 6e840b8b-558a-4884-bd06-a02b911e22f0
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -61,3 +71,4 @@ table 'DM_Año de clasificación'
 				    Tabla = Origen{[Schema="oro",Item="dim_anio"]}[Data]
 				in
 				    Tabla
+

@@ -1,509 +1,606 @@
 table FC_Ventas
+	lineageTag: a9be0bf7-8f17-4309-b676-9e11d4232238
+
+	/// Base de todo: venta sin impuestos en MONEDA DE PRESENTACIÓN (consolidable entre sociedades), con la nota de crédito ya en negativo. Una sociedad sin tasa válida no suma aquí (regla: sin tipo de cambio, no se consolida).
+	measure 'Ventas netas' = SUM(FC_Ventas[monto_sin_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: bebecd97-102a-4383-88a7-60d2ec21f1c8
+
+	/// Lo que el cliente realmente paga. Sale de la CABECERA del documento y no de la suma de líneas: el IVA se calcula por documento y sumarlo línea a línea desvía centavos contra el ERP.
+	measure 'Ventas netas con IVA' = SUM(FC_Ventas[monto_con_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 3852824a-3bb2-45e6-b7c5-4cc38f86f964
+
+	/// Facturación del período antes de restar devoluciones.
+	measure 'Ventas brutas' = CALCULATE([Ventas netas], KEEPFILTERS('DM_Tipo de documento'[tipo_documento] = "factura"))
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 401715f7-6666-43aa-bf49-fe540d7fc7d4
+
+	/// Notas de crédito del período, en positivo para poder compararlas contra la venta.
+	measure Devoluciones = ABS(CALCULATE([Ventas netas], KEEPFILTERS('DM_Tipo de documento'[tipo_documento] = "nota_credito")))
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 7541e0db-5cbd-4a24-9a66-9b5b4681add6
+
+	/// IVA de las ventas. Se queda en moneda LOCAL aunque el resto del modelo esté en moneda de presentación: es un concepto fiscal del país de cada sociedad.
+	measure 'Impuesto facturado' = SUM(FC_Ventas[monto_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 7aa3e4e6-310e-4d3c-8d66-676255da3d14
+
+	/// Descuento concedido, tomado de lo realmente grabado en cada línea y no de una lista de precios teórica.
+	measure 'Descuento otorgado' = SUM(FC_Ventas[monto_descuento])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: efb33800-d950-4127-bc06-c841f8cbd447
+
+	/// Cuánto del precio se está cediendo. Que suba sin que suba el volumen es erosión de precio, no una promoción que funciona.
+	measure '% Descuento' = DIVIDE([Descuento otorgado], [Ventas netas] + [Descuento otorgado])
+		formatString: 0.0%
+		displayFolder: 01 Importes
+		lineageTag: 328918f2-5f7e-4300-8d7c-d71ae687b9ca
+
+	/// Saldo pendiente de las facturas visibles, prorrateado por línea (suma = saldo del documento). INFORMATIVO: la cartera oficial sale del mayor.
+	measure 'Saldo de facturas' = SUM(FC_Ventas[saldo_pendiente])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: db125212-bc61-4077-8353-5ee555e48f95
+
+	/// El mercado real. La venta al grupo no compite por precio: mezclarla distorsiona todo indicador comercial.
+	measure 'Ventas a terceros' = CALCULATE([Ventas netas], DM_Cliente[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 02 Terceros vs grupo
+		lineageTag: a5a67a18-d458-4f6f-a3e4-069c04aa0517
+
+	/// Facturación a otras empresas del propio grupo. Ni compite por precio ni la trabaja un vendedor.
+	measure 'Ventas al grupo' = CALCULATE([Ventas netas], DM_Cliente[es_intercompania] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 02 Terceros vs grupo
+		lineageTag: a780cefd-cb38-4dab-a41f-7f5ef84bc5b3
+
+	/// Qué parte de la facturación es movimiento interno entre compañías del grupo. Cuando pesa, cambia la lectura de cualquier ranking comercial: revisarla antes de comparar clientes.
+	measure '% Venta al grupo' = DIVIDE([Ventas al grupo], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 02 Terceros vs grupo
+		lineageTag: 0cd0feda-30ba-4d03-a287-dd88149d57eb
+
+	/// Cantidad neta despachada; la nota de crédito resta.
+	measure 'Unidades vendidas' = SUM(FC_Ventas[cantidad])
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: 8d092911-edbe-46ff-acd8-e3aa81df3081
+
+	/// Número de líneas de documento — el grano del hecho.
+	measure 'Líneas de venta' = COUNTROWS(FC_Ventas)
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: 61d1047f-58af-48fb-b946-fc416e97112a
+
+	/// Facturas y notas de crédito distintas emitidas en el período.
+	measure 'Documentos de venta' = DISTINCTCOUNT(FC_Ventas[documento_id])
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: 8d925c37-9513-47d3-bdcb-b1e291aa80cd
+
+	/// Clientes distintos con movimiento neto en el período.
+	measure 'Clientes con venta' = CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(FC_Ventas[monto_sin_impuesto] <> 0))
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: 5599fb60-9f68-45f8-913f-056944b61692
+
+	/// Artículos distintos con movimiento: la parte del catálogo que de verdad rota.
+	measure 'Productos vendidos' = DISTINCTCOUNT(FC_Ventas[producto_clave])
+		formatString: #,0
+		displayFolder: 03 Conteos
+		lineageTag: 4d1b70f4-af80-4f04-b31c-b774ded633cc
+
+	/// Venta media por documento. Subirlo suele costar menos que conseguir un cliente nuevo.
+	measure 'Ticket promedio' = DIVIDE([Ventas netas], [Documentos de venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+		lineageTag: 037faf33-0041-42cd-b220-2ab527a8bb02
+
+	/// Precio medio realmente cobrado. Solo significa algo con UN producto filtrado: mezclado entre artículos distintos no dice nada.
+	measure 'Precio promedio unidad' = DIVIDE([Ventas netas], [Unidades vendidas])
+		formatString: "Q" #,0.00
+		displayFolder: 04 Promedios
+		lineageTag: 55dd3b07-8146-4cef-b522-9b57ef089146
+
+	/// Tamaño medio de la línea de documento.
+	measure 'Venta promedio por línea' = DIVIDE([Ventas netas], [Líneas de venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+		lineageTag: d8307ddf-8ec1-413b-8014-e6909fed3d53
+
+	/// Promedio sobre los días que SÍ hubo venta: no diluye con domingos y feriados.
+	measure 'Venta promedio diaria' = DIVIDE([Ventas netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas))
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+		lineageTag: ed902640-4709-4bf3-a08a-0e12ae51b5a6
+
+	/// Facturación media por cliente activo en el período.
+	measure 'Venta promedio por cliente' = DIVIDE([Ventas netas], [Clientes con venta])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+		lineageTag: 14210b34-5119-402c-8edc-12933e8d6843
+
+	/// Costo registrado en la línea al momento de facturar. Solo existe en SAP B1; en Odoo la línea no lo trae y la medida sale en cero.
+	measure 'Costo de ventas' = SUM(FC_Ventas[costo])
+		formatString: "Q" #,0
+		displayFolder: 05 Rentabilidad
+		lineageTag: 5477bd17-bac2-42f7-b1a2-56ee93b559b9
+
+	/// Venta neta menos costo, calculado línea a línea. Cero en Odoo por la misma razón que el costo.
+	measure 'Margen bruto' = SUM(FC_Ventas[margen])
+		formatString: "Q" #,0
+		displayFolder: 05 Rentabilidad
+		lineageTag: c39b8c49-78a0-402a-a1d0-41d16d53188e
+
+	/// Rentabilidad sobre la venta, grupo incluido. Para el margen del mercado real usar '% Margen terceros'.
+	measure '% Margen' = DIVIDE([Margen bruto], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 05 Rentabilidad
+		lineageTag: a8c0c663-61eb-4a4e-9791-c9604bd05737
+
+	/// El margen de mercado. Incluir la venta al grupo, que no compite por precio, infla el indicador.
+	measure '% Margen terceros' = DIVIDE(CALCULATE([Margen bruto], DM_Cliente[es_intercompania] = FALSE), [Ventas a terceros])
+		formatString: 0.0%
+		displayFolder: 05 Rentabilidad
+		lineageTag: b73da762-2c2c-4752-b035-639b6afba140
+
+	/// Mismo período del mes anterior (respeta el filtro de fechas del visual).
+	measure 'Ventas mes anterior' = CALCULATE([Ventas netas], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+		lineageTag: ce18be3d-a257-48e7-817e-10297e9a317f
+
+	/// El mismo período del año pasado. En un negocio con temporada dice más que la comparación contra el mes anterior.
+	measure 'Ventas año anterior' = CALCULATE([Ventas netas], DATEADD(DM_Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+		lineageTag: 419e6cbe-28b0-4e7e-a245-627c73f6079e
+
+	/// Acumulado del mes en curso hasta el último día con datos del filtro.
+	measure 'Ventas acumuladas mes' = TOTALMTD([Ventas netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+		lineageTag: 81cc5643-5129-47d1-b229-b86758c459d9
+
+	/// Acumulado desde el inicio del trimestre hasta la fecha del contexto.
+	measure 'Ventas acumuladas trimestre' = TOTALQTD([Ventas netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+		lineageTag: a23386c4-2ca4-4c5c-ac92-478cb2cfaf3a
+
+	/// Acumulado desde el 1 de enero: la cifra con la que se mide el ejercicio.
+	measure 'Ventas acumuladas año' = TOTALYTD([Ventas netas], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+		lineageTag: 0994157e-12a8-48cc-97e6-6310058d7588
+
+	/// El acumulado del año PASADO al mismo corte: el comparable correcto del YTD.
+	measure 'Ventas acumuladas año anterior' = CALCULATE(TOTALYTD([Ventas netas], DM_Calendario[fecha]), DATEADD(DM_Calendario[fecha], -1, YEAR))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+		lineageTag: e011b617-5eed-41d6-8147-9fac7bc54a6c
+
+	/// Crecimiento contra el mes previo. Cuidado con la estacionalidad: un mes flojo puede ser normal para la época.
+	measure 'Variación vs mes anterior' = DIVIDE([Ventas netas] - [Ventas mes anterior], [Ventas mes anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 06 Comparativos
+		lineageTag: 583608c2-3e12-47cf-999c-8b5468684aef
+
+	/// Crecimiento contra el mismo período del año pasado, ya libre del efecto estacional.
+	measure 'Variación vs año anterior' = DIVIDE([Ventas netas] - [Ventas año anterior], [Ventas año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 06 Comparativos
+		lineageTag: 0ee026cc-d507-4745-b8b0-7e95f99efb78
+
+	/// Cómo va el ejercicio completo contra el anterior. Es la que se lleva a una junta.
+	measure 'Variación acumulada vs año anterior' = DIVIDE([Ventas acumuladas año] - [Ventas acumuladas año anterior], [Ventas acumuladas año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 06 Comparativos
+		lineageTag: fefee708-4ec4-4e74-a1cd-1c9a7f67ba6a
+
+	/// Fin de la ventana móvil: el corte del contexto, pero nunca más allá del último día CON DATO. El calendario llega a 2032 para cubrir vencimientos y series proyectadas del ERP, así que anclar en MAX(Calendario[fecha]) dejaba toda ventana móvil apuntando a un futuro vacío y devolviendo BLANK. Con un período filtrado el ancla es el fin del período, que es lo correcto.
+	measure '_Fecha ancla móvil' = VAR fin = MAX(DM_Calendario[fecha]) VAR ultimo_dato = CALCULATE(MAX(FC_Ventas[fecha_documento]), ALL(DM_Calendario)) RETURN MIN(fin, ultimo_dato)
+		formatString: yyyy-mm-dd
+		isHidden
+		displayFolder: _Auxiliar
+		lineageTag: a3732d47-2273-4024-88ad-1ac94925fa2a
+
+	/// Promedio MENSUAL de los últimos 3 meses: alisa el diente de sierra de la facturación. (Iterar días con DATESINPERIOD daba un promedio diario disfrazado de mensual.)
+	measure 'Media móvil 3 meses' = CALCULATE(AVERAGEX(VALUES(DM_Calendario[anio_mes]), [Ventas netas]), DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -3, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+		lineageTag: d6422317-7c88-4f86-a62e-1953b3c95b9b
+
+	/// Año móvil: los últimos 12 meses completos desde el corte. Quita la estacionalidad del calendario.
+	measure 'Ventas 12 meses móviles' = CALCULATE([Ventas netas], DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -12, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 06 Comparativos
+		lineageTag: fcfc8be6-42a6-49c9-84c1-fc888c5e0342
+
+	/// Venta de líneas sin artículo (servicios, fletes, gastos) — el miembro SERVICIO de Producto.
+	measure 'Ventas de servicios' = CALCULATE([Ventas netas], KEEPFILTERS(DM_Producto[producto_codigo] = "SERVICIO"))
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: f208baf3-4776-43a7-85a0-47929ac92eaf
+
+	/// Posición del cliente ordenado por venta a terceros, dentro del filtro vigente.
+	measure 'Ranking de cliente por venta' = RANKX(ALLSELECTED(DM_Cliente), [Ventas a terceros])
+		formatString: #,0
+		displayFolder: 07 Pareto
+		lineageTag: 68e710d4-b057-445b-ab10-77d82f80bbda
+
+	/// Curva de Pareto: % de la venta a terceros que acumulan este cliente y los mayores que él. La venta por cliente se materializa UNA vez en `base`: la versión anterior reevaluaba la medida dentro del FILTER, una vez por cliente y por cliente, lo que es cuadrático y se nota con miles de clientes.
+	measure '% acumulado de venta clientes' = VAR base = ADDCOLUMNS(ALLSELECTED(DM_Cliente), "@v", [Ventas a terceros]) VAR actual = [Ventas a terceros] VAR total = SUMX(base, [@v]) VAR acum = SUMX(FILTER(base, [@v] >= actual), [@v]) RETURN DIVIDE(acum, total)
+		formatString: 0.0%
+		displayFolder: 07 Pareto
+		lineageTag: a1c01fa1-b138-4dc7-9cf6-10bace316ab2
+
+	/// Posición del producto por venta neta dentro del filtro vigente.
+	measure 'Ranking de producto por venta' = RANKX(ALLSELECTED(DM_Producto), [Ventas netas])
+		formatString: #,0
+		displayFolder: 07 Pareto
+		lineageTag: f3509a3c-1855-4bc0-b2a0-f35a5392a584
+
+	/// Curva de Pareto de productos sobre la venta neta. Misma materialización en `base` que la curva de clientes.
+	measure '% acumulado de venta productos' = VAR base = ADDCOLUMNS(ALLSELECTED(DM_Producto), "@v", [Ventas netas]) VAR actual = [Ventas netas] VAR total = SUMX(base, [@v]) VAR acum = SUMX(FILTER(base, [@v] >= actual), [@v]) RETURN DIVIDE(acum, total)
+		formatString: 0.0%
+		displayFolder: 07 Pareto
+		lineageTag: fd0ff052-ca49-44f5-9b54-83fe314b8f6e
+
+	/// Peso de los 10 mayores clientes: la medida de riesgo comercial. Si perder un cliente hunde el año, se sabe aquí.
+	measure '% Venta en top 10 clientes' = DIVIDE(CALCULATE([Ventas a terceros], TOPN(10, ALLSELECTED(DM_Cliente), [Ventas a terceros])), CALCULATE([Ventas a terceros], ALLSELECTED(DM_Cliente)))
+		formatString: 0.0%
+		displayFolder: 07 Pareto
+		lineageTag: d71dad9f-2d7c-4b92-ac03-f59cbde6074c
+
+	/// Amplitud de catálogo: cuántos productos distintos se le venden al cliente promedio. Subirla es la venta cruzada.
+	measure 'Productos por cliente' = DIVIDE([Productos vendidos], [Clientes con venta])
+		formatString: #,0.0
+		displayFolder: 04 Promedios
+		lineageTag: d2c4d5c1-e893-4bc0-911a-fb1327cb0b13
+
+	/// Venta facturada por DEBAJO del costo registrado en la línea. Es fuga de margen pura, no una promoción: nadie la autorizó.
+	measure 'Ventas bajo costo' = CALCULATE([Ventas netas], KEEPFILTERS(FC_Ventas[margen] < 0))
+		formatString: "Q" #,0
+		displayFolder: 08 Fugas de margen
+		lineageTag: cee60525-4f9e-419b-944a-dad4dc6408eb
+
+	/// Cuántas líneas se facturaron por debajo del costo registrado.
+	measure 'Líneas bajo costo' = CALCULATE(COUNTROWS(FC_Ventas), KEEPFILTERS(FC_Ventas[margen] < 0))
+		formatString: #,0
+		displayFolder: 08 Fugas de margen
+		lineageTag: 1f7209b8-6410-4680-be15-f9cb25d531cd
+
+	/// Cuánto margen se dejó en la mesa, en positivo para poder sumarlo y priorizarlo.
+	measure 'Margen perdido bajo costo' = -CALCULATE(SUM(FC_Ventas[margen]), KEEPFILTERS(FC_Ventas[margen] < 0))
+		formatString: "Q" #,0
+		displayFolder: 08 Fugas de margen
+		lineageTag: 675bfce5-e572-4f13-9e77-0e501680c4ce
+
+	/// Qué porción de la venta se hizo perdiendo margen. Cualquier cifra de dos dígitos aquí merece una revisión de política de precios.
+	measure '% Ventas bajo costo' = DIVIDE([Ventas bajo costo], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 08 Fugas de margen
+		lineageTag: 7cb37f1c-4d17-4581-beda-eb152d3d0d21
+
+	/// Artículos distintos que se vendieron perdiendo margen: la lista corta por donde empezar.
+	measure 'Productos vendidos bajo costo' = CALCULATE(DISTINCTCOUNT(FC_Ventas[producto_clave]), KEEPFILTERS(FC_Ventas[margen] < 0))
+		formatString: #,0
+		displayFolder: 08 Fugas de margen
+		lineageTag: ae12ba92-c51a-4541-a765-41710b764acb
+
+	/// Clientes a los que se les facturó por debajo del costo. Suele concentrarse en pocos y negociados.
+	measure 'Clientes con venta bajo costo' = CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(FC_Ventas[margen] < 0))
+		formatString: #,0
+		displayFolder: 08 Fugas de margen
+		lineageTag: abd34699-3935-45cb-aba5-f1d6059af1eb
+
+	/// Precio promedio del mismo período del año pasado, base del desglose precio/volumen.
+	measure 'Precio promedio año anterior' = CALCULATE([Precio promedio unidad], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0.00
+		displayFolder: 09 Precio y volumen
+		lineageTag: a1e21500-54cb-4ced-9650-fb34a9d8a277
+
+	/// Volumen del mismo período del año pasado, base del desglose precio/volumen.
+	measure 'Unidades año anterior' = CALCULATE([Unidades vendidas], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: #,0
+		displayFolder: 09 Precio y volumen
+		lineageTag: e9ccc6b2-6519-462b-948b-8c2572ab5ef9
+
+	/// Cuánto de la variación anual viene de haber vendido MÁS CARO: diferencia de precio aplicada al volumen actual.
+	measure 'Efecto precio' = ([Precio promedio unidad] - [Precio promedio año anterior]) * [Unidades vendidas]
+		formatString: "Q" #,0
+		displayFolder: 09 Precio y volumen
+		lineageTag: 09d79a14-875d-4931-8d22-852aeacd7f61
+
+	/// Cuánto viene de haber vendido MÁS UNIDADES: diferencia de volumen valorada al precio del año pasado.
+	measure 'Efecto volumen' = ([Unidades vendidas] - [Unidades año anterior]) * [Precio promedio año anterior]
+		formatString: "Q" #,0
+		displayFolder: 09 Precio y volumen
+		lineageTag: 79127533-54df-41bf-8056-7bff8e624d9f
+
+	/// El resto: cambio en la MEZCLA de productos y clientes. Los tres efectos suman exactamente la variación anual.
+	measure 'Efecto mezcla' = [Ventas netas] - [Ventas año anterior] - [Efecto precio] - [Efecto volumen]
+		formatString: "Q" #,0
+		displayFolder: 09 Precio y volumen
+		lineageTag: abf51f0f-f69e-43ff-932f-a6d648d440f8
+
+	/// Título de la página 01.
+	measure 'Título de Dirección' = "01 · Dirección · " & [Período activo]
+		displayFolder: _Narrativa
+		lineageTag: 88efd943-89f5-483d-9623-f061ae7fd297
+
+	/// Subtítulo del visual de ejercicio (página 01). Habla de la serie del año en curso, no de un comparativo: el modelo arranca en 2026 y no hay año anterior que comparar (decisión de Edwin, 2026-08-08). Señala el mejor mes, que es la referencia contra la que el resto se lee.
+	measure 'Subtítulo del ejercicio' = VAR t = [Ventas netas] VAR meses = VALUES(DM_Calendario[anio_mes]) VAR n = COUNTROWS(meses) VAR mejor = MAXX(meses, CALCULATE([Ventas netas])) VAR etiq = CONCATENATEX(TOPN(1, meses, CALCULATE([Ventas netas]), DESC), CALCULATE(MAX(DM_Calendario[mes_anio_etiqueta])), ", ") RETURN SWITCH(TRUE(), ISBLANK(t) || t = 0, "Sin venta en el período seleccionado", n <= 1, (IF(t < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(t) >= 1000000, FORMAT(ABS(t) / 1000000, "#,##0.0") & "M", ABS(t) >= 10000, FORMAT(ABS(t) / 1000, "#,##0") & "K", FORMAT(ABS(t), "#,##0"))) & " en el período", (IF(t < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(t) >= 1000000, FORMAT(ABS(t) / 1000000, "#,##0.0") & "M", ABS(t) >= 10000, FORMAT(ABS(t) / 1000, "#,##0") & "K", FORMAT(ABS(t), "#,##0"))) & " en el período · mejor mes: " & etiq & " con " & (IF(mejor < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(mejor) >= 1000000, FORMAT(ABS(mejor) / 1000000, "#,##0.0") & "M", ABS(mejor) >= 10000, FORMAT(ABS(mejor) / 1000, "#,##0") & "K", FORMAT(ABS(mejor), "#,##0"))))
+		displayFolder: _Narrativa
+		lineageTag: f5761d33-1deb-4588-a387-bc5dff80c233
+
+	/// Subtítulo de la tabla de alertas (página 01). Cuenta focos, NO suma sus importes: venta en riesgo, margen perdido, saldo vencido y backlog son cifras de distinta naturaleza y sumarlas produce un total que nadie puede reconstruir.
+	measure 'Subtítulo de focos de la semana' = VAR n = IF([Venta anual en riesgo por quiebre] > 0, 1, 0) + IF([Margen perdido bajo costo] > 0, 1, 0) + IF([Vencido terceros hoy] > 0, 1, 0) + IF([Backlog vencido] > 0, 1, 0) + IF([Flujo neto próximas 4 semanas] < 0, 1, 0) RETURN IF(n = 0, "Ningún foco exige acción esta semana", FORMAT(n, "0") & IF(n = 1, " foco exige acción", " focos exigen acción") & " · cada uno se lee en su propia unidad, no se suman entre sí")
+		displayFolder: _Narrativa
+		lineageTag: a1dbee9e-5136-44f4-afc5-d747beb37278
+
+	/// Subtítulo del aporte por sociedad (página 01). Cuánto concentra la mayor: en un grupo de diez sociedades, la dependencia de una sola es la lectura que no da el ERP.
+	measure 'Subtítulo de aporte por sociedad' = VAR t = [Ventas a terceros] VAR soc = FILTER(VALUES(DM_Empresa[nombre]), [Ventas a terceros] <> 0) VAR n = COUNTROWS(soc) VAR mayor = MAXX(soc, [Ventas a terceros]) RETURN IF(ISBLANK(t) || t = 0, "Sin venta a terceros en el período", FORMAT(n, "0") & IF(n = 1, " sociedad con venta a terceros · ", " sociedades con venta a terceros · ") & "la mayor concentra " & FORMAT(DIVIDE(mayor, t), "0.0%"))
+		displayFolder: _Narrativa
+		lineageTag: e2de92a8-dd53-4727-8860-72cf21012f7c
+
+	/// Texto del foco de venta bajo costo (página 01). Margen regalado en el período filtrado: líneas facturadas por debajo del costo del artículo.
+	measure 'Alerta de venta bajo costo' = VAR m = [Margen perdido bajo costo] VAR p = [% Ventas bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Sin venta bajo costo en el período", (IF(m < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(m) >= 1000000, FORMAT(ABS(m) / 1000000, "#,##0.0") & "M", ABS(m) >= 10000, FORMAT(ABS(m) / 1000, "#,##0") & "K", FORMAT(ABS(m), "#,##0"))) & " de margen perdido vendiendo bajo costo · " & FORMAT(p, "0.0%") & " de la venta")
+		displayFolder: _Narrativa
+		lineageTag: e2982155-24bb-4496-b846-773ccb1f6511
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 7eda7267-b429-4810-b6f8-76d7532a175e
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column cliente_clave
 		dataType: int64
 		isHidden
+		lineageTag: ab269b20-1cd7-4262-9f51-df1d012b338c
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column socio_clave
 		dataType: int64
 		isHidden
+		lineageTag: bb19c18e-6794-402d-a86e-88b8761bc028
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column direccion_clave
 		dataType: int64
 		isHidden
+		lineageTag: b446bf48-e67f-4c08-9f7b-a1453731fc82
 		summarizeBy: none
 		sourceColumn: direccion_clave
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: 7153a67d-e7bf-4e7b-992b-647074632090
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column vendedor_clave
 		dataType: int64
 		isHidden
+		lineageTag: 966d54c0-c5b3-4b05-9f68-9ac85004e15d
 		summarizeBy: none
 		sourceColumn: vendedor_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: dd7d222e-e0b1-4400-a238-f020a7435de5
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column almacen_clave
 		dataType: int64
 		isHidden
+		lineageTag: 7302d950-49c9-4e79-9377-a14152892ed8
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
+		lineageTag: 2aa0ff44-3780-42f7-8db1-e7c61b38ac58
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
+		lineageTag: fa2e39fc-e433-43f0-a1eb-08e0fdff92b2
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column centro_costo_clave
 		dataType: int64
 		isHidden
+		lineageTag: b74e1bfd-52ff-419b-ba8b-d311c6685e72
 		summarizeBy: none
 		sourceColumn: centro_costo_clave
 
 	column tipo_documento_clave
 		dataType: int64
 		isHidden
+		lineageTag: f7bc617f-8e94-4259-89ae-7919c3272294
 		summarizeBy: none
 		sourceColumn: tipo_documento_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: e71365d0-3fa6-4b4b-a0b7-9f203f439a09
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column documento_id
 		dataType: string
+		lineageTag: 2ba1c5ce-c329-4410-8074-8f9449831c07
 		summarizeBy: none
 		sourceColumn: documento_id
 
 	column documento_numero
 		dataType: string
+		lineageTag: 2f404101-a790-487c-b1d2-8145f5bf79bc
 		summarizeBy: none
 		sourceColumn: documento_numero
 
 	column serie_codigo
 		dataType: string
+		lineageTag: 8bdf1084-8413-4eda-8f49-baa71ad1c9ea
 		summarizeBy: none
 		sourceColumn: serie_codigo
 
 	column tipo_documento_origen
 		dataType: string
+		lineageTag: 494ed70f-e6e8-4dde-86b5-45786b81fee0
 		summarizeBy: none
 		sourceColumn: tipo_documento_origen
 
 	column referencia_externa
 		dataType: string
+		lineageTag: baffe8a7-293f-42a4-9821-ca26454c7061
 		summarizeBy: none
 		sourceColumn: referencia_externa
 
 	column linea_numero
 		dataType: int64
+		formatString: #,0
+		lineageTag: 32d95f3c-90a6-4cf1-b3fe-b915543bc79d
 		summarizeBy: none
 		sourceColumn: linea_numero
-		formatString: #,0
 
 	column tipo_documento
 		dataType: string
+		lineageTag: 3f2c7dfe-fbf3-493c-940e-e644b80409da
 		summarizeBy: none
 		sourceColumn: tipo_documento
 
 	column fecha_documento
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 175c9ee3-70e9-4ac5-9254-52927fa420b1
 		summarizeBy: none
 		sourceColumn: fecha_documento
-		formatString: dd/MM/yyyy
 
 	column cantidad
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 1f1dbfcf-a2c6-4a9b-bf6b-1fbee5de5ba9
 		summarizeBy: none
 		sourceColumn: cantidad
-		formatString: #,0.00
 
 	column monto_sin_impuesto
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 48c1e651-9452-4bfa-971a-3eb9d065d509
 		summarizeBy: none
 		sourceColumn: monto_sin_impuesto
-		formatString: #,0.00
 
 	column monto_impuesto
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 8c364fba-0967-454a-a68e-3fbc8dde2ba4
 		summarizeBy: none
 		sourceColumn: monto_impuesto
-		formatString: #,0.00
 
 	column monto_con_impuesto
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 8bddc774-9376-4f3b-a184-23554fff7730
 		summarizeBy: none
 		sourceColumn: monto_con_impuesto
-		formatString: #,0.00
 
 	column monto_sin_impuesto_doc
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: b878a4f6-1690-4845-81b0-1dcaabd9e325
 		summarizeBy: none
 		sourceColumn: monto_sin_impuesto_doc
-		formatString: #,0.00
 
 	column monto_impuesto_doc
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 262c3500-5acd-443e-921b-e80b3137318d
 		summarizeBy: none
 		sourceColumn: monto_impuesto_doc
-		formatString: #,0.00
 
 	column monto_con_impuesto_doc
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 228a6234-263f-48c7-8e58-2fa126003ee9
 		summarizeBy: none
 		sourceColumn: monto_con_impuesto_doc
-		formatString: #,0.00
 
 	column monto_descuento
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: c1284785-5682-484a-887a-c4a3eb18ea07
 		summarizeBy: none
 		sourceColumn: monto_descuento
-		formatString: #,0.00
 
 	column descuento_pct
 		dataType: decimal
+		formatString: 0.0"%"
+		lineageTag: 713d1c5e-f9c7-4497-917c-fc5c8b2c9a09
 		summarizeBy: none
 		sourceColumn: descuento_pct
-		formatString: 0.0"%"
 
 	column costo
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 8090cf5f-c499-4356-9210-a8ef1497c983
 		summarizeBy: none
 		sourceColumn: costo
-		formatString: #,0.00
 
 	column margen
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 00de85ea-d4ba-41df-b3b0-8a8f8431e0a7
 		summarizeBy: none
 		sourceColumn: margen
-		formatString: #,0.00
 
 	column saldo_pendiente
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 16fe2316-afec-47b9-b6fe-27adcbe798d4
 		summarizeBy: none
 		sourceColumn: saldo_pendiente
-		formatString: #,0.00
 
 	column estado_pago
 		dataType: string
+		lineageTag: 6c60ef0d-e1bf-4d99-aa0d-7ee0e05392ed
 		summarizeBy: none
 		sourceColumn: estado_pago
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: de683f87-6666-4d09-ba37-810b0335c741
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: 71cad2e1-e835-47ee-a177-11f96714a55f
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Base de todo: venta sin impuestos en MONEDA DE PRESENTACIÓN (consolidable entre sociedades), con la nota de crédito ya en negativo. Una sociedad sin tasa válida no suma aquí (regla: sin tipo de cambio, no se consolida).
-	measure 'Ventas netas' = SUM(FC_Ventas[monto_sin_impuesto])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Lo que el cliente realmente paga. Sale de la CABECERA del documento y no de la suma de líneas: el IVA se calcula por documento y sumarlo línea a línea desvía centavos contra el ERP.
-	measure 'Ventas netas con IVA' = SUM(FC_Ventas[monto_con_impuesto])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Facturación del período antes de restar devoluciones.
-	measure 'Ventas brutas' = CALCULATE([Ventas netas], KEEPFILTERS('DM_Tipo de documento'[tipo_documento] = "factura"))
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Notas de crédito del período, en positivo para poder compararlas contra la venta.
-	measure Devoluciones = ABS(CALCULATE([Ventas netas], KEEPFILTERS('DM_Tipo de documento'[tipo_documento] = "nota_credito")))
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// IVA de las ventas. Se queda en moneda LOCAL aunque el resto del modelo esté en moneda de presentación: es un concepto fiscal del país de cada sociedad.
-	measure 'Impuesto facturado' = SUM(FC_Ventas[monto_impuesto])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Descuento concedido, tomado de lo realmente grabado en cada línea y no de una lista de precios teórica.
-	measure 'Descuento otorgado' = SUM(FC_Ventas[monto_descuento])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Cuánto del precio se está cediendo. Que suba sin que suba el volumen es erosión de precio, no una promoción que funciona.
-	measure '% Descuento' = DIVIDE([Descuento otorgado], [Ventas netas] + [Descuento otorgado])
-		formatString: 0.0%
-		displayFolder: 01 Importes
-
-	/// Saldo pendiente de las facturas visibles, prorrateado por línea (suma = saldo del documento). INFORMATIVO: la cartera oficial sale del mayor.
-	measure 'Saldo de facturas' = SUM(FC_Ventas[saldo_pendiente])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// El mercado real. La venta al grupo no compite por precio: mezclarla distorsiona todo indicador comercial.
-	measure 'Ventas a terceros' = CALCULATE([Ventas netas], DM_Cliente[es_intercompania] = FALSE)
-		formatString: "Q" #,0
-		displayFolder: 02 Terceros vs grupo
-
-	/// Facturación a otras empresas del propio grupo. Ni compite por precio ni la trabaja un vendedor.
-	measure 'Ventas al grupo' = CALCULATE([Ventas netas], DM_Cliente[es_intercompania] = TRUE)
-		formatString: "Q" #,0
-		displayFolder: 02 Terceros vs grupo
-
-	/// Qué parte de la facturación es movimiento interno entre compañías del grupo. Cuando pesa, cambia la lectura de cualquier ranking comercial: revisarla antes de comparar clientes.
-	measure '% Venta al grupo' = DIVIDE([Ventas al grupo], [Ventas netas])
-		formatString: 0.0%
-		displayFolder: 02 Terceros vs grupo
-
-	/// Cantidad neta despachada; la nota de crédito resta.
-	measure 'Unidades vendidas' = SUM(FC_Ventas[cantidad])
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Número de líneas de documento — el grano del hecho.
-	measure 'Líneas de venta' = COUNTROWS(FC_Ventas)
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Facturas y notas de crédito distintas emitidas en el período.
-	measure 'Documentos de venta' = DISTINCTCOUNT(FC_Ventas[documento_id])
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Clientes distintos con movimiento neto en el período.
-	measure 'Clientes con venta' = CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(FC_Ventas[monto_sin_impuesto] <> 0))
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Artículos distintos con movimiento: la parte del catálogo que de verdad rota.
-	measure 'Productos vendidos' = DISTINCTCOUNT(FC_Ventas[producto_clave])
-		formatString: #,0
-		displayFolder: 03 Conteos
-
-	/// Venta media por documento. Subirlo suele costar menos que conseguir un cliente nuevo.
-	measure 'Ticket promedio' = DIVIDE([Ventas netas], [Documentos de venta])
-		formatString: "Q" #,0
-		displayFolder: 04 Promedios
-
-	/// Precio medio realmente cobrado. Solo significa algo con UN producto filtrado: mezclado entre artículos distintos no dice nada.
-	measure 'Precio promedio unidad' = DIVIDE([Ventas netas], [Unidades vendidas])
-		formatString: "Q" #,0.00
-		displayFolder: 04 Promedios
-
-	/// Tamaño medio de la línea de documento.
-	measure 'Venta promedio por línea' = DIVIDE([Ventas netas], [Líneas de venta])
-		formatString: "Q" #,0
-		displayFolder: 04 Promedios
-
-	/// Promedio sobre los días que SÍ hubo venta: no diluye con domingos y feriados.
-	measure 'Venta promedio diaria' = DIVIDE([Ventas netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas))
-		formatString: "Q" #,0
-		displayFolder: 04 Promedios
-
-	/// Facturación media por cliente activo en el período.
-	measure 'Venta promedio por cliente' = DIVIDE([Ventas netas], [Clientes con venta])
-		formatString: "Q" #,0
-		displayFolder: 04 Promedios
-
-	/// Costo registrado en la línea al momento de facturar. Solo existe en SAP B1; en Odoo la línea no lo trae y la medida sale en cero.
-	measure 'Costo de ventas' = SUM(FC_Ventas[costo])
-		formatString: "Q" #,0
-		displayFolder: 05 Rentabilidad
-
-	/// Venta neta menos costo, calculado línea a línea. Cero en Odoo por la misma razón que el costo.
-	measure 'Margen bruto' = SUM(FC_Ventas[margen])
-		formatString: "Q" #,0
-		displayFolder: 05 Rentabilidad
-
-	/// Rentabilidad sobre la venta, grupo incluido. Para el margen del mercado real usar '% Margen terceros'.
-	measure '% Margen' = DIVIDE([Margen bruto], [Ventas netas])
-		formatString: 0.0%
-		displayFolder: 05 Rentabilidad
-
-	/// El margen de mercado. Incluir la venta al grupo, que no compite por precio, infla el indicador.
-	measure '% Margen terceros' = DIVIDE(CALCULATE([Margen bruto], DM_Cliente[es_intercompania] = FALSE), [Ventas a terceros])
-		formatString: 0.0%
-		displayFolder: 05 Rentabilidad
-
-	/// Mismo período del mes anterior (respeta el filtro de fechas del visual).
-	measure 'Ventas mes anterior' = CALCULATE([Ventas netas], DATEADD(DM_Calendario[fecha], -1, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 06 Comparativos
-
-	/// El mismo período del año pasado. En un negocio con temporada dice más que la comparación contra el mes anterior.
-	measure 'Ventas año anterior' = CALCULATE([Ventas netas], DATEADD(DM_Calendario[fecha], -1, YEAR))
-		formatString: "Q" #,0
-		displayFolder: 06 Comparativos
-
-	/// Acumulado del mes en curso hasta el último día con datos del filtro.
-	measure 'Ventas acumuladas mes' = TOTALMTD([Ventas netas], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 06 Comparativos
-
-	/// Acumulado desde el inicio del trimestre hasta la fecha del contexto.
-	measure 'Ventas acumuladas trimestre' = TOTALQTD([Ventas netas], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 06 Comparativos
-
-	/// Acumulado desde el 1 de enero: la cifra con la que se mide el ejercicio.
-	measure 'Ventas acumuladas año' = TOTALYTD([Ventas netas], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 06 Comparativos
-
-	/// El acumulado del año PASADO al mismo corte: el comparable correcto del YTD.
-	measure 'Ventas acumuladas año anterior' = CALCULATE(TOTALYTD([Ventas netas], DM_Calendario[fecha]), DATEADD(DM_Calendario[fecha], -1, YEAR))
-		formatString: "Q" #,0
-		displayFolder: 06 Comparativos
-
-	/// Crecimiento contra el mes previo. Cuidado con la estacionalidad: un mes flojo puede ser normal para la época.
-	measure 'Variación vs mes anterior' = DIVIDE([Ventas netas] - [Ventas mes anterior], [Ventas mes anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 06 Comparativos
-
-	/// Crecimiento contra el mismo período del año pasado, ya libre del efecto estacional.
-	measure 'Variación vs año anterior' = DIVIDE([Ventas netas] - [Ventas año anterior], [Ventas año anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 06 Comparativos
-
-	/// Cómo va el ejercicio completo contra el anterior. Es la que se lleva a una junta.
-	measure 'Variación acumulada vs año anterior' = DIVIDE([Ventas acumuladas año] - [Ventas acumuladas año anterior], [Ventas acumuladas año anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 06 Comparativos
-
-	/// Fin de la ventana móvil: el corte del contexto, pero nunca más allá del último día CON DATO. El calendario llega a 2032 para cubrir vencimientos y series proyectadas del ERP, así que anclar en MAX(Calendario[fecha]) dejaba toda ventana móvil apuntando a un futuro vacío y devolviendo BLANK. Con un período filtrado el ancla es el fin del período, que es lo correcto.
-	measure '_Fecha ancla móvil' = VAR fin = MAX(DM_Calendario[fecha]) VAR ultimo_dato = CALCULATE(MAX(FC_Ventas[fecha_documento]), ALL(DM_Calendario)) RETURN MIN(fin, ultimo_dato)
-		formatString: yyyy-mm-dd
-		displayFolder: _Auxiliar
-		isHidden
-
-	/// Promedio MENSUAL de los últimos 3 meses: alisa el diente de sierra de la facturación. (Iterar días con DATESINPERIOD daba un promedio diario disfrazado de mensual.)
-	measure 'Media móvil 3 meses' = CALCULATE(AVERAGEX(VALUES(DM_Calendario[anio_mes]), [Ventas netas]), DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -3, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 06 Comparativos
-
-	/// Año móvil: los últimos 12 meses completos desde el corte. Quita la estacionalidad del calendario.
-	measure 'Ventas 12 meses móviles' = CALCULATE([Ventas netas], DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -12, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 06 Comparativos
-
-	/// Venta de líneas sin artículo (servicios, fletes, gastos) — el miembro SERVICIO de Producto.
-	measure 'Ventas de servicios' = CALCULATE([Ventas netas], KEEPFILTERS(DM_Producto[producto_codigo] = "SERVICIO"))
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Posición del cliente ordenado por venta a terceros, dentro del filtro vigente.
-	measure 'Ranking de cliente por venta' = RANKX(ALLSELECTED(DM_Cliente), [Ventas a terceros])
-		formatString: #,0
-		displayFolder: 07 Pareto
-
-	/// Curva de Pareto: % de la venta a terceros que acumulan este cliente y los mayores que él. La venta por cliente se materializa UNA vez en `base`: la versión anterior reevaluaba la medida dentro del FILTER, una vez por cliente y por cliente, lo que es cuadrático y se nota con miles de clientes.
-	measure '% acumulado de venta clientes' = VAR base = ADDCOLUMNS(ALLSELECTED(DM_Cliente), "@v", [Ventas a terceros]) VAR actual = [Ventas a terceros] VAR total = SUMX(base, [@v]) VAR acum = SUMX(FILTER(base, [@v] >= actual), [@v]) RETURN DIVIDE(acum, total)
-		formatString: 0.0%
-		displayFolder: 07 Pareto
-
-	/// Posición del producto por venta neta dentro del filtro vigente.
-	measure 'Ranking de producto por venta' = RANKX(ALLSELECTED(DM_Producto), [Ventas netas])
-		formatString: #,0
-		displayFolder: 07 Pareto
-
-	/// Curva de Pareto de productos sobre la venta neta. Misma materialización en `base` que la curva de clientes.
-	measure '% acumulado de venta productos' = VAR base = ADDCOLUMNS(ALLSELECTED(DM_Producto), "@v", [Ventas netas]) VAR actual = [Ventas netas] VAR total = SUMX(base, [@v]) VAR acum = SUMX(FILTER(base, [@v] >= actual), [@v]) RETURN DIVIDE(acum, total)
-		formatString: 0.0%
-		displayFolder: 07 Pareto
-
-	/// Peso de los 10 mayores clientes: la medida de riesgo comercial. Si perder un cliente hunde el año, se sabe aquí.
-	measure '% Venta en top 10 clientes' = DIVIDE(CALCULATE([Ventas a terceros], TOPN(10, ALLSELECTED(DM_Cliente), [Ventas a terceros])), CALCULATE([Ventas a terceros], ALLSELECTED(DM_Cliente)))
-		formatString: 0.0%
-		displayFolder: 07 Pareto
-
-	/// Amplitud de catálogo: cuántos productos distintos se le venden al cliente promedio. Subirla es la venta cruzada.
-	measure 'Productos por cliente' = DIVIDE([Productos vendidos], [Clientes con venta])
-		formatString: #,0.0
-		displayFolder: 04 Promedios
-
-	/// Venta facturada por DEBAJO del costo registrado en la línea. Es fuga de margen pura, no una promoción: nadie la autorizó.
-	measure 'Ventas bajo costo' = CALCULATE([Ventas netas], KEEPFILTERS(FC_Ventas[margen] < 0))
-		formatString: "Q" #,0
-		displayFolder: 08 Fugas de margen
-
-	/// Cuántas líneas se facturaron por debajo del costo registrado.
-	measure 'Líneas bajo costo' = CALCULATE(COUNTROWS(FC_Ventas), KEEPFILTERS(FC_Ventas[margen] < 0))
-		formatString: #,0
-		displayFolder: 08 Fugas de margen
-
-	/// Cuánto margen se dejó en la mesa, en positivo para poder sumarlo y priorizarlo.
-	measure 'Margen perdido bajo costo' = -CALCULATE(SUM(FC_Ventas[margen]), KEEPFILTERS(FC_Ventas[margen] < 0))
-		formatString: "Q" #,0
-		displayFolder: 08 Fugas de margen
-
-	/// Qué porción de la venta se hizo perdiendo margen. Cualquier cifra de dos dígitos aquí merece una revisión de política de precios.
-	measure '% Ventas bajo costo' = DIVIDE([Ventas bajo costo], [Ventas netas])
-		formatString: 0.0%
-		displayFolder: 08 Fugas de margen
-
-	/// Artículos distintos que se vendieron perdiendo margen: la lista corta por donde empezar.
-	measure 'Productos vendidos bajo costo' = CALCULATE(DISTINCTCOUNT(FC_Ventas[producto_clave]), KEEPFILTERS(FC_Ventas[margen] < 0))
-		formatString: #,0
-		displayFolder: 08 Fugas de margen
-
-	/// Clientes a los que se les facturó por debajo del costo. Suele concentrarse en pocos y negociados.
-	measure 'Clientes con venta bajo costo' = CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(FC_Ventas[margen] < 0))
-		formatString: #,0
-		displayFolder: 08 Fugas de margen
-
-	/// Precio promedio del mismo período del año pasado, base del desglose precio/volumen.
-	measure 'Precio promedio año anterior' = CALCULATE([Precio promedio unidad], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
-		formatString: "Q" #,0.00
-		displayFolder: 09 Precio y volumen
-
-	/// Volumen del mismo período del año pasado, base del desglose precio/volumen.
-	measure 'Unidades año anterior' = CALCULATE([Unidades vendidas], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
-		formatString: #,0
-		displayFolder: 09 Precio y volumen
-
-	/// Cuánto de la variación anual viene de haber vendido MÁS CARO: diferencia de precio aplicada al volumen actual.
-	measure 'Efecto precio' = ([Precio promedio unidad] - [Precio promedio año anterior]) * [Unidades vendidas]
-		formatString: "Q" #,0
-		displayFolder: 09 Precio y volumen
-
-	/// Cuánto viene de haber vendido MÁS UNIDADES: diferencia de volumen valorada al precio del año pasado.
-	measure 'Efecto volumen' = ([Unidades vendidas] - [Unidades año anterior]) * [Precio promedio año anterior]
-		formatString: "Q" #,0
-		displayFolder: 09 Precio y volumen
-
-	/// El resto: cambio en la MEZCLA de productos y clientes. Los tres efectos suman exactamente la variación anual.
-	measure 'Efecto mezcla' = [Ventas netas] - [Ventas año anterior] - [Efecto precio] - [Efecto volumen]
-		formatString: "Q" #,0
-		displayFolder: 09 Precio y volumen
-
-	/// Título de la página 01.
-	measure 'Título de Dirección' = "01 · Dirección · " & [Período activo]
-		displayFolder: _Narrativa
-
-	/// Subtítulo del visual de ejercicio (página 01). Habla de la serie del año en curso, no de un comparativo: el modelo arranca en 2026 y no hay año anterior que comparar (decisión de Edwin, 2026-08-08). Señala el mejor mes, que es la referencia contra la que el resto se lee.
-	measure 'Subtítulo del ejercicio' = VAR t = [Ventas netas] VAR meses = VALUES(DM_Calendario[anio_mes]) VAR n = COUNTROWS(meses) VAR mejor = MAXX(meses, CALCULATE([Ventas netas])) VAR etiq = CONCATENATEX(TOPN(1, meses, CALCULATE([Ventas netas]), DESC), CALCULATE(MAX(DM_Calendario[mes_anio_etiqueta])), ", ") RETURN SWITCH(TRUE(), ISBLANK(t) || t = 0, "Sin venta en el período seleccionado", n <= 1, (IF(t < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(t) >= 1000000, FORMAT(ABS(t) / 1000000, "#,##0.0") & "M", ABS(t) >= 10000, FORMAT(ABS(t) / 1000, "#,##0") & "K", FORMAT(ABS(t), "#,##0"))) & " en el período", (IF(t < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(t) >= 1000000, FORMAT(ABS(t) / 1000000, "#,##0.0") & "M", ABS(t) >= 10000, FORMAT(ABS(t) / 1000, "#,##0") & "K", FORMAT(ABS(t), "#,##0"))) & " en el período · mejor mes: " & etiq & " con " & (IF(mejor < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(mejor) >= 1000000, FORMAT(ABS(mejor) / 1000000, "#,##0.0") & "M", ABS(mejor) >= 10000, FORMAT(ABS(mejor) / 1000, "#,##0") & "K", FORMAT(ABS(mejor), "#,##0"))))
-		displayFolder: _Narrativa
-
-	/// Subtítulo de la tabla de alertas (página 01). Cuenta focos, NO suma sus importes: venta en riesgo, margen perdido, saldo vencido y backlog son cifras de distinta naturaleza y sumarlas produce un total que nadie puede reconstruir.
-	measure 'Subtítulo de focos de la semana' = VAR n = IF([Venta anual en riesgo por quiebre] > 0, 1, 0) + IF([Margen perdido bajo costo] > 0, 1, 0) + IF([Vencido terceros hoy] > 0, 1, 0) + IF([Backlog vencido] > 0, 1, 0) + IF([Flujo neto próximas 4 semanas] < 0, 1, 0) RETURN IF(n = 0, "Ningún foco exige acción esta semana", FORMAT(n, "0") & IF(n = 1, " foco exige acción", " focos exigen acción") & " · cada uno se lee en su propia unidad, no se suman entre sí")
-		displayFolder: _Narrativa
-
-	/// Subtítulo del aporte por sociedad (página 01). Cuánto concentra la mayor: en un grupo de diez sociedades, la dependencia de una sola es la lectura que no da el ERP.
-	measure 'Subtítulo de aporte por sociedad' = VAR t = [Ventas a terceros] VAR soc = FILTER(VALUES(DM_Empresa[nombre]), [Ventas a terceros] <> 0) VAR n = COUNTROWS(soc) VAR mayor = MAXX(soc, [Ventas a terceros]) RETURN IF(ISBLANK(t) || t = 0, "Sin venta a terceros en el período", FORMAT(n, "0") & IF(n = 1, " sociedad con venta a terceros · ", " sociedades con venta a terceros · ") & "la mayor concentra " & FORMAT(DIVIDE(mayor, t), "0.0%"))
-		displayFolder: _Narrativa
-
-	/// Texto del foco de venta bajo costo (página 01). Margen regalado en el período filtrado: líneas facturadas por debajo del costo del artículo.
-	measure 'Alerta de venta bajo costo' = VAR m = [Margen perdido bajo costo] VAR p = [% Ventas bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Sin venta bajo costo en el período", (IF(m < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(m) >= 1000000, FORMAT(ABS(m) / 1000000, "#,##0.0") & "M", ABS(m) >= 10000, FORMAT(ABS(m) / 1000, "#,##0") & "K", FORMAT(ABS(m), "#,##0"))) & " de margen perdido vendiendo bajo costo · " & FORMAT(p, "0.0%") & " de la venta")
-		displayFolder: _Narrativa
 
 	partition FC_Ventas = m
 		mode: import
@@ -513,3 +610,4 @@ table FC_Ventas
 				    Tabla = Origen{[Schema="oro",Item="hecho_venta_linea"]}[Data]
 				in
 				    Tabla
+

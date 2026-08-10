@@ -1,171 +1,203 @@
 table 'FC_Pagos efectuados'
+	lineageTag: df9ffc12-b513-4a49-9ea7-78a885a976c9
+
+	/// Salidas de caja del período, cualquiera sea la contraparte.
+	measure 'Monto pagado' = SUM('FC_Pagos efectuados'[monto])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 3e976acf-1cdf-4783-8529-7ce834e5f624
+
+	/// Solo pagos a PROVEEDORES (excluye operaciones de tesorería contra cuenta contable).
+	measure 'Pagos a proveedores' = CALCULATE([Monto pagado], KEEPFILTERS('FC_Pagos efectuados'[contraparte] = "proveedor"))
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 6bc34ea2-6803-4a9b-96aa-68988a2c0f7a
+
+	/// Lo cobrado menos lo pagado en el período filtrado: el pulso de caja operativo.
+	measure 'Flujo neto de caja' = [Monto cobrado] - [Monto pagado]
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 657df37b-c379-45a3-ac65-1aa4deeea146
+
+	/// Número de documentos de pago emitidos.
+	measure 'Cantidad de pagos' = COUNTROWS('FC_Pagos efectuados')
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: 54a89e8b-42b5-4de7-8ceb-e39417566b4b
+
+	/// Proveedores distintos a los que se les pagó.
+	measure 'Proveedores pagados' = DISTINCTCOUNT('FC_Pagos efectuados'[proveedor_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: 4db1663a-038c-496d-abc9-2677db31ad71
+
+	/// Importe medio por documento de pago.
+	measure 'Pago promedio' = DIVIDE([Monto pagado], [Cantidad de pagos])
+		formatString: "Q" #,0
+		displayFolder: 03 Promedios
+		lineageTag: f923518c-97ff-4498-b0e2-32c9a7cb41d2
+
+	/// Salidas del mes previo.
+	measure 'Pagos mes anterior' = CALCULATE([Monto pagado], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: 1d992c6c-53a5-446c-88c2-5d9c9f72c612
+
+	/// Salidas acumuladas del ejercicio.
+	measure 'Pagos acumulados año' = TOTALYTD([Monto pagado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: b7e297ae-0cbe-48f5-b8cf-55e5c8b4628e
+
+	/// Salidas del mismo período del año pasado.
+	measure 'Pagos año anterior' = CALCULATE([Monto pagado], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: aebbed70-e338-421c-81a4-41e8743423d5
+
+	/// Salidas acumuladas desde el primer día del mes.
+	measure 'Pagos acumulados mes' = TOTALMTD([Monto pagado], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: ac83a91a-630d-4760-b957-7f3b25ffe7d3
+
+	/// Cambio en las salidas contra el año pasado.
+	measure 'Variación de pagos vs año anterior' = DIVIDE([Monto pagado] - [Pagos año anterior], [Pagos año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 04 Comparativos
+		lineageTag: d891af1a-1ac5-4663-b3a5-970df843d2ac
+
+	/// Caja neta acumulada del año: lo cobrado menos lo pagado desde el 1 de enero.
+	measure 'Flujo neto acumulado año' = [Cobros acumulados año] - [Pagos acumulados año]
+		formatString: "Q" #,0
+		displayFolder: 04 Comparativos
+		lineageTag: c091a2e4-20dd-4c7b-8370-023183a22c9c
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 20d48705-d4a4-4260-8619-1e4779ccae5b
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
+		lineageTag: 04996155-5843-46fa-a9a3-764f2bfd236b
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column socio_clave
 		dataType: int64
 		isHidden
+		lineageTag: b04e9d6b-e845-4b24-8f2e-4a418560a64b
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: 25173643-3107-4cce-a368-f4f2ee3c4f57
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
+		lineageTag: 1834ec6a-c64e-4730-bc2d-7e034a3a16f1
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 6a02b7b6-a3a4-462d-b0a9-9dd4858ec0b7
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column pago_id
 		dataType: string
+		lineageTag: 58075791-5105-47bc-8790-d0bad5f22989
 		summarizeBy: none
 		sourceColumn: pago_id
 
 	column pago_numero
 		dataType: string
+		lineageTag: 7444960e-0671-48c0-88b9-55005f626a17
 		summarizeBy: none
 		sourceColumn: pago_numero
 
 	column serie_codigo
 		dataType: string
+		lineageTag: e5af7349-6b9c-4afb-a85f-526807fe5586
 		summarizeBy: none
 		sourceColumn: serie_codigo
 
 	column contraparte
 		dataType: string
+		lineageTag: 3d652bbb-d232-4500-a775-43a6667742de
 		summarizeBy: none
 		sourceColumn: contraparte
 
 	column fecha_pago
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: f11462a0-e708-474d-840c-ad50fa150db5
 		summarizeBy: none
 		sourceColumn: fecha_pago
-		formatString: dd/MM/yyyy
 
 	column medio_pago
 		dataType: string
+		lineageTag: b4f4113b-54a3-44d2-8ae7-e6b7426e85f7
 		summarizeBy: none
 		sourceColumn: medio_pago
 
 	column referencia
 		dataType: string
+		lineageTag: 34647f49-2b42-449e-8f0b-2da6a1e0f337
 		summarizeBy: none
 		sourceColumn: referencia
 
 	column estado
 		dataType: string
+		lineageTag: 5fe559f3-a9fe-44b2-823c-e4a814ac5962
 		summarizeBy: none
 		sourceColumn: estado
 
 	column monto
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 3fdc6f5d-287a-445f-bd22-4c8baf9ac141
 		summarizeBy: none
 		sourceColumn: monto
-		formatString: #,0.00
 
 	column monto_doc
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 71f23e13-1d8c-467e-a536-72f9d6c05325
 		summarizeBy: none
 		sourceColumn: monto_doc
-		formatString: #,0.00
 
 	column tipo_cambio
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 24459830-324a-4c98-b12b-d3479bae6069
 		summarizeBy: none
 		sourceColumn: tipo_cambio
-		formatString: #,0.00
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: d9b49310-ed6c-4523-9ffd-d0c056ac2ba5
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: a8d6cb43-b94e-41ab-ba61-e0dca88cf27d
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Salidas de caja del período, cualquiera sea la contraparte.
-	measure 'Monto pagado' = SUM('FC_Pagos efectuados'[monto])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Solo pagos a PROVEEDORES (excluye operaciones de tesorería contra cuenta contable).
-	measure 'Pagos a proveedores' = CALCULATE([Monto pagado], KEEPFILTERS('FC_Pagos efectuados'[contraparte] = "proveedor"))
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Lo cobrado menos lo pagado en el período filtrado: el pulso de caja operativo.
-	measure 'Flujo neto de caja' = [Monto cobrado] - [Monto pagado]
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Número de documentos de pago emitidos.
-	measure 'Cantidad de pagos' = COUNTROWS('FC_Pagos efectuados')
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Proveedores distintos a los que se les pagó.
-	measure 'Proveedores pagados' = DISTINCTCOUNT('FC_Pagos efectuados'[proveedor_clave])
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Importe medio por documento de pago.
-	measure 'Pago promedio' = DIVIDE([Monto pagado], [Cantidad de pagos])
-		formatString: "Q" #,0
-		displayFolder: 03 Promedios
-
-	/// Salidas del mes previo.
-	measure 'Pagos mes anterior' = CALCULATE([Monto pagado], DATEADD(DM_Calendario[fecha], -1, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
-
-	/// Salidas acumuladas del ejercicio.
-	measure 'Pagos acumulados año' = TOTALYTD([Monto pagado], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
-
-	/// Salidas del mismo período del año pasado.
-	measure 'Pagos año anterior' = CALCULATE([Monto pagado], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
-
-	/// Salidas acumuladas desde el primer día del mes.
-	measure 'Pagos acumulados mes' = TOTALMTD([Monto pagado], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
-
-	/// Cambio en las salidas contra el año pasado.
-	measure 'Variación de pagos vs año anterior' = DIVIDE([Monto pagado] - [Pagos año anterior], [Pagos año anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 04 Comparativos
-
-	/// Caja neta acumulada del año: lo cobrado menos lo pagado desde el 1 de enero.
-	measure 'Flujo neto acumulado año' = [Cobros acumulados año] - [Pagos acumulados año]
-		formatString: "Q" #,0
-		displayFolder: 04 Comparativos
 
 	partition 'FC_Pagos efectuados' = m
 		mode: import
@@ -175,3 +207,4 @@ table 'FC_Pagos efectuados'
 				    Tabla = Origen{[Schema="oro",Item="hecho_pago_efectuado"]}[Data]
 				in
 				    Tabla
+

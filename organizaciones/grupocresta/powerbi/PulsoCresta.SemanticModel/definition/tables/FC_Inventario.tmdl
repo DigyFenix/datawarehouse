@@ -1,115 +1,136 @@
 table FC_Inventario
+	lineageTag: 852b2d84-1fb1-4326-882f-1590e6ef3a9c
+
+	/// Valor del inventario a la fecha de corte en MONEDA DE PRESENTACIÓN (SAP: OnHand × costo promedio; Odoo: capas de valoración).
+	measure 'Valor de inventario' = SUM(FC_Inventario[valor])
+		formatString: "Q" #,0
+		displayFolder: 01 Importes
+		lineageTag: 15a73619-387d-4873-9ef4-b5e82a818c30
+
+	/// Cantidad física en bodega a la fecha de corte.
+	measure 'Unidades en existencia' = SUM(FC_Inventario[cantidad])
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: a7682522-f33c-48d6-8ca8-a9d512422ec9
+
+	/// Artículos distintos con saldo en bodega.
+	measure 'Productos con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[producto_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: ad1af4d8-33d7-4929-be26-1ad036515f3c
+
+	/// Almacenes con movimiento vivo.
+	measure 'Bodegas con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[almacen_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
+		formatString: #,0
+		displayFolder: 02 Conteos
+		lineageTag: fc208213-4943-4a23-8a35-1474f2c9e47a
+
+	/// Costo unitario medio de lo que hay en bodega.
+	measure 'Costo promedio ponderado' = DIVIDE([Valor de inventario], [Unidades en existencia])
+		formatString: "Q" #,0.00
+		displayFolder: 03 Promedios
+		lineageTag: c4326983-68e7-4b05-a14b-25e9dc26bf05
+
+	/// Veces que el inventario rota al año: costo de ventas de los últimos 12 meses sobre el valor actual.
+	measure 'Rotación de inventario 12M' = DIVIDE(CALCULATE([Costo de ventas], DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -12, MONTH)), [Valor de inventario])
+		formatString: #,0.0
+		displayFolder: 04 Rotación
+		lineageTag: 794b1719-04b5-4463-8dbd-02883f6bfeb0
+
+	/// Cuántos días tarda en consumirse la existencia actual. Es una de las tres patas del ciclo de conversión de efectivo.
+	measure 'Días de inventario' = DIVIDE(365, [Rotación de inventario 12M])
+		formatString: #,0
+		displayFolder: 04 Rotación
+		lineageTag: 727522b1-a889-4074-98c3-9a3ff3d4cc38
+
+	/// Los días de inventario en la unidad con la que suele razonar compras.
+	measure 'Meses de inventario' = DIVIDE([Días de inventario], 30)
+		formatString: #,0.0
+		displayFolder: 04 Rotación
+		lineageTag: a3d22153-5a94-4e76-8829-c5d522030a7b
+
+	/// Cuánto capital hay inmovilizado en bodega por cada quetzal de venta del período. Sube cuando se compra más rápido de lo que se vende.
+	measure 'Inventario sobre ventas' = DIVIDE([Valor de inventario], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 04 Rotación
+		lineageTag: 5d2751dd-88b1-4fa5-b4bc-fbec94dec434
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 5d08c451-cda0-4dc4-a016-d3e5a64cd936
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: 3f2f78f7-56e8-4208-a283-eba0cee1cd75
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column almacen_clave
 		dataType: int64
 		isHidden
+		lineageTag: 3e05f50f-9af8-42d4-8619-16e0ff4e9284
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: ba840618-95a4-4f6f-9804-5dc9e8db2b14
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 5dc822fe-1b4e-4b4d-8526-b2788d1514a1
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column fecha_corte
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 23fe89ad-efea-4f68-a471-0465930b4235
 		summarizeBy: none
 		sourceColumn: fecha_corte
-		formatString: dd/MM/yyyy
 
 	column cantidad
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: ab38866a-9064-4cc8-b7ec-3ab67ad28e47
 		summarizeBy: none
 		sourceColumn: cantidad
-		formatString: #,0.00
 
 	column costo_promedio
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 56c95a6f-6d8f-47a9-abed-2cef74fb8302
 		summarizeBy: none
 		sourceColumn: costo_promedio
-		formatString: #,0.00
 
 	column valor
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 376c3a30-583a-40a9-ac4e-46ff261c6dc8
 		summarizeBy: none
 		sourceColumn: valor
-		formatString: #,0.00
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: acf9c867-6317-4f6b-a406-ed11bffa2646
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: d2729631-f952-4bbf-9bb2-b360fcaca664
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Valor del inventario a la fecha de corte en MONEDA DE PRESENTACIÓN (SAP: OnHand × costo promedio; Odoo: capas de valoración).
-	measure 'Valor de inventario' = SUM(FC_Inventario[valor])
-		formatString: "Q" #,0
-		displayFolder: 01 Importes
-
-	/// Cantidad física en bodega a la fecha de corte.
-	measure 'Unidades en existencia' = SUM(FC_Inventario[cantidad])
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Artículos distintos con saldo en bodega.
-	measure 'Productos con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[producto_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Almacenes con movimiento vivo.
-	measure 'Bodegas con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[almacen_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
-		formatString: #,0
-		displayFolder: 02 Conteos
-
-	/// Costo unitario medio de lo que hay en bodega.
-	measure 'Costo promedio ponderado' = DIVIDE([Valor de inventario], [Unidades en existencia])
-		formatString: "Q" #,0.00
-		displayFolder: 03 Promedios
-
-	/// Veces que el inventario rota al año: costo de ventas de los últimos 12 meses sobre el valor actual.
-	measure 'Rotación de inventario 12M' = DIVIDE(CALCULATE([Costo de ventas], DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -12, MONTH)), [Valor de inventario])
-		formatString: #,0.0
-		displayFolder: 04 Rotación
-
-	/// Cuántos días tarda en consumirse la existencia actual. Es una de las tres patas del ciclo de conversión de efectivo.
-	measure 'Días de inventario' = DIVIDE(365, [Rotación de inventario 12M])
-		formatString: #,0
-		displayFolder: 04 Rotación
-
-	/// Los días de inventario en la unidad con la que suele razonar compras.
-	measure 'Meses de inventario' = DIVIDE([Días de inventario], 30)
-		formatString: #,0.0
-		displayFolder: 04 Rotación
-
-	/// Cuánto capital hay inmovilizado en bodega por cada quetzal de venta del período. Sube cuando se compra más rápido de lo que se vende.
-	measure 'Inventario sobre ventas' = DIVIDE([Valor de inventario], [Ventas netas])
-		formatString: 0.0%
-		displayFolder: 04 Rotación
 
 	partition FC_Inventario = m
 		mode: import
@@ -119,3 +140,4 @@ table FC_Inventario
 				    Tabla = Origen{[Schema="oro",Item="hecho_inventario"]}[Data]
 				in
 				    Tabla
+

@@ -1,49 +1,58 @@
 table DM_Bodega
+	lineageTag: 9a095f0f-2f33-4b42-ab15-093b3752aca0
 
 	column almacen_clave
 		dataType: int64
 		isHidden
+		lineageTag: 7ff5acea-6c11-4cfb-8e7a-8ddfcb18fda0
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: aede504d-d996-4809-a5e1-87d1e68edfbf
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column almacen_codigo
 		dataType: string
+		lineageTag: 0ae399be-b005-4aaf-983e-61eacb29ed7e
 		summarizeBy: none
 		sourceColumn: almacen_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: 93216f6e-d0ee-4377-8466-a18b3159dd6b
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
+		lineageTag: 81ec4a51-51db-47f9-903c-2ff6355cbff9
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 856eeeb9-75ba-461d-844b-ff7e94d6d5ff
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: fd24b170-10f0-49c1-8eab-b6ba9a38f8e2
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: 17ab98dd-f7f5-4bcf-9bb7-8987afc1280c
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -55,3 +64,4 @@ table DM_Bodega
 				    Tabla = Origen{[Schema="oro",Item="dim_almacen"]}[Data]
 				in
 				    Tabla
+

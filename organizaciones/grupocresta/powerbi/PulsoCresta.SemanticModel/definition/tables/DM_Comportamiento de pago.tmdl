@@ -1,147 +1,173 @@
 table 'DM_Comportamiento de pago'
+	lineageTag: cd5b55b8-97f6-4a8e-b68a-af34764b95b8
+
+	/// Clientes sin nada vencido. El objetivo de la gestión de cobranza.
+	measure 'Clientes al día' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "al_dia"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 8fc33e41-0e15-452a-8879-0f40d471217b
+
+	/// Más de 90 días vencido o más de la mitad del saldo vencido: revisar antes de despachar.
+	measure 'Clientes en vencido crítico' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 23023a35-986d-4f37-80dc-218849f8ea8f
+
+	/// Clientes con al menos una partida en mora.
+	measure 'Clientes con saldo vencido' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), 'DM_Comportamiento de pago'[perfil_riesgo] IN {"vencido_leve", "vencido_moderado", "vencido_critico"})
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 3aa2dc8f-fcd2-46a2-88ea-753e75941b44
+
+	/// Dinero expuesto en los clientes de peor perfil de pago.
+	measure 'Saldo en clientes críticos' = CALCULATE(SUM('DM_Comportamiento de pago'[saldo_total]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: "Q" #,0
+		displayFolder: 02 Montos
+		lineageTag: 6e4c842a-cd32-4924-869f-970d154419ee
+
+	/// Del saldo total abierto, cuánto ya venció. El termómetro de la salud de la cartera.
+	measure '% cartera vencida (clientes)' = DIVIDE(SUM('DM_Comportamiento de pago'[saldo_vencido]), SUM('DM_Comportamiento de pago'[saldo_total]))
+		formatString: 0.0%
+		displayFolder: 02 Montos
+		lineageTag: 1e246d40-3f88-461e-91a8-7b1587dd8d3b
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: e9fde8fb-8577-4b41-bf20-caecaad5d24e
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cliente_clave
 		dataType: int64
 		isHidden
+		lineageTag: 87ebdd61-f4bf-48e2-853b-1866c1efa6c9
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column partidas_abiertas
 		dataType: int64
+		formatString: #,0
+		lineageTag: e3e6f641-94bc-406c-abc1-fcf69192e2fa
 		summarizeBy: none
 		sourceColumn: partidas_abiertas
-		formatString: #,0
 
 	column saldo_total
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 9eced51e-b2a2-459c-afcf-d2753895cb7f
 		summarizeBy: none
 		sourceColumn: saldo_total
-		formatString: #,0.00
 
 	column saldo_corriente
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: a5b4c4c2-2e87-411a-bebd-e635989a4287
 		summarizeBy: none
 		sourceColumn: saldo_corriente
-		formatString: #,0.00
 
 	column saldo_vencido
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: e3d7fa28-191b-4f64-a317-4933b2be0725
 		summarizeBy: none
 		sourceColumn: saldo_vencido
-		formatString: #,0.00
 
 	column max_dias_vencido
 		dataType: int64
+		formatString: #,0
+		lineageTag: c4b9b2e4-85a6-4e67-825e-a87d4582ecf3
 		summarizeBy: none
 		sourceColumn: max_dias_vencido
-		formatString: #,0
 
 	column dias_vencido_ponderado
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 74ea3d00-265e-4139-a55c-ed1774393a33
 		summarizeBy: none
 		sourceColumn: dias_vencido_ponderado
-		formatString: #,0.00
 
 	column vencimiento_mas_antiguo
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: b4a927ad-a7c4-468d-857e-4bf3317471c5
 		summarizeBy: none
 		sourceColumn: vencimiento_mas_antiguo
-		formatString: dd/MM/yyyy
 
 	column fecha_corte
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 9e6e2445-495b-4d4d-ad6f-d50338618352
 		summarizeBy: none
 		sourceColumn: fecha_corte
-		formatString: dd/MM/yyyy
 
 	column ultimo_pago
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: ad15fc7b-f824-4396-8187-d5803b2d6343
 		summarizeBy: none
 		sourceColumn: ultimo_pago
-		formatString: dd/MM/yyyy
 
 	column dias_desde_ultimo_pago
 		dataType: int64
+		formatString: #,0
+		lineageTag: 29afda87-5b12-4e0f-92d3-052bad3323d9
 		summarizeBy: none
 		sourceColumn: dias_desde_ultimo_pago
-		formatString: #,0
 
 	column pagos_12m
 		dataType: int64
+		formatString: #,0
+		lineageTag: 8680afc1-f93f-4acb-8c58-d78379e906ca
 		summarizeBy: none
 		sourceColumn: pagos_12m
-		formatString: #,0
 
 	column monto_pagado_12m
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: f7d74df1-2a73-49c7-b1a3-ef0c89daa417
 		summarizeBy: none
 		sourceColumn: monto_pagado_12m
-		formatString: #,0.00
 
 	column monto_pagado_3m
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: eb1d7350-e676-4620-be46-27d996147b68
 		summarizeBy: none
 		sourceColumn: monto_pagado_3m
-		formatString: #,0.00
 
 	column pct_saldo_vencido
 		dataType: decimal
+		formatString: 0.0"%"
+		lineageTag: d9502e64-52b5-45f9-b8c4-a5b7e68d8ffa
 		summarizeBy: none
 		sourceColumn: pct_saldo_vencido
-		formatString: 0.0"%"
 
 	column perfil_riesgo
 		dataType: string
+		lineageTag: 0e905648-0c5f-41c7-bd03-8e020af9a0c4
 		summarizeBy: none
 		sourceColumn: perfil_riesgo
 
 	column perfil_riesgo_nombre
 		dataType: string
+		lineageTag: 9029212b-81e5-4209-9272-b3cbabaf88af
 		summarizeBy: none
 		sourceColumn: perfil_riesgo_nombre
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 478ff337-ba5b-430b-9435-e01cdffadaa9
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: cb1abc87-b470-4034-9b5d-38bc5913fb69
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Clientes sin nada vencido. El objetivo de la gestión de cobranza.
-	measure 'Clientes al día' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "al_dia"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Más de 90 días vencido o más de la mitad del saldo vencido: revisar antes de despachar.
-	measure 'Clientes en vencido crítico' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Clientes con al menos una partida en mora.
-	measure 'Clientes con saldo vencido' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), 'DM_Comportamiento de pago'[perfil_riesgo] IN {"vencido_leve", "vencido_moderado", "vencido_critico"})
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Dinero expuesto en los clientes de peor perfil de pago.
-	measure 'Saldo en clientes críticos' = CALCULATE(SUM('DM_Comportamiento de pago'[saldo_total]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
-		formatString: "Q" #,0
-		displayFolder: 02 Montos
-
-	/// Del saldo total abierto, cuánto ya venció. El termómetro de la salud de la cartera.
-	measure '% cartera vencida (clientes)' = DIVIDE(SUM('DM_Comportamiento de pago'[saldo_vencido]), SUM('DM_Comportamiento de pago'[saldo_total]))
-		formatString: 0.0%
-		displayFolder: 02 Montos
 
 	partition 'DM_Comportamiento de pago' = m
 		mode: import
@@ -151,3 +177,4 @@ table 'DM_Comportamiento de pago'
 				    Tabla = Origen{[Schema="oro",Item="comportamiento_pago_cliente"]}[Data]
 				in
 				    Tabla
+

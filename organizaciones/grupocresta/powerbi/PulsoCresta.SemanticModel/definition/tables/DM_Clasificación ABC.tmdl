@@ -1,163 +1,193 @@
 table 'DM_Clasificación ABC'
+	lineageTag: 32cb3859-4a44-4104-965a-5d40def01492
+
+	/// Cuántos clientes concentran el 80% de la venta. En una cartera sana no son dos. Cuenta clientes DISTINTOS: la tabla tiene una fila por cliente y año, así que sin acotar el año un COUNTROWS contaría cliente-años.
+	measure 'Clientes A' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: e02e43f7-8a89-40e8-8851-7a908c40d2d1
+
+	/// Clientes del tramo intermedio: entre el 80% y el 95% acumulado de la venta.
+	measure 'Clientes B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "B"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 7ee574b6-f0ce-4656-8fbc-ff3141f4899e
+
+	/// Cola larga. Muchos nombres y poca venta; el costo de atenderlos es lo que hay que vigilar.
+	measure 'Clientes C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "C"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 8b380116-b5b0-48b5-a33d-da28d6e00518
+
+	/// Clientes del catálogo sin venta en el año, o con solo devoluciones.
+	measure 'Clientes sin venta neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "S"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 5c6f9503-567e-47b0-bf27-4f8b9cbb5fb4
+
+	/// Clientes distintos en el catálogo ABC, excluida la intercompañía.
+	measure 'Clientes clasificados' = DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave])
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 66c2dccd-3376-4ca3-a265-c61b7a2f1028
+
+	/// Clientes que facturaron algún año anterior y nada en el año seleccionado: la lista de llamadas pendientes.
+	measure 'Clientes perdidos' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[es_perdido] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: d67a2c36-91f1-4d5f-b983-0f8baaf5526a
+
+	/// Clientes cuya PRIMERA factura cae en el año seleccionado.
+	measure 'Clientes estrenados en el año' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[es_nuevo] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 99de1464-c9d0-4881-b1ea-37831a24b4bc
+
+	/// Riesgo de concentración: si los A son el 90% de la venta, perder uno duele de verdad.
+	measure '% Venta en clientes A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), SUM('DM_Clasificación ABC'[venta]))
+		formatString: 0.0%
+		displayFolder: 02 Concentración
+		lineageTag: 925ca2b4-0463-4b79-9cc3-26f6f1b05092
+
+	/// Venta a terceros del año según el catálogo ABC. Sin filtrar un año en 'Año de clasificación' suma TODOS los años cargados.
+	measure 'Venta del año clasificada' = SUM('DM_Clasificación ABC'[venta])
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+		lineageTag: 6ad5c2a0-29b6-4808-87e4-93de6af89bd4
+
+	/// Cuánto factura en promedio un cliente clave.
+	measure 'Venta promedio cliente A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), [Clientes A])
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+		lineageTag: 41692e5e-1792-4423-b228-f5a69ffd86f5
+
+	/// Margen que dejan los clientes que hacen el negocio. Que sean los que más venden no garantiza que sean los que más dejan.
+	measure 'Margen de clientes A' = CALCULATE(SUM('DM_Clasificación ABC'[margen]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+		lineageTag: 059ee5fd-ce41-4ddb-9e3c-725b274aaac8
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 819bad4c-ddcd-47a4-9c18-f66d947a6441
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column anio
 		dataType: int64
+		formatString: #,0
+		lineageTag: 2db1f46c-90de-4509-bb74-efc03645ad19
 		summarizeBy: none
 		sourceColumn: anio
-		formatString: #,0
 
 	column anio_clave
 		dataType: int64
 		isHidden
+		lineageTag: a070ea2b-040b-4de6-aa18-34f82f5a9e31
 		summarizeBy: none
 		sourceColumn: anio_clave
 
 	column cliente_clave
 		dataType: int64
 		isHidden
+		lineageTag: d668a0a3-1dcf-4294-be27-45b4e509b0fe
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column ranking
 		dataType: int64
+		formatString: #,0
+		lineageTag: 7a54c4e2-2c06-4d81-8930-e309fa86e2e9
 		summarizeBy: none
 		sourceColumn: ranking
-		formatString: #,0
 
 	column venta
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: da6b70af-8e24-4549-a930-a2bb2195935a
 		summarizeBy: none
 		sourceColumn: venta
-		formatString: #,0.00
 
 	column margen
 		dataType: decimal
+		formatString: #,0.00
+		lineageTag: 12efd0dd-1e31-42a1-8c71-ab58bdb463b4
 		summarizeBy: none
 		sourceColumn: margen
-		formatString: #,0.00
 
 	column lineas
 		dataType: int64
+		formatString: #,0
+		lineageTag: 8a35e537-388f-4143-945e-4ddd01291d59
 		summarizeBy: none
 		sourceColumn: lineas
-		formatString: #,0
 
 	column participacion
 		dataType: decimal
+		formatString: 0.0%
+		lineageTag: 6995f667-7bed-431e-9513-d957eb716176
 		summarizeBy: none
 		sourceColumn: participacion
-		formatString: 0.0%
 
 	column participacion_acumulada
 		dataType: decimal
+		formatString: 0.0%
+		lineageTag: 1296fa09-fc52-46c7-96a4-c714ce846cca
 		summarizeBy: none
 		sourceColumn: participacion_acumulada
-		formatString: 0.0%
 
 	column clase_abc
 		dataType: string
+		lineageTag: 9cc15f35-311b-4e45-b213-a3bb282e2bcd
 		summarizeBy: none
 		sourceColumn: clase_abc
 
 	column clase_abc_nombre
 		dataType: string
+		lineageTag: 29dc35df-e591-4f14-829d-5ced03efaea5
 		summarizeBy: none
 		sourceColumn: clase_abc_nombre
 
 	column primer_anio_compra
 		dataType: int64
+		formatString: #,0
+		lineageTag: c86f5050-f671-46c8-86ce-56a2b9042e86
 		summarizeBy: none
 		sourceColumn: primer_anio_compra
-		formatString: #,0
 
 	column ultimo_anio_compra
 		dataType: int64
+		formatString: #,0
+		lineageTag: 7c19977f-8331-4a9e-b338-612386e1c219
 		summarizeBy: none
 		sourceColumn: ultimo_anio_compra
-		formatString: #,0
 
 	column es_perdido
 		dataType: boolean
+		lineageTag: 1eee48d2-8fe2-4784-9aba-dbd03942caae
 		summarizeBy: none
 		sourceColumn: es_perdido
 
 	column es_nuevo
 		dataType: boolean
+		lineageTag: eb986497-08a4-4897-a8f6-4b04aa67129b
 		summarizeBy: none
 		sourceColumn: es_nuevo
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 52da227a-0164-4ec0-979b-c8ef87f2c95a
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: 81ec47d6-e59c-4b54-afab-0a92e8e0566b
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Cuántos clientes concentran el 80% de la venta. En una cartera sana no son dos. Cuenta clientes DISTINTOS: la tabla tiene una fila por cliente y año, así que sin acotar el año un COUNTROWS contaría cliente-años.
-	measure 'Clientes A' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Clientes del tramo intermedio: entre el 80% y el 95% acumulado de la venta.
-	measure 'Clientes B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "B"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Cola larga. Muchos nombres y poca venta; el costo de atenderlos es lo que hay que vigilar.
-	measure 'Clientes C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "C"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Clientes del catálogo sin venta en el año, o con solo devoluciones.
-	measure 'Clientes sin venta neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "S"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Clientes distintos en el catálogo ABC, excluida la intercompañía.
-	measure 'Clientes clasificados' = DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave])
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Clientes que facturaron algún año anterior y nada en el año seleccionado: la lista de llamadas pendientes.
-	measure 'Clientes perdidos' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[es_perdido] = TRUE))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Clientes cuya PRIMERA factura cae en el año seleccionado.
-	measure 'Clientes estrenados en el año' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[es_nuevo] = TRUE))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Riesgo de concentración: si los A son el 90% de la venta, perder uno duele de verdad.
-	measure '% Venta en clientes A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), SUM('DM_Clasificación ABC'[venta]))
-		formatString: 0.0%
-		displayFolder: 02 Concentración
-
-	/// Venta a terceros del año según el catálogo ABC. Sin filtrar un año en 'Año de clasificación' suma TODOS los años cargados.
-	measure 'Venta del año clasificada' = SUM('DM_Clasificación ABC'[venta])
-		formatString: "Q" #,0
-		displayFolder: 02 Concentración
-
-	/// Cuánto factura en promedio un cliente clave.
-	measure 'Venta promedio cliente A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), [Clientes A])
-		formatString: "Q" #,0
-		displayFolder: 02 Concentración
-
-	/// Margen que dejan los clientes que hacen el negocio. Que sean los que más venden no garantiza que sean los que más dejan.
-	measure 'Margen de clientes A' = CALCULATE(SUM('DM_Clasificación ABC'[margen]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
-		formatString: "Q" #,0
-		displayFolder: 02 Concentración
 
 	partition 'DM_Clasificación ABC' = m
 		mode: import
@@ -167,3 +197,4 @@ table 'DM_Clasificación ABC'
 				    Tabla = Origen{[Schema="oro",Item="clasificacion_abc_cliente"]}[Data]
 				in
 				    Tabla
+
