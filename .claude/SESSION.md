@@ -1,5 +1,76 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 26 (2026-08-11) — OBSIDIAN SOBRE LA MEMORIA: UN CANAL DE EDWIN HACIA CLAUDE — leer esto primero ══════
+
+Sesión de **herramientas, no de producto**. El repo no se tocó (`git status` limpio, `HEAD` sigue
+en `cc15cf7`), F5 del contrato Power BI sigue exactamente igual y `ESTADO.md`/`STATE.md` no se
+modificaron. Todo el trabajo ocurrió en `C:\Users\elchacong\.claude\projects\C--Claudews-datawarehouse\memory\`,
+que **no está versionado**.
+
+Edwin preguntó qué tanto serviría Obsidian. La respuesta honesta que ordenó la sesión: **a Claude
+no le sirve de nada** —lee esos `.md` con sus propias herramientas, la app es una capa para
+humanos—, pero sí resuelve dos problemas reales: que Edwin no podía auditar la memoria (era caja
+negra) y que no existía forma de que él le dejara información a Claude entre sesiones.
+
+### Qué quedó armado
+
+- **Vault de Obsidian 1.13.6** apuntado solo a `memory/` (32 notas, 64 wikilinks, cero huérfanas).
+  Se descartó un vault sobre el repo: GitHub no renderiza `[[wikilinks]]` y un plugin que
+  reescriba archivos rompería el contrato Power BI.
+- **`_bandeja/`** — el canal Edwin → Claude. Él escribe con `Ctrl+N` → `Ctrl+Shift+T` (plantilla
+  `_plantillas/captura.md`); Claude la revisa al arrancar, la convierte en memoria y borra el
+  archivo. **La pieza que lo hace funcionar es el aviso al principio de `MEMORY.md`**, que es lo
+  que entra en contexto cada sesión — sin eso la bandeja sería una carpeta que nadie mira.
+  Instrucciones completas en `_bandeja/_leeme.md`.
+- **`Memoria.base`** — tablero nativo de Bases (sin plugins de terceros). Vista «Revisar primero»
+  ordenada por `file.mtime` ascendente: las memorias más viejas arriba, que son las candidatas a
+  estar desactualizadas.
+- **Memoria corregida:** `contrato-powerbi-v3` decía «F0 cerrada, siguiente F1» (2026-08-08)
+  cuando `STATE.md` dice **F5**. Se actualizó y se le agregó la instrucción de leer siempre
+  `STATE.md` en vez de confiar en la nota. `feedback-mostrar-no-preguntar` existía sin estar en
+  el índice — se indexó.
+
+### Cuatro trampas que costaron tiempo
+
+1. **`obsidian://open?path=` NO registra un vault nuevo.** Ese parámetro abre un archivo dentro de
+   un vault *ya conocido*. El resultado fue que Obsidian abrió `C:\Users\elchacong\Downloads` como
+   vault y le creó un `.obsidian/` adentro (se limpió; respaldo en el scratchpad de la sesión).
+   La forma correcta sin GUI: **cerrar Obsidian** y escribir `%APPDATA%\obsidian\obsidian.json`
+   con `{"vaults":{"<id hex 16>":{"path":"...","ts":<ms>,"open":true}}}`.
+2. **`groupBy` en un `.base`:** la doc de sintaxis sugiere `groupBy: {property: ...}` y el parser
+   lo rechaza con *"groupBy must be a object"*; la página de vistas no publica la forma literal.
+   No perder tiempo adivinando — se configura por UI y Obsidian escribe el YAML correcto.
+3. **Los filtros globales de un `.base` se aplican a todas las vistas.** Una vista que filtra
+   justo lo que el filtro global excluye nunca muestra nada (pasó con «Bandeja sin procesar»).
+4. **`Ctrl+N` crea en la raíz del vault**, así que las capturas se mezclaban con las memorias, y
+   `daily-notes` activo creaba `2026-08-11.md` solo. Arreglado con `newFileLocation: folder` +
+   `newFileFolderPath: _bandeja` en `app.json` y `daily-notes: false`. Los tres archivos de prueba
+   que se generaron se borraron.
+
+### Reglas del vault (en `vault-obsidian-memoria.md`)
+
+**No renombrar notas desde Obsidian**: el nombre de archivo es la llave de los 64 wikilinks y del
+índice, y debe coincidir con el `name:` del frontmatter. **No instalar plugins de comunidad que
+formateen markdown** — reescribirían el frontmatter que las notas usan como contrato.
+
+### PENDIENTE: respaldo del vault de memoria
+
+Las 32 notas (precios, márgenes, trampas de datos que costaron cuadres contra el ERP) viven en un
+solo disco **sin copia**, y no pueden ir al repo del proyecto porque tienen información que no
+debe estar en GitHub. Edwin debe elegir: **repo git privado aparte** u **OneDrive**. Siguiente
+paso concreto: con la opción elegida, `git init` en
+`C:\Users\elchacong\.claude\projects\C--Claudews-datawarehouse\memory\` + remoto privado, o mover
+la carpeta a OneDrive y dejar un enlace simbólico en la ruta original (Claude Code espera esa ruta).
+
+### PENDIENTE: `powerbi-division-trabajo` puede estar desactualizada
+
+Esa memoria dice «Edwin hace TODO lo visual a mano; jamás correr `generar_reporte.py`», pero el
+commit `cc15cf7` construyó la página 00 **por código** con autorización explícita, y `STATE.md`
+dice que Edwin evalúa ese estándar antes de extenderlo a las páginas 01 y 09. **No se modificó a
+propósito** — es una regla fuerte de Edwin y adivinar en qué quedó sería justo el error que la
+regla previene. Siguiente paso: preguntarle si la regla sigue firme con el piloto como excepción
+acotada, o si cambió, y actualizar la nota con su respuesta.
+
 ## ══════ SESIÓN 25 (2026-08-10) — LA PÁGINA 00 CONSTRUIDA POR CÓDIGO: EL FLUJO NUEVO FUNCIONA — leer esto primero ══════
 
 Edwin preguntó si «el MCP de Power BI» podía crear los dashboards. La respuesta correcta fue
