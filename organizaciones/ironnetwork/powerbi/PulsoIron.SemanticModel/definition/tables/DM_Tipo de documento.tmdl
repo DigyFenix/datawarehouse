@@ -1,0 +1,62 @@
+table 'DM_Tipo de documento'
+
+	column tipo_documento_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tipo_documento_clave
+
+	column tipo_documento_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_documento_codigo
+
+	column flujo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: flujo
+
+	column tipo_documento
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_documento
+
+	column nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: nombre
+
+	column signo
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: signo
+		formatString: #,0
+
+	column valido_desde
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_desde
+		formatString: dd/MM/yyyy
+
+	column valido_hasta
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_hasta
+		formatString: dd/MM/yyyy
+
+	column es_vigente
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+		sourceColumn: es_vigente
+
+	partition 'DM_Tipo de documento' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="dim_tipo_documento"]}[Data]
+				in
+				    Tabla

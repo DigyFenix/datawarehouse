@@ -1,0 +1,39 @@
+table 'MD_Vista de liquidez'
+
+	column 'Vista de liquidez'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Vista de liquidez · orden'
+		relatedColumnDetails
+			groupByColumn: 'Vista de liquidez · campo'
+
+	column 'Vista de liquidez · campo'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value2]
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+	column 'Vista de liquidez · orden'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value3]
+
+	partition 'MD_Vista de liquidez' = calculated
+		mode: import
+		source =
+				{
+				  ("Ciclo de conversión de efectivo", NAMEOF('FC_Cartera por pagar'[Ciclo de conversión de efectivo]), 0),
+				  ("Días de cartera terceros", NAMEOF('FC_Cartera por cobrar'[Días de cartera terceros]), 1),
+				  ("Días de inventario", NAMEOF(FC_Inventario[Días de inventario]), 2),
+				  ("Días de pago terceros", NAMEOF('FC_Cartera por pagar'[Días de pago terceros]), 3),
+				  ("Efectividad de cobranza", NAMEOF('FC_Cartera cobrar histórico'[Efectividad de cobranza]), 4),
+				  ("Posición neta", NAMEOF('FC_Cartera por pagar'[Posición neta]), 5),
+				  ("Flujo neto próximas 4 semanas", NAMEOF('FC_Proyección de caja'[Flujo neto próximas 4 semanas]), 6)
+				}

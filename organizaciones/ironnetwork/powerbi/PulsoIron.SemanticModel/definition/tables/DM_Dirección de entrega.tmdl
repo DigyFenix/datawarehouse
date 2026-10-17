@@ -1,0 +1,99 @@
+table 'DM_Dirección de entrega'
+
+	column direccion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: direccion_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column socio_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: socio_codigo
+
+	column direccion_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: direccion_codigo
+
+	column tipo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo
+
+	column calle
+		dataType: string
+		summarizeBy: none
+		sourceColumn: calle
+
+	column ciudad
+		dataType: string
+		summarizeBy: none
+		sourceColumn: ciudad
+
+	column municipio
+		dataType: string
+		summarizeBy: none
+		sourceColumn: municipio
+
+	column departamento
+		dataType: string
+		summarizeBy: none
+		sourceColumn: departamento
+
+	column pais
+		dataType: string
+		summarizeBy: none
+		sourceColumn: pais
+
+	column codigo_postal
+		dataType: string
+		summarizeBy: none
+		sourceColumn: codigo_postal
+
+	column latitud
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: latitud
+		formatString: #,0.00
+
+	column longitud
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: longitud
+		formatString: #,0.00
+
+	column valido_desde
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_desde
+		formatString: dd/MM/yyyy
+
+	column valido_hasta
+		dataType: dateTime
+		isHidden
+		summarizeBy: none
+		sourceColumn: valido_hasta
+		formatString: dd/MM/yyyy
+
+	column es_vigente
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+		sourceColumn: es_vigente
+
+	partition 'DM_Dirección de entrega' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="dim_direccion"]}[Data]
+				in
+				    Tabla

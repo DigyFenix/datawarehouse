@@ -1,0 +1,277 @@
+table FC_Pedidos
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column tiempo_vencimiento_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_vencimiento_clave
+
+	column cliente_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cliente_clave
+
+	column socio_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: socio_clave
+
+	column producto_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: producto_clave
+
+	column vendedor_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: vendedor_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column almacen_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: almacen_clave
+
+	column moneda_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: moneda_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column pedido_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: pedido_id
+
+	column pedido_numero
+		dataType: string
+		summarizeBy: none
+		sourceColumn: pedido_numero
+
+	column serie_codigo
+		dataType: string
+		summarizeBy: none
+		sourceColumn: serie_codigo
+
+	column linea_numero
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: linea_numero
+		formatString: #,0
+
+	column fecha_pedido
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_pedido
+		formatString: dd/MM/yyyy
+
+	column fecha_entrega
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_entrega
+		formatString: dd/MM/yyyy
+
+	column estado
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado
+
+	column estado_linea
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado_linea
+
+	column es_abierta
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_abierta
+
+	column cantidad
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: cantidad
+		formatString: #,0.00
+
+	column cantidad_abierta
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: cantidad_abierta
+		formatString: #,0.00
+
+	column cantidad_entregada
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: cantidad_entregada
+		formatString: #,0.00
+
+	column precio_unitario_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: precio_unitario_doc
+		formatString: #,0.00
+
+	column descuento_pct
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: descuento_pct
+		formatString: 0.0"%"
+
+	column monto_sin_impuesto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_sin_impuesto
+		formatString: #,0.00
+
+	column monto_sin_impuesto_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_sin_impuesto_doc
+		formatString: #,0.00
+
+	column monto_abierto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_abierto
+		formatString: #,0.00
+
+	column descripcion_linea
+		dataType: string
+		summarizeBy: none
+		sourceColumn: descripcion_linea
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Base SIN impuesto de lo pedido en el período. El COMPROMISO, no el resultado (eso es Ventas).
+	measure 'Monto pedido' = SUM(FC_Pedidos[monto_sin_impuesto])
+		formatString: "Q" #,0
+		displayFolder: 01 Pedido
+
+	/// Unidades comprometidas en los pedidos del período.
+	measure 'Cantidad pedida' = SUM(FC_Pedidos[cantidad])
+		formatString: #,0
+		displayFolder: 01 Pedido
+
+	/// Número de pedidos distintos captados.
+	measure 'Pedidos del período' = DISTINCTCOUNT(FC_Pedidos[pedido_id])
+		formatString: #,0
+		displayFolder: 01 Pedido
+
+	/// Pedido y AÚN no cumplido (líneas abiertas): lo que la operación debe entregar/facturar.
+	measure 'Backlog' = CALCULATE(SUM(FC_Pedidos[monto_abierto]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
+		formatString: "Q" #,0
+		displayFolder: 02 Backlog
+
+	/// Unidades que faltan por entregar.
+	measure 'Cantidad pendiente' = CALCULATE(SUM(FC_Pedidos[cantidad_abierta]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Backlog
+
+	/// Líneas de pedido con saldo por despachar.
+	measure 'Líneas abiertas' = CALCULATE(COUNTROWS(FC_Pedidos), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Backlog
+
+	/// De lo pedido, cuánto ya se cumplió (1 − backlog/pedido). El pulso de la operación.
+	measure 'Fill rate' = 1 - DIVIDE([Backlog], [Monto pedido], 0)
+		formatString: 0.0%
+		displayFolder: 02 Backlog
+
+	/// Líneas abiertas cuya fecha de entrega prometida YA PASÓ. Es incumplimiento en curso: el cliente lo está viviendo hoy.
+	measure 'Líneas de pedido vencidas' = CALCULATE([Líneas abiertas], KEEPFILTERS(FC_Pedidos[fecha_entrega] < TODAY()))
+		formatString: #,0
+		displayFolder: 03 Cumplimiento
+
+	/// Compromiso cuya fecha de entrega prometida ya pasó. El cliente lo está viviendo hoy.
+	measure 'Backlog vencido' = CALCULATE([Backlog], KEEPFILTERS(FC_Pedidos[fecha_entrega] < TODAY()))
+		formatString: "Q" #,0
+		displayFolder: 03 Cumplimiento
+
+	/// Qué parte del compromiso pendiente ya está en incumplimiento.
+	measure '% Backlog vencido' = DIVIDE([Backlog vencido], [Backlog])
+		formatString: 0.0%
+		displayFolder: 03 Cumplimiento
+
+	/// Lo que hay que ENTREGAR en el período, por fecha de entrega prometida y no de pedido. Es la carga de trabajo comprometida de la operación: 'Backlog' dice cuánto se debe, esta dice cuándo toca. Sin ella no hay forma de preguntar "¿qué prometí entregar la semana entrante?".
+	measure 'Entrega comprometida en el período' = CALCULATE([Backlog], USERELATIONSHIP(FC_Pedidos[tiempo_vencimiento_clave], DM_Calendario[tiempo_clave]))
+		formatString: "Q" #,0
+		displayFolder: 03 Cumplimiento
+
+	/// Días que se promete al cliente entre el pedido y la entrega. Si sube, la promesa comercial se está estirando.
+	measure 'Lead time prometido' = AVERAGEX(FC_Pedidos, DATEDIFF(FC_Pedidos[fecha_pedido], FC_Pedidos[fecha_entrega], DAY))
+		formatString: #,0.0
+		displayFolder: 03 Cumplimiento
+
+	/// Backlog traducido a días de venta: cuánto tiempo de operación hay ya comprometido.
+	measure 'Backlog en días de venta' = DIVIDE([Backlog], DIVIDE([Ventas netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas)))
+		formatString: #,0.0
+		displayFolder: 02 Backlog
+
+	/// Tamaño medio del pedido captado.
+	measure 'Ticket promedio de pedido' = DIVIDE([Monto pedido], [Pedidos del período])
+		formatString: "Q" #,0
+		displayFolder: 04 Promedios
+
+	/// Clientes distintos que colocaron pedido en el período.
+	measure 'Clientes con pedido' = DISTINCTCOUNT(FC_Pedidos[cliente_clave])
+		formatString: #,0
+		displayFolder: 01 Pedido
+
+	/// Captación del mes previo.
+	measure 'Pedidos mes anterior' = CALCULATE([Monto pedido], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	/// Captación del mismo período del año pasado.
+	measure 'Pedidos año anterior' = CALCULATE([Monto pedido], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 05 Comparativos
+
+	/// Pedido contra facturación del mismo período: mide si la demanda captada se está convirtiendo en venta o se está represando.
+	measure 'Pedido sobre facturado' = DIVIDE([Monto pedido], [Ventas netas])
+		formatString: 0.0%
+		displayFolder: 05 Comparativos
+
+	/// Texto del foco de backlog (página 01). Lo comprometido con fecha de entrega ya pasada: cada quetzal aquí es una promesa incumplida hoy.
+	measure 'Alerta de backlog' = VAR v = [Backlog vencido] VAR p = [% Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Sin entregas comprometidas vencidas", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " comprometido y no entregado · " & FORMAT(p, "0.0%") & " del backlog")
+		displayFolder: _Narrativa
+
+	partition FC_Pedidos = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_pedido_linea"]}[Data]
+				in
+				    Tabla

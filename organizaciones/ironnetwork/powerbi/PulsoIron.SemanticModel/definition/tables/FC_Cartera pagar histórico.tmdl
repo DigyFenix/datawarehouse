@@ -1,0 +1,132 @@
+table 'FC_Cartera pagar histórico'
+
+	column fecha_corte
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_corte
+		formatString: dd/MM/yyyy
+
+	column fecha_corte_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: fecha_corte_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column partida_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: partida_id
+
+	column proveedor_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: proveedor_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column moneda_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: moneda_clave
+
+	column cuenta_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cuenta_clave
+
+	column tiempo_vencimiento_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_vencimiento_clave
+
+	column fecha_vencimiento
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_vencimiento
+		formatString: dd/MM/yyyy
+
+	column saldo_pendiente_local
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_local
+		formatString: #,0.00
+
+	column saldo_pendiente_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_doc
+		formatString: #,0.00
+
+	column saldo_pendiente_absoluto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_absoluto
+		formatString: #,0.00
+
+	column dias_vencido
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_vencido
+		formatString: #,0
+
+	column rango_aging
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_aging
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	column rango_aging_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_aging_clave
+
+	/// Saldo por pagar a la fecha de corte de la foto, en positivo. MONEDA DE PRESENTACIÓN.
+	measure 'Saldo histórico por pagar' = SUM('FC_Cartera pagar histórico'[saldo_pendiente_absoluto])
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	/// Deuda vencida en la fecha de corte de la foto.
+	measure 'Vencido histórico por pagar' = CALCULATE([Saldo histórico por pagar], KEEPFILTERS('FC_Cartera pagar histórico'[dias_vencido] > 0))
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	/// Posición neta a lo largo del tiempo: la serie que muestra si la liquidez estructural mejora o se deteriora.
+	measure 'Posición neta histórica' = [Saldo histórico por cobrar] - [Saldo histórico por pagar]
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+
+	partition 'FC_Cartera pagar histórico' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_cartera_pagar_diaria"]}[Data]
+				in
+				    Tabla

@@ -1,0 +1,246 @@
+table 'FC_Cartera por pagar'
+
+	column tiempo_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_clave
+
+	column tiempo_vencimiento_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: tiempo_vencimiento_clave
+
+	column proveedor_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: proveedor_clave
+
+	column socio_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: socio_clave
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column moneda_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: moneda_clave
+
+	column cuenta_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: cuenta_clave
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column partida_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: partida_id
+
+	column documento_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: documento_origen
+
+	column tipo_documento_origen
+		dataType: string
+		summarizeBy: none
+		sourceColumn: tipo_documento_origen
+
+	column origen_partida
+		dataType: string
+		summarizeBy: none
+		sourceColumn: origen_partida
+
+	column fecha_documento
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_documento
+		formatString: dd/MM/yyyy
+
+	column fecha_vencimiento
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_vencimiento
+		formatString: dd/MM/yyyy
+
+	column fecha_corte
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_corte
+		formatString: dd/MM/yyyy
+
+	column monto_original
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_original
+		formatString: #,0.00
+
+	column monto_original_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: monto_original_doc
+		formatString: #,0.00
+
+	column saldo_pendiente
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente
+		formatString: #,0.00
+
+	column saldo_pendiente_doc
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_doc
+		formatString: #,0.00
+
+	column saldo_pendiente_absoluto
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: saldo_pendiente_absoluto
+		formatString: #,0.00
+
+	column dias_vencido
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_vencido
+		formatString: #,0
+
+	column rango_aging
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_aging
+
+	column rango_aging_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_aging_clave
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// En positivo para poder compararlo con la cartera por cobrar sin invertir signos en cada visual. MONEDA DE PRESENTACIÓN.
+	measure 'Saldo por pagar' = SUM('FC_Cartera por pagar'[saldo_pendiente_absoluto])
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	/// Lo que se debe a proveedores reales.
+	measure 'Saldo por pagar terceros' = CALCULATE([Saldo por pagar], DM_Proveedor[es_intercompania] = FALSE)
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	/// Deuda con empresas del propio grupo: se netea al consolidar.
+	measure 'Saldo por pagar grupo' = CALCULATE([Saldo por pagar], DM_Proveedor[es_intercompania] = TRUE)
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	/// Lo que se cobra menos lo que se debe: la liquidez estructural del negocio.
+	measure 'Posición neta' = [Saldo por cobrar] - [Saldo por pagar]
+		formatString: "Q" #,0
+		displayFolder: 01 Saldo
+
+	/// Número de partidas abiertas de deuda.
+	measure 'Partidas por pagar' = COUNTROWS('FC_Cartera por pagar')
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	/// Proveedores distintos a los que se les debe.
+	measure 'Proveedores con saldo' = DISTINCTCOUNT('FC_Cartera por pagar'[proveedor_clave])
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	/// Deuda que ya pasó su fecha de pago. Sostenida en el tiempo es señal de tensión de caja, no de buena negociación.
+	measure 'Por pagar vencido' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	/// Qué parte de lo que se debe ya está vencido.
+	measure '% Por pagar vencido' = DIVIDE([Por pagar vencido], [Saldo por pagar])
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+
+	/// Deuda vieja con proveedores; suele venir con suministro en riesgo.
+	measure 'Por pagar más de 90' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "+90"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	/// Foto de HOY: ignora el filtro de fechas de la página (el saldo es una foto, no un flujo).
+	measure 'Por pagar hoy' = CALCULATE([Saldo por pagar], REMOVEFILTERS(DM_Calendario))
+		formatString: "Q" #,0
+		displayFolder: 04 Foto de hoy
+
+	/// Cobrar menos deber, foto de hoy, sin el filtro de período.
+	measure 'Posición neta hoy' = CALCULATE([Posición neta], REMOVEFILTERS(DM_Calendario))
+		formatString: "Q" #,0
+		displayFolder: 04 Foto de hoy
+
+	/// DPO: días que tardamos en pagar a proveedores. Misma convención que 'Días de cartera terceros' para que el ciclo de efectivo cuadre.
+	measure 'Días de pago terceros' = DIVIDE([Saldo por pagar terceros], DIVIDE([Compras a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Compras)))
+		formatString: #,0.0
+		displayFolder: 05 Ciclo de efectivo
+
+	/// Veces al año que se paga la deuda completa. Es el recíproco de los días de pago.
+	measure 'Rotación de cuentas por pagar' = DIVIDE(365, [Días de pago terceros])
+		formatString: #,0.0
+		displayFolder: 05 Ciclo de efectivo
+
+	/// Lo que hay que pagar en el período, por fecha de VENCIMIENTO y no de documento. Leída junto a 'Cobro que vence en el período' dice si la semana entra en positivo o en negativo antes de que ocurra: en Cresta, agosto vence con Q26.1M por pagar contra Q19.4M por cobrar.
+	measure 'Pago que vence en el período' = CALCULATE([Saldo por pagar terceros], USERELATIONSHIP('FC_Cartera por pagar'[tiempo_vencimiento_clave], DM_Calendario[tiempo_clave]))
+		formatString: "Q" #,0
+		displayFolder: 06 Agenda de vencimiento
+
+	/// CICLO DE CONVERSIÓN DE EFECTIVO: días que el dinero pasa atrapado en el negocio antes de volver a caja. Cobrar + inventario − pagar. Bajarlo libera capital de trabajo sin pedir un préstamo; es la métrica de liquidez que más mueve la aguja en una PyME. Negativo significa que los proveedores financian la operación.
+	measure 'Ciclo de conversión de efectivo' = [Días de cartera terceros] + [Días de inventario] - [Días de pago terceros]
+		formatString: #,0.0
+		displayFolder: 05 Ciclo de efectivo
+
+	/// A cuántos proveedores se les debe algo ya vencido.
+	measure 'Proveedores con saldo vencido' = CALCULATE(DISTINCTCOUNT('FC_Cartera por pagar'[proveedor_clave]), KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Conteos
+
+	/// Partidas sin fecha de pago pactada: normalmente anticipos o ajustes sin depurar.
+	measure 'Por pagar sin vencimiento' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "sin_vencimiento"))
+		formatString: "Q" #,0
+		displayFolder: 03 Antigüedad
+
+	/// Concentración de la deuda: cuánto pesa el acreedor más grande sobre el total por pagar.
+	measure '% Deuda en el mayor acreedor' = DIVIDE(MAXX(ALLSELECTED(DM_Proveedor), [Saldo por pagar terceros]), CALCULATE([Saldo por pagar terceros], ALLSELECTED(DM_Proveedor)))
+		formatString: 0.0%
+		displayFolder: 03 Antigüedad
+
+	partition 'FC_Cartera por pagar' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="hecho_cartera_pagar"]}[Data]
+				in
+				    Tabla

@@ -307,6 +307,9 @@ def formato(col: str, tipo: str) -> str | None:
             return '0.0"%"'
         return "#,0.00"
     if tipo == "int64" and not col.endswith("_clave"):
+        # Años, meses y días son etiquetas, no cantidades: "2,026" en un segmentador es un defecto.
+        if col in {"anio", "mes", "dia", "trimestre", "anio_iso", "semana_iso", "anio_fiscal", "mes_fiscal", "dia_del_anio", "dia_semana_num"} or col.endswith("_orden"):
+            return "0"
         return "#,0"
     if tipo == "dateTime":
         return "dd/MM/yyyy"
@@ -2118,6 +2121,54 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar_diaria"] += rf"""
 # El nivel 2 se amplía solo: una medida de importe nueva queda protegida sin tocar nada aquí.
 # Requiere discourageImplicitMeasures (ya activo) y compatibilityLevel >= 1470 (estamos en 1567).
 # ---------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------
+# SEGUIMIENTO DE VENTAS (réplica de los tableros "Histórico" y "Seguimiento" de Kraken 360,
+# sesión 28). Medidas de corte, avance del período y acumulado diario del mes.
+# ---------------------------------------------------------------------------------------------
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += rf"""
+	/// Última fecha con venta registrada, ignorando el período seleccionado. Es el "al 16 oct" de los títulos: el corte real del dato, no la fecha de hoy ni la del calendario.
+	measure 'Corte de ventas' = CALCULATE(MAX(Ventas[fecha_documento]), ALL(Calendario))
+		formatString: dd/MM/yyyy
+		displayFolder: _Auxiliar
+
+	/// Qué fracción del año calendario ya transcurrió al corte de ventas. Da contexto al acumulado anual: un 79% del año con el 100% de la meta es otra historia que con el 50%.
+	measure '% Avance del año' = VAR f = [Corte de ventas] RETURN IF(ISBLANK(f), BLANK(), DIVIDE(DATEDIFF(DATE(YEAR(f), 1, 1), f, DAY) + 1, DATEDIFF(DATE(YEAR(f), 1, 1), DATE(YEAR(f), 12, 31), DAY) + 1))
+		formatString: 0%
+		displayFolder: 10 Seguimiento
+
+	/// Qué fracción del mes calendario ya transcurrió al corte de ventas.
+	measure '% Avance del mes' = VAR f = [Corte de ventas] RETURN IF(ISBLANK(f), BLANK(), DIVIDE(DAY(f), DAY(EOMONTH(f, 0))))
+		formatString: 0%
+		displayFolder: 10 Seguimiento
+
+	/// Venta del último día con registro (el "Resultado del día"). Se calcula sobre el corte real, no sobre HOY: un lunes a primera hora muestra el viernes, que es lo que el gerente quiere ver.
+	measure 'Venta del día' = VAR f = [Corte de ventas] RETURN CALCULATE([Ventas netas], FILTER(ALL(Calendario), Calendario[fecha] = f))
+		formatString: "Q" #,0
+		displayFolder: 10 Seguimiento
+
+	/// Curva acumulada del mes día a día (eje = día del mes). Respeta el mes elegido en el segmentador y acumula hasta el día del eje. Con más de un mes seleccionado suma los días homólogos de todos: elegir UN mes.
+	measure 'Venta acumulada del mes al día' = VAR d = MAX(Calendario[dia]) RETURN CALCULATE([Ventas netas], FILTER(ALLSELECTED(Calendario[dia]), Calendario[dia] <= d))
+		formatString: "Q" #,0
+		displayFolder: 10 Seguimiento
+
+	/// La misma curva acumulada, del mismo mes del año anterior. Es la línea de referencia del "Venta del mes": si la curva de este año va por debajo a mitad de mes, se sabe antes del cierre.
+	measure 'Venta acumulada del mes al día año anterior' = VAR d = MAX(Calendario[dia]) VAR a = MAX(Calendario[anio]) VAR m = MAX(Calendario[mes]) RETURN CALCULATE([Ventas netas], FILTER(ALL(Calendario), Calendario[anio] = a - 1 && Calendario[mes] = m && Calendario[dia] <= d))
+		formatString: "Q" #,0
+		displayFolder: 10 Seguimiento
+
+	/// Título de la página de histórico: corte real del dato y porcentaje del año transcurrido.
+	measure 'Título de Histórico de ventas' = VAR f = [Corte de ventas] RETURN "Histórico de ventas · al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del año], "0%") & " del año)"
+		displayFolder: _Narrativa
+
+	/// Título de la página de seguimiento: corte real del dato y porcentaje del mes transcurrido.
+	measure 'Título de Seguimiento de ventas' = VAR f = [Corte de ventas] RETURN "Seguimiento de ventas · al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & " del mes)"
+		displayFolder: _Narrativa
+
+	/// Etiqueta de dato para las columnas mensuales: importe abreviado y variación contra el mismo mes del año anterior en una sola línea ("1.3M · +29%"). Sin año anterior solo muestra el importe.
+	measure 'Etiqueta de venta mensual' = VAR v = [Ventas netas] VAR vr = [Variación vs año anterior] RETURN IF(ISBLANK(v), BLANK(), {_ABR('v')} & IF(ISBLANK(vr), "", " · " & FORMAT(vr, "+0%;-0%;0%")))
+		displayFolder: _Narrativa
+"""
+
 GRUPO_MONEDA = r"""table 'MD_Moneda de análisis'
 
 	calculationGroup

@@ -1,0 +1,40 @@
+table 'MD_Vista de rentabilidad'
+
+	column 'Vista de rentabilidad'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Vista de rentabilidad · orden'
+		relatedColumnDetails
+			groupByColumn: 'Vista de rentabilidad · campo'
+
+	column 'Vista de rentabilidad · campo'
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value2]
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+	column 'Vista de rentabilidad · orden'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Value3]
+
+	partition 'MD_Vista de rentabilidad' = calculated
+		mode: import
+		source =
+				{
+				  ("% Margen operativo", NAMEOF('FC_Resultados contables'[% Margen operativo]), 0),
+				  ("% Gasto sobre ingreso", NAMEOF('FC_Resultados contables'[% Gasto sobre ingreso]), 1),
+				  ("Resultado contable", NAMEOF('FC_Resultados contables'[Resultado contable]), 2),
+				  ("% Margen terceros", NAMEOF(FC_Ventas[% Margen terceros]), 3),
+				  ("Ventas bajo costo", NAMEOF(FC_Ventas[Ventas bajo costo]), 4),
+				  ("Margen perdido bajo costo", NAMEOF(FC_Ventas[Margen perdido bajo costo]), 5),
+				  ("Efecto precio", NAMEOF(FC_Ventas[Efecto precio]), 6),
+				  ("Efecto volumen", NAMEOF(FC_Ventas[Efecto volumen]), 7)
+				}

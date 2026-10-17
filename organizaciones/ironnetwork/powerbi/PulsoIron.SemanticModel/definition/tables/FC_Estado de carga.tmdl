@@ -1,0 +1,117 @@
+table 'FC_Estado de carga'
+
+	column empresa_id
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: empresa_id
+
+	column organizacion_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: organizacion_clave
+
+	column dominio
+		dataType: string
+		summarizeBy: none
+		sourceColumn: dominio
+
+	column dominio_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: dominio_nombre
+
+	column filas
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: filas
+		formatString: #,0
+
+	column ultima_extraccion
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: ultima_extraccion
+		formatString: dd/MM/yyyy
+
+	column fecha_dato_mas_reciente
+		dataType: dateTime
+		summarizeBy: none
+		sourceColumn: fecha_dato_mas_reciente
+		formatString: dd/MM/yyyy
+
+	column dias_desde_extraccion
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_desde_extraccion
+		formatString: #,0
+
+	column dias_desde_ultimo_dato
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: dias_desde_ultimo_dato
+		formatString: #,0
+
+	column estado_frescura
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado_frescura
+
+	column proceso_transformacion
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: proceso_transformacion
+
+	column version_proceso
+		dataType: string
+		isHidden
+		summarizeBy: none
+		sourceColumn: version_proceso
+
+	/// Días desde la última extracción del dominio más rezagado. Es el aviso de que el tablero está viejo antes de que alguien tome una decisión con él.
+	measure 'Días desde última extracción' = MAX('FC_Estado de carga'[dias_desde_extraccion])
+		formatString: #,0
+		displayFolder: 01 Frescura
+
+	/// Momento en que corrió por última vez la extracción del dominio más rezagado.
+	measure 'Última extracción' = MAX('FC_Estado de carga'[ultima_extraccion])
+		formatString: dd/MM/yyyy HH:mm
+		displayFolder: 01 Frescura
+
+	/// Fecha del dato más reciente que hay en el ERP. Es un reloj distinto al de la extracción: el pipeline puede estar sano y la operación detenida.
+	measure 'Último dato del ERP' = MAX('FC_Estado de carga'[fecha_dato_mas_reciente])
+		formatString: dd/MM/yyyy
+		displayFolder: 01 Frescura
+
+	/// Cuántos dominios llevan más de tres días sin extraerse. Distinto de cero significa que hay tableros mostrando datos viejos. El «+ 0» es a propósito: sin él, cero dominios devuelve BLANK y la tarjeta muestra «(En blanco)» — en la página de confianza, un cero tiene que decir 0.
+	measure 'Dominios desactualizados' = CALCULATE(COUNTROWS('FC_Estado de carga'), KEEPFILTERS('FC_Estado de carga'[estado_frescura] = "Desactualizado")) + 0
+		formatString: #,0
+		displayFolder: 01 Frescura
+
+	/// Volumen de filas en el origen, para dimensionar cada dominio.
+	measure 'Filas cargadas' = SUM('FC_Estado de carga'[filas])
+		formatString: #,0
+		displayFolder: 02 Volumen
+
+	/// Hasta dónde se puede confiar: el dominio que va MÁS ATRASADO, no el que va más adelante. Es la medida para el KPI de frescura de una página — NO usar 'Último dato del ERP' como KPI global: es un máximo y lo infla tipos de cambio, que trae tasas hasta julio de 2027 (mostraría una fecha futura como si fuera frescura). El máximo POR DOMINIO ignora a la sociedad que no operó esos días; el mínimo entre dominios encuentra el eslabón débil.
+	measure 'Dato completo hasta' = MINX(VALUES('FC_Estado de carga'[dominio]), CALCULATE(MAX('FC_Estado de carga'[fecha_dato_mas_reciente])))
+		formatString: dd/MM/yyyy
+		displayFolder: 01 Frescura
+
+	/// Banda del pie de todas las páginas. Responde "¿hasta cuándo llega esto que estoy viendo?" antes de que el usuario tenga que preguntarlo, con los DOS relojes que el modelo distingue: el del pipeline (¿corrió la extracción?) y el de la operación (¿hasta cuándo hay dato?). Y avisa si algún dominio quedó rezagado, que es cuando un tablero correcto muestra una cifra vieja.
+	measure 'Pie de frescura' = VAR f = [Dato completo hasta] VAR d = [Días desde última extracción] VAR n = [Dominios desactualizados] RETURN IF(ISBLANK(f), "Sin datos cargados", "Dato del ERP al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmmm") & " de " & FORMAT(f, "yyyy") & " · extraído hace " & FORMAT(d, "0") & IF(d = 1, " día", " días") & IF(n > 0, " · " & FORMAT(n, "0") & IF(n = 1, " dominio desactualizado", " dominios desactualizados"), ""))
+		displayFolder: _Narrativa
+
+	/// Título de la página 00.
+	measure 'Título de Inicio' = "00 · Inicio · " & [Período activo]
+		displayFolder: _Narrativa
+
+	partition 'FC_Estado de carga' = m
+		mode: import
+		source =
+				let
+				    Origen = PostgreSQL.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema="oro",Item="estado_carga"]}[Data]
+				in
+				    Tabla
