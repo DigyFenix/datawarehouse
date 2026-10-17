@@ -69,6 +69,50 @@ Mes anterior / lista) y se agrega:
 
 ---
 
+## 03 · Matriz de Oportunidades (`capturas/03-clientes-matriz-oportunidades-*.png`)
+
+| Visual Kraken | Réplica | Notas |
+|---|---|---|
+| Resultado del año (acumulado, vs año anterior) | `Ventas acumuladas año`, `Variación acumulada vs año anterior` | — |
+| Resultado del mes (acumulado del mes, vs año anterior) | `Venta del mes en curso`, `Variación del mes en curso vs año anterior` (nuevas) | al corte real, no al mes del segmentador |
+| Filtros Sector · Sucursal · Año · Línea | `DM_Condición de pago`, `DM_Bodega`, `DM_Calendario[anio]`, `DM_Producto[grupo_nombre]` | Moneda se omite en esta página por espacio |
+| Venta por vendedor | ranking con fantasma sobre `Ventas acumuladas año` | — |
+| Tabla cliente: acumulado año anterior a la fecha · actual · variación · icono · % | matriz `DM_Cliente[Cliente]` con `Ventas acumuladas año anterior`, `Ventas acumuladas año`, `Diferencia acumulada vs año anterior` (semáforo), `Semáforo acumulado` (✔/✖), `Variación acumulada vs año anterior` | ordenada por diferencia |
+| Toggle Atrición / Penetración | segmentador `MD_Vista de oportunidad` + medidas `Venta actual` / `Faltante de venta` (rojo) / `Superávit de venta` (verde) | una tabla calculada de 2 filas conmuta las tres medidas |
+| Línea · Categoría · Producto (apiladas) | `grupo_nombre` · `tipo_producto` · `nombre` | — |
+| Desglose mensual | `columnasMensuales` (igual que 01) | — |
+
+## 04 · Cartera de Clientes · últimos 12 meses (`capturas/04-clientes-cartera.png`)
+
+| Visual Kraken | Réplica | Notas |
+|---|---|---|
+| Resultado 12 meses (venta, clientes, productos) | `Ventas 12 meses`, `Clientes 12 meses`, `Productos 12 meses` | ventana = primer día del mes de hace 11 meses → corte; **KEEPFILTERS obligatorio** (la tabla marcada como calendario borra el eje si no) |
+| Vendedor / Sector / Línea / Cliente / Producto 12m | rankings con fantasma `Resto a máximo <dim> 12 meses` | — |
+| Venta por categoría (medallas ABC) | ranking por `DM_Cliente[clase_abc_actual_nombre]` | las medallas son texto en Kraken; aquí la clase A/B/C |
+| Frecuencia de compra (clase ABC × meses con compra) | matriz `Clase` × `Rango de meses con compra` (columnas calculadas en DM_Cliente) con `Clientes 12 meses` | rangos 1-3 · 4-6 · 7-9 · 10-12 |
+| Abandono (clase ABC × meses consecutivos sin compra) | matriz `Clase` × `Rango de meses sin compra` | 0 · 1-3 · 4-6 · 7-12 · +12 |
+| Desglose mensual 12m | `columnasMensuales` sobre `mes_anio_etiqueta` con `Ventas 12 meses` / `… año anterior` | — |
+
+## 05 · Clientes Nuevos y 06 · Clientes Recuperados (`capturas/05-*.png`, `06-*.png`)
+
+Misma página parametrizada (`paginaCohorte` en `generar_paginas_clientes.js`); cambia el conjunto.
+
+| Visual Kraken | Réplica | Notas |
+|---|---|---|
+| Mes punto de partida (-12…0) | `MD_Mes de partida` (GENERATESERIES -24…0) → `Inicio de ventana` | ventana = mes de partida → corte |
+| KPIs: nuevos, retenidos, % retención, no retenidos, % abandono, venta en período, venta total | `Clientes <c> en ventana`, `… retenidos`, `% Retención de <c>`, `… no retenidos`, `% Abandono de <c>`, `Ventas de clientes <c> en ventana`, `Ventas totales de clientes <c>` | <c> = nuevos \| recuperados |
+| Venta por mes (columnas) + clientes por mes (línea) | `lineClusteredColumnComboChart` con `Ventas de clientes <c> del mes` y `Clientes <c> del mes` | — |
+| Retención (primer mes vs recompra) | columnas apiladas `Venta de <c> en su primer mes/mes de retorno` y `… en recompra` | la columna calculada `es_primer_mes_cliente` separa estreno de recompra |
+| Tablas retenidos / no retenidos | matrices `Cliente` con `Ventas de <c> retenidos` / `… no retenidos` (blanco → la fila desaparece) | — |
+| Vendedor (nuevos, retenidos, venta) | matriz `Vendedor` | — |
+| Canal (lista) · buscar cliente/producto | `DM_Canal[nombre]` lista; segmentadores con búsqueda | — |
+
+**Definiciones:** cliente **nuevo** = su primera compra en el modelo cae en la ventana;
+**recuperado** = tiene en la ventana una compra con 6+ meses sin comprar desde la anterior
+(`es_compra_recuperacion`); **retenido** = volvió a comprar en un mes distinto al de estreno/retorno.
+En Iron el modelo arranca en 2026-01-08, así que con partida -12 todos los clientes son «nuevos»
+(72) y solo hay 2 recuperados; cobra sentido con historia.
+
 ## Gaps — qué falta y cómo se obtiene de Odoo
 
 **Resueltos en la sesión 28 (seed `metadata-store/seeds/70_paquete_odoo_comercial.sql`):**

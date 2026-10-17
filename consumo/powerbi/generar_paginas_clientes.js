@@ -41,7 +41,7 @@ function paginaOportunidades() {
   vs.push(matriz(slug, 'matriz-clientes', [xCol(3), FILA[0], wCol(7), ALTO], 'Variación venta acumulada año anterior a la fecha vs año actual por cliente', {
     filas: [[T.CLI, 'Cliente']],
     valores: [[V, 'Ventas acumuladas año anterior'], [V, 'Ventas acumuladas año'], [V, 'Diferencia acumulada vs año anterior'], [V, 'Semáforo acumulado'], [V, 'Variación acumulada vs año anterior']],
-    semaforoEn: [V, 'Diferencia acumulada vs año anterior'], filaTotal: true, columnaTotal: false, ordenPor: [V, 'Diferencia acumulada vs año anterior'],
+    semaforoEn: [V, 'Diferencia acumulada vs año anterior'], filaTotal: true, columnaTotal: false, ordenPor: [V, 'Diferencia acumulada vs año anterior'], anchoFilas: 240,
   }));
   vs.push(segmentador(slug, 'vista-oportunidad', T.OPORT, 'Vista', [xCol(10), FILA[0], wCol(3), 48], { seleccion: 'Atrición', unico: true }));
   const bloque = (clave, y, tabla, col, titulo) => barras(slug, clave, [xCol(10), y, wCol(3), 144], tabla, col, titulo,
@@ -106,20 +106,20 @@ function paginaCohorte(slug, nombre, titulo, m) {
   vs.push(segmentador(slug, 'canal', T.CANAL, 'nombre', [xCol(1), FILA[0], wCol(2), ALTO], { modo: 'VerticalList', titulo: 'Canal', sync: 'canal' }));
   vs.push(comboMensual(slug, 'venta-mes', [xCol(3), FILA[0], wCol(6), ALTO], `${m.etiqueta} · venta por mes`, [m.ventaMes], m.clientesMes));
   vs.push(matriz(slug, 'retenidos', [xCol(9), FILA[0], wCol(4), ALTO], `${m.etiqueta} retenidos`, {
-    filas: [[T.CLI, 'Cliente']], valores: [[V, m.ventaRetenidos]], filaTotal: true, columnaTotal: false, ordenPor: [V, m.ventaRetenidos],
+    filas: [[T.CLI, 'Cliente']], valores: [[V, m.ventaRetenidos]], filaTotal: true, columnaTotal: false, ordenPor: [V, m.ventaRetenidos], anchoFilas: 260,
   }));
   // Fila 2: buscadores · retención (primer mes vs recompra) · no retenidos
   vs.push(segmentador(slug, 'buscar-cliente', T.CLI, 'nombre', [xCol(1), FILA[1], wCol(2), 108], { busqueda: true, titulo: 'Buscar cliente' }));
   vs.push(segmentador(slug, 'buscar-producto', T.PROD, 'nombre', [xCol(1), FILA[1] + 124, wCol(2), 108], { busqueda: true, titulo: 'Buscar producto y/o SKU' }));
   vs.push(columnasApiladas(slug, 'retencion', [xCol(3), FILA[1], wCol(6), ALTO], `Retención de ${m.etiquetaMin}`, [m.ventaPrimerMes, m.ventaRecompra]));
   vs.push(matriz(slug, 'no-retenidos', [xCol(9), FILA[1], wCol(4), ALTO], `${m.etiqueta} no retenidos`, {
-    filas: [[T.CLI, 'Cliente']], valores: [[V, m.ventaNoRetenidos]], filaTotal: true, columnaTotal: false, ordenPor: [V, m.ventaNoRetenidos],
+    filas: [[T.CLI, 'Cliente']], valores: [[V, m.ventaNoRetenidos]], filaTotal: true, columnaTotal: false, ordenPor: [V, m.ventaNoRetenidos], anchoFilas: 260,
   }));
   // Fila 3: línea · producto · vendedor
   vs.push(barras(slug, 'linea', [xCol(1), FILA[2], wCol(4), ALTO], T.PROD, 'grupo_nombre', 'Venta por línea', [m.ventaPeriodo]));
   vs.push(barras(slug, 'producto', [xCol(5), FILA[2], wCol(4), ALTO], T.PROD, 'nombre', 'Venta por producto', [m.ventaPeriodo]));
   vs.push(matriz(slug, 'vendedor', [xCol(9), FILA[2], wCol(4), ALTO], 'Vendedor', {
-    filas: [[T.VEND, 'Vendedor']], valores: [[V, m.clientes], [V, m.retenidos], [V, m.ventaPeriodo]], filaTotal: true, columnaTotal: false, ordenPor: [V, m.ventaPeriodo],
+    filas: [[T.VEND, 'Vendedor']], valores: [[V, m.clientes], [V, m.retenidos], [V, m.ventaPeriodo]], filaTotal: true, columnaTotal: false, ordenPor: [V, m.ventaPeriodo], anchoFilas: 150,
   }));
   vs.push(pie(slug));
   return { id: id('pagina', slug), nombre, visuales: vs };

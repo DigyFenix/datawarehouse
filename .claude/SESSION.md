@@ -38,6 +38,19 @@ del socio** (unido por `direccion_codigo = socio_codigo`: unir por socio duplic�
 y se corrigió). La condición de pago del socio llegaba como jsonb de propiedad por compañía;
 ahora se lee el valor. SAP (Cresta) compila con esas dimensiones vacías (No definido).
 
+### Dashboard de clientes (segunda mitad de la sesión)
+
+Edwin dejó 5 capturas más (`03-06`): Matriz de oportunidades, Cartera 12 meses, Clientes nuevos y
+Clientes recuperados. Se replicaron en `consumo/powerbi/generar_paginas_clientes.js` (80
+visuales) sobre un módulo compartido `consumo/powerbi/pbir.js` (los helpers salieron del
+generador de ventas). En el modelo: columnas calculadas en `FC_Ventas` (primera compra del
+cliente, primer mes, compra de retorno a 6+ meses, mes del documento) y en `DM_Cliente` (meses
+con/sin compra en rangos; alias `Cliente`, `Clase`), alias `Año` y `Vendedor`, tablas
+calculadas `MD_Mes de partida` y `MD_Vista de oportunidad`, y ~45 medidas (12 meses, cohortes
+nuevos/recuperados, matriz de oportunidades). Verificado en Desktop con datos: 72 nuevos, 31
+retenidos, 2 recuperados, matrices ABC × rangos, 12 meses por mes. Capturas de resultado en
+`docs/powerbi/kraken360/capturas/resultado-0[3-6]-*.png`. Las 6 páginas validan en cero.
+
 ### Trampas de esta sesión (cuestan horas)
 
 1. **`stackedBarChart` no es tipo nativo** (sale «objeto visual personalizado»): el apilado es
@@ -55,6 +68,13 @@ ahora se lee el valor. SAP (Cresta) compila con esas dimensiones vacías (No def
    `System.Windows.Automation`): el bridge no puede. Ya quedaron guardadas.
 6. El MCP `powerbi-modeling` pide aceptar la EULA por sesión; Edwin autorizó explícitamente.
 7. `.pbi/localSettings.json` y `powerbi.zip` no se versionan (`.gitignore`).
+8. **Un filtro sobre `Calendario[fecha]` dentro de CALCULATE borra el mes del eje** (tabla
+   marcada como calendario): toda ventana (`DATESBETWEEN`) va con `KEEPFILTERS`.
+9. **`renombrar_dax` prefija también la DECLARACIÓN** `column Cliente = …` → `column DM_Cliente`;
+   `alias_columnas()` lo revierte en el encabezado. Y los backslashes de un heredoc de bash se
+   pierden: los parches de Python van a archivo (scratchpad) y se ejecutan con `python -I`.
+10. Una matriz con `autoSizeColumnWidth` deja el nombre del cliente comerse todo el ancho y
+    los valores detrás del scroll: `columnWidth` fijo por selector de la columna de filas.
 
 ### PENDIENTE
 

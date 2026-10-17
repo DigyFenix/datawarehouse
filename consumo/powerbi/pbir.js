@@ -265,7 +265,7 @@ const subtotalesMatriz = ({ filaTotal = false, columnaTotal = true } = {}) => [
   { properties: { columnSubtotals: bool(columnaTotal) }, selector: sel('Column') },
 ];
 // Matriz genérica: filas (columna), columnas (opcional), valores (medidas [tabla, medida]).
-function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn, filaTotal = false, columnaTotal = true, ordenPor }) {
+function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn, filaTotal = false, columnaTotal = true, ordenPor, anchoFilas }) {
   const roles = { Rows: filas.map(([t, c]) => pColumna(t, c)), Values: valores.map(([t, m]) => pMedida(t, m)) };
   if (columnas) roles.Columns = columnas.map(([t, c]) => pColumna(t, c));
   return visual(id(slug, clave), 'pivotTable', pos, {
@@ -277,6 +277,8 @@ function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn
       values: [{ properties: { fontSize: num(9) } }, ...(semaforoEn ? semaforo(semaforoEn[1], semaforoEn[0]) : [])],
       subTotals: subtotalesMatriz({ filaTotal, columnaTotal }),
       grid: [{ properties: { rowPadding: num(2) } }],
+      // Ancho fijo del encabezado de fila: con autoajuste el nombre del cliente se come todo el ancho y los valores quedan detrás del scroll.
+      ...(anchoFilas ? { columnWidth: [{ properties: { value: num(anchoFilas) }, selector: meta(filas[0][0], filas[0][1]) }] } : {}),
     },
     vc: vcTitulo(titulo),
   });

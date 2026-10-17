@@ -331,6 +331,22 @@
             }
           }
         }
+      ],
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "240D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "DM_Cliente.Cliente"
+          }
+        }
       ]
     },
     "visualContainerObjects": {

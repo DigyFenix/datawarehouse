@@ -239,6 +239,22 @@
             }
           }
         }
+      ],
+      "columnWidth": [
+        {
+          "properties": {
+            "value": {
+              "expr": {
+                "Literal": {
+                  "Value": "150D"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "DM_Vendedor.Vendedor"
+          }
+        }
       ]
     },
     "visualContainerObjects": {
