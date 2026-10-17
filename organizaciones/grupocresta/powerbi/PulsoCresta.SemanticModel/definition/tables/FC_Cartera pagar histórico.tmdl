@@ -1,146 +1,156 @@
 table 'FC_Cartera pagar histórico'
-	lineageTag: b0fd89aa-7d62-4490-81a6-2f3993340b5f
+	lineageTag: 2a80ee97-91fc-49df-9d25-8f06d50ec475
 
 	/// Saldo por pagar a la fecha de corte de la foto, en positivo. MONEDA DE PRESENTACIÓN.
 	measure 'Saldo histórico por pagar' = SUM('FC_Cartera pagar histórico'[saldo_pendiente_absoluto])
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución
-		lineageTag: 304ca1af-2c35-444b-b29a-a0037f99c962
+		lineageTag: 0dc08004-f939-485c-9fa2-a0e59d197532
 
 	/// Deuda vencida en la fecha de corte de la foto.
 	measure 'Vencido histórico por pagar' = CALCULATE([Saldo histórico por pagar], KEEPFILTERS('FC_Cartera pagar histórico'[dias_vencido] > 0))
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución
-		lineageTag: 755a3848-b283-4f24-a49b-d48ee08296c4
+		lineageTag: 3d774ac8-f750-4af5-b08b-d89163a213e9
 
 	/// Posición neta a lo largo del tiempo: la serie que muestra si la liquidez estructural mejora o se deteriora.
 	measure 'Posición neta histórica' = [Saldo histórico por cobrar] - [Saldo histórico por pagar]
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución
-		lineageTag: da0759b4-75d5-4bb2-889a-d278c32486f9
+		lineageTag: 2dbf1b62-b81f-4134-b0f7-2ef64739e436
 
 	column fecha_corte
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 408753c7-af12-4e64-8c95-65f779f282cc
+		lineageTag: a96cd843-3a1b-4926-b3f3-4bab47896b60
 		summarizeBy: none
 		sourceColumn: fecha_corte
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_corte_clave
 		dataType: int64
 		isHidden
-		lineageTag: 370a43ce-077f-4e60-91c0-f1fbf95daa33
+		lineageTag: 5fb7ac4a-e826-4625-9366-a2f725ec561b
 		summarizeBy: none
 		sourceColumn: fecha_corte_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 84653198-3492-4df0-8810-8e7dd2b0a78f
+		lineageTag: ff6d5d9e-761f-409e-b588-16a71707f4bb
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column partida_id
 		dataType: string
-		lineageTag: d4e3abea-f184-4db0-b744-58fe8612cd6e
+		lineageTag: 4b460cbe-741d-47a2-a65b-c1ae5c2e2522
 		summarizeBy: none
 		sourceColumn: partida_id
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: 1090a296-f8af-410a-ac42-19d9093ec3e5
+		lineageTag: 9ad854d8-d454-4fa0-9836-b3765297fe8e
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: bf0b313b-38c8-4460-874d-c726bacda433
+		lineageTag: 6bb075d8-c045-4622-a058-aacfbc221d50
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: 521771b1-3ecd-4446-8fd3-7d78c5ccd914
+		lineageTag: aa2d19ba-700c-4430-9b0d-46cffe124852
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
-		lineageTag: 24e57a9a-8691-4a83-861f-70519f0dee82
+		lineageTag: 6d35bd97-d031-4142-96e2-f2ed5eb68651
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column tiempo_vencimiento_clave
 		dataType: int64
 		isHidden
-		lineageTag: 1a92dcce-ea38-4758-bc1c-f156fa85110e
+		lineageTag: b34d57e3-5326-4842-aba1-dfff01e2b665
 		summarizeBy: none
 		sourceColumn: tiempo_vencimiento_clave
 
 	column fecha_vencimiento
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 378b1a3f-56e7-49f8-91a5-1fdf8adf8d91
+		lineageTag: 48f77744-e2d1-4ae6-88ba-5014a0f5f7ff
 		summarizeBy: none
 		sourceColumn: fecha_vencimiento
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column saldo_pendiente_local
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 549ee1f5-6f11-43d2-b671-d3ffb1c9ec17
-		summarizeBy: none
+		lineageTag: c10750ea-e557-42eb-bd71-451bb6605b2b
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente_local
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_pendiente_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 16e69fab-bde2-4b36-863b-f46751cdd4ab
-		summarizeBy: none
+		lineageTag: 5c41a33a-4d56-4268-9940-8e46ded1e6ab
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente_doc
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_pendiente_absoluto
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: f1beddb6-2f68-4802-832b-5865b39d5b9a
-		summarizeBy: none
+		lineageTag: 33b9dcbe-f017-4ca7-8d83-59f0e949972b
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente_absoluto
+
+		annotation SummarizationSetBy = Automatic
 
 	column dias_vencido
 		dataType: int64
 		formatString: #,0
-		lineageTag: 9c35006c-5b19-4d72-920a-b72a6c971d17
+		lineageTag: 2e17bff6-d9a6-40ce-a13c-ecc0553b0189
 		summarizeBy: none
 		sourceColumn: dias_vencido
 
 	column rango_aging
 		dataType: string
 		isHidden
-		lineageTag: acc3dbdc-5534-4049-bca1-c2fc31c860a1
+		lineageTag: 3472a2ab-6214-4798-b8bc-9e0ee7ac8732
 		summarizeBy: none
 		sourceColumn: rango_aging
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 29fc3905-fcf1-415e-9492-b58d28c7603c
+		lineageTag: 320ebb2f-dfb4-4f7b-b9f8-d25034c05c5d
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 11356b8a-ff74-47fb-81c5-4b319841b2b0
+		lineageTag: af63622c-a3a6-4568-86af-aee4851e0881
 		summarizeBy: none
 		sourceColumn: version_proceso
 
 	column rango_aging_clave
 		dataType: int64
 		isHidden
-		lineageTag: 78a90fa2-1d78-477a-a65c-d572885c83ee
+		lineageTag: 1fbfc5bd-f45f-49a0-94d3-549b7e84ef0d
 		summarizeBy: none
 		sourceColumn: rango_aging_clave
 

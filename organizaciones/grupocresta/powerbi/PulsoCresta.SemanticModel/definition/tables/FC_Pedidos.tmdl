@@ -1,319 +1,339 @@
 table FC_Pedidos
-	lineageTag: 6100a50d-eed8-48dd-81ca-68af6a551943
+	lineageTag: 35000572-bccc-49c1-9c2e-c185881ff061
 
 	/// Base SIN impuesto de lo pedido en el período. El COMPROMISO, no el resultado (eso es Ventas).
 	measure 'Monto pedido' = SUM(FC_Pedidos[monto_sin_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Pedido
-		lineageTag: f6746e24-2261-4ffc-ae64-c07229e02e1e
+		lineageTag: 02d92019-feba-41f7-b3d7-e1b7ccab01b3
 
 	/// Unidades comprometidas en los pedidos del período.
 	measure 'Cantidad pedida' = SUM(FC_Pedidos[cantidad])
 		formatString: #,0
 		displayFolder: 01 Pedido
-		lineageTag: 6e3a2734-c013-47f6-9b59-53a68edb7956
+		lineageTag: d7f7dc76-a483-41df-add2-b667591e47cd
 
 	/// Número de pedidos distintos captados.
 	measure 'Pedidos del período' = DISTINCTCOUNT(FC_Pedidos[pedido_id])
 		formatString: #,0
 		displayFolder: 01 Pedido
-		lineageTag: 5b01268f-0029-48f1-a916-0fa5dd5ec5a4
+		lineageTag: 4e0836f0-26d4-4e05-a545-c38e95f13877
 
 	/// Pedido y AÚN no cumplido (líneas abiertas): lo que la operación debe entregar/facturar.
 	measure Backlog = CALCULATE(SUM(FC_Pedidos[monto_abierto]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 02 Backlog
-		lineageTag: f7896ad0-dd38-4e09-a0f2-10b41a4abcf3
+		lineageTag: ac42d95d-8bb0-4e04-835d-983533f53153
 
 	/// Unidades que faltan por entregar.
 	measure 'Cantidad pendiente' = CALCULATE(SUM(FC_Pedidos[cantidad_abierta]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Backlog
-		lineageTag: bca2d06d-9f68-49e0-af65-6ed77a610e17
+		lineageTag: 4c89e138-7e2e-4aca-b0f9-e28381b068ec
 
 	/// Líneas de pedido con saldo por despachar.
 	measure 'Líneas abiertas' = CALCULATE(COUNTROWS(FC_Pedidos), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Backlog
-		lineageTag: 9bb8dec6-8ffb-41b8-8cda-d02df6a3acac
+		lineageTag: 149d33a2-bd6d-4a2c-866f-7fd94e9259da
 
 	/// De lo pedido, cuánto ya se cumplió (1 − backlog/pedido). El pulso de la operación.
 	measure 'Fill rate' = 1 - DIVIDE([Backlog], [Monto pedido], 0)
 		formatString: 0.0%
 		displayFolder: 02 Backlog
-		lineageTag: 069494ab-1b6d-406c-baf9-15a81d7adc5a
+		lineageTag: b0d8b048-15b5-4fe0-80ec-75b26fc6d309
 
 	/// Líneas abiertas cuya fecha de entrega prometida YA PASÓ. Es incumplimiento en curso: el cliente lo está viviendo hoy.
 	measure 'Líneas de pedido vencidas' = CALCULATE([Líneas abiertas], KEEPFILTERS(FC_Pedidos[fecha_entrega] < TODAY()))
 		formatString: #,0
 		displayFolder: 03 Cumplimiento
-		lineageTag: e3b8cc41-1160-4902-a940-9796eab4d51e
+		lineageTag: ffadfdb0-c0ae-43bb-aac6-82dc7bd60574
 
 	/// Compromiso cuya fecha de entrega prometida ya pasó. El cliente lo está viviendo hoy.
 	measure 'Backlog vencido' = CALCULATE([Backlog], KEEPFILTERS(FC_Pedidos[fecha_entrega] < TODAY()))
 		formatString: "Q" #,0
 		displayFolder: 03 Cumplimiento
-		lineageTag: edfbc221-908b-4799-8bec-b644dcd5ac2b
+		lineageTag: 11128aae-f76f-4b81-bec9-71f036b7f15c
 
 	/// Qué parte del compromiso pendiente ya está en incumplimiento.
 	measure '% Backlog vencido' = DIVIDE([Backlog vencido], [Backlog])
 		formatString: 0.0%
 		displayFolder: 03 Cumplimiento
-		lineageTag: f4c9e715-ebc8-4423-aec2-86f3a8b7e7c8
+		lineageTag: 81dc4310-8d40-4ae6-a3f1-cb18ac746269
 
 	/// Lo que hay que ENTREGAR en el período, por fecha de entrega prometida y no de pedido. Es la carga de trabajo comprometida de la operación: 'Backlog' dice cuánto se debe, esta dice cuándo toca. Sin ella no hay forma de preguntar "¿qué prometí entregar la semana entrante?".
 	measure 'Entrega comprometida en el período' = CALCULATE([Backlog], USERELATIONSHIP(FC_Pedidos[tiempo_vencimiento_clave], DM_Calendario[tiempo_clave]))
 		formatString: "Q" #,0
 		displayFolder: 03 Cumplimiento
-		lineageTag: 874b10ca-a976-4f1c-9290-2033bc09b493
+		lineageTag: 3dbfa217-b4cf-49e2-a63a-f3de8174ed62
 
 	/// Días que se promete al cliente entre el pedido y la entrega. Si sube, la promesa comercial se está estirando.
 	measure 'Lead time prometido' = AVERAGEX(FC_Pedidos, DATEDIFF(FC_Pedidos[fecha_pedido], FC_Pedidos[fecha_entrega], DAY))
 		formatString: #,0.0
 		displayFolder: 03 Cumplimiento
-		lineageTag: 3a3dd23f-3cb8-49ef-bfa1-fa7b7af0c74e
+		lineageTag: a09cc8aa-afe6-49e2-8f52-e0cfbfd32a86
 
 	/// Backlog traducido a días de venta: cuánto tiempo de operación hay ya comprometido.
 	measure 'Backlog en días de venta' = DIVIDE([Backlog], DIVIDE([Ventas netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas)))
 		formatString: #,0.0
 		displayFolder: 02 Backlog
-		lineageTag: 9cee836e-d8e2-44ba-92b7-de621e507511
+		lineageTag: e1a03be1-c115-4232-99cb-c61f8b8f0fe8
 
 	/// Tamaño medio del pedido captado.
 	measure 'Ticket promedio de pedido' = DIVIDE([Monto pedido], [Pedidos del período])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
-		lineageTag: ae858f2a-5757-4cf0-bddf-e8fb66c60b03
+		lineageTag: 78c147a1-5d15-48dc-acb2-809f9d7725d3
 
 	/// Clientes distintos que colocaron pedido en el período.
 	measure 'Clientes con pedido' = DISTINCTCOUNT(FC_Pedidos[cliente_clave])
 		formatString: #,0
 		displayFolder: 01 Pedido
-		lineageTag: 8a0ab7c8-1b29-44b3-a8ea-511c0d0b0bd8
+		lineageTag: f65a56d5-f8cd-4dbd-9423-adcfb104d63c
 
 	/// Captación del mes previo.
 	measure 'Pedidos mes anterior' = CALCULATE([Monto pedido], DATEADD(DM_Calendario[fecha], -1, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: 4f4acf2d-f3a1-4b8c-a565-8c65718fb74d
+		lineageTag: 2c6c879b-bc8d-4e5b-9405-4c46df3602a0
 
 	/// Captación del mismo período del año pasado.
 	measure 'Pedidos año anterior' = CALCULATE([Monto pedido], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: d1534e65-baa6-495b-a639-1c7cf03d4101
+		lineageTag: a6031101-f5cc-4ee2-a2e0-8f11bf337ebf
 
 	/// Pedido contra facturación del mismo período: mide si la demanda captada se está convirtiendo en venta o se está represando.
 	measure 'Pedido sobre facturado' = DIVIDE([Monto pedido], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 05 Comparativos
-		lineageTag: 89c9cac6-0293-4a30-bfc9-d9a9239f1591
+		lineageTag: 882a0d13-93bc-49b3-aa87-b7321999bc9d
 
 	/// Texto del foco de backlog (página 01). Lo comprometido con fecha de entrega ya pasada: cada quetzal aquí es una promesa incumplida hoy.
 	measure 'Alerta de backlog' = VAR v = [Backlog vencido] VAR p = [% Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Sin entregas comprometidas vencidas", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " comprometido y no entregado · " & FORMAT(p, "0.0%") & " del backlog")
 		displayFolder: _Narrativa
-		lineageTag: 5cc8d6e1-4854-4f3d-a79e-31915c6a3b9f
+		lineageTag: 0f4d96b8-40a7-45cc-9aff-1aa0aaee1187
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: 6e66a7a1-8218-4f10-9903-f39ab7b6f735
+		lineageTag: 08c32a40-d1b0-48f6-8eba-56715a563fe3
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column tiempo_vencimiento_clave
 		dataType: int64
 		isHidden
-		lineageTag: 4647d25b-da57-4a70-a665-0f342e6d557f
+		lineageTag: fd9e789e-067e-4cc2-a33e-cdcb8a155f8b
 		summarizeBy: none
 		sourceColumn: tiempo_vencimiento_clave
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: 2c115fd3-0b28-474f-914f-928b1cd392ea
+		lineageTag: 186fa137-0f4a-4963-9ec0-b939ca6e39e3
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column socio_clave
 		dataType: int64
 		isHidden
-		lineageTag: ae6c527a-26ae-4015-a335-16bc3fb69cef
+		lineageTag: c8a5911c-00d8-4805-9859-ab13414363fe
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column producto_clave
 		dataType: int64
 		isHidden
-		lineageTag: e52cc8aa-c940-45e3-a0c8-aa79f058b037
+		lineageTag: fb6424ea-e846-4e62-bad0-d4769d365714
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column vendedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: b42ffc65-6c57-4c0e-aafe-86ec3c0f8df6
+		lineageTag: 9d97893c-0f92-4470-9ec6-412b033ee28d
 		summarizeBy: none
 		sourceColumn: vendedor_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: 9b495f18-319b-4cee-a05f-53e4a16e9013
+		lineageTag: c494159a-a728-44ab-a790-b764792185b4
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column almacen_clave
 		dataType: int64
 		isHidden
-		lineageTag: d13ea179-a932-403d-8651-dd860d629d7c
+		lineageTag: 6eb8ddce-42af-44a2-a2a4-24610fc23a6f
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: c71dd686-2529-47e2-965a-ef28092f0e51
+		lineageTag: 1972bc35-ca57-4e2f-b983-b78f42902087
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 0cabe694-ceef-4236-bbd0-4d5f0b2374f3
+		lineageTag: d7b7ae69-f159-4c66-8852-52d243614b4f
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column pedido_id
 		dataType: string
-		lineageTag: 5ae5da70-0dd5-492d-bc45-05395f9810e2
+		lineageTag: 5aa0fcad-909c-4065-b322-ecac1d726994
 		summarizeBy: none
 		sourceColumn: pedido_id
 
 	column pedido_numero
 		dataType: string
-		lineageTag: cbc74205-d595-43ec-b0ce-fd631812e16f
+		lineageTag: c1333aa4-fbcc-4bcb-ae49-2d3f6299a939
 		summarizeBy: none
 		sourceColumn: pedido_numero
 
 	column serie_codigo
 		dataType: string
-		lineageTag: 6c762acc-6901-4e78-a9b9-d6766db20f55
+		lineageTag: 9192f1b1-3cf4-41bb-aa4f-06309aae398e
 		summarizeBy: none
 		sourceColumn: serie_codigo
 
 	column linea_numero
 		dataType: int64
 		formatString: #,0
-		lineageTag: 16ac0543-ae94-4278-98af-00fdb7f7fe6d
+		lineageTag: 0da05822-5ed3-468b-8296-18e090947cbd
 		summarizeBy: none
 		sourceColumn: linea_numero
 
 	column fecha_pedido
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 833c73a0-5f2c-435e-b642-27860806bdcd
+		lineageTag: 18970f31-60dc-4a29-993b-1f805f594c7e
 		summarizeBy: none
 		sourceColumn: fecha_pedido
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_entrega
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: d721b508-5c22-47e9-9f45-abd9dd999393
+		lineageTag: 885e8422-f442-40aa-bf8d-a3af5c0bfeff
 		summarizeBy: none
 		sourceColumn: fecha_entrega
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column estado
 		dataType: string
-		lineageTag: 2896ee66-fb1c-4cd6-8c9a-88834dc11f8b
+		lineageTag: c2a79316-1f7f-4b43-a394-b651499d45df
 		summarizeBy: none
 		sourceColumn: estado
 
 	column estado_linea
 		dataType: string
-		lineageTag: f8574082-5ac0-4238-aaf6-cb8a876d0b0f
+		lineageTag: f958bf13-194f-4bcd-ada2-662e4c53c2ad
 		summarizeBy: none
 		sourceColumn: estado_linea
 
 	column es_abierta
 		dataType: boolean
-		lineageTag: 623eee21-15ed-400d-bf29-649bc8f00985
+		lineageTag: 26a0a3dc-9da6-47d4-a12b-0d32b276d387
 		summarizeBy: none
 		sourceColumn: es_abierta
 
 	column cantidad
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: dd5e6048-c60d-46dc-8597-7608ac035dc6
-		summarizeBy: none
+		lineageTag: 05bc3df7-6033-4399-822a-a22d1f4e276d
+		summarizeBy: sum
 		sourceColumn: cantidad
 
+		annotation SummarizationSetBy = Automatic
+
 	column cantidad_abierta
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 9ca58874-a927-4c20-96fb-1c66dcd327d8
-		summarizeBy: none
+		lineageTag: 7b4b6e2e-d911-432e-8179-7554362a6dc2
+		summarizeBy: sum
 		sourceColumn: cantidad_abierta
 
+		annotation SummarizationSetBy = Automatic
+
 	column cantidad_entregada
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: d7fd1b62-e1c5-4b6d-9145-f2782a25ad06
-		summarizeBy: none
+		lineageTag: ddd9d640-201c-4608-9e84-302fbbfe6a39
+		summarizeBy: sum
 		sourceColumn: cantidad_entregada
 
+		annotation SummarizationSetBy = Automatic
+
 	column precio_unitario_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 09a84dbe-f95f-4af5-952d-19c516deaf91
-		summarizeBy: none
+		lineageTag: 700b1328-47d5-44be-8999-e8232b9dd6c4
+		summarizeBy: sum
 		sourceColumn: precio_unitario_doc
 
+		annotation SummarizationSetBy = Automatic
+
 	column descuento_pct
-		dataType: decimal
+		dataType: double
 		formatString: 0.0"%"
-		lineageTag: 7bdd8f8b-cab5-4eb5-a174-2d5782be2b79
-		summarizeBy: none
+		lineageTag: 97953500-d0ff-4321-a9e3-5fd5917e5137
+		summarizeBy: sum
 		sourceColumn: descuento_pct
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_sin_impuesto
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 9736f7c4-006e-4c4b-b70b-0441fc07926b
-		summarizeBy: none
+		lineageTag: f499ee8c-1d33-42fa-acf8-9bc86dff04da
+		summarizeBy: sum
 		sourceColumn: monto_sin_impuesto
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_sin_impuesto_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 446e9811-b67c-4337-ae26-989b083601c3
-		summarizeBy: none
+		lineageTag: a8951aa8-7778-41e7-aeef-452f6fb5b648
+		summarizeBy: sum
 		sourceColumn: monto_sin_impuesto_doc
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_abierto
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: b24eae2f-7fa0-46f4-935e-5aa7c8a7a61a
-		summarizeBy: none
+		lineageTag: 94b01b86-0728-4387-83d2-e8bcb59afb73
+		summarizeBy: sum
 		sourceColumn: monto_abierto
+
+		annotation SummarizationSetBy = Automatic
 
 	column descripcion_linea
 		dataType: string
-		lineageTag: c0ae5cc9-b676-4e7f-bc80-8fa6ceddded9
+		lineageTag: 66f3b137-4d7b-404b-bd80-53f0124732a8
 		summarizeBy: none
 		sourceColumn: descripcion_linea
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: d21fd8c5-aa37-42fc-a75a-5a39561c1125
+		lineageTag: 8b9d7e76-7732-48ae-b551-d7872e93221e
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 06057211-a84f-47dd-954d-9efa43bf6502
+		lineageTag: 77faaf2a-76ae-4199-b9e8-dfe170a0081a
 		summarizeBy: none
 		sourceColumn: version_proceso
 

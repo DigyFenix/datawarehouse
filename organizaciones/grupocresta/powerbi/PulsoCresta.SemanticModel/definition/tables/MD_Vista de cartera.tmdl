@@ -1,9 +1,9 @@
 table 'MD_Vista de cartera'
-	lineageTag: 400c9ebe-2abe-48d1-9b32-12e1ce3e14f1
+	lineageTag: a0c6291f-67c6-494b-91c3-e94907122487
 
 	column 'Vista de cartera'
 		dataType: string
-		lineageTag: 48e52af2-7a24-4d7d-b3d4-82410a943d55
+		lineageTag: 74d2e52c-4b40-42f9-9c87-b9045ff3ddeb
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de cartera · orden'
@@ -14,7 +14,7 @@ table 'MD_Vista de cartera'
 	column 'Vista de cartera · campo'
 		dataType: string
 		isHidden
-		lineageTag: bc53632f-423f-4841-b173-1068a86ac282
+		lineageTag: e1d259bf-5553-4259-aa31-6df18fc74cf8
 		summarizeBy: none
 		sourceColumn: [Value2]
 
@@ -27,7 +27,7 @@ table 'MD_Vista de cartera'
 	column 'Vista de cartera · orden'
 		dataType: int64
 		isHidden
-		lineageTag: 5b5e8bbc-c8a6-4d9c-8851-2dba3a616b38
+		lineageTag: 2cb69fe1-34b2-4333-94ce-cee9584bb80e
 		summarizeBy: none
 		sourceColumn: [Value3]
 

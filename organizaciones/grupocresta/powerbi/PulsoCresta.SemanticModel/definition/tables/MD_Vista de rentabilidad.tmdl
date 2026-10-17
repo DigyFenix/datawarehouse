@@ -1,9 +1,9 @@
 table 'MD_Vista de rentabilidad'
-	lineageTag: 3965908a-3e4e-475d-9c15-47b3c771ad89
+	lineageTag: 0e63492c-6023-48ea-8b91-35efcc172f16
 
 	column 'Vista de rentabilidad'
 		dataType: string
-		lineageTag: 44a62b89-8477-477c-909b-c75d3ee955e1
+		lineageTag: bd47b19d-50ba-4af1-addb-88fae8e1278a
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de rentabilidad · orden'
@@ -14,7 +14,7 @@ table 'MD_Vista de rentabilidad'
 	column 'Vista de rentabilidad · campo'
 		dataType: string
 		isHidden
-		lineageTag: 33c836ad-2c2f-4e7a-822b-4a394f53b6ae
+		lineageTag: 7099ea95-85aa-481b-8d6f-387fb39e9d57
 		summarizeBy: none
 		sourceColumn: [Value2]
 
@@ -27,7 +27,7 @@ table 'MD_Vista de rentabilidad'
 	column 'Vista de rentabilidad · orden'
 		dataType: int64
 		isHidden
-		lineageTag: 84e70991-3cba-43b8-ab43-fedc580a8009
+		lineageTag: 06d1e8c8-807b-425e-af02-52e2026a7263
 		summarizeBy: none
 		sourceColumn: [Value3]
 

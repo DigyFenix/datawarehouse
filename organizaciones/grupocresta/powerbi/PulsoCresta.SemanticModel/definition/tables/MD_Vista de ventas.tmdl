@@ -1,9 +1,9 @@
 table 'MD_Vista de ventas'
-	lineageTag: a17dc77d-8d1e-4d5e-ac1f-fa4ccc1c75ce
+	lineageTag: b5ae3ad7-98ad-40c6-b08c-a49017ef1817
 
 	column 'Vista de ventas'
 		dataType: string
-		lineageTag: 00df03fc-a14c-40c4-9880-a34b682f2a4c
+		lineageTag: ec78415d-2792-4f29-9413-306855cf3b9f
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de ventas · orden'
@@ -14,7 +14,7 @@ table 'MD_Vista de ventas'
 	column 'Vista de ventas · campo'
 		dataType: string
 		isHidden
-		lineageTag: cec3d07f-a37e-4699-9205-3f3cc3984702
+		lineageTag: 96cc86ed-83c6-4c5b-8a60-31e46d763d58
 		summarizeBy: none
 		sourceColumn: [Value2]
 
@@ -27,7 +27,7 @@ table 'MD_Vista de ventas'
 	column 'Vista de ventas · orden'
 		dataType: int64
 		isHidden
-		lineageTag: e4a2ffe5-b4d9-4226-ab74-eeb419939070
+		lineageTag: 3081a0b5-e67a-453d-acd2-a605bc9c107a
 		summarizeBy: none
 		sourceColumn: [Value3]
 

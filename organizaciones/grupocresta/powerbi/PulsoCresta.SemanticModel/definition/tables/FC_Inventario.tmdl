@@ -1,134 +1,142 @@
 table FC_Inventario
-	lineageTag: 852b2d84-1fb1-4326-882f-1590e6ef3a9c
+	lineageTag: e1fed18b-31fb-4341-9883-b8f1930a9afc
 
 	/// Valor del inventario a la fecha de corte en MONEDA DE PRESENTACIÓN (SAP: OnHand × costo promedio; Odoo: capas de valoración).
 	measure 'Valor de inventario' = SUM(FC_Inventario[valor])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
-		lineageTag: 15a73619-387d-4873-9ef4-b5e82a818c30
+		lineageTag: 75fde140-f621-4e80-937c-4170a42829cb
 
 	/// Cantidad física en bodega a la fecha de corte.
 	measure 'Unidades en existencia' = SUM(FC_Inventario[cantidad])
 		formatString: #,0
 		displayFolder: 02 Conteos
-		lineageTag: a7682522-f33c-48d6-8ca8-a9d512422ec9
+		lineageTag: 5110e380-2663-4ba8-a9da-7d46313e5e22
 
 	/// Artículos distintos con saldo en bodega.
 	measure 'Productos con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[producto_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
 		formatString: #,0
 		displayFolder: 02 Conteos
-		lineageTag: ad1af4d8-33d7-4929-be26-1ad036515f3c
+		lineageTag: 07d8da94-1a03-42da-b6ac-2ae87c2a640a
 
 	/// Almacenes con movimiento vivo.
 	measure 'Bodegas con existencia' = CALCULATE(DISTINCTCOUNT(FC_Inventario[almacen_clave]), KEEPFILTERS(FC_Inventario[cantidad] <> 0))
 		formatString: #,0
 		displayFolder: 02 Conteos
-		lineageTag: fc208213-4943-4a23-8a35-1474f2c9e47a
+		lineageTag: 1569123c-68f2-4789-8f16-af08b7a3449c
 
 	/// Costo unitario medio de lo que hay en bodega.
 	measure 'Costo promedio ponderado' = DIVIDE([Valor de inventario], [Unidades en existencia])
 		formatString: "Q" #,0.00
 		displayFolder: 03 Promedios
-		lineageTag: c4326983-68e7-4b05-a14b-25e9dc26bf05
+		lineageTag: 5c737ffb-4f18-4f6e-9273-5b5da94582f6
 
 	/// Veces que el inventario rota al año: costo de ventas de los últimos 12 meses sobre el valor actual.
 	measure 'Rotación de inventario 12M' = DIVIDE(CALCULATE([Costo de ventas], DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -12, MONTH)), [Valor de inventario])
 		formatString: #,0.0
 		displayFolder: 04 Rotación
-		lineageTag: 794b1719-04b5-4463-8dbd-02883f6bfeb0
+		lineageTag: 3614ba6e-abed-4b45-846e-7ae6a5a21cc0
 
 	/// Cuántos días tarda en consumirse la existencia actual. Es una de las tres patas del ciclo de conversión de efectivo.
 	measure 'Días de inventario' = DIVIDE(365, [Rotación de inventario 12M])
 		formatString: #,0
 		displayFolder: 04 Rotación
-		lineageTag: 727522b1-a889-4074-98c3-9a3ff3d4cc38
+		lineageTag: 9b44d241-a9ef-4500-bd57-b0293e8998d1
 
 	/// Los días de inventario en la unidad con la que suele razonar compras.
 	measure 'Meses de inventario' = DIVIDE([Días de inventario], 30)
 		formatString: #,0.0
 		displayFolder: 04 Rotación
-		lineageTag: a3d22153-5a94-4e76-8829-c5d522030a7b
+		lineageTag: be218e29-c896-43f9-8411-1257403c6d1a
 
 	/// Cuánto capital hay inmovilizado en bodega por cada quetzal de venta del período. Sube cuando se compra más rápido de lo que se vende.
 	measure 'Inventario sobre ventas' = DIVIDE([Valor de inventario], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 04 Rotación
-		lineageTag: 5d2751dd-88b1-4fa5-b4bc-fbec94dec434
+		lineageTag: e4b81189-52db-4ba6-9339-d20f4900e0a4
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: 5d08c451-cda0-4dc4-a016-d3e5a64cd936
+		lineageTag: 63d59922-eca2-4e62-9a22-f67367bd3617
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column producto_clave
 		dataType: int64
 		isHidden
-		lineageTag: 3f2f78f7-56e8-4208-a283-eba0cee1cd75
+		lineageTag: 55259675-28a6-4039-baaa-38bb93df0374
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column almacen_clave
 		dataType: int64
 		isHidden
-		lineageTag: 3e05f50f-9af8-42d4-8619-16e0ff4e9284
+		lineageTag: 6c7000a7-306d-4bc6-b9b1-43a5cb448f5f
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: ba840618-95a4-4f6f-9804-5dc9e8db2b14
+		lineageTag: b15b787a-a492-4760-82a0-6bec1480be3d
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 5dc822fe-1b4e-4b4d-8526-b2788d1514a1
+		lineageTag: 6b2891cd-a042-4ad2-922d-39edc4c92f9e
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column fecha_corte
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 23fe89ad-efea-4f68-a471-0465930b4235
+		lineageTag: 0098dc4a-3709-413d-a8cb-162675ac1fe1
 		summarizeBy: none
 		sourceColumn: fecha_corte
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column cantidad
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: ab38866a-9064-4cc8-b7ec-3ab67ad28e47
-		summarizeBy: none
+		lineageTag: 9262121a-a977-4c2e-a958-9ab3cb227a88
+		summarizeBy: sum
 		sourceColumn: cantidad
 
+		annotation SummarizationSetBy = Automatic
+
 	column costo_promedio
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 56c95a6f-6d8f-47a9-abed-2cef74fb8302
-		summarizeBy: none
+		lineageTag: 354bcb58-10f9-4b39-be4e-d3de174f8001
+		summarizeBy: sum
 		sourceColumn: costo_promedio
 
+		annotation SummarizationSetBy = Automatic
+
 	column valor
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 376c3a30-583a-40a9-ac4e-46ff261c6dc8
-		summarizeBy: none
+		lineageTag: ba01e88f-6534-4d4b-8921-b821304ec594
+		summarizeBy: sum
 		sourceColumn: valor
+
+		annotation SummarizationSetBy = Automatic
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: acf9c867-6317-4f6b-a406-ed11bffa2646
+		lineageTag: e5f4de44-f61f-4a44-be4d-3fd8c34c95f6
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: d2729631-f952-4bbf-9bb2-b360fcaca664
+		lineageTag: e6e75698-74c7-4b77-b635-0426f6ef8e57
 		summarizeBy: none
 		sourceColumn: version_proceso
 

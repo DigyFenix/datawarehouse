@@ -1,35 +1,35 @@
 table 'DM_Centro de costo'
-	lineageTag: 44ad68fe-e77f-4d4d-994a-b9f677524dd9
+	lineageTag: e8c2c5a6-7b48-4371-a940-1c5adc9e8a8e
 
 	column centro_costo_clave
 		dataType: int64
 		isHidden
-		lineageTag: d8281b11-c36d-42d2-84ed-790df9fb4262
+		lineageTag: 73b4dec4-d9be-4e3d-b85e-15050c84845c
 		summarizeBy: none
 		sourceColumn: centro_costo_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 9feed237-4ce7-4e75-8b36-c3c9066a27f0
+		lineageTag: 30482258-a180-4407-a142-6b52afc4bdd9
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column centro_costo_codigo
 		dataType: string
-		lineageTag: a85a736f-c202-4c0b-a255-2804722fa4dc
+		lineageTag: 9e9ead51-9566-4c5c-b0aa-22674e210783
 		summarizeBy: none
 		sourceColumn: centro_costo_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 86d10cdc-2376-468b-a777-241772dfbb9d
+		lineageTag: 57c230d4-fc57-4431-bad0-78ac18790d3c
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
-		lineageTag: 11130f9d-3dae-48db-9bd3-2fb7ee89511f
+		lineageTag: 78530946-405b-487f-86a3-70496cd7d0d4
 		summarizeBy: none
 		sourceColumn: activo
 
@@ -37,22 +37,26 @@ table 'DM_Centro de costo'
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 74841185-5dd4-4a8c-bdae-1e1653f685d0
+		lineageTag: 2a4ca3e3-f372-4e01-a616-2088649bbbb8
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: ec379424-0f65-45ac-9fb8-06f0e659df29
+		lineageTag: ee6b0f4c-d197-4ba1-9fbd-dcfe95d10908
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: bfd60fd3-83a8-4852-ab12-7c1afc25b5da
+		lineageTag: 87fe55d4-6f3c-4e7a-8d5d-4dad139087b7
 		summarizeBy: none
 		sourceColumn: es_vigente
 

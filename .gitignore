@@ -56,3 +56,4 @@ infra/produccion/caddy_data/
 .idea/
 .DS_Store
 Thumbs.db
+organizaciones/*/powerbi.zip

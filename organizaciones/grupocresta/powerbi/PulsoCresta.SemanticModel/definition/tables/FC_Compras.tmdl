@@ -1,424 +1,446 @@
 table FC_Compras
-	lineageTag: e6f11b78-e3cc-4bdb-af1e-b206927707e8
+	lineageTag: 6421b180-1e39-445d-9a33-8741feaad22a
 
 	/// Compra sin impuestos en MONEDA DE PRESENTACIÓN (consolidable entre sociedades).
 	measure 'Compras netas' = SUM(FC_Compras[monto_sin_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
-		lineageTag: 1f9f5254-8181-4ce7-81c3-9feb896f2bc3
+		lineageTag: a8cf7de1-734c-43ce-b9c1-d4169d3a87cd
 
 	/// Compra con impuesto incluido, desde la cabecera del documento por la misma razón que en ventas.
 	measure 'Compras netas con IVA' = SUM(FC_Compras[monto_con_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
-		lineageTag: 24103778-b5b7-4887-a3a5-a4a52f3066f0
+		lineageTag: 6367c68c-5e99-492a-bdcd-ad22450f1f2c
 
 	/// IVA soportado en las compras, en moneda local.
 	measure 'Impuesto de compras' = SUM(FC_Compras[monto_impuesto])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
-		lineageTag: 7128d041-8628-4e5c-af00-9205d4496a53
+		lineageTag: d5a608a4-5d50-4530-b1ea-87cde0ebd401
 
 	/// Saldo pendiente de pago de las facturas de compra, prorrateado por línea. INFORMATIVO: la cartera oficial sale del mayor.
 	measure 'Saldo de facturas de compra' = SUM(FC_Compras[saldo_pendiente])
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
-		lineageTag: 5cc325b0-501d-47ef-b7df-e9f26194b6fa
+		lineageTag: 5624e60b-3517-44c0-a0f1-51e5d8b4df47
 
 	/// Compra a proveedores reales, sin el movimiento entre empresas del grupo.
 	measure 'Compras a terceros' = CALCULATE([Compras netas], DM_Proveedor[es_intercompania] = FALSE)
 		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
-		lineageTag: 734f3f67-385b-4fdb-9d18-cedcc47750ca
+		lineageTag: 32f76e1f-65cf-445d-9637-28e5dacde337
 
 	/// Compra a otras empresas del propio grupo: traslado interno, no abastecimiento.
 	measure 'Compras al grupo' = CALCULATE([Compras netas], DM_Proveedor[es_intercompania] = TRUE)
 		formatString: "Q" #,0
 		displayFolder: 02 Terceros vs grupo
-		lineageTag: c7d154ea-22ec-4b97-8c89-202082733dca
+		lineageTag: e6884a84-971b-4e6f-bb42-ac076ce638fb
 
 	/// Qué parte del abastecimiento es interno.
 	measure '% Compra al grupo' = DIVIDE([Compras al grupo], [Compras netas])
 		formatString: 0.0%
 		displayFolder: 02 Terceros vs grupo
-		lineageTag: c6f5eb0e-0827-462d-b178-f7766e6c0583
+		lineageTag: 4786308b-25f3-4242-859a-c20d885920c9
 
 	/// Cantidad neta recibida; la nota de crédito a proveedor resta.
 	measure 'Unidades compradas' = SUM(FC_Compras[cantidad])
 		formatString: #,0
 		displayFolder: 03 Conteos
-		lineageTag: 61c3396d-5e1b-4687-9a91-5920fad5a18f
+		lineageTag: 335cd5cf-f552-4f24-adae-7ac38b883926
 
 	/// Número de líneas de documento de compra.
 	measure 'Líneas de compra' = COUNTROWS(FC_Compras)
 		formatString: #,0
 		displayFolder: 03 Conteos
-		lineageTag: fcaedee5-58a1-46b4-9769-700236d87a07
+		lineageTag: 536388c4-3267-4e8e-8698-e82794733dbf
 
 	/// Facturas y notas de crédito de compra distintas del período.
 	measure 'Documentos de compra' = DISTINCTCOUNT(FC_Compras[documento_id])
 		formatString: #,0
 		displayFolder: 03 Conteos
-		lineageTag: c9555582-e36d-4696-b99c-35752e34e59b
+		lineageTag: a69aeeba-e6a7-4720-a476-75c7e62368bc
 
 	/// Proveedores distintos con movimiento en el período.
 	measure 'Proveedores con compra' = CALCULATE(DISTINCTCOUNT(FC_Compras[proveedor_clave]), KEEPFILTERS(FC_Compras[monto_sin_impuesto] <> 0))
 		formatString: #,0
 		displayFolder: 03 Conteos
-		lineageTag: 851debc0-14c0-4639-878e-df664bbc6506
+		lineageTag: 6da2975e-339e-4252-b3fb-0f95c62ee44a
 
 	/// Tamaño medio de la factura de compra.
 	measure 'Compra promedio por documento' = DIVIDE([Compras netas], [Documentos de compra])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
-		lineageTag: d4ca620c-45ed-4cb6-bf4d-cae34af924c7
+		lineageTag: 154fc545-cb1c-4bfb-ab8a-b6680839672f
 
 	/// Cuánto se le compra en promedio a cada proveedor activo.
 	measure 'Compra promedio por proveedor' = DIVIDE([Compras netas], [Proveedores con compra])
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
-		lineageTag: 4bcf6e31-605e-4e33-a6bf-faf856c04ca3
+		lineageTag: 8430bbec-baf9-4684-9aa7-85c362bf3cba
 
 	/// Promedio sobre los días que SÍ hubo compra.
 	measure 'Compra promedio diaria' = DIVIDE([Compras netas], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Compras))
 		formatString: "Q" #,0
 		displayFolder: 04 Promedios
-		lineageTag: 6c5813b9-d8e9-439b-b2cf-693bdef44d76
+		lineageTag: 5a2c011e-b979-457e-9c27-df5c6a8f835e
 
 	/// Compra del mes previo, para ver si el abastecimiento se aceleró.
 	measure 'Compras mes anterior' = CALCULATE([Compras netas], DATEADD(DM_Calendario[fecha], -1, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: c58e6a1a-44ec-40eb-98d2-38e294f2c8f4
+		lineageTag: 284cf1b0-dd5e-4c4a-b42d-c0947025c0c0
 
 	/// Mismo período del año pasado, libre de estacionalidad.
 	measure 'Compras año anterior' = CALCULATE([Compras netas], DATEADD(DM_Calendario[fecha], -1, YEAR))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: b24c6ffb-f033-4746-a998-c83ce7cce850
+		lineageTag: 69daa16f-c721-4a56-a477-5111b6be60b4
 
 	/// Acumulado desde el primer día del mes.
 	measure 'Compras acumuladas mes' = TOTALMTD([Compras netas], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: 9473e75c-08da-4138-8fa9-6be4028b177e
+		lineageTag: a8c9ddc3-ba8b-4d9a-866b-da2d57c23247
 
 	/// Acumulado del ejercicio.
 	measure 'Compras acumuladas año' = TOTALYTD([Compras netas], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: 20c8213f-77df-4c1a-bc72-5726c14cbf03
+		lineageTag: 63dfd64b-4c1f-4c92-abeb-4dd763b89d86
 
 	/// Acumulado del ejercicio anterior a la misma altura del año.
 	measure 'Compras acumuladas año anterior' = CALCULATE(TOTALYTD([Compras netas], DM_Calendario[fecha]), DATEADD(DM_Calendario[fecha], -1, YEAR))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: 7fc2f4c0-3428-4245-a425-7b52b42ce68e
+		lineageTag: 5011b5a7-94ba-466d-a0f2-aee20d4c3c2b
 
 	/// Cambio contra el mes previo.
 	measure 'Variación compras vs mes anterior' = DIVIDE([Compras netas] - [Compras mes anterior], [Compras mes anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 05 Comparativos
-		lineageTag: 2ce0c7f2-c01e-4696-af0a-273aeded552a
+		lineageTag: 85f570a4-eede-4127-aee8-8e14bbe88a85
 
 	/// Cambio contra el mismo período del año pasado.
 	measure 'Variación compras vs año anterior' = DIVIDE([Compras netas] - [Compras año anterior], [Compras año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 05 Comparativos
-		lineageTag: 191e6605-b6d1-4743-a849-7ab694f48c40
+		lineageTag: 17d50539-5694-42fd-a2c1-70a6ecae6551
 
 	/// Suaviza el ruido mensual del abastecimiento. Promedia MESES, no días.
 	measure 'Media móvil 3 meses compras' = CALCULATE(AVERAGEX(VALUES(DM_Calendario[anio_mes]), [Compras netas]), DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -3, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: fe0a55e6-3cac-4fed-bec6-9e7dbb2060d7
+		lineageTag: a034ac91-d7e3-4bce-81e3-e32a3c5c981e
 
 	/// Compra de líneas sin código de artículo (servicios, fletes, gastos). En operaciones con mucho gasto indirecto puede ser la mayoría de las líneas de compra.
 	measure 'Compras de servicios' = CALCULATE([Compras netas], KEEPFILTERS(DM_Producto[producto_codigo] = "SERVICIO"))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
-		lineageTag: c4b9ab38-b3e0-4a18-915c-8b0c97abd5c1
+		lineageTag: 146c3830-ea55-4f69-8640-7ba260e077ba
 
 	/// Posición del proveedor por compra dentro del filtro vigente.
 	measure 'Ranking de proveedor por compra' = RANKX(ALLSELECTED(DM_Proveedor), [Compras a terceros])
 		formatString: #,0
 		displayFolder: 06 Pareto
-		lineageTag: 939dd014-de2f-4ee1-a18b-d7bc0d2b6b59
+		lineageTag: b9f09578-728d-492d-acd5-160e764b1588
 
 	/// Curva de Pareto: % de la compra a terceros que acumulan este proveedor y los mayores que él.
 	measure '% acumulado de compra proveedores' = VAR base = ADDCOLUMNS(ALLSELECTED(DM_Proveedor), "@v", [Compras a terceros]) VAR actual = [Compras a terceros] VAR total = SUMX(base, [@v]) VAR acum = SUMX(FILTER(base, [@v] >= actual), [@v]) RETURN DIVIDE(acum, total)
 		formatString: 0.0%
 		displayFolder: 06 Pareto
-		lineageTag: 3a04ab9e-95d7-4cd8-996f-e857ddadd540
+		lineageTag: 5c13c4f1-493a-41f6-9e98-454b351ed4d1
 
 	/// Dependencia del proveedor más grande. Un número alto es riesgo de suministro y cero poder de negociación.
 	measure '% Compra en el mayor proveedor' = DIVIDE(MAXX(ALLSELECTED(DM_Proveedor), [Compras a terceros]), CALCULATE([Compras a terceros], ALLSELECTED(DM_Proveedor)))
 		formatString: 0.0%
 		displayFolder: 06 Pareto
-		lineageTag: 9401eb37-5432-4dd1-b591-eaf604c0603c
+		lineageTag: 8c47b8c8-d282-4890-ac97-09f2b29ec4c9
 
 	/// Concentración del abastecimiento en los diez mayores proveedores.
 	measure '% Compra en top 10 proveedores' = DIVIDE(CALCULATE([Compras a terceros], TOPN(10, ALLSELECTED(DM_Proveedor), [Compras a terceros])), CALCULATE([Compras a terceros], ALLSELECTED(DM_Proveedor)))
 		formatString: 0.0%
 		displayFolder: 06 Pareto
-		lineageTag: 7705c186-4ea0-45e6-80dc-281ddb9fd767
+		lineageTag: 94bfae05-d7bb-40df-9ff9-53fe4f5f29cd
 
 	/// Faltaba el espejo del acumulado trimestral de ventas.
 	measure 'Compras acumuladas trimestre' = TOTALQTD([Compras netas], DM_Calendario[fecha])
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: 784bc748-81eb-4d67-b8d6-74e8c22b0822
+		lineageTag: 2386b750-4487-46dd-bbe4-107a9adf4989
 
 	/// Compra de los últimos doce meses. Es la base de la rotación de inventario y de los días de pago.
 	measure 'Compras 12 meses móviles' = CALCULATE([Compras netas], DATESINPERIOD(DM_Calendario[fecha], [_Fecha ancla móvil], -12, MONTH))
 		formatString: "Q" #,0
 		displayFolder: 05 Comparativos
-		lineageTag: f70082d1-0df0-435c-b332-435e24f375a8
+		lineageTag: 78bc9113-4fb9-4f01-9b46-746fee97d985
 
 	/// Cómo va el abastecimiento del ejercicio completo contra el anterior.
 	measure 'Variación compras acumulada vs año anterior' = DIVIDE([Compras acumuladas año] - [Compras acumuladas año anterior], [Compras acumuladas año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 05 Comparativos
-		lineageTag: 6ef6b41a-6ca7-433d-a380-a3006ffce17f
+		lineageTag: 1f9cafef-c3a6-40f4-b4b3-d41ab96c314b
 
 	/// Precio unitario promedio pagado. Filtrar un producto para que signifique algo: mezclado entre artículos distintos no dice nada.
 	measure 'Precio promedio de compra' = DIVIDE([Compras netas], [Unidades compradas])
 		formatString: "Q" #,0.00
 		displayFolder: 07 Inflación de insumos
-		lineageTag: a98c32ed-1bb0-42b9-b227-a905f479d2f3
+		lineageTag: c3677326-9a0b-492e-8355-8d4802a859d4
 
 	/// Precio unitario medio pagado el año pasado, base de la comparación de inflación de insumos.
 	measure 'Precio de compra año anterior' = CALCULATE([Precio promedio de compra], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
 		formatString: "Q" #,0.00
 		displayFolder: 07 Inflación de insumos
-		lineageTag: 9caa9f48-2d81-44ed-bb58-b83c787636ce
+		lineageTag: befbece1-8ff7-4568-8543-3c86ca6e18f9
 
 	/// Cuánto subió lo que compramos. Es la inflación REAL del negocio, medida sobre lo pagado, no sobre un índice.
 	measure '% Variación de precio de compra' = DIVIDE([Precio promedio de compra] - [Precio de compra año anterior], [Precio de compra año anterior])
 		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 07 Inflación de insumos
-		lineageTag: b71cd03e-8cc9-4e6e-97d3-99cea821b17c
+		lineageTag: 91ab1320-96b0-4b6b-89b9-33fcb43dbf7e
 
 	/// Lo que costó de más comprar el volumen de hoy a los precios de hoy en vez de a los del año pasado.
 	measure 'Sobrecosto por precio de compra' = ([Precio promedio de compra] - [Precio de compra año anterior]) * [Unidades compradas]
 		formatString: "Q" #,0
 		displayFolder: 07 Inflación de insumos
-		lineageTag: 6fc4d748-044d-42d3-8f3f-8cb31e94a3d7
+		lineageTag: b605ba47-6e8b-4784-aba2-b9e34c3e82f9
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: ca484bd4-0a31-42cc-a349-4d2752d9e786
+		lineageTag: b7e8b255-7bbd-41b0-b6d6-6f0afdcf8b89
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: 6d16afe5-f0f9-412f-850d-4955e20dc2c1
+		lineageTag: 46a4d12b-e29d-4eba-9fc7-26d0167a419a
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column socio_clave
 		dataType: int64
 		isHidden
-		lineageTag: 19b87b21-57fb-49f1-b43e-4431366e8258
+		lineageTag: 36199d94-4269-4f51-b07e-8cf95a4328bb
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column producto_clave
 		dataType: int64
 		isHidden
-		lineageTag: de3f1251-ad84-4744-9eb2-47c61a452927
+		lineageTag: 8cb96518-7c56-4155-a432-ed539c7762b0
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: fbc43bc6-40f8-45aa-a5af-64a1849c5d43
+		lineageTag: 0f3b1380-3704-44cb-b2e2-21daa60540b1
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column almacen_clave
 		dataType: int64
 		isHidden
-		lineageTag: 93a1bc6a-0727-43cc-898c-b76c23fd60fe
+		lineageTag: 44f0400b-c760-431c-bfb5-0ad708219b88
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: d9262490-751e-486c-872e-25da643419c0
+		lineageTag: 92e766d9-6b8b-4fdc-80ad-d3636f7edf64
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
-		lineageTag: 22eb3065-fbfb-4aa2-a899-543ac6f4bccb
+		lineageTag: 45098136-a44b-44c2-affb-8a88c886a659
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column centro_costo_clave
 		dataType: int64
 		isHidden
-		lineageTag: 2272c368-d213-4bba-bf96-a70a61351761
+		lineageTag: 6a3cb0c9-5945-4e32-ac3e-cb9026c0381a
 		summarizeBy: none
 		sourceColumn: centro_costo_clave
 
 	column tipo_documento_clave
 		dataType: int64
 		isHidden
-		lineageTag: 4c4fcf78-b77a-4931-a9fd-22aa5d32db7a
+		lineageTag: c96d1ced-f676-4099-919d-34709f83f303
 		summarizeBy: none
 		sourceColumn: tipo_documento_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 8ba29e4d-aeca-4f9e-ae42-5d6c7a694d71
+		lineageTag: 79dae56a-982f-4806-b5fd-379ad9510070
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column documento_id
 		dataType: string
-		lineageTag: 1c798012-8096-4772-8679-6e09fbd9aa84
+		lineageTag: dac2ce76-2586-4b7b-b550-05c4326e4e3b
 		summarizeBy: none
 		sourceColumn: documento_id
 
 	column documento_numero
 		dataType: string
-		lineageTag: 86c34f96-0b77-47a1-a89b-78b1e1b8b3ff
+		lineageTag: 27e5bde1-b698-4072-ae71-18ce6baed445
 		summarizeBy: none
 		sourceColumn: documento_numero
 
 	column serie_codigo
 		dataType: string
-		lineageTag: b2946585-17d2-4cd2-82c1-ae3c6d4c7526
+		lineageTag: 9fb9c378-7c72-4005-abcf-1c92d71eff17
 		summarizeBy: none
 		sourceColumn: serie_codigo
 
 	column tipo_documento_origen
 		dataType: string
-		lineageTag: e2801fa3-0741-48d6-a733-81d3fe010c63
+		lineageTag: 122496d3-ebc1-4b14-9666-738ab4ad7e0b
 		summarizeBy: none
 		sourceColumn: tipo_documento_origen
 
 	column referencia_externa
 		dataType: string
-		lineageTag: d1e77f0c-2180-4299-ba30-adcf4b4d6da8
+		lineageTag: d42cee1d-2884-420f-8527-edd198947690
 		summarizeBy: none
 		sourceColumn: referencia_externa
 
 	column linea_numero
 		dataType: int64
 		formatString: #,0
-		lineageTag: 98b7ddc6-c470-42cf-a01a-e9285d364033
+		lineageTag: a161f27d-3531-43d7-a286-65bd2cdbdc30
 		summarizeBy: none
 		sourceColumn: linea_numero
 
 	column tipo_documento
 		dataType: string
-		lineageTag: 85c3a77d-11b9-48cf-87d9-1a6db7b5f6ce
+		lineageTag: 1093d69a-183b-4b7a-acfb-e9b2697eb7d8
 		summarizeBy: none
 		sourceColumn: tipo_documento
 
 	column fecha_documento
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: ad91fb78-e96f-455f-861c-b32b11c8b872
+		lineageTag: b4ea78de-9ab3-4eab-bdd1-f4d0f956ffea
 		summarizeBy: none
 		sourceColumn: fecha_documento
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column cantidad
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 20fdf6fb-02a8-4959-952f-bed2ae87d24a
-		summarizeBy: none
+		lineageTag: 49b06b09-4fcb-4624-b524-37868cb6f8c0
+		summarizeBy: sum
 		sourceColumn: cantidad
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_sin_impuesto
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: f6da0a26-d3a0-4fa8-b212-b6df49df162e
-		summarizeBy: none
+		lineageTag: 04a5a7ec-98f4-4414-a6c4-21cd7c8ea96b
+		summarizeBy: sum
 		sourceColumn: monto_sin_impuesto
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_impuesto
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 41a70682-02f5-4760-8a73-1679e2579ff8
-		summarizeBy: none
+		lineageTag: cbddf32d-e765-4d32-bcf0-fa9e18d1e4f3
+		summarizeBy: sum
 		sourceColumn: monto_impuesto
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_con_impuesto
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: def2fce6-127d-4530-a1d6-b3b141c232b0
-		summarizeBy: none
+		lineageTag: 3cda7442-fe95-44f1-9eb3-2558379094c7
+		summarizeBy: sum
 		sourceColumn: monto_con_impuesto
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_sin_impuesto_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: e39cadd0-c073-48c6-a66e-d22d6b60e7cc
-		summarizeBy: none
+		lineageTag: 41665888-2b05-4bc3-979a-e1d9c4f331ea
+		summarizeBy: sum
 		sourceColumn: monto_sin_impuesto_doc
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_impuesto_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 1c4032f2-5faf-4fb3-8830-b8d20c8ab40d
-		summarizeBy: none
+		lineageTag: cb60c077-7c9a-4ac2-b1ef-6a4624a041b0
+		summarizeBy: sum
 		sourceColumn: monto_impuesto_doc
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_con_impuesto_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 46071f26-b048-4be2-aafd-67a6068070f2
-		summarizeBy: none
+		lineageTag: b8e87547-8223-4c21-af73-55bcb1d71b03
+		summarizeBy: sum
 		sourceColumn: monto_con_impuesto_doc
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_descuento
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 0da6b96b-4550-45c1-9fee-258173fd8314
-		summarizeBy: none
+		lineageTag: 5010267b-3080-4cd1-bf8f-bde78bf47014
+		summarizeBy: sum
 		sourceColumn: monto_descuento
 
+		annotation SummarizationSetBy = Automatic
+
 	column descuento_pct
-		dataType: decimal
+		dataType: double
 		formatString: 0.0"%"
-		lineageTag: bcbf5fe9-685d-4f30-a2be-579b5906c3bd
-		summarizeBy: none
+		lineageTag: 028c1b5b-b81f-4fce-96d2-50ed965ba155
+		summarizeBy: sum
 		sourceColumn: descuento_pct
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_pendiente
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: d5610090-2d50-4236-8f88-7ef9338544b0
-		summarizeBy: none
+		lineageTag: b6d1644a-a0e1-46ae-a64e-bb32bcd45133
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente
+
+		annotation SummarizationSetBy = Automatic
 
 	column estado_pago
 		dataType: string
-		lineageTag: 0902fdda-240f-413f-b510-7d4c806e70f3
+		lineageTag: 3b3db518-d92f-4a28-a9fe-a98f9377badf
 		summarizeBy: none
 		sourceColumn: estado_pago
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 237816fb-8091-4a14-b85c-653bb6efaaaf
+		lineageTag: b2975379-bc24-493a-90e9-fa0bb3de4ff9
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: dfc39b9e-8104-4fa3-931a-cfdb59028c6a
+		lineageTag: 01fa2243-640e-4c58-b650-7a9895802c90
 		summarizeBy: none
 		sourceColumn: version_proceso
 

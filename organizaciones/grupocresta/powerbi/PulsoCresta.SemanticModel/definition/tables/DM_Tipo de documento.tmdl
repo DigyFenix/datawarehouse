@@ -1,41 +1,41 @@
 table 'DM_Tipo de documento'
-	lineageTag: 8d2ee4fe-38a7-473a-a563-84a588a98dab
+	lineageTag: 381da714-3fc8-4cf6-81dc-0519c657deca
 
 	column tipo_documento_clave
 		dataType: int64
 		isHidden
-		lineageTag: 17b2cd08-f7a0-4737-966d-b28bc2a19e33
+		lineageTag: b3e0574a-f75e-4486-ac15-3a14d3dbc646
 		summarizeBy: none
 		sourceColumn: tipo_documento_clave
 
 	column tipo_documento_codigo
 		dataType: string
-		lineageTag: a44e9ce3-ff2c-485f-8719-74fd4f05a637
+		lineageTag: b6e8f4db-aeee-420d-9524-4dd23de89ef5
 		summarizeBy: none
 		sourceColumn: tipo_documento_codigo
 
 	column flujo
 		dataType: string
-		lineageTag: 34764c3b-9901-40b1-9874-f04f9e76693c
+		lineageTag: c9fdf3f9-2688-49ae-93df-e79ff2e51368
 		summarizeBy: none
 		sourceColumn: flujo
 
 	column tipo_documento
 		dataType: string
-		lineageTag: ea7e5cab-c8b9-4ae8-9914-bf1e88af81d1
+		lineageTag: 5a187ab9-2b3f-446b-9e5a-a53fef23001f
 		summarizeBy: none
 		sourceColumn: tipo_documento
 
 	column nombre
 		dataType: string
-		lineageTag: fe2eb327-3b91-4a9c-a1a2-0aa33bb32d92
+		lineageTag: 92db9b67-4083-4c0a-8125-9972c2dbb1f1
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column signo
 		dataType: int64
 		formatString: #,0
-		lineageTag: f1a60a5d-3136-4cbe-add8-e1050ffa02b7
+		lineageTag: 19fe3a77-bf68-4d03-abd5-5a347dc0a849
 		summarizeBy: none
 		sourceColumn: signo
 
@@ -43,22 +43,26 @@ table 'DM_Tipo de documento'
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: d18bfaf3-b802-4d1c-8f10-b7d1363ef308
+		lineageTag: 298fda9d-b726-455f-972f-c19d2ad63baf
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 6fdaa20a-0d0b-4dd3-8647-951ec17cdc9b
+		lineageTag: 38d37ab7-8131-491d-b106-7ff4f22fe476
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 8727ed3e-1b74-4163-b214-9035eb26e6da
+		lineageTag: eaa119e6-2140-4548-bcda-e2d274a2b6e2
 		summarizeBy: none
 		sourceColumn: es_vigente
 

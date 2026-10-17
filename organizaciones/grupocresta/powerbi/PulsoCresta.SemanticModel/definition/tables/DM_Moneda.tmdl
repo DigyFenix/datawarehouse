@@ -1,35 +1,35 @@
 table DM_Moneda
-	lineageTag: c5a4c748-668c-4800-b1bd-1e8d9b569531
+	lineageTag: 249f7ef3-0f63-4a82-a091-03cf798451ff
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: 0288c81f-0034-4a79-b5f8-1853a8168e6c
+		lineageTag: 4e0ef2f5-d75b-4127-be12-43c8e70ad135
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 5df91311-ac9b-4f4f-bd8e-5a807eadc6b9
+		lineageTag: 91b9e4d6-51fb-4a19-ab6e-c1fd111dc415
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column moneda_codigo
 		dataType: string
-		lineageTag: c9ebe272-0239-4170-b130-0c3fd5ec8106
+		lineageTag: 340f47c9-0dd7-4321-a7e7-3a00317b54d4
 		summarizeBy: none
 		sourceColumn: moneda_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 48d32337-ed09-4231-bcfd-831aa8417831
+		lineageTag: 32092ecd-fdb8-4fa3-9b27-407f1341d3ab
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column es_local
 		dataType: boolean
-		lineageTag: cdb5ab10-a2b1-475d-b9d5-da7f9897e48a
+		lineageTag: 48573f0b-7ecc-4906-aea8-8e7f0f83d931
 		summarizeBy: none
 		sourceColumn: es_local
 
@@ -37,22 +37,26 @@ table DM_Moneda
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 4a6ddf48-bc0e-4fff-adc8-50334235a822
+		lineageTag: c9a401c1-56dd-465f-946e-92f367229f87
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: f40cae79-0913-48b2-9c06-eb37948bbfeb
+		lineageTag: c805e8e4-572a-4c1b-8895-9a1c3cfc0c0c
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: d62e3329-35e6-470b-aee5-3a29cd43be03
+		lineageTag: 7985b7cd-1bbc-461f-985d-7cdc1d939f6e
 		summarizeBy: none
 		sourceColumn: es_vigente
 

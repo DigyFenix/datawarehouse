@@ -1,42 +1,42 @@
 table 'DM_Año de clasificación'
-	lineageTag: ae5ae864-f3ab-439f-8d93-c41ce2d58785
+	lineageTag: 5ec41f09-d82d-480a-88f0-3fd39ecb4135
 
 	column anio_clave
 		dataType: int64
 		isHidden
-		lineageTag: fd8f0f4a-f8f8-43ae-b181-c4c8df1b3d9d
+		lineageTag: 41362df0-f69e-408e-a761-b3018889d223
 		summarizeBy: none
 		sourceColumn: anio_clave
 
 	column anio
 		dataType: int64
 		formatString: #,0
-		lineageTag: aa400b52-b7bc-49dd-a9d8-3cf457742b27
+		lineageTag: 1ea67b2a-5dcd-4959-b1b3-a1bd085f5659
 		summarizeBy: none
 		sourceColumn: anio
 
 	column anio_nombre
 		dataType: string
-		lineageTag: 5b6bcac3-0082-4dd4-8911-4628ca205d74
+		lineageTag: 1e187a7b-d061-433d-910b-e920dd3f1489
 		summarizeBy: none
 		sourceColumn: anio_nombre
 
 	column es_anio_actual
 		dataType: boolean
-		lineageTag: 79536bbd-8b24-45aa-976a-aa706422f1a9
+		lineageTag: e300bd16-fd8c-41e2-9ec5-d305e4d9c9f1
 		summarizeBy: none
 		sourceColumn: es_anio_actual
 
 	column es_anio_anterior
 		dataType: boolean
-		lineageTag: ab989fd6-e2c5-4992-a0d5-16afcc724a58
+		lineageTag: 70f4210a-7a37-4c52-926c-e4333cf38197
 		summarizeBy: none
 		sourceColumn: es_anio_anterior
 
 	column anios_desde_hoy
 		dataType: int64
 		formatString: #,0
-		lineageTag: 388dde6f-ee88-4e62-ab4a-d627462d6756
+		lineageTag: f11c7303-694a-4144-827c-7be4201225db
 		summarizeBy: none
 		sourceColumn: anios_desde_hoy
 
@@ -44,22 +44,26 @@ table 'DM_Año de clasificación'
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: c8b1b09d-44cb-4c58-8dba-78b5d3bb56ce
+		lineageTag: f3626b5b-edae-4545-b35a-969ce78c4f4f
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 5c8d2cf2-9f42-415f-bc5f-648278707d94
+		lineageTag: 466d460a-5273-47e6-9dcc-e5bfd706c66e
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 6e840b8b-558a-4884-bd06-a02b911e22f0
+		lineageTag: 4f8d4694-09ea-41a6-a929-6b037a6a20fb
 		summarizeBy: none
 		sourceColumn: es_vigente
 

@@ -1,87 +1,87 @@
 table 'FC_Campos de usuario'
-	lineageTag: 46d4b3b9-48a1-476b-b6c2-76ecb3eab653
+	lineageTag: 7331d66a-23ad-4e12-97e9-94cfe8669509
 
 	/// Cuántos valores de campos de usuario hay capturados en el filtro vigente.
 	measure 'Valores de usuario capturados' = COUNTROWS('FC_Campos de usuario')
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: ac91477a-fc12-45bc-8cb9-51c998c36828
+		lineageTag: 1924d553-3d0a-495b-81a1-308e75a4b084
 
 	/// Cuántos campos de usuario del ERP tienen valores capturados en el filtro vigente.
 	measure 'Campos de usuario distintos' = DISTINCTCOUNT('FC_Campos de usuario'[campo])
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 94099d48-391b-49ab-824d-d4be8476c44c
+		lineageTag: f9b3cfb0-edc2-4872-9f5c-685d23afa873
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: f6f77168-9b70-4556-a4d0-c94e21ec4093
+		lineageTag: ab2dbb89-5047-4e9a-b61f-02218aba0829
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column entidad
 		dataType: string
-		lineageTag: 89a291a2-ae61-4b10-8e44-ea11df389e03
+		lineageTag: 63806e5d-4e0b-482f-8742-a31698266cad
 		summarizeBy: none
 		sourceColumn: entidad
 
 	column tabla_origen
 		dataType: string
-		lineageTag: b9af8c04-8035-4676-9031-7029a6a15d32
+		lineageTag: eb7513a5-044f-4fa1-97b6-23599d81756c
 		summarizeBy: none
 		sourceColumn: tabla_origen
 
 	column registro_id
 		dataType: string
-		lineageTag: 37102fd0-82e4-4c44-b1a4-81ae0a024a07
+		lineageTag: 031ace91-c496-4585-a934-8f22c38ca171
 		summarizeBy: none
 		sourceColumn: registro_id
 
 	column campo
 		dataType: string
-		lineageTag: a25eca94-88b6-4e26-8950-dc5019974e5e
+		lineageTag: e0b3914a-c835-4195-8b49-ab38fa3a2f62
 		summarizeBy: none
 		sourceColumn: campo
 
 	column valor
 		dataType: string
-		lineageTag: b8e60721-45ae-47cb-887f-a8cb9a3b4beb
+		lineageTag: 134af2b0-dfdf-4890-b535-d332fef1e7d2
 		summarizeBy: none
 		sourceColumn: valor
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: 5fc9740d-31c7-4e46-b934-c3777e66eba1
+		lineageTag: e7f5622f-f65e-4243-8a1c-aa03325697a8
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: 78ecd373-f25e-45d7-a50f-b5cd453495f7
+		lineageTag: 2ca0713f-d806-487b-a6a8-fac8632a1d28
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column producto_clave
 		dataType: int64
 		isHidden
-		lineageTag: b789936f-b5a3-4bfb-aa57-ab74a1a07ee1
+		lineageTag: e0403341-a01c-49d5-9de5-06af7e133de8
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 808f2a8f-3142-4974-bacc-751ab72a04b2
+		lineageTag: 8887aa27-3a79-4c1a-92c8-8cf6bf0b11a4
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: b1bff64f-3be5-4f5e-b4f9-f4b0de477389
+		lineageTag: ba1e6f0f-9ad1-4308-ac40-5739f6912d39
 		summarizeBy: none
 		sourceColumn: version_proceso
 

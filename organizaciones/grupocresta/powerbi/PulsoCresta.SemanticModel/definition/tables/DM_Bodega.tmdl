@@ -1,35 +1,35 @@
 table DM_Bodega
-	lineageTag: 9a095f0f-2f33-4b42-ab15-093b3752aca0
+	lineageTag: 151519c9-98a9-4a60-99c7-3ec823ce6295
 
 	column almacen_clave
 		dataType: int64
 		isHidden
-		lineageTag: 7ff5acea-6c11-4cfb-8e7a-8ddfcb18fda0
+		lineageTag: a305e893-e3ae-4b0f-b16a-2fb9f43f40a6
 		summarizeBy: none
 		sourceColumn: almacen_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: aede504d-d996-4809-a5e1-87d1e68edfbf
+		lineageTag: f050eee5-74a3-4c38-b615-578567ca148d
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column almacen_codigo
 		dataType: string
-		lineageTag: 0ae399be-b005-4aaf-983e-61eacb29ed7e
+		lineageTag: 19c885cb-12fe-42c6-b93f-e0db0a01579d
 		summarizeBy: none
 		sourceColumn: almacen_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 93216f6e-d0ee-4377-8466-a18b3159dd6b
+		lineageTag: 68ede809-eeda-4f56-97c2-58dc2666680f
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
-		lineageTag: 81ec4a51-51db-47f9-903c-2ff6355cbff9
+		lineageTag: 3cca7d8d-905d-4836-8de3-c5e8eaf0682f
 		summarizeBy: none
 		sourceColumn: activo
 
@@ -37,22 +37,26 @@ table DM_Bodega
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 856eeeb9-75ba-461d-844b-ff7e94d6d5ff
+		lineageTag: a28714aa-36e3-4381-9466-4d425e7b6fea
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: fd24b170-10f0-49c1-8eab-b6ba9a38f8e2
+		lineageTag: 6b1ac529-6eaa-4c21-a01b-5b80c0bb3525
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 17ab98dd-f7f5-4bcf-9bb7-8987afc1280c
+		lineageTag: 6cefaa4e-9b94-41ec-9687-eea359856ebc
 		summarizeBy: none
 		sourceColumn: es_vigente
 

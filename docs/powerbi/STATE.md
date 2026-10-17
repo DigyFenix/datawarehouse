@@ -1,7 +1,7 @@
 # STATE — Quilate Analytics · Power BI Product
 
 FASE_ACTUAL: F5 (piloto de construcción POR CÓDIGO aprobado por Edwin para la página 00 — decisión 18; la 00 está construida y renderizada, Edwin evalúa el estándar antes de extender a 01 y 09)
-ULTIMA_ACTUALIZACION: 2026-08-10 (sesión 25)
+ULTIMA_ACTUALIZACION: 2026-09-10 (sesión 27 — refresco de datos de Grupo Cresta y regeneración del modelo)
 GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
 
 > **CAMBIO DE RUMBO (2026-08-08, decisión de Edwin):** la ola 1 se generó completa por código
@@ -13,10 +13,15 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 > estricto queda como opción del validador (`--gate-f61`), no como exigencia a las páginas
 > manuales. F6.2 (cifras contra el motor vía MCP) sigue vigente y es del agente.
 
-> **Datos bajo el modelo, al 2026-08-08:** Grupo Cresta refrescado end-to-end (4.66M filas,
-> `dbt build` 195/195, cuadre 70/70 sin desvíos) y PBIP regenerado — 36 tablas de datos /
-> 98 relaciones / 294 medidas, TMDL válido. F1 arranca sobre datos vigentes, no de hace una
-> semana. Iron Network queda sin refrescar (es un comando; ver `.claude/SESSION.md`).
+> **Datos bajo el modelo, al 2026-09-10:** Grupo Cresta refrescado end-to-end (10 sociedades ×
+> 18 objetos = 180 corridas de extracción sin fallos, `dbt build` **219/219 PASS**, cuadre
+> **70/70 sin desvíos**) y PBIP regenerado — 36 tablas de datos / 98 relaciones / 316 medidas,
+> TMDL válido y PBIR intacto (1 página, 15 visuales, gate F6.1 sin defectos). Ventas al
+> 2026-09-10: 447 948 líneas (+55 802 desde el corte anterior). El modelo es **import**: los
+> datos nuevos entran al `.pbix` cuando Edwin abre Desktop y actualiza. Iron Network queda sin
+> refrescar (es un comando; ver `.claude/SESSION.md`).
+>
+> _Corte anterior (2026-08-08): 4.66M filas, `dbt build` 195/195, 294 medidas._
 
 > Fuente de verdad del progreso. Si el contexto de una sesión y este archivo
 > discrepan, gana este archivo (§0.3 del contrato).

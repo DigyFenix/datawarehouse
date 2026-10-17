@@ -1,35 +1,35 @@
 table DM_Vendedor
-	lineageTag: 6319beb3-c176-481a-b5d6-221b1c05da74
+	lineageTag: 04f0dd10-b56a-4d7f-b486-1b09d2c2e79a
 
 	column vendedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: 7d90ea39-bcc1-48b8-9531-ba62f3ae950f
+		lineageTag: 58e1bd5a-6293-4dbb-a4ec-e852902b2c13
 		summarizeBy: none
 		sourceColumn: vendedor_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 5ebf91f5-2fa6-4b10-9df0-e852584e90af
+		lineageTag: 0cf58ad7-9667-432b-b713-ee790143e9c4
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column vendedor_codigo
 		dataType: string
-		lineageTag: d34523a2-2f68-4108-bb63-0b27fbb877a8
+		lineageTag: a5ac2469-0f1b-44b9-adab-18cc22cac33c
 		summarizeBy: none
 		sourceColumn: vendedor_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 51c9a924-f4b3-4d03-bf50-a183207ef754
+		lineageTag: 936b60c5-7be3-4619-9a2c-77829c2e4543
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
-		lineageTag: da099914-e26d-4e0e-b078-25c615775372
+		lineageTag: 1d031405-715b-4d62-9387-85a0d94fac6c
 		summarizeBy: none
 		sourceColumn: activo
 
@@ -37,22 +37,26 @@ table DM_Vendedor
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 243abf18-7aea-4e67-aba5-46d9b5b189b2
+		lineageTag: f08f25b2-3769-4dc8-a2fa-522a18e9b5c2
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: f733de97-618e-4292-9df6-3a52dad0fc4a
+		lineageTag: bd105b93-c824-46b7-bb73-774a1286d810
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: b803ef55-9604-4bf7-9bcb-85758f355b73
+		lineageTag: 4a27bfcc-4c93-4da3-9217-982e0f63972a
 		summarizeBy: none
 		sourceColumn: es_vigente
 

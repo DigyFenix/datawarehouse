@@ -1,144 +1,144 @@
 table 'DM_Cuenta contable'
-	lineageTag: 2df092b7-01d1-4587-af12-b1ebbf79d6fb
+	lineageTag: 83722304-d7e5-4075-8694-2c33c43d2add
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
-		lineageTag: 09386f16-b8f2-4ce0-ad32-a07058e7b5c0
+		lineageTag: 04a2f85a-3231-4e2b-b281-10fa4f0d333f
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 92044f81-cda2-4e6d-9827-a693618a77fe
+		lineageTag: 3879889e-c4c7-468e-8eef-13f3f2d56c9a
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cuenta_codigo
 		dataType: string
-		lineageTag: 4e60d311-1ed8-4248-8d38-7fe99a90b070
+		lineageTag: f05757a0-7a31-4268-937b-0e9bf8848b5e
 		summarizeBy: none
 		sourceColumn: cuenta_codigo
 
 	column cuenta_codigo_visible
 		dataType: string
-		lineageTag: 7bbf8243-152b-48fd-b5cc-2c7c3b80fb31
+		lineageTag: 2582453b-744f-4e27-ace3-290a4f87d239
 		summarizeBy: none
 		sourceColumn: cuenta_codigo_visible
 
 	column nombre
 		dataType: string
-		lineageTag: ed97b36a-e09d-4d60-b377-e59b5bb625a2
+		lineageTag: 2c75bc2f-5d6c-4ef1-a05a-84edc66fce05
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column tipo_cuenta
 		dataType: string
-		lineageTag: 05826118-c2ee-4e1e-b503-c51245243627
+		lineageTag: b58ee44c-c64f-4648-9d60-a2a34582956a
 		summarizeBy: none
 		sourceColumn: tipo_cuenta
 
 	column es_cartera_cobrar
 		dataType: boolean
-		lineageTag: 456b9241-eb2c-4cd3-9bd7-51caf67ef299
+		lineageTag: 7273b357-243b-4670-b458-9cec97ce394a
 		summarizeBy: none
 		sourceColumn: es_cartera_cobrar
 
 	column es_cartera_pagar
 		dataType: boolean
-		lineageTag: 397e3de9-621b-4151-a729-71a7ddd3c4ea
+		lineageTag: 41b19227-34f2-4cfc-8b55-030dcb31edba
 		summarizeBy: none
 		sourceColumn: es_cartera_pagar
 
 	column es_titulo
 		dataType: boolean
-		lineageTag: 47b7e9a5-966e-4e70-8c24-2e8fc280d8bc
+		lineageTag: bd204c7a-05dd-450a-8648-f9ac1edf4e0b
 		summarizeBy: none
 		sourceColumn: es_titulo
 
 	column activa
 		dataType: boolean
-		lineageTag: d17100e6-3972-4f47-a9fb-bf5973539981
+		lineageTag: 3d34c998-73b8-4a00-9f91-0ee82ae41300
 		summarizeBy: none
 		sourceColumn: activa
 
 	column cuenta_padre_codigo
 		dataType: string
-		lineageTag: c89abe98-a823-4a42-a214-142872dff61e
+		lineageTag: 9b183966-4c60-4720-815d-03d20bee29cc
 		summarizeBy: none
 		sourceColumn: cuenta_padre_codigo
 
 	column nivel
 		dataType: int64
 		formatString: #,0
-		lineageTag: 6fc45928-24d8-4251-9edf-dfcd4c56a334
+		lineageTag: b7d35c05-f301-41c5-ba28-1a3ed0c3319d
 		summarizeBy: none
 		sourceColumn: nivel
 
 	column nivel_1_codigo
 		dataType: string
-		lineageTag: 68cebd6f-720e-450d-8703-934fd439909e
+		lineageTag: 3271f1cf-8386-43f7-862d-516ae99bb2e0
 		summarizeBy: none
 		sourceColumn: nivel_1_codigo
 
 	column nivel_1_nombre
 		dataType: string
-		lineageTag: af840972-8ee9-4b19-b920-89cf552d2576
+		lineageTag: 30b9508b-67cf-48c8-9e03-ccf63f19ca1c
 		summarizeBy: none
 		sourceColumn: nivel_1_nombre
 
 	column nivel_2_codigo
 		dataType: string
-		lineageTag: b6c07bd1-384d-4c93-8e61-4843f3362dbf
+		lineageTag: d1dd5ac4-2f67-48d9-bca6-f978084aed1f
 		summarizeBy: none
 		sourceColumn: nivel_2_codigo
 
 	column nivel_2_nombre
 		dataType: string
-		lineageTag: ff26cc30-830b-4b53-8736-7f9d579c9dc8
+		lineageTag: 8d107306-e79a-40cc-a804-640710a3db50
 		summarizeBy: none
 		sourceColumn: nivel_2_nombre
 
 	column nivel_3_codigo
 		dataType: string
-		lineageTag: 5fd3ac1c-b4f9-4cd3-a13a-902ac59ab3bf
+		lineageTag: a076eb5e-f873-4618-933a-d683e998b11c
 		summarizeBy: none
 		sourceColumn: nivel_3_codigo
 
 	column nivel_3_nombre
 		dataType: string
-		lineageTag: a4339be9-dbb0-46de-b5a9-1ce28f6daa44
+		lineageTag: fc379ac6-5b02-46a5-8d1a-56fb3b5ce9ef
 		summarizeBy: none
 		sourceColumn: nivel_3_nombre
 
 	column nivel_4_codigo
 		dataType: string
-		lineageTag: 18bf5232-70e2-46f5-abde-da271a01eff7
+		lineageTag: 62c64580-055b-42dc-8082-ff6ec2bde6aa
 		summarizeBy: none
 		sourceColumn: nivel_4_codigo
 
 	column nivel_4_nombre
 		dataType: string
-		lineageTag: 5e8d6470-ac21-400b-9ac6-0aaf308c1f66
+		lineageTag: 7068d4bf-3723-4d21-b231-e1119ffb5afe
 		summarizeBy: none
 		sourceColumn: nivel_4_nombre
 
 	column nivel_5_codigo
 		dataType: string
-		lineageTag: 5a83524d-7e2c-4b1f-8e74-4a6149ccaeab
+		lineageTag: 62d2800e-7334-4ceb-8ec4-fecfbf3eb2c2
 		summarizeBy: none
 		sourceColumn: nivel_5_codigo
 
 	column nivel_5_nombre
 		dataType: string
-		lineageTag: 49e99d17-398c-403e-9143-647ec00ab839
+		lineageTag: 7677ba09-ffbb-4ee4-bcc7-45529e0fe581
 		summarizeBy: none
 		sourceColumn: nivel_5_nombre
 
 	column ruta_cuenta
 		dataType: string
-		lineageTag: 7426c65b-f14f-481f-92c4-deffabff9ecc
+		lineageTag: 6788aa02-ca8f-43f0-aee8-c4723b75df61
 		summarizeBy: none
 		sourceColumn: ruta_cuenta
 
@@ -146,46 +146,50 @@ table 'DM_Cuenta contable'
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: a465349b-a4be-4ee3-aec6-0dc810c651ee
+		lineageTag: 40341800-95d9-4743-b178-fde34dc7adad
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 6610c8bf-7157-4f9b-955f-fa1222b44eb0
+		lineageTag: cd16dbee-bd19-4222-aa2d-5093a88fdff4
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: b64ad6b7-3899-41db-9d1e-99831f7fa038
+		lineageTag: cedc85c1-dd5e-46a6-bc6e-259befc6ea36
 		summarizeBy: none
 		sourceColumn: es_vigente
 
 	hierarchy 'Jerarquía contable'
-		lineageTag: e3782ebb-9795-43f3-93f4-075fa895cf2c
+		lineageTag: 45b69a1c-01d0-4032-af42-f8615c347e76
 
 		level 'Nivel 1'
-			lineageTag: 6f777d8b-b71f-4b2d-bb7b-761a7b5fcf8b
+			lineageTag: bd82f13f-4bd4-4efe-9a3c-b05a31812ad3
 			column: nivel_1_nombre
 
 		level 'Nivel 2'
-			lineageTag: 19729625-1acb-4975-b2ae-2090b1b63b6d
+			lineageTag: 8d888ccf-2cd7-4140-b1fb-a8e60d4ea154
 			column: nivel_2_nombre
 
 		level 'Nivel 3'
-			lineageTag: 483d316a-6eec-4c11-b7e6-1e7a40e2d80d
+			lineageTag: aae50c46-af3f-4f6c-9353-6f6e82d2d23b
 			column: nivel_3_nombre
 
 		level 'Nivel 4'
-			lineageTag: 1fb34f8c-030f-4869-9d9f-a8a1ca6231c0
+			lineageTag: 7f45ea9c-b1bd-42d6-acfe-36ffeea8b2a7
 			column: nivel_4_nombre
 
 		level 'Nivel 5'
-			lineageTag: ba7d1b5a-3648-482a-b6ad-f4cf23ae463b
+			lineageTag: 1b01c277-cd83-4183-8fbb-8c25347577df
 			column: nivel_5_nombre
 
 	partition 'DM_Cuenta contable' = m

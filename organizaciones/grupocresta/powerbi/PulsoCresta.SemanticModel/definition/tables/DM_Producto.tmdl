@@ -1,53 +1,53 @@
 table DM_Producto
-	lineageTag: 63eb0e47-67fd-48b2-b4e0-b16b604e454c
+	lineageTag: 7343467d-bc8a-4e9d-b596-76460bcba34a
 
 	column producto_clave
 		dataType: int64
 		isHidden
-		lineageTag: 3c1ad206-5d9b-474f-9569-bf2f8c77e78d
+		lineageTag: 0b9108f9-82cb-411f-94e9-b1c691bc6a26
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 03618195-ecb6-4f0c-bd01-c61697bdbad5
+		lineageTag: ffd7758d-4a93-4dfe-8b1d-0fe6dd1dc277
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column producto_codigo
 		dataType: string
-		lineageTag: efe1a376-c7d2-40af-b7fd-101af16f48b9
+		lineageTag: efe32bbc-c276-46e0-97a9-d662d534d633
 		summarizeBy: none
 		sourceColumn: producto_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: b11ddf87-80f6-4680-ab53-2b40ae414deb
+		lineageTag: 346ad32c-4846-4f3c-9aef-40e69fbf7041
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column grupo_codigo
 		dataType: string
-		lineageTag: efcca56e-c49b-4087-b780-15ab4abb20dd
+		lineageTag: d2057dd3-26d0-468b-b54b-6f7b981708bd
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column unidad_medida
 		dataType: string
-		lineageTag: ef50cae2-f096-4402-80ab-86980eb61c92
+		lineageTag: 45f248ff-dd5f-4e48-87d3-12ae759baeb0
 		summarizeBy: none
 		sourceColumn: unidad_medida
 
 	column tipo_producto
 		dataType: string
-		lineageTag: cfe20197-e771-4547-a8ef-cee5d47e7f80
+		lineageTag: 0cf0daeb-1dec-45a5-8e83-13c28cf80210
 		summarizeBy: none
 		sourceColumn: tipo_producto
 
 	column activo
 		dataType: boolean
-		lineageTag: ac916cab-62a8-4541-aca0-39c9310aefe1
+		lineageTag: 46048578-d751-4b70-81a8-adb85d03faf9
 		summarizeBy: none
 		sourceColumn: activo
 
@@ -55,22 +55,26 @@ table DM_Producto
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 5909eb47-d80b-4939-a15e-70f6f1c39b51
+		lineageTag: 55140eac-1213-4138-a075-7eb08ab24356
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: e61badd1-6674-4f6e-b05a-c2a81125ed85
+		lineageTag: 051f7faf-24ac-4589-a78c-bfb1dd40d768
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: a7031324-cfbf-45a8-965f-562da4b6a001
+		lineageTag: 69799a12-f645-4ddb-8268-75431bc8e235
 		summarizeBy: none
 		sourceColumn: es_vigente
 

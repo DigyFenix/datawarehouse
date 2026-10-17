@@ -1,77 +1,81 @@
 table 'FC_Tipo de cambio'
-	lineageTag: 240c11b7-d43e-40c8-9bb2-80916bb3ad77
+	lineageTag: 626119ef-12a6-4a85-b1d3-8a74afb12890
 
 	/// Tasa promedio del período filtrado (moneda local por 1 unidad). Filtrar una moneda para leerla.
 	measure 'Tipo de cambio promedio' = AVERAGE('FC_Tipo de cambio'[tasa])
 		formatString: #,0.0000
 		displayFolder: 01 Tasa
-		lineageTag: 139376a5-ca37-441a-99ce-8fee88a5477b
+		lineageTag: c5acc85e-1f1a-4535-b92a-bc858910af2f
 
 	/// La tasa del último día con registro dentro del filtro.
 	measure 'Tipo de cambio de cierre' = CALCULATE(AVERAGE('FC_Tipo de cambio'[tasa]), LASTDATE('FC_Tipo de cambio'[fecha]))
 		formatString: #,0.0000
 		displayFolder: 01 Tasa
-		lineageTag: 59f2ea65-9c39-4dd7-a790-5921734dc339
+		lineageTag: c65258a6-2ad7-440d-b88a-adc07e9ce190
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: deee271d-3f44-4c8c-abfb-de8781c0997b
+		lineageTag: ab5db88b-0108-489d-93f3-b4e7101cc7d3
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: b507dc40-8b2f-4816-9294-c7ae007af28b
+		lineageTag: e50a7e35-a2f4-4d1f-a9ca-0057df38768e
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: 9bf82656-92ee-491d-8a4a-18413310d0ff
+		lineageTag: ca99f28d-6df9-4366-aa79-6331861da1eb
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: ad84086d-63a6-498c-93d4-eb718071548a
+		lineageTag: 0668c1db-6d18-4b51-84a1-d2f382e7ad50
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column fecha
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 1bbe48d4-5bf0-435f-89af-478b9b85b615
+		lineageTag: ddfc6fcd-a657-4fb7-b239-11e4b5df5031
 		summarizeBy: none
 		sourceColumn: fecha
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column moneda_codigo
 		dataType: string
-		lineageTag: bca2cbfd-9a42-4773-b60f-7bdc971a8a25
+		lineageTag: 7f6922fa-6fc9-48f4-8de4-585f77b88a82
 		summarizeBy: none
 		sourceColumn: moneda_codigo
 
 	column tasa
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 4c5ea1bc-0393-4315-ba51-c13236b44e5e
-		summarizeBy: none
+		lineageTag: cacec57c-023a-4f4c-8fff-db48bb9b7699
+		summarizeBy: sum
 		sourceColumn: tasa
+
+		annotation SummarizationSetBy = Automatic
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: d21020de-60ce-4676-adfb-c3cdb0732df6
+		lineageTag: f7d76985-d70a-44f5-b27f-7677a2c309fb
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 96b476ba-d2bd-4928-90af-60fe1c1b3c94
+		lineageTag: d819a40a-1055-44ef-9cd3-e5ec812ec7c0
 		summarizeBy: none
 		sourceColumn: version_proceso
 

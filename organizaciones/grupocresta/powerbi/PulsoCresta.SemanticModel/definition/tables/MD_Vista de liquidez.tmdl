@@ -1,9 +1,9 @@
 table 'MD_Vista de liquidez'
-	lineageTag: af548615-05f8-4604-bb05-72cf022157d7
+	lineageTag: a58135a5-c7cd-4c9b-b690-52562b74bd0d
 
 	column 'Vista de liquidez'
 		dataType: string
-		lineageTag: 0ea86861-d847-44fe-8de8-3620840c54f9
+		lineageTag: 12232126-49c6-431c-b3e8-225508da3556
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de liquidez · orden'
@@ -14,7 +14,7 @@ table 'MD_Vista de liquidez'
 	column 'Vista de liquidez · campo'
 		dataType: string
 		isHidden
-		lineageTag: 0cb27108-300d-4e15-af6f-40f9e92a1a30
+		lineageTag: a7a9fad8-49ad-4942-a252-3d4199e33024
 		summarizeBy: none
 		sourceColumn: [Value2]
 
@@ -27,7 +27,7 @@ table 'MD_Vista de liquidez'
 	column 'Vista de liquidez · orden'
 		dataType: int64
 		isHidden
-		lineageTag: 2cf744e0-fce8-4b7d-8e09-8d0ea8550072
+		lineageTag: 66a80aae-31f7-42aa-a98e-b67e439c30f0
 		summarizeBy: none
 		sourceColumn: [Value3]
 

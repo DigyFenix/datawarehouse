@@ -1,184 +1,192 @@
 table 'DM_Clasificación RFM'
-	lineageTag: 7cfa74bb-1991-4e4b-80fa-82595004c07e
+	lineageTag: ffdaf371-c6ec-4f49-8e7a-6a936d85d111
 
 	/// Clientes recientes y frecuentes: el núcleo que sostiene la venta. Cuidarlos es más barato que reemplazarlos.
 	measure 'Clientes campeones' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "campeon"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 6e8b04a2-28dd-4768-ab5d-c2d2df09f815
+		lineageTag: 9fa8ef44-a9bb-4682-a56a-0a143c0873d7
 
 	/// Compran seguido y hace poco, aunque no sean los de mayor monto. Son la base estable.
 	measure 'Clientes leales' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "leal"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 422489b2-8378-4a9c-b26e-e399b02e8b69
+		lineageTag: ce38e242-5e11-4e56-8756-8c4f911ea3c6
 
 	/// Compraban y dejaron de venir. La lista de reactivación con mayor retorno por llamada.
 	measure 'Clientes en riesgo' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), 'DM_Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: c309f95c-4158-486c-b065-06a12c7ff818
+		lineageTag: 20e28a5f-adf6-4eb1-84ad-6e5decf1c747
 
 	/// En riesgo Y de monto alto: si solo se va a llamar a alguien, que sea a estos.
 	measure 'Clientes en riesgo valiosos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "en_riesgo_valioso"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 9cb36ced-f9eb-4c77-93c2-95a42225319d
+		lineageTag: 57694d7e-a812-4de1-b8d8-bed8082bb58d
 
 	/// Llevan mucho sin comprar y compraban poco. Reactivarlos rara vez paga el esfuerzo.
 	measure 'Clientes dormidos' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[segmento_rfm] = "dormido"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 1122f73e-2d98-4bac-a377-436d888df04c
+		lineageTag: 439acf30-ddaf-4a26-9400-604300eecb39
 
 	/// Venta de 12 meses que está en manos de clientes en riesgo: lo que se pierde si nadie los llama.
 	measure 'Venta 12m en riesgo' = CALCULATE(SUM('DM_Clasificación RFM'[monto_neto_12m]), 'DM_Clasificación RFM'[segmento_rfm] IN {"en_riesgo", "en_riesgo_valioso"})
 		formatString: "Q" #,0
 		displayFolder: 02 Montos
-		lineageTag: 7270b074-9fb8-44ab-806e-584910900c74
+		lineageTag: b7297a8d-8f0f-4e6f-90a5-c14ab30b23d0
 
 	/// Venta de los últimos 12 meses cubierta por el catálogo RFM.
 	measure 'Venta 12m clasificada' = SUM('DM_Clasificación RFM'[monto_neto_12m])
 		formatString: "Q" #,0
 		displayFolder: 02 Montos
-		lineageTag: 321345b2-e19c-4dbd-9b76-0be4253477f5
+		lineageTag: 995e7124-6ee8-46a2-b479-636b06ed2a30
 
 	/// Clientes cuya PRIMERA compra cae dentro del período filtrado. Se quitan los filtros de Calendario y Ventas a propósito: sin eso la relación con Cliente ya habría recortado la tabla a quien compró en el período, y el conteo sería el de clientes activos, no el de nuevos.
 	measure 'Clientes nuevos' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) RETURN CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS(DM_Calendario), REMOVEFILTERS(FC_Ventas), 'DM_Clasificación RFM'[primera_compra] >= ini, 'DM_Clasificación RFM'[primera_compra] <= fin)
 		formatString: #,0
 		displayFolder: 03 Rotación de cartera
-		lineageTag: 30372e7e-724d-430b-a739-c8336e52111a
+		lineageTag: 067a0d43-6f52-4b95-8c64-205083275e6e
 
 	/// Cuánto facturaron en el período los clientes que estrenaron relación en él. Mide si la captación trae volumen o solo nombres.
 	measure 'Ventas de clientes nuevos' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) RETURN CALCULATE([Ventas netas], FILTER(ALL('DM_Clasificación RFM'), 'DM_Clasificación RFM'[primera_compra] >= ini && 'DM_Clasificación RFM'[primera_compra] <= fin))
 		formatString: "Q" #,0
 		displayFolder: 03 Rotación de cartera
-		lineageTag: df910fc2-40bf-49c5-94fd-3453ecf7a9a7
+		lineageTag: af92b84a-ba63-4335-8c2b-cff80b7db461
 
 	/// Qué parte de la facturación viene de relaciones estrenadas en el período.
 	measure '% Venta de clientes nuevos' = DIVIDE([Ventas de clientes nuevos], [Ventas netas])
 		formatString: 0.0%
 		displayFolder: 03 Rotación de cartera
-		lineageTag: a7af87b4-722d-47d6-818b-573d7460cd28
+		lineageTag: a92f5efd-d378-449a-9ce3-1048389d64ea
 
 	/// Clientes con al menos una compra en los últimos 12 meses según la recencia del RFM.
 	measure 'Clientes activos 12m' = CALCULATE(COUNTROWS('DM_Clasificación RFM'), KEEPFILTERS('DM_Clasificación RFM'[recencia_dias] <= 365))
 		formatString: #,0
 		displayFolder: 03 Rotación de cartera
-		lineageTag: b434111f-12d3-4029-b2e8-4d28b6ce1124
+		lineageTag: ad025d6d-a788-44b6-bf88-aed5bfa0a748
 
 	/// Proporción de la cartera que compró en los últimos 12 meses. Es la medida de si el catálogo está vivo o es una lista histórica.
 	measure '% Clientes activos' = DIVIDE([Clientes activos 12m], CALCULATE(COUNTROWS('DM_Clasificación RFM'), REMOVEFILTERS('DM_Clasificación RFM'[recencia_dias])))
 		formatString: 0.0%
 		displayFolder: 03 Rotación de cartera
-		lineageTag: 61d9e10f-33f1-4b47-af44-74b11310cd5e
+		lineageTag: 006a4678-3f1e-4b59-b9a9-9077b661f3c4
 
 	/// Antigüedad media de la relación comercial. Una cartera joven crece; una muy vieja sin clientes nuevos se está apagando.
 	measure 'Antigüedad media del cliente' = AVERAGEX('DM_Clasificación RFM', DATEDIFF('DM_Clasificación RFM'[primera_compra], TODAY(), DAY))
 		formatString: #,0
 		displayFolder: 03 Rotación de cartera
-		lineageTag: f37e76be-7e44-477a-8720-d34eaeb856a7
+		lineageTag: e5ec9c92-07af-49c2-82d9-667f262b225a
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 06e2ace5-326d-4965-972c-57ccba833805
+		lineageTag: ee873da6-903c-405d-bd79-a0337d189720
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: 6af7f84c-779c-454f-bf1c-21d6625d3e07
+		lineageTag: d2749224-f8ab-47b6-8dda-db40ada71e87
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column primera_compra
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 2e72380d-d7b2-4e03-9e4f-0772a26b32ab
+		lineageTag: 871eec0a-176d-486c-ab9e-3c8c5d64774e
 		summarizeBy: none
 		sourceColumn: primera_compra
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column ultima_compra
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: ad179043-b996-4da6-8a1b-26a1f5726abf
+		lineageTag: d9c7742d-8239-4f13-8e07-a4bd73dbedac
 		summarizeBy: none
 		sourceColumn: ultima_compra
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column recencia_dias
 		dataType: int64
 		formatString: #,0
-		lineageTag: 6aced683-525c-4404-8d69-909755d5bab8
+		lineageTag: 7b72e03a-74cd-40ea-8b91-c1238c0a0c16
 		summarizeBy: none
 		sourceColumn: recencia_dias
 
 	column frecuencia_12m
 		dataType: int64
 		formatString: #,0
-		lineageTag: f2d6b204-0848-4e3e-be19-0d2216cf2c92
+		lineageTag: 5fc14c4f-b808-4af9-9653-f64d53f75028
 		summarizeBy: none
 		sourceColumn: frecuencia_12m
 
 	column monto_neto_12m
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 3ec0514c-3432-4a45-91d2-08094cce29a4
-		summarizeBy: none
+		lineageTag: 952d4939-26cd-4ade-829a-ba5990426772
+		summarizeBy: sum
 		sourceColumn: monto_neto_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column fecha_referencia
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 6703a7fb-9d74-41fc-b93f-0e979375aa29
+		lineageTag: d2ecbe09-fc5d-40d1-9d8a-2e4cfc834a38
 		summarizeBy: none
 		sourceColumn: fecha_referencia
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column puntaje_recencia
 		dataType: int64
 		formatString: #,0
-		lineageTag: 84c95ae8-86d9-47e9-8bc0-8daa82edd85b
+		lineageTag: d594d1e9-5bca-4930-a7a0-4588e628deaf
 		summarizeBy: none
 		sourceColumn: puntaje_recencia
 
 	column puntaje_frecuencia
 		dataType: int64
 		formatString: #,0
-		lineageTag: 7fd6924d-574d-4685-b59c-7bdf58b99f04
+		lineageTag: 42c0e266-69f7-4ee8-a8d2-bd2cf9c24687
 		summarizeBy: none
 		sourceColumn: puntaje_frecuencia
 
 	column puntaje_monto
 		dataType: int64
 		formatString: #,0
-		lineageTag: 6bb1d05f-e377-4cdc-8a4a-087f244afb37
+		lineageTag: 32a4fcf5-4a18-4e0d-8815-979a002077e7
 		summarizeBy: none
 		sourceColumn: puntaje_monto
 
 	column segmento_rfm
 		dataType: string
-		lineageTag: fa809393-351d-4f7c-8d1b-5edfee1b6023
+		lineageTag: 6b1f3b60-7b69-4d5f-9254-71e0493375e0
 		summarizeBy: none
 		sourceColumn: segmento_rfm
 
 	column segmento_rfm_nombre
 		dataType: string
-		lineageTag: 66aabe06-729e-41c3-b62c-ef7d5bd7b35d
+		lineageTag: e363a63a-26c7-4772-b753-0b4065534ff1
 		summarizeBy: none
 		sourceColumn: segmento_rfm_nombre
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 7bcfdd79-ccf9-42cf-ac4d-ff5f94dd7b1d
+		lineageTag: 0d402f23-58f3-4b2a-b481-23efc4cf5619
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: a93d1aeb-58dc-461f-96ca-af26bf8850dc
+		lineageTag: 1886add1-5426-449f-a55f-d311184683bc
 		summarizeBy: none
 		sourceColumn: version_proceso
 

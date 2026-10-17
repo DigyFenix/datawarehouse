@@ -1,130 +1,132 @@
 table 'FC_Estado de carga'
-	lineageTag: 5e99ca2c-6edf-4004-915a-a7acfdf24d87
+	lineageTag: 0d447582-d1dc-4f1b-b720-9a27303dbf97
 
 	/// Días desde la última extracción del dominio más rezagado. Es el aviso de que el tablero está viejo antes de que alguien tome una decisión con él.
 	measure 'Días desde última extracción' = MAX('FC_Estado de carga'[dias_desde_extraccion])
 		formatString: #,0
 		displayFolder: 01 Frescura
-		lineageTag: 66deb370-ca03-4d96-bef5-01e415ba4713
+		lineageTag: d986ce74-95a3-4d1b-a18d-31ff312723f2
 
 	/// Momento en que corrió por última vez la extracción del dominio más rezagado.
 	measure 'Última extracción' = MAX('FC_Estado de carga'[ultima_extraccion])
 		formatString: dd/MM/yyyy HH:mm
 		displayFolder: 01 Frescura
-		lineageTag: 643c9b50-12fc-4c23-9efe-be4f154130b1
+		lineageTag: ef125aed-a5ab-45b7-bfcc-afec79726b4d
 
 	/// Fecha del dato más reciente que hay en el ERP. Es un reloj distinto al de la extracción: el pipeline puede estar sano y la operación detenida.
 	measure 'Último dato del ERP' = MAX('FC_Estado de carga'[fecha_dato_mas_reciente])
 		formatString: dd/MM/yyyy
 		displayFolder: 01 Frescura
-		lineageTag: 6130c58d-711a-4fed-ae23-e748467ee92b
+		lineageTag: 9b77b3c9-4008-426a-9e6b-1c8ea2c110f1
 
 	/// Cuántos dominios llevan más de tres días sin extraerse. Distinto de cero significa que hay tableros mostrando datos viejos. El «+ 0» es a propósito: sin él, cero dominios devuelve BLANK y la tarjeta muestra «(En blanco)» — en la página de confianza, un cero tiene que decir 0.
 	measure 'Dominios desactualizados' = CALCULATE(COUNTROWS('FC_Estado de carga'), KEEPFILTERS('FC_Estado de carga'[estado_frescura] = "Desactualizado")) + 0
 		formatString: #,0
 		displayFolder: 01 Frescura
-		lineageTag: 5362d140-24c8-46c9-bcc9-1898bd367524
+		lineageTag: e6d11a7e-874c-4ee6-ad93-8bd4d9aa50b3
 
 	/// Volumen de filas en el origen, para dimensionar cada dominio.
 	measure 'Filas cargadas' = SUM('FC_Estado de carga'[filas])
 		formatString: #,0
 		displayFolder: 02 Volumen
-		lineageTag: 4d9e0169-a80a-462a-9916-bf13c7a87ece
+		lineageTag: 107bf00d-50a9-4f84-8296-e2dc90666953
 
 	/// Hasta dónde se puede confiar: el dominio que va MÁS ATRASADO, no el que va más adelante. Es la medida para el KPI de frescura de una página — NO usar 'Último dato del ERP' como KPI global: es un máximo y lo infla tipos de cambio, que trae tasas hasta julio de 2027 (mostraría una fecha futura como si fuera frescura). El máximo POR DOMINIO ignora a la sociedad que no operó esos días; el mínimo entre dominios encuentra el eslabón débil.
 	measure 'Dato completo hasta' = MINX(VALUES('FC_Estado de carga'[dominio]), CALCULATE(MAX('FC_Estado de carga'[fecha_dato_mas_reciente])))
 		formatString: dd/MM/yyyy
 		displayFolder: 01 Frescura
-		lineageTag: 15e5cd6d-c912-49cf-a0ac-e13669c987ce
+		lineageTag: 95ce911a-3992-4850-bf18-a05130202d9a
 
 	/// Banda del pie de todas las páginas. Responde "¿hasta cuándo llega esto que estoy viendo?" antes de que el usuario tenga que preguntarlo, con los DOS relojes que el modelo distingue: el del pipeline (¿corrió la extracción?) y el de la operación (¿hasta cuándo hay dato?). Y avisa si algún dominio quedó rezagado, que es cuando un tablero correcto muestra una cifra vieja.
 	measure 'Pie de frescura' = VAR f = [Dato completo hasta] VAR d = [Días desde última extracción] VAR n = [Dominios desactualizados] RETURN IF(ISBLANK(f), "Sin datos cargados", "Dato del ERP al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmmm") & " de " & FORMAT(f, "yyyy") & " · extraído hace " & FORMAT(d, "0") & IF(d = 1, " día", " días") & IF(n > 0, " · " & FORMAT(n, "0") & IF(n = 1, " dominio desactualizado", " dominios desactualizados"), ""))
 		displayFolder: _Narrativa
-		lineageTag: 8c561a4f-ae13-4678-9954-6d555f01dffc
+		lineageTag: 05f9260e-a1e7-4a27-9646-9db9b96e31d0
 
 	/// Título de la página 00.
 	measure 'Título de Inicio' = "00 · Inicio · " & [Período activo]
 		displayFolder: _Narrativa
-		lineageTag: ffadc04d-df61-4392-b00d-9381c2fc5f47
+		lineageTag: d161baec-c882-48f4-8ae3-83557c72512f
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: f313fe34-04f1-4699-8088-8ebab8454bff
+		lineageTag: 8a762045-979f-4f72-b0ce-1325dc30140b
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: 1ddbaace-f3eb-41e7-9745-731ee0f635dc
+		lineageTag: 3b8dbbe2-5e6c-4f35-8088-0affee370003
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column dominio
 		dataType: string
-		lineageTag: 875ac418-9446-4612-bb55-55363160a627
+		lineageTag: abc5daf1-db30-4e2d-9092-ce2d9757352c
 		summarizeBy: none
 		sourceColumn: dominio
 
 	column dominio_nombre
 		dataType: string
-		lineageTag: f0210a53-b624-405b-9055-627954cab8a8
+		lineageTag: 37c33e05-0054-4745-9375-4e96f98476dd
 		summarizeBy: none
 		sourceColumn: dominio_nombre
 
 	column filas
 		dataType: int64
 		formatString: #,0
-		lineageTag: cf7aeccb-6b04-49bb-b448-ad7adbb45e6c
+		lineageTag: ef81e220-0691-4bd7-ae02-3b35fb718161
 		summarizeBy: none
 		sourceColumn: filas
 
 	column ultima_extraccion
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 7fe49eae-aaa5-4343-8d43-49a0de29cd84
+		lineageTag: 51881bdb-cbf8-42c6-b558-c6c6eeb9cf92
 		summarizeBy: none
 		sourceColumn: ultima_extraccion
 
 	column fecha_dato_mas_reciente
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: d8dd0edb-67ed-4463-9848-519d0dc805f2
+		lineageTag: 757fce41-30bc-45fe-8f11-0ba8147789a0
 		summarizeBy: none
 		sourceColumn: fecha_dato_mas_reciente
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column dias_desde_extraccion
 		dataType: int64
 		formatString: #,0
-		lineageTag: ada9d1c6-fae1-43cb-8f10-18bda8cc92d8
+		lineageTag: a3149bcb-595e-4aee-8f99-5a36e305d02b
 		summarizeBy: none
 		sourceColumn: dias_desde_extraccion
 
 	column dias_desde_ultimo_dato
 		dataType: int64
 		formatString: #,0
-		lineageTag: 9c5de3de-33c5-4a9b-a312-cc247d275b12
+		lineageTag: 33a997fe-e9cb-40b4-8eb0-138c22b38631
 		summarizeBy: none
 		sourceColumn: dias_desde_ultimo_dato
 
 	column estado_frescura
 		dataType: string
-		lineageTag: 82610ec3-2574-41ed-893b-8717ace66bac
+		lineageTag: f7116c7d-ff8b-4e20-9c68-c5cd09675b1d
 		summarizeBy: none
 		sourceColumn: estado_frescura
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 8f8b75e7-1650-4681-aba8-25619247aa17
+		lineageTag: ca39cc7d-f474-465c-9921-a75ecd53f97d
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 80730aaf-d800-4474-bbab-6c0f11a233e8
+		lineageTag: a57d8463-1593-42c8-aa25-2d715fefe860
 		summarizeBy: none
 		sourceColumn: version_proceso
 

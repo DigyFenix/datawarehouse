@@ -1,178 +1,184 @@
 table 'DM_Clasificación ABC Proveedor'
-	lineageTag: d0a149af-defe-4900-9a43-9c9122f9f9ab
+	lineageTag: 83b308d9-2a97-44b0-9929-2dc8215485d8
 
 	/// Cuántos proveedores concentran el 80% de la compra: dependencia de suministro. Cuenta proveedores DISTINTOS, porque la tabla tiene una fila por proveedor y año.
 	measure 'Proveedores A' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 42024160-d62e-453f-b7a4-8dc7e8c656a4
+		lineageTag: 7b5a3471-8400-4e39-972e-abde2e1eaaef
 
 	/// Proveedores del tramo intermedio de la compra.
 	measure 'Proveedores B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "B"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: c1565060-515d-4b7b-9d3b-c90f02622c93
+		lineageTag: b0504dc3-32ef-4562-8ea3-0845ce07fe2f
 
 	/// Cola larga de proveedores: muchos, con poco volumen cada uno.
 	measure 'Proveedores C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "C"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: e6c0a621-3d5a-43fe-a778-cb810cc6bb94
+		lineageTag: 65f54e8b-1fbd-4b3e-89c4-19abaee7ab48
 
 	/// Proveedores del catálogo sin compra en el año.
 	measure 'Proveedores sin compra neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "S"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: d875e11c-d2cc-4a56-8c8f-946176b85fa6
+		lineageTag: 0b1a90be-b4dd-4fd6-a44d-14c3d4ab491a
 
 	/// Proveedores distintos en el catálogo ABC, excluida la intercompañía.
 	measure 'Proveedores clasificados' = DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave])
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 07aa63f3-2b42-42c8-a0f7-3ed79fb8a04e
+		lineageTag: ee4e3373-950c-48ef-a547-1a86877235ce
 
 	/// Proveedores a los que se compró algún año anterior y nada en el año seleccionado. No es una pérdida como la de un cliente, pero un abastecimiento que se apaga suele venir con una concentración que crece en otro lado.
 	measure 'Proveedores inactivos' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[es_inactivo] = TRUE))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: fefbd514-d3c9-46bb-99df-826b72f45bff
+		lineageTag: 58727333-21d1-466f-a6ef-fbe7f12154ce
 
 	/// Proveedores cuya PRIMERA compra cae en el año seleccionado.
 	measure 'Proveedores estrenados en el año' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[es_nuevo] = TRUE))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 0e1965da-74ff-4490-98d6-86fd45fb6c53
+		lineageTag: 5cc97347-658d-4703-ac29-868f2f4a68ab
 
 	/// Riesgo de dependencia: si los A concentran el 90% de la compra, perder uno para la operación.
 	measure '% Compra en proveedores A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), SUM('DM_Clasificación ABC Proveedor'[compra]))
 		formatString: 0.0%
 		displayFolder: 02 Concentración
-		lineageTag: 45225b7b-d9a4-4af2-8ed9-0ddb7be95d08
+		lineageTag: 67af5cbb-8379-481e-9656-c56e89f144d9
 
 	/// Compra a terceros del año según el catálogo ABC. Sin filtrar un año en 'Año de clasificación' suma TODOS los años cargados.
 	measure 'Compra del año clasificada' = SUM('DM_Clasificación ABC Proveedor'[compra])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
-		lineageTag: 6db0c2a9-8676-4280-b0a9-b9bd3d10a0d2
+		lineageTag: f4a00c11-1ffd-413a-aca6-bc54d81eb352
 
 	/// Volumen medio con un proveedor crítico.
 	measure 'Compra promedio proveedor A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), [Proveedores A])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
-		lineageTag: 8b786cea-dd5e-41e7-b8b3-c16e7fabbb93
+		lineageTag: d06d748a-ab6b-448e-b184-000f48405d06
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: fabddcfd-4f06-4b22-b086-2e1a8d5d89db
+		lineageTag: 8fbee178-1988-481e-8b4a-396e55e9e966
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column anio
 		dataType: int64
 		formatString: #,0
-		lineageTag: 12da19b1-394e-4674-af69-c988d2fe489e
+		lineageTag: 7b0a928b-0a21-4b2a-9d3b-34c0792ef04c
 		summarizeBy: none
 		sourceColumn: anio
 
 	column anio_clave
 		dataType: int64
 		isHidden
-		lineageTag: f90fcff5-ba4f-4179-9259-1612e4be3297
+		lineageTag: 4d57b5f4-4250-4384-8dab-8013db2acb71
 		summarizeBy: none
 		sourceColumn: anio_clave
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: 769997c1-ca8f-426c-90be-b7cb40cefe59
+		lineageTag: 9234856a-cec0-41b0-8f1d-e94e72dc627c
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column ranking
 		dataType: int64
 		formatString: #,0
-		lineageTag: 328bc2ef-6554-44ea-9b8c-6a0d266a0123
+		lineageTag: 23d749e0-8d0a-4270-ae2a-ba342c440446
 		summarizeBy: none
 		sourceColumn: ranking
 
 	column compra
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 57488445-7750-4cdf-a0f0-8fb458fa6743
-		summarizeBy: none
+		lineageTag: 175b9979-9c1a-4390-ac9b-ee6012f3d990
+		summarizeBy: sum
 		sourceColumn: compra
+
+		annotation SummarizationSetBy = Automatic
 
 	column lineas
 		dataType: int64
 		formatString: #,0
-		lineageTag: 54931a65-b0ed-4edc-b834-ab4d2d5d565c
+		lineageTag: 7b3a9de4-a0eb-4c6d-b131-5342c8d1b772
 		summarizeBy: none
 		sourceColumn: lineas
 
 	column participacion
-		dataType: decimal
+		dataType: double
 		formatString: 0.0%
-		lineageTag: 6363905a-f12b-4141-a16b-c0b69a6d4a97
-		summarizeBy: none
+		lineageTag: 2c70fe0c-810c-4187-b284-f01a176a9887
+		summarizeBy: sum
 		sourceColumn: participacion
 
+		annotation SummarizationSetBy = Automatic
+
 	column participacion_acumulada
-		dataType: decimal
+		dataType: double
 		formatString: 0.0%
-		lineageTag: 47f5e102-23f6-442b-aca1-aad85a73569e
-		summarizeBy: none
+		lineageTag: 7db23ba1-58f8-4f05-8271-c58305124b8b
+		summarizeBy: sum
 		sourceColumn: participacion_acumulada
+
+		annotation SummarizationSetBy = Automatic
 
 	column clase_abc
 		dataType: string
-		lineageTag: 4abd996a-261a-47a3-afa6-48d1a6185a28
+		lineageTag: 4e1ebf10-a73e-4f5c-9e07-5338077dda3b
 		summarizeBy: none
 		sourceColumn: clase_abc
 
 	column clase_abc_nombre
 		dataType: string
-		lineageTag: a1cd781d-4888-4506-af66-411c54ac6a3c
+		lineageTag: c6f22cf6-d3fd-45b7-9ae1-d3a8e60acf99
 		summarizeBy: none
 		sourceColumn: clase_abc_nombre
 
 	column primer_anio_compra
 		dataType: int64
 		formatString: #,0
-		lineageTag: 1901be0e-19e3-4151-a60f-4affd918d67f
+		lineageTag: f80e2af4-4f09-4810-8468-ddfafb69399c
 		summarizeBy: none
 		sourceColumn: primer_anio_compra
 
 	column ultimo_anio_compra
 		dataType: int64
 		formatString: #,0
-		lineageTag: 40fbb978-8c30-4c8d-94f7-d4c363170808
+		lineageTag: ce7b986e-bfa1-45d2-9b36-51220c67c5df
 		summarizeBy: none
 		sourceColumn: ultimo_anio_compra
 
 	column es_inactivo
 		dataType: boolean
-		lineageTag: 8a301353-6567-4532-96d3-13423989ef7c
+		lineageTag: fb85b8ee-b161-4363-bf6e-390cd670852f
 		summarizeBy: none
 		sourceColumn: es_inactivo
 
 	column es_nuevo
 		dataType: boolean
-		lineageTag: 46bcb827-e669-4889-9c5e-d513638c1286
+		lineageTag: ca2752ba-4345-4953-8078-caffe7be011c
 		summarizeBy: none
 		sourceColumn: es_nuevo
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 7653d87f-5774-4dfc-b3f3-827977f9a85f
+		lineageTag: b3b2ddc4-31a8-475f-855a-88ffe5fcd2df
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: da395fe6-badf-44a5-a0da-8acc2106419c
+		lineageTag: 76e8feea-eb46-427a-bc1f-88b5ac6c5fea
 		summarizeBy: none
 		sourceColumn: version_proceso
 

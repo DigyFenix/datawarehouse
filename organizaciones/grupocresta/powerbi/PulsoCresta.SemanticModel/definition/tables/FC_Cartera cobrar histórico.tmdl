@@ -1,168 +1,176 @@
 table 'FC_Cartera cobrar histórico'
-	lineageTag: 595262d6-a78b-451d-aa4c-297afbb9310e
+	lineageTag: 026f4eef-f2b9-4dcd-aa4c-7de707448cce
 
 	/// Saldo por cobrar a la fecha de corte de la foto. Ya está en MONEDA DE PRESENTACIÓN pese al nombre de la columna (es incremental y no se renombró).
 	measure 'Saldo histórico por cobrar' = SUM('FC_Cartera cobrar histórico'[saldo_pendiente_local])
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución
-		lineageTag: ed7fd1a2-fd74-4a0b-b949-52cded8271b7
+		lineageTag: 02fda2dc-aa4a-45f2-b6e8-fc637a1e950e
 
 	/// Mora en la fecha de corte de la foto. Es la serie que muestra si la cobranza mejora o se deteriora.
 	measure 'Vencido histórico por cobrar' = CALCULATE([Saldo histórico por cobrar], KEEPFILTERS('FC_Cartera cobrar histórico'[dias_vencido] > 0))
 		formatString: "Q" #,0
 		displayFolder: 01 Evolución
-		lineageTag: e494730f-63d0-45a1-b74f-3ba44bf2a392
+		lineageTag: ce71b3b6-c293-4c52-92eb-b3d40bb2659b
 
 	/// Proporción vencida en cada corte: la tendencia importa más que el valor de un día.
 	measure '% Vencido histórico' = DIVIDE([Vencido histórico por cobrar], [Saldo histórico por cobrar])
 		formatString: 0.0%
 		displayFolder: 01 Evolución
-		lineageTag: 27cb815f-a650-4db8-b7aa-427f216fa445
+		lineageTag: e67cc59b-332f-4792-9acb-c373e983917c
 
 	/// Saldo en el PRIMER corte del período filtrado: el punto de partida contra el que se mide la gestión de cobranza.
 	measure 'Cartera al inicio del período' = CALCULATE([Saldo histórico por cobrar], FIRSTDATE(DM_Calendario[fecha]))
 		formatString: "Q" #,0
 		displayFolder: 02 Gestión
-		lineageTag: 30c55596-cad2-4497-b46b-189f81b08bc8
+		lineageTag: 1b5d2efc-7c9f-445f-a616-38da3bdd88e0
 
 	/// Saldo en el ÚLTIMO corte del período filtrado.
 	measure 'Cartera al cierre del período' = CALCULATE([Saldo histórico por cobrar], LASTDATE(DM_Calendario[fecha]))
 		formatString: "Q" #,0
 		displayFolder: 02 Gestión
-		lineageTag: 5dfc9cc1-96bc-44d4-bc52-6b755f1f28a7
+		lineageTag: 66721748-72ac-4bb8-a040-147de3b9297c
 
 	/// Cuánto creció o bajó la cartera en el período. Que suba mientras la venta no sube es la señal temprana de que se está cobrando peor.
 	measure 'Variación de cartera' = [Cartera al cierre del período] - [Cartera al inicio del período]
 		formatString: "Q" #,0
 		displayFolder: 02 Gestión
-		lineageTag: 29081717-bc64-40e4-90d3-8784faf2cce5
+		lineageTag: d5641045-1823-4cdf-a598-139542b6fa7e
 
 	/// Índice de efectividad de cobranza: del total cobrable del período (cartera inicial + lo facturado), qué porcentaje se cobró. 100% sería cobrar todo lo exigible; por debajo de 80% la cobranza va perdiendo terreno.
 	measure 'Efectividad de cobranza' = DIVIDE([Cartera al inicio del período] + [Ventas netas con IVA] - [Cartera al cierre del período], [Cartera al inicio del período] + [Ventas netas con IVA])
 		formatString: 0.0%
 		displayFolder: 02 Gestión
-		lineageTag: 16b2cf92-16ae-472a-b937-defcb1e7e8ca
+		lineageTag: cc0421ed-787e-4c4b-839f-54b764b964a9
 
 	/// Subtítulo de la tendencia de cobranza (página 09). La serie necesita cortes acumulados para decir algo: mientras haya pocos, el subtítulo lo declara en vez de dejar que una línea de tres puntos se lea como tendencia.
 	measure 'Subtítulo de tendencia de cobranza' = VAR cortes = DISTINCTCOUNT('FC_Cartera cobrar histórico'[fecha_corte]) RETURN SWITCH(TRUE(), ISBLANK(cortes) || cortes = 0, "Sin cortes acumulados todavía", cortes < 8, "Serie en formación · " & FORMAT(cortes, "0") & IF(cortes = 1, " corte acumulado", " cortes acumulados") & " · la tendencia gana sentido con las semanas", FORMAT(cortes, "0") & " cortes acumulados · porcentaje vencido sobre el total por cobrar de cada corte")
 		displayFolder: _Narrativa
-		lineageTag: 9fa6cce3-9921-4848-820f-e6090b0d8336
+		lineageTag: da4a8b75-6427-4872-8660-9e8d4e634952
 
 	column fecha_corte
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 8b1d9488-d239-4ee6-b52a-d04a6b1bead9
+		lineageTag: 7ca66737-c67e-4d05-a319-95a4b9957e04
 		summarizeBy: none
 		sourceColumn: fecha_corte
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_corte_clave
 		dataType: int64
 		isHidden
-		lineageTag: e2f1de07-c23b-4d18-8dfb-a4175a0d1aaa
+		lineageTag: 7cbab307-5b60-4af5-90f5-f338981cf929
 		summarizeBy: none
 		sourceColumn: fecha_corte_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: a1d49c9f-6f2a-49bf-8c8f-0324117cdee1
+		lineageTag: 7570699e-c458-4d70-af8d-2ca4929f863f
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column partida_id
 		dataType: string
-		lineageTag: 0f3b539a-a155-4c00-bb15-b2488ecf7f1e
+		lineageTag: 976c0864-7df9-4303-a0d9-1276e86ae867
 		summarizeBy: none
 		sourceColumn: partida_id
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: 4900c281-664e-4552-ba40-4a807e7351e8
+		lineageTag: 4f845bdf-9358-43f6-9a9d-00fc5484b428
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: 797d3518-db87-4078-832d-405139fffb8a
+		lineageTag: 7a7fc769-cec4-47b6-8172-8bc0a06a3f19
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: c460ed5a-3aac-406a-b16d-b4bc601a45b1
+		lineageTag: 0a6041af-ece4-4ec0-93fd-df83a9d0a037
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
-		lineageTag: e0c9979d-6e20-48eb-aa42-6b143165323e
+		lineageTag: 6389f133-9ebd-49d9-ae8f-ccdd01d5939c
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column tiempo_vencimiento_clave
 		dataType: int64
 		isHidden
-		lineageTag: 3d9d6784-812e-447d-ba9c-f8f8e7adbfdb
+		lineageTag: 92090a63-2242-412c-8854-b64b33164963
 		summarizeBy: none
 		sourceColumn: tiempo_vencimiento_clave
 
 	column fecha_vencimiento
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 79636351-7a1c-48e6-b4ab-47376d94f634
+		lineageTag: 03c8f5e3-bca3-42a2-a25a-b71178f64175
 		summarizeBy: none
 		sourceColumn: fecha_vencimiento
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column saldo_pendiente_local
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 0d695cda-9e5e-4157-b9ca-aa4a6d34eafd
-		summarizeBy: none
+		lineageTag: 1b906dd5-7838-4041-82dd-e767177b5e78
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente_local
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_pendiente_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 809691d3-988a-405e-8d91-2285c1b9958b
-		summarizeBy: none
+		lineageTag: d3d33290-d6e8-491c-a195-9a76ee760c9f
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente_doc
+
+		annotation SummarizationSetBy = Automatic
 
 	column dias_vencido
 		dataType: int64
 		formatString: #,0
-		lineageTag: bbbc7599-5275-4175-91e8-bc877bd5b780
+		lineageTag: 15137703-5a75-4089-9080-b121f1cfd459
 		summarizeBy: none
 		sourceColumn: dias_vencido
 
 	column rango_aging
 		dataType: string
 		isHidden
-		lineageTag: cf1dc753-a342-4674-8164-b49547ffd036
+		lineageTag: 39caca60-d31b-4c2b-96c0-da52efdc8a99
 		summarizeBy: none
 		sourceColumn: rango_aging
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 386ba3b2-5be6-4834-b599-683ae487de3d
+		lineageTag: c37e07d7-ceb2-4b20-84e5-68d7ee973bd0
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 7ce4d14b-d436-4df0-8b88-3759e61cdd0e
+		lineageTag: d45201cf-7b28-4074-81e5-9b71b4d1dd40
 		summarizeBy: none
 		sourceColumn: version_proceso
 
 	column rango_aging_clave
 		dataType: int64
 		isHidden
-		lineageTag: 89df9f07-d821-4d15-803c-96b5b7dd9816
+		lineageTag: fe79616e-80a0-447b-8a3e-a60c17424fc2
 		summarizeBy: none
 		sourceColumn: rango_aging_clave
 

@@ -1,24 +1,24 @@
 table DM_Antigüedad
-	lineageTag: f52fc8e6-4fb9-4e0e-a409-4d2e6e052846
+	lineageTag: 83d1955a-05c3-41a7-951e-dfab7565a997
 
 	column rango_aging_clave
 		dataType: int64
 		isHidden
-		lineageTag: 6e001cef-66a4-49dc-aff8-773faa4ff42a
+		lineageTag: 9884da10-ac5c-4a39-b402-5288a35ab665
 		summarizeBy: none
 		sourceColumn: rango_aging_clave
 
 	column rango_aging
 		dataType: string
 		isHidden
-		lineageTag: 9e1af273-bfb2-4ddf-9869-e3a60c41146f
+		lineageTag: d6076a30-ffd8-40ee-8b31-1433e7a88cf0
 		summarizeBy: none
 		sourceColumn: rango_aging
 		sortByColumn: rango_aging_orden
 
 	column rango_aging_nombre
 		dataType: string
-		lineageTag: 54f54e5a-6fd3-4838-b413-9b0e4367049e
+		lineageTag: 5a6c0736-7fa6-43d2-9340-681c35d82cf9
 		summarizeBy: none
 		sourceColumn: rango_aging_nombre
 		sortByColumn: rango_aging_orden
@@ -27,33 +27,33 @@ table DM_Antigüedad
 		dataType: int64
 		isHidden
 		formatString: #,0
-		lineageTag: 81c89d5d-1508-41b7-99ca-95ecd3f0b3b5
+		lineageTag: f95bc349-dc6c-4961-8b4e-c270443a495d
 		summarizeBy: none
 		sourceColumn: rango_aging_orden
 
 	column dias_desde
 		dataType: int64
 		formatString: #,0
-		lineageTag: a088ca86-f3c0-4221-86ef-3a7a93328224
+		lineageTag: e73f01ba-c4d0-4498-af81-e619217b3972
 		summarizeBy: none
 		sourceColumn: dias_desde
 
 	column dias_hasta
 		dataType: int64
 		formatString: #,0
-		lineageTag: 1e67aa62-f1ef-4bcc-ac30-c572afc43bb3
+		lineageTag: 446e18b2-8eca-49da-afad-3ee5aa566ae8
 		summarizeBy: none
 		sourceColumn: dias_hasta
 
 	column es_vencido
 		dataType: boolean
-		lineageTag: 06da24b7-a686-4763-8c53-130127faedc8
+		lineageTag: deef3221-d8d8-4db9-abe8-79a3116cc525
 		summarizeBy: none
 		sourceColumn: es_vencido
 
 	column severidad
 		dataType: string
-		lineageTag: 23f8df05-7477-4a55-b823-bf56b90fbd5d
+		lineageTag: 9ecb510c-dc8c-485f-9e5f-fc5c213c0008
 		summarizeBy: none
 		sourceColumn: severidad
 
@@ -61,22 +61,26 @@ table DM_Antigüedad
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: ed0c6aec-5fe4-4e49-903d-8c5746d36457
+		lineageTag: 7fdeb016-226e-41ba-b653-a1b1d62e1483
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 5f9beb80-1135-4e04-868e-8ff1f69e6fec
+		lineageTag: dae3a03a-37cf-49d8-a7c5-c6a280fbe6ae
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: 02662b48-b8f7-4208-abbf-d2957f7d7845
+		lineageTag: 81884e53-bcb3-47c6-826b-eb7f3ab80ff8
 		summarizeBy: none
 		sourceColumn: es_vigente
 

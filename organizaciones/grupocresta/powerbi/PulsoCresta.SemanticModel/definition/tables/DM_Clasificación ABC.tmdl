@@ -1,191 +1,199 @@
 table 'DM_Clasificación ABC'
-	lineageTag: 32cb3859-4a44-4104-965a-5d40def01492
+	lineageTag: ab107bc8-ea2c-4659-a47a-5a913b899b69
 
 	/// Cuántos clientes concentran el 80% de la venta. En una cartera sana no son dos. Cuenta clientes DISTINTOS: la tabla tiene una fila por cliente y año, así que sin acotar el año un COUNTROWS contaría cliente-años.
 	measure 'Clientes A' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: e02e43f7-8a89-40e8-8851-7a908c40d2d1
+		lineageTag: 5c397b71-142d-48da-8c87-a97dca85a5cd
 
 	/// Clientes del tramo intermedio: entre el 80% y el 95% acumulado de la venta.
 	measure 'Clientes B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "B"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 7ee574b6-f0ce-4656-8fbc-ff3141f4899e
+		lineageTag: f09e61b1-8a64-44a9-a6ab-ef62d21aa43e
 
 	/// Cola larga. Muchos nombres y poca venta; el costo de atenderlos es lo que hay que vigilar.
 	measure 'Clientes C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "C"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 8b380116-b5b0-48b5-a33d-da28d6e00518
+		lineageTag: ac7b289e-1407-459e-94cc-b0d5c908f8b3
 
 	/// Clientes del catálogo sin venta en el año, o con solo devoluciones.
 	measure 'Clientes sin venta neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "S"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 5c6f9503-567e-47b0-bf27-4f8b9cbb5fb4
+		lineageTag: 38cd0c2b-c3e1-4ae8-8cba-3243c9c946c6
 
 	/// Clientes distintos en el catálogo ABC, excluida la intercompañía.
 	measure 'Clientes clasificados' = DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave])
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 66c2dccd-3376-4ca3-a265-c61b7a2f1028
+		lineageTag: 6e3a256e-5540-402f-9317-84e7ef460026
 
 	/// Clientes que facturaron algún año anterior y nada en el año seleccionado: la lista de llamadas pendientes.
 	measure 'Clientes perdidos' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[es_perdido] = TRUE))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: d67a2c36-91f1-4d5f-b983-0f8baaf5526a
+		lineageTag: 8ca8c2bc-466d-4507-83dd-4398a322b815
 
 	/// Clientes cuya PRIMERA factura cae en el año seleccionado.
 	measure 'Clientes estrenados en el año' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC'[cliente_clave]), KEEPFILTERS('DM_Clasificación ABC'[es_nuevo] = TRUE))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 99de1464-c9d0-4881-b1ea-37831a24b4bc
+		lineageTag: 8ac526a4-b1ec-40ba-b0d2-953cc8010544
 
 	/// Riesgo de concentración: si los A son el 90% de la venta, perder uno duele de verdad.
 	measure '% Venta en clientes A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), SUM('DM_Clasificación ABC'[venta]))
 		formatString: 0.0%
 		displayFolder: 02 Concentración
-		lineageTag: 925ca2b4-0463-4b79-9cc3-26f6f1b05092
+		lineageTag: e10cf69f-4193-47b1-ae98-6c1998901d4a
 
 	/// Venta a terceros del año según el catálogo ABC. Sin filtrar un año en 'Año de clasificación' suma TODOS los años cargados.
 	measure 'Venta del año clasificada' = SUM('DM_Clasificación ABC'[venta])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
-		lineageTag: 6ad5c2a0-29b6-4808-87e4-93de6af89bd4
+		lineageTag: ec552b69-aa0c-4312-bbc5-6700172fc3b8
 
 	/// Cuánto factura en promedio un cliente clave.
 	measure 'Venta promedio cliente A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC'[venta]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A")), [Clientes A])
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
-		lineageTag: 41692e5e-1792-4423-b228-f5a69ffd86f5
+		lineageTag: 6f49879c-e7ea-44b9-a4eb-6cafbcc936d4
 
 	/// Margen que dejan los clientes que hacen el negocio. Que sean los que más venden no garantiza que sean los que más dejan.
 	measure 'Margen de clientes A' = CALCULATE(SUM('DM_Clasificación ABC'[margen]), KEEPFILTERS('DM_Clasificación ABC'[clase_abc] = "A"))
 		formatString: "Q" #,0
 		displayFolder: 02 Concentración
-		lineageTag: 059ee5fd-ce41-4ddb-9e3c-725b274aaac8
+		lineageTag: 3a5916b2-5853-471c-8dda-607db306b9cd
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 819bad4c-ddcd-47a4-9c18-f66d947a6441
+		lineageTag: bfb6df8d-11bb-48de-abe9-41f4970119be
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column anio
 		dataType: int64
 		formatString: #,0
-		lineageTag: 2db1f46c-90de-4509-bb74-efc03645ad19
+		lineageTag: 0da2a8d2-545c-4498-ae30-b80994d43a34
 		summarizeBy: none
 		sourceColumn: anio
 
 	column anio_clave
 		dataType: int64
 		isHidden
-		lineageTag: a070ea2b-040b-4de6-aa18-34f82f5a9e31
+		lineageTag: d1486771-cbd5-41f1-9ebb-e2641c69b198
 		summarizeBy: none
 		sourceColumn: anio_clave
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: d668a0a3-1dcf-4294-be27-45b4e509b0fe
+		lineageTag: 14baee11-7860-4915-996d-e876c2318772
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column ranking
 		dataType: int64
 		formatString: #,0
-		lineageTag: 7a54c4e2-2c06-4d81-8930-e309fa86e2e9
+		lineageTag: d1631fd0-ed8e-4ea7-b6c0-eb779fcaccb9
 		summarizeBy: none
 		sourceColumn: ranking
 
 	column venta
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: da6b70af-8e24-4549-a930-a2bb2195935a
-		summarizeBy: none
+		lineageTag: 256759af-a892-4f11-94ed-0c01d9c06698
+		summarizeBy: sum
 		sourceColumn: venta
 
+		annotation SummarizationSetBy = Automatic
+
 	column margen
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 12efd0dd-1e31-42a1-8c71-ab58bdb463b4
-		summarizeBy: none
+		lineageTag: 7cdff96d-edda-4442-a4e3-b3b490861eb0
+		summarizeBy: sum
 		sourceColumn: margen
+
+		annotation SummarizationSetBy = Automatic
 
 	column lineas
 		dataType: int64
 		formatString: #,0
-		lineageTag: 8a35e537-388f-4143-945e-4ddd01291d59
+		lineageTag: ad4ec601-ec07-4286-ac27-ea4fcdb29ba4
 		summarizeBy: none
 		sourceColumn: lineas
 
 	column participacion
-		dataType: decimal
+		dataType: double
 		formatString: 0.0%
-		lineageTag: 6995f667-7bed-431e-9513-d957eb716176
-		summarizeBy: none
+		lineageTag: aeb1b203-d2b5-4377-bc75-f312e29cbb80
+		summarizeBy: sum
 		sourceColumn: participacion
 
+		annotation SummarizationSetBy = Automatic
+
 	column participacion_acumulada
-		dataType: decimal
+		dataType: double
 		formatString: 0.0%
-		lineageTag: 1296fa09-fc52-46c7-96a4-c714ce846cca
-		summarizeBy: none
+		lineageTag: 801ca665-f902-40b5-8ebe-fd9e42c56d7d
+		summarizeBy: sum
 		sourceColumn: participacion_acumulada
+
+		annotation SummarizationSetBy = Automatic
 
 	column clase_abc
 		dataType: string
-		lineageTag: 9cc15f35-311b-4e45-b213-a3bb282e2bcd
+		lineageTag: aa5b77a7-5a34-457f-a023-6e6b9cadc677
 		summarizeBy: none
 		sourceColumn: clase_abc
 
 	column clase_abc_nombre
 		dataType: string
-		lineageTag: 29dc35df-e591-4f14-829d-5ced03efaea5
+		lineageTag: 0033d460-6a28-484b-919b-2bf388cf0959
 		summarizeBy: none
 		sourceColumn: clase_abc_nombre
 
 	column primer_anio_compra
 		dataType: int64
 		formatString: #,0
-		lineageTag: c86f5050-f671-46c8-86ce-56a2b9042e86
+		lineageTag: 7f309b97-5957-46ba-8fa1-18eb0f41c87c
 		summarizeBy: none
 		sourceColumn: primer_anio_compra
 
 	column ultimo_anio_compra
 		dataType: int64
 		formatString: #,0
-		lineageTag: 7c19977f-8331-4a9e-b338-612386e1c219
+		lineageTag: 8d08721a-fc94-44b4-ba58-ff071e460bb1
 		summarizeBy: none
 		sourceColumn: ultimo_anio_compra
 
 	column es_perdido
 		dataType: boolean
-		lineageTag: 1eee48d2-8fe2-4784-9aba-dbd03942caae
+		lineageTag: 17df836f-80d5-4e35-8a63-90cf68c7d55a
 		summarizeBy: none
 		sourceColumn: es_perdido
 
 	column es_nuevo
 		dataType: boolean
-		lineageTag: eb986497-08a4-4897-a8f6-4b04aa67129b
+		lineageTag: f042f82d-ccc0-4d21-9275-76549d98d662
 		summarizeBy: none
 		sourceColumn: es_nuevo
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 52da227a-0164-4ec0-979b-c8ef87f2c95a
+		lineageTag: 197f0f6f-58d1-4b52-be10-1dc57ba07129
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 81ec47d6-e59c-4b54-afab-0a92e8e0566b
+		lineageTag: 08145f74-7a8a-4c48-99cb-0edddc0240d3
 		summarizeBy: none
 		sourceColumn: version_proceso
 

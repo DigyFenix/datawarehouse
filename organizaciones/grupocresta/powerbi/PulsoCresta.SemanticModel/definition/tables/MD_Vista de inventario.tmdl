@@ -1,9 +1,9 @@
 table 'MD_Vista de inventario'
-	lineageTag: e9d59ac3-98d1-421c-aa0c-c87628249c98
+	lineageTag: 22503fec-c684-451a-94e2-18bca9b28198
 
 	column 'Vista de inventario'
 		dataType: string
-		lineageTag: 7ba7bdf3-7c86-4bcd-ad19-a4e899d11552
+		lineageTag: c3751889-964a-4e52-88ad-b72c35303254
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de inventario · orden'
@@ -14,7 +14,7 @@ table 'MD_Vista de inventario'
 	column 'Vista de inventario · campo'
 		dataType: string
 		isHidden
-		lineageTag: 47af7ad7-7a85-4624-9790-ac6c7850bbf2
+		lineageTag: e0a812ee-c957-45f8-a829-4f2ecf887558
 		summarizeBy: none
 		sourceColumn: [Value2]
 
@@ -27,7 +27,7 @@ table 'MD_Vista de inventario'
 	column 'Vista de inventario · orden'
 		dataType: int64
 		isHidden
-		lineageTag: e4f0e0d6-f20f-4519-b4cd-744002d742e1
+		lineageTag: bdeed8a1-98fb-492b-850c-a76a5510bd64
 		summarizeBy: none
 		sourceColumn: [Value3]
 

@@ -1,9 +1,9 @@
 table 'MD_Vista de compras'
-	lineageTag: 11b53d93-42e4-4253-888b-a715f39c99b5
+	lineageTag: 812a4eec-8fcb-4186-a24b-573e3048140a
 
 	column 'Vista de compras'
 		dataType: string
-		lineageTag: aa176130-c9d5-4b2e-80a9-fb55144ac884
+		lineageTag: 26ed4c2c-05ef-488d-a25f-381638d5b5c9
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de compras · orden'
@@ -14,7 +14,7 @@ table 'MD_Vista de compras'
 	column 'Vista de compras · campo'
 		dataType: string
 		isHidden
-		lineageTag: bc906604-e9f3-4523-8dd8-c3bcae286de2
+		lineageTag: 3ee237e7-408e-4d64-abad-108cebb0baf2
 		summarizeBy: none
 		sourceColumn: [Value2]
 
@@ -27,7 +27,7 @@ table 'MD_Vista de compras'
 	column 'Vista de compras · orden'
 		dataType: int64
 		isHidden
-		lineageTag: 36bc7d17-0f77-474c-b1d5-f4cf217ed221
+		lineageTag: d423f8c3-49b1-449c-9cfc-751442256ad5
 		summarizeBy: none
 		sourceColumn: [Value3]
 

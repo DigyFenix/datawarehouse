@@ -1,282 +1,298 @@
 table 'FC_Cartera por pagar'
-	lineageTag: d25d8f60-a760-4bb2-ae6c-29e4cd9b5dc7
+	lineageTag: 01c7dd50-88c7-475f-a663-dd2fb09a67ad
 
 	/// En positivo para poder compararlo con la cartera por cobrar sin invertir signos en cada visual. MONEDA DE PRESENTACIÓN.
 	measure 'Saldo por pagar' = SUM('FC_Cartera por pagar'[saldo_pendiente_absoluto])
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
-		lineageTag: 6441b7bf-6105-47d3-80c4-3cf253df1101
+		lineageTag: 8f28ca18-db2d-42e5-a76d-2839ad2614a4
 
 	/// Lo que se debe a proveedores reales.
 	measure 'Saldo por pagar terceros' = CALCULATE([Saldo por pagar], DM_Proveedor[es_intercompania] = FALSE)
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
-		lineageTag: cba24300-b689-465b-9f61-69e3983226be
+		lineageTag: 66d71ab1-6f9b-407a-ac16-8df96d192841
 
 	/// Deuda con empresas del propio grupo: se netea al consolidar.
 	measure 'Saldo por pagar grupo' = CALCULATE([Saldo por pagar], DM_Proveedor[es_intercompania] = TRUE)
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
-		lineageTag: e8427384-c21b-44be-b34d-67b869a9ca08
+		lineageTag: 2947a153-5060-4b31-a0c7-da2e22b561a4
 
 	/// Lo que se cobra menos lo que se debe: la liquidez estructural del negocio.
 	measure 'Posición neta' = [Saldo por cobrar] - [Saldo por pagar]
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
-		lineageTag: c8919972-fd36-40a7-ae20-428a432bc53a
+		lineageTag: 97805db2-0159-41a7-bd9a-0c0604d0f257
 
 	/// Número de partidas abiertas de deuda.
 	measure 'Partidas por pagar' = COUNTROWS('FC_Cartera por pagar')
 		formatString: #,0
 		displayFolder: 02 Conteos
-		lineageTag: 39a0234f-975b-46ab-a446-43c6df6d72b1
+		lineageTag: f726b0bf-2e4f-4166-bc31-4f5185664cb2
 
 	/// Proveedores distintos a los que se les debe.
 	measure 'Proveedores con saldo' = DISTINCTCOUNT('FC_Cartera por pagar'[proveedor_clave])
 		formatString: #,0
 		displayFolder: 02 Conteos
-		lineageTag: b0e0d2b3-1830-40b0-9304-313847c4d898
+		lineageTag: e0be539e-5089-428f-8545-d6d6a6c67dd7
 
 	/// Deuda que ya pasó su fecha de pago. Sostenida en el tiempo es señal de tensión de caja, no de buena negociación.
 	measure 'Por pagar vencido' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
-		lineageTag: 8c02c83d-62bb-4a55-bba8-edfd8b64b778
+		lineageTag: 43e76cd7-d39b-46bf-99ee-9e4bfb4a3bd2
 
 	/// Qué parte de lo que se debe ya está vencido.
 	measure '% Por pagar vencido' = DIVIDE([Por pagar vencido], [Saldo por pagar])
 		formatString: 0.0%
 		displayFolder: 03 Antigüedad
-		lineageTag: 009b5910-201f-4e09-bf2f-f7d47fa157ca
+		lineageTag: fbe45ba2-c63f-478a-b7cf-8e5bac6ac4bd
 
 	/// Deuda vieja con proveedores; suele venir con suministro en riesgo.
 	measure 'Por pagar más de 90' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "+90"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
-		lineageTag: 05f36aa0-e062-476c-83cd-eb71c561d7b4
+		lineageTag: ae2f1c1a-f05c-44de-a961-7136ee04dbd6
 
 	/// Foto de HOY: ignora el filtro de fechas de la página (el saldo es una foto, no un flujo).
 	measure 'Por pagar hoy' = CALCULATE([Saldo por pagar], REMOVEFILTERS(DM_Calendario))
 		formatString: "Q" #,0
 		displayFolder: 04 Foto de hoy
-		lineageTag: 4a59b4d0-4d53-4752-bf42-41ce566a97e3
+		lineageTag: f5f28209-1e6c-48f2-96b8-bf6a3dfbff56
 
 	/// Cobrar menos deber, foto de hoy, sin el filtro de período.
 	measure 'Posición neta hoy' = CALCULATE([Posición neta], REMOVEFILTERS(DM_Calendario))
 		formatString: "Q" #,0
 		displayFolder: 04 Foto de hoy
-		lineageTag: ad91b4a0-90aa-4b04-91be-341038e34a89
+		lineageTag: 95021f75-f1b4-4c2a-89dc-efa8b6b4c77e
 
 	/// DPO: días que tardamos en pagar a proveedores. Misma convención que 'Días de cartera terceros' para que el ciclo de efectivo cuadre.
 	measure 'Días de pago terceros' = DIVIDE([Saldo por pagar terceros], DIVIDE([Compras a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Compras)))
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
-		lineageTag: 31031a6a-1e5d-4c4a-b5fe-5bcf2fd8d10b
+		lineageTag: 6e160852-8aea-45ee-953b-66759bac4175
 
 	/// Veces al año que se paga la deuda completa. Es el recíproco de los días de pago.
 	measure 'Rotación de cuentas por pagar' = DIVIDE(365, [Días de pago terceros])
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
-		lineageTag: 0f636c8c-98ad-485e-a0bb-b1da3572307e
+		lineageTag: a420ca15-d242-4022-8cc5-f35694d226f8
 
 	/// Lo que hay que pagar en el período, por fecha de VENCIMIENTO y no de documento. Leída junto a 'Cobro que vence en el período' dice si la semana entra en positivo o en negativo antes de que ocurra: en Cresta, agosto vence con Q26.1M por pagar contra Q19.4M por cobrar.
 	measure 'Pago que vence en el período' = CALCULATE([Saldo por pagar terceros], USERELATIONSHIP('FC_Cartera por pagar'[tiempo_vencimiento_clave], DM_Calendario[tiempo_clave]))
 		formatString: "Q" #,0
 		displayFolder: 06 Agenda de vencimiento
-		lineageTag: f9274dac-8dab-48fb-8015-bc0409947e30
+		lineageTag: cead0326-fe42-40ae-b4c2-84d628cf65c4
 
 	/// CICLO DE CONVERSIÓN DE EFECTIVO: días que el dinero pasa atrapado en el negocio antes de volver a caja. Cobrar + inventario − pagar. Bajarlo libera capital de trabajo sin pedir un préstamo; es la métrica de liquidez que más mueve la aguja en una PyME. Negativo significa que los proveedores financian la operación.
 	measure 'Ciclo de conversión de efectivo' = [Días de cartera terceros] + [Días de inventario] - [Días de pago terceros]
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
-		lineageTag: 3e9815bf-23c6-4728-990a-f1824d80d636
+		lineageTag: d59f9bd2-8f0a-465b-923a-dfbb6479bec6
 
 	/// A cuántos proveedores se les debe algo ya vencido.
 	measure 'Proveedores con saldo vencido' = CALCULATE(DISTINCTCOUNT('FC_Cartera por pagar'[proveedor_clave]), KEEPFILTERS('DM_Antigüedad'[es_vencido] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Conteos
-		lineageTag: 705829c9-448d-4098-9c8d-7bfd75efa2cf
+		lineageTag: 2cec04d2-f072-4135-bcb6-9718c54627cb
 
 	/// Partidas sin fecha de pago pactada: normalmente anticipos o ajustes sin depurar.
 	measure 'Por pagar sin vencimiento' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[rango_aging] = "sin_vencimiento"))
 		formatString: "Q" #,0
 		displayFolder: 03 Antigüedad
-		lineageTag: 24869754-fd13-41fb-b05c-72647e3a8e15
+		lineageTag: 2ef3ddd7-5f5a-4fb7-bc85-c67e267d84b3
 
 	/// Concentración de la deuda: cuánto pesa el acreedor más grande sobre el total por pagar.
 	measure '% Deuda en el mayor acreedor' = DIVIDE(MAXX(ALLSELECTED(DM_Proveedor), [Saldo por pagar terceros]), CALCULATE([Saldo por pagar terceros], ALLSELECTED(DM_Proveedor)))
 		formatString: 0.0%
 		displayFolder: 03 Antigüedad
-		lineageTag: b43f70b5-b2bf-40c6-9ea0-4be660f5dfbc
+		lineageTag: 72b25748-840b-4725-845f-2192638450f6
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: 4e96a100-08c1-4025-8731-9465ef1ef95e
+		lineageTag: ea1315f7-b229-431a-83df-c13be57f9966
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column tiempo_vencimiento_clave
 		dataType: int64
 		isHidden
-		lineageTag: afab1d3a-ec94-433e-ab79-81f0b05b6f4d
+		lineageTag: b45e04d5-9543-4396-8763-eed3f0f01aad
 		summarizeBy: none
 		sourceColumn: tiempo_vencimiento_clave
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
-		lineageTag: 6934ba58-4af5-49a6-9d1f-68b4972cd1fe
+		lineageTag: 185cf74a-6855-494e-ae99-3de24b8122eb
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column socio_clave
 		dataType: int64
 		isHidden
-		lineageTag: 94bb6eb0-7687-4e58-9a04-14b8df0829e0
+		lineageTag: 5d554616-3653-454c-94ba-6baefd530f4e
 		summarizeBy: none
 		sourceColumn: socio_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: f670c952-abc2-4207-b368-e06e2b15be92
+		lineageTag: 2c5e1364-40f7-4932-86c7-55e1774f44e5
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
-		lineageTag: e009637b-dbca-478d-ad0f-592666ddfc8e
+		lineageTag: b233a981-c395-4250-9e43-5dc83ab996e5
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
-		lineageTag: 70f9b5d5-a72c-4426-86ff-39368b8cbef7
+		lineageTag: 1ffde9c8-4a01-421d-9e29-1368d4e0b1ab
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 8f393b00-2ed0-483c-ba9b-684960b1aa0e
+		lineageTag: 01841e75-46c4-4512-a6d6-14792703950c
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column partida_id
 		dataType: string
-		lineageTag: d46d0bc1-8ce0-46bb-abcf-641c7f674a13
+		lineageTag: c392e205-eeab-462d-b97a-fc097a6175c9
 		summarizeBy: none
 		sourceColumn: partida_id
 
 	column documento_origen
 		dataType: string
-		lineageTag: 57f97849-312a-4aee-9c31-63ebc1319091
+		lineageTag: 4a55c1f4-7d73-4175-86d4-0ca2ca91cca0
 		summarizeBy: none
 		sourceColumn: documento_origen
 
 	column tipo_documento_origen
 		dataType: string
-		lineageTag: 2101f2a0-15f4-472c-9376-11fde376bad8
+		lineageTag: 7bfe2407-2f3f-4024-9576-9a4d3c2dee01
 		summarizeBy: none
 		sourceColumn: tipo_documento_origen
 
 	column origen_partida
 		dataType: string
-		lineageTag: 7e81cff3-33e8-4bd7-a2c2-2bf3d77559dc
+		lineageTag: c2fddfc1-951e-45e6-bb4d-b1cd49f15e23
 		summarizeBy: none
 		sourceColumn: origen_partida
 
 	column fecha_documento
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 7c138105-10b4-4e76-b3f4-7d77ea16b90a
+		lineageTag: 2fe7c356-1f93-4726-b9d2-0a4dff501144
 		summarizeBy: none
 		sourceColumn: fecha_documento
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_vencimiento
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: f64d6c5c-9e18-499b-b049-d4bcc1c278f4
+		lineageTag: aa70856c-bd90-4837-b867-e54ddceaebe6
 		summarizeBy: none
 		sourceColumn: fecha_vencimiento
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_corte
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: e4693ec5-238d-46ab-9869-ab7ab7ae9780
+		lineageTag: 04afe59a-169b-4e21-a010-879caa3ec404
 		summarizeBy: none
 		sourceColumn: fecha_corte
 
+		annotation UnderlyingDateTimeDataType = Date
+
 	column monto_original
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 2aac10e2-eed9-4e34-875b-126d23f1d080
-		summarizeBy: none
+		lineageTag: e718343e-9754-43f3-90c9-609215fe976d
+		summarizeBy: sum
 		sourceColumn: monto_original
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_original_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: e4172956-f104-4ff2-b426-c14b39b6ad58
-		summarizeBy: none
+		lineageTag: a45070ea-f866-49d1-b171-adae96006615
+		summarizeBy: sum
 		sourceColumn: monto_original_doc
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_pendiente
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 6ca8cb2b-05d0-435b-8a7d-d89a374b7f5a
-		summarizeBy: none
+		lineageTag: d16e7536-9c59-440d-b04d-bd5dcaabff5f
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_pendiente_doc
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 8d980fef-936c-4be2-83dc-b2b7e3be70bd
-		summarizeBy: none
+		lineageTag: 7b76e0c6-d513-4c57-9f0a-eed77ef8d98c
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente_doc
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_pendiente_absoluto
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 2feb5c6b-ce38-4010-bfa4-29bf99fd4868
-		summarizeBy: none
+		lineageTag: 67a4d34d-09ea-4b7b-839f-c80f5b515c26
+		summarizeBy: sum
 		sourceColumn: saldo_pendiente_absoluto
+
+		annotation SummarizationSetBy = Automatic
 
 	column dias_vencido
 		dataType: int64
 		formatString: #,0
-		lineageTag: e3543ce7-8fe6-4791-b11a-14784b3a1d10
+		lineageTag: c7045230-8c6f-4392-9ab0-adbaacb5df2c
 		summarizeBy: none
 		sourceColumn: dias_vencido
 
 	column rango_aging
 		dataType: string
 		isHidden
-		lineageTag: 78e3d4aa-e60d-4133-8d79-e980be1c7a63
+		lineageTag: 5191e6dd-c736-4c9a-a9a2-d014fa4e25c0
 		summarizeBy: none
 		sourceColumn: rango_aging
 
 	column rango_aging_clave
 		dataType: int64
 		isHidden
-		lineageTag: 59f6e3d0-9645-4555-8e0d-2030f30331eb
+		lineageTag: 51538764-ee94-44e8-a140-de4ba73882f9
 		summarizeBy: none
 		sourceColumn: rango_aging_clave
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: b1b81ea6-1650-469b-8de4-4680df52e3f3
+		lineageTag: 05334405-8deb-43b1-ac48-8282c6c1e3d7
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: a699f882-10de-443e-a6a9-7a8686b2c58f
+		lineageTag: 347b10ab-9262-4cd3-abb9-be38cf9f198f
 		summarizeBy: none
 		sourceColumn: version_proceso
 

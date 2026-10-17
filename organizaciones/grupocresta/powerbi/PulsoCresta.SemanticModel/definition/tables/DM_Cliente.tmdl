@@ -1,101 +1,101 @@
 table DM_Cliente
-	lineageTag: b6de8a2b-df80-4982-b78d-4cd7a030843e
+	lineageTag: 3161e9d5-5cce-4dc1-89fb-360ea7fb3739
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: d7984e91-1f0a-494b-8527-617d32587553
+		lineageTag: f5043cab-eb68-44ab-9ff1-b715c7880e65
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: 78fc212a-17b1-4207-83e5-0161791b0925
+		lineageTag: 58f5090c-f009-400d-bea5-bbf7f006c795
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cliente_codigo
 		dataType: string
-		lineageTag: 5c0b3d6a-f519-4b87-bb37-cc932268253a
+		lineageTag: b48a405f-a30f-483e-aadc-8f594842f21c
 		summarizeBy: none
 		sourceColumn: cliente_codigo
 
 	column nombre
 		dataType: string
-		lineageTag: 4cc83c4a-96f6-4e95-b962-3ffc7648ae99
+		lineageTag: 7cf4eada-eb69-4305-ae06-1329e068cbd4
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column nit
 		dataType: string
-		lineageTag: c66c043d-70ff-43ad-ba15-378788ad1434
+		lineageTag: 816478b3-7f7a-4f23-8733-196f4e55b1d4
 		summarizeBy: none
 		sourceColumn: nit
 
 	column grupo_codigo
 		dataType: string
-		lineageTag: 38d5ac70-064f-4c2c-b8f5-10a4f87acd86
+		lineageTag: 7c6499c5-20b5-44e0-99b4-7693e04547c5
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column condicion_pago_codigo
 		dataType: string
-		lineageTag: 923eda89-b71b-4c9d-a375-8694aed9bced
+		lineageTag: 123a917d-e5ff-4c61-904f-25059b2f9b7a
 		summarizeBy: none
 		sourceColumn: condicion_pago_codigo
 
 	column pais
 		dataType: string
-		lineageTag: 3222558b-027f-4401-b707-d694ae32c16c
+		lineageTag: 91f1408a-d061-40b4-8808-b2d121376c2a
 		summarizeBy: none
 		sourceColumn: pais
 
 	column region
 		dataType: string
-		lineageTag: 7332cb71-34cf-4e2c-ac93-654a769edfc4
+		lineageTag: 48712385-f117-4328-b2c6-03d550547875
 		summarizeBy: none
 		sourceColumn: region
 
 	column es_tambien_proveedor
 		dataType: boolean
-		lineageTag: b2982165-8622-4539-aa95-abbb5accee63
+		lineageTag: 5456b4b9-595b-442f-8814-4641e4ec1f7b
 		summarizeBy: none
 		sourceColumn: es_tambien_proveedor
 
 	column es_intercompania
 		dataType: boolean
-		lineageTag: ee91412c-54a1-4939-8940-e45eb87c888b
+		lineageTag: 336db625-904f-4fcd-acea-4bef059c395d
 		summarizeBy: none
 		sourceColumn: es_intercompania
 
 	column activo
 		dataType: boolean
-		lineageTag: ab1a2a19-f5f9-4d31-af0d-a69352592633
+		lineageTag: a97c12c4-b5e8-4ad0-abc0-dcb94d8a4f6e
 		summarizeBy: none
 		sourceColumn: activo
 
 	column clase_abc_actual
 		dataType: string
-		lineageTag: 0edb47de-49b8-4a0e-8081-b4f1b16b1c93
+		lineageTag: dca72bb4-804d-4e5c-90ee-f12adbc07c11
 		summarizeBy: none
 		sourceColumn: clase_abc_actual
 
 	column clase_abc_actual_nombre
 		dataType: string
-		lineageTag: c6394bbc-45c2-4122-b3cd-2874d989f06b
+		lineageTag: b9c2e96e-18d6-4910-8826-0329a59a585f
 		summarizeBy: none
 		sourceColumn: clase_abc_actual_nombre
 
 	column segmento_rfm_actual
 		dataType: string
-		lineageTag: 27223be7-4f3b-4544-b27b-6d1a8878fd08
+		lineageTag: 42341998-de40-4697-b7da-5e330168cc6a
 		summarizeBy: none
 		sourceColumn: segmento_rfm_actual
 
 	column perfil_riesgo_actual
 		dataType: string
-		lineageTag: 1bd4942b-39cb-4df5-af2a-82276a77d861
+		lineageTag: 5affb906-d5e3-4636-a139-1a2a7b1c4808
 		summarizeBy: none
 		sourceColumn: perfil_riesgo_actual
 
@@ -103,22 +103,26 @@ table DM_Cliente
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: 8c1f9d1a-3b12-4b5d-9a89-28e8e4ef7a14
+		lineageTag: d13a25f4-14fb-4cba-9958-cbff7260e2bc
 		summarizeBy: none
 		sourceColumn: valido_desde
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
 		formatString: dd/MM/yyyy
-		lineageTag: a8202f19-fb7a-47c7-adba-fdf8f14ae718
+		lineageTag: fdaf778e-804c-40eb-b787-5ef238e8df6b
 		summarizeBy: none
 		sourceColumn: valido_hasta
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
-		lineageTag: d27d413a-8a6f-42d1-a8a5-c6bba71cb450
+		lineageTag: 691cdce6-f032-4f53-a28c-4b1787965f84
 		summarizeBy: none
 		sourceColumn: es_vigente
 

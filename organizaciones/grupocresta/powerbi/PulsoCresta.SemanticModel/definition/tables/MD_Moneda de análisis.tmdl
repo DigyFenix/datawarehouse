@@ -1,5 +1,5 @@
 table 'MD_Moneda de análisis'
-	lineageTag: f198f00f-41e1-4e4f-a867-fe2ffcb8a238
+	lineageTag: 7c34c463-c3e0-402c-bc2e-a78f09174d36
 
 	calculationGroup
 		precedence: 1
@@ -12,7 +12,7 @@ table 'MD_Moneda de análisis'
 
 	column 'Moneda de análisis'
 		dataType: string
-		lineageTag: d825863d-9f41-4419-906f-4a2f55cf31bc
+		lineageTag: b8ce7bc4-81c4-4806-a4b7-cf0f16f9bdfb
 		summarizeBy: none
 		sourceColumn: Name
 		sortByColumn: Ordinal
@@ -20,7 +20,7 @@ table 'MD_Moneda de análisis'
 	column Ordinal
 		dataType: int64
 		isHidden
-		lineageTag: efd5e3fa-1112-4e99-a417-964a3d856f59
+		lineageTag: 609624ad-887c-4b5f-ad5b-f14b730d4e18
 		summarizeBy: none
 		sourceColumn: Ordinal
 

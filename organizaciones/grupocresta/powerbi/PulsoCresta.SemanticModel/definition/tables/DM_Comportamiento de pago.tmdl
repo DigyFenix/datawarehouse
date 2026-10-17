@@ -1,171 +1,191 @@
 table 'DM_Comportamiento de pago'
-	lineageTag: cd5b55b8-97f6-4a8e-b68a-af34764b95b8
+	lineageTag: 088795ba-6ced-48d2-bc18-2b2328c3218e
 
 	/// Clientes sin nada vencido. El objetivo de la gestión de cobranza.
 	measure 'Clientes al día' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "al_dia"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 8fc33e41-0e15-452a-8879-0f40d471217b
+		lineageTag: 58063a18-2942-41ac-b118-7b8ee717d07a
 
 	/// Más de 90 días vencido o más de la mitad del saldo vencido: revisar antes de despachar.
 	measure 'Clientes en vencido crítico' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 23023a35-986d-4f37-80dc-218849f8ea8f
+		lineageTag: cbf66a68-1480-4923-9af9-21eeb3e776c0
 
 	/// Clientes con al menos una partida en mora.
 	measure 'Clientes con saldo vencido' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), 'DM_Comportamiento de pago'[perfil_riesgo] IN {"vencido_leve", "vencido_moderado", "vencido_critico"})
 		formatString: #,0
 		displayFolder: 01 Conteos
-		lineageTag: 3aa2dc8f-fcd2-46a2-88ea-753e75941b44
+		lineageTag: ddfee187-f396-4850-8049-a9c18f9acde7
 
 	/// Dinero expuesto en los clientes de peor perfil de pago.
 	measure 'Saldo en clientes críticos' = CALCULATE(SUM('DM_Comportamiento de pago'[saldo_total]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
 		formatString: "Q" #,0
 		displayFolder: 02 Montos
-		lineageTag: 6e4c842a-cd32-4924-869f-970d154419ee
+		lineageTag: e00ef10b-2865-432a-b13c-197f0aa02ba7
 
 	/// Del saldo total abierto, cuánto ya venció. El termómetro de la salud de la cartera.
 	measure '% cartera vencida (clientes)' = DIVIDE(SUM('DM_Comportamiento de pago'[saldo_vencido]), SUM('DM_Comportamiento de pago'[saldo_total]))
 		formatString: 0.0%
 		displayFolder: 02 Montos
-		lineageTag: 1e246d40-3f88-461e-91a8-7b1587dd8d3b
+		lineageTag: 6a20982c-d664-4a18-9249-aa5d3e0a1c8e
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: e9fde8fb-8577-4b41-bf20-caecaad5d24e
+		lineageTag: c0a4f678-4d6a-434b-980e-647355987e68
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cliente_clave
 		dataType: int64
 		isHidden
-		lineageTag: 87ebdd61-f4bf-48e2-853b-1866c1efa6c9
+		lineageTag: d45b838a-990a-4ef6-bc5d-580279902a46
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column partidas_abiertas
 		dataType: int64
 		formatString: #,0
-		lineageTag: e3e6f641-94bc-406c-abc1-fcf69192e2fa
+		lineageTag: 1f396ea3-ed9f-4a82-a1f7-8145382f03c0
 		summarizeBy: none
 		sourceColumn: partidas_abiertas
 
 	column saldo_total
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 9eced51e-b2a2-459c-afcf-d2753895cb7f
-		summarizeBy: none
+		lineageTag: 6712dcdd-fe78-488e-93dc-657632fb0306
+		summarizeBy: sum
 		sourceColumn: saldo_total
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_corriente
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: a5b4c4c2-2e87-411a-bebd-e635989a4287
-		summarizeBy: none
+		lineageTag: bdb7cdaa-92c7-4d06-880f-b6df2382822b
+		summarizeBy: sum
 		sourceColumn: saldo_corriente
 
+		annotation SummarizationSetBy = Automatic
+
 	column saldo_vencido
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: e3d7fa28-191b-4f64-a317-4933b2be0725
-		summarizeBy: none
+		lineageTag: f8a52b3e-fc5b-4d18-8550-d9332b892c29
+		summarizeBy: sum
 		sourceColumn: saldo_vencido
+
+		annotation SummarizationSetBy = Automatic
 
 	column max_dias_vencido
 		dataType: int64
 		formatString: #,0
-		lineageTag: c4b9b2e4-85a6-4e67-825e-a87d4582ecf3
+		lineageTag: b9d454a5-237e-4a4a-bde5-a33879a748af
 		summarizeBy: none
 		sourceColumn: max_dias_vencido
 
 	column dias_vencido_ponderado
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 74ea3d00-265e-4139-a55c-ed1774393a33
-		summarizeBy: none
+		lineageTag: 80246c22-82f2-48a8-b7cd-30f80c993290
+		summarizeBy: sum
 		sourceColumn: dias_vencido_ponderado
+
+		annotation SummarizationSetBy = Automatic
 
 	column vencimiento_mas_antiguo
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: b4a927ad-a7c4-468d-857e-4bf3317471c5
+		lineageTag: e127d751-4890-4b3f-8071-6347e0ccac23
 		summarizeBy: none
 		sourceColumn: vencimiento_mas_antiguo
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_corte
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 9e6e2445-495b-4d4d-ad6f-d50338618352
+		lineageTag: 8d7278f1-ad62-4c3e-b87e-0a051ebc0983
 		summarizeBy: none
 		sourceColumn: fecha_corte
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column ultimo_pago
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: ad15fc7b-f824-4396-8187-d5803b2d6343
+		lineageTag: 6b2a490a-3dbc-4ca9-bc40-1f1e0798e335
 		summarizeBy: none
 		sourceColumn: ultimo_pago
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column dias_desde_ultimo_pago
 		dataType: int64
 		formatString: #,0
-		lineageTag: 29afda87-5b12-4e0f-92d3-052bad3323d9
+		lineageTag: 05598ea3-f181-4727-85e8-dc6fe40a306d
 		summarizeBy: none
 		sourceColumn: dias_desde_ultimo_pago
 
 	column pagos_12m
 		dataType: int64
 		formatString: #,0
-		lineageTag: 8680afc1-f93f-4acb-8c58-d78379e906ca
+		lineageTag: 13ac9ce8-0bed-4b8d-bfee-f7b7c2c4e30d
 		summarizeBy: none
 		sourceColumn: pagos_12m
 
 	column monto_pagado_12m
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: f7d74df1-2a73-49c7-b1a3-ef0c89daa417
-		summarizeBy: none
+		lineageTag: da49ea04-4e9b-496b-8e93-a2284298e1a7
+		summarizeBy: sum
 		sourceColumn: monto_pagado_12m
 
+		annotation SummarizationSetBy = Automatic
+
 	column monto_pagado_3m
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: eb1d7350-e676-4620-be46-27d996147b68
-		summarizeBy: none
+		lineageTag: 33e7317c-f0f5-4d6a-892b-7e4f4101cb21
+		summarizeBy: sum
 		sourceColumn: monto_pagado_3m
 
+		annotation SummarizationSetBy = Automatic
+
 	column pct_saldo_vencido
-		dataType: decimal
+		dataType: double
 		formatString: 0.0"%"
-		lineageTag: d9502e64-52b5-45f9-b8c4-a5b7e68d8ffa
-		summarizeBy: none
+		lineageTag: d1a632a6-557c-4818-b4bf-a31790576a7e
+		summarizeBy: sum
 		sourceColumn: pct_saldo_vencido
+
+		annotation SummarizationSetBy = Automatic
 
 	column perfil_riesgo
 		dataType: string
-		lineageTag: 0e905648-0c5f-41c7-bd03-8e020af9a0c4
+		lineageTag: db281cad-a3a5-4609-85e6-15158e903fa0
 		summarizeBy: none
 		sourceColumn: perfil_riesgo
 
 	column perfil_riesgo_nombre
 		dataType: string
-		lineageTag: 9029212b-81e5-4209-9272-b3cbabaf88af
+		lineageTag: 6d5de80d-c4fd-47db-a2e4-82e7605e7ed1
 		summarizeBy: none
 		sourceColumn: perfil_riesgo_nombre
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 478ff337-ba5b-430b-9435-e01cdffadaa9
+		lineageTag: 5bdc2498-7c93-4e06-a0da-3afeb0215870
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: cb1abc87-b470-4034-9b5d-38bc5913fb69
+		lineageTag: c71cbc2a-619c-4e08-835d-91c21080e733
 		summarizeBy: none
 		sourceColumn: version_proceso
 

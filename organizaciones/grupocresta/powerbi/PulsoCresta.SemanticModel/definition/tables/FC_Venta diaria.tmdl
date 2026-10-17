@@ -1,178 +1,192 @@
 table 'FC_Venta diaria'
-	lineageTag: 4301de63-5df8-417d-b54f-ced6dfef8a82
+	lineageTag: eac662f3-7573-477b-9fd7-94eb709469e4
 
 	/// Serie continua (un día sin ventas es un CERO, no un hueco): la única base correcta para tendencias.
 	measure 'Venta diaria neta' = SUM('FC_Venta diaria'[ventas_netas])
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
-		lineageTag: f0578326-a6c6-4411-b435-87791f21ffd3
+		lineageTag: 5492a969-2c2c-4a59-8a50-92151456a71f
 
 	/// Suaviza el efecto del día de semana. Útil para ver la tendencia corta sin el ruido del fin de semana.
 	measure 'Venta media móvil 7d' = AVERAGEX(DATESINPERIOD('DM_Calendario'[fecha], [_Fecha ancla móvil], -7, DAY), CALCULATE(SUM('FC_Venta diaria'[ventas_netas])))
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
-		lineageTag: 919fb812-e7e5-4a0e-afdb-f288f522a1c0
+		lineageTag: 08cb96fc-5b4c-4e56-b4c1-d34004f3c347
 
 	/// Tendencia de fondo, ya sin efecto semanal ni de quincena.
 	measure 'Venta media móvil 30d' = AVERAGEX(DATESINPERIOD('DM_Calendario'[fecha], [_Fecha ancla móvil], -30, DAY), CALCULATE(SUM('FC_Venta diaria'[ventas_netas])))
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
-		lineageTag: 5265a694-7f3e-487a-a4ec-35a842edc3d3
+		lineageTag: 311a702c-9a70-4904-bdd2-53219f48d9d6
 
 	/// Promedio solo de los días que SÍ se vendió (excluye ceros): el ritmo real de un día operado.
 	measure 'Venta promedio día operado' = CALCULATE(AVERAGE('FC_Venta diaria'[ventas_netas]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
 		formatString: "Q" #,0
 		displayFolder: 01 Serie
-		lineageTag: 7b38e3b7-02ca-4867-ac8d-0095086427b0
+		lineageTag: ccae4c69-d0c8-4a5b-8f78-0bfa18433b2e
 
 	/// Días del período sin ninguna facturación. Un pico aquí suele ser paro, feriado o problema de captura.
 	measure 'Días sin venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = TRUE))
 		formatString: #,0
 		displayFolder: 02 Actividad
-		lineageTag: 3310c8fc-5547-4ec2-b60c-ecde55cef8b8
+		lineageTag: 70c588fe-36e4-4124-9b3d-dc6ef75504af
 
 	/// Cuántos clientes distintos compran en un día operado promedio.
 	measure 'Clientes activos por día' = CALCULATE(AVERAGE('FC_Venta diaria'[clientes_activos]), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
 		formatString: #,0
 		displayFolder: 02 Actividad
-		lineageTag: 4fa2eb62-49f9-40a4-afb5-5bee8ee41453
+		lineageTag: 16b0c9f9-def6-4e15-b9ce-ab5040f65730
 
 	/// Días del período con facturación real.
 	measure 'Días con venta' = CALCULATE(COUNTROWS('FC_Venta diaria'), KEEPFILTERS('FC_Venta diaria'[es_dia_sin_venta] = FALSE))
 		formatString: #,0
 		displayFolder: 02 Actividad
-		lineageTag: 055150d8-43ec-478e-b357-0995683b12bb
+		lineageTag: a7101abd-e17e-456c-aa8e-d727bd4f51d0
 
 	/// Ritmo real: dividir entre días NATURALES castiga a los meses con muchos feriados y hace parecer que la operación cayó cuando solo hubo menos días de trabajo.
 	measure 'Venta por día hábil' = DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE)))
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo
-		lineageTag: db66b332-aedd-4ed4-b371-bcc8bc0a57a6
+		lineageTag: 0eb28e43-3d3d-4c48-a410-b58e019e9c87
 
 	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado: con el período abierto devolvía la venta de toda la historia repartida entre todos los días hábiles del calendario — un número plausible y falso (≈Q9.8M contra una venta mensual real cercana a Q50M). Ahora se calla en vez de mentir.
 	measure 'Proyección de cierre de mes' = IF(DISTINCTCOUNT(DM_Calendario[anio_mes]) <> 1, BLANK(), DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE), KEEPFILTERS(DM_Calendario[fecha] <= TODAY()))) * MAX(DM_Calendario[dias_habiles_del_mes]))
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo
-		lineageTag: 940d29dc-c47f-4b1c-b8ea-d02ff79f85b1
+		lineageTag: 4b0b95d5-5c39-4532-bed6-a3afcf1eb386
 
 	/// Cuánto se despega el período del promedio mensual de su propio año. 1.0 es un mes normal; 1.3 es un pico estacional.
 	measure 'Índice de estacionalidad' = DIVIDE([Venta diaria neta], DIVIDE(CALCULATE([Venta diaria neta], ALLEXCEPT(DM_Calendario, DM_Calendario[anio])), 12))
 		formatString: #,0.00
 		displayFolder: 03 Ritmo
-		lineageTag: 4b685608-64c8-4fbc-8c7a-f9acdebada91
+		lineageTag: 91ab112c-2df8-40c5-8928-ebd92c489c6b
 
 	/// Acumulado dentro de la semana ISO en curso.
 	measure 'Venta acumulada semana' = CALCULATE([Venta diaria neta], FILTER(ALL(DM_Calendario), DM_Calendario[anio_semana_orden] = MAX(DM_Calendario[anio_semana_orden]) && DM_Calendario[fecha] <= MAX(DM_Calendario[fecha])))
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo
-		lineageTag: 254cc7f0-111a-478f-a651-f424edffd87d
+		lineageTag: e8c0001a-83e3-4eb4-a42f-ac2fa4451827
 
 	/// Subtítulo del ritmo del mes (página 01). El dato que decide DENTRO del mes: lo que va, contra los días hábiles ya trabajados y los que faltan. Con el período abierto lo dice en vez de mostrar una proyección que no significa nada — la proyección exige un mes.
 	measure 'Subtítulo del ritmo del mes' = VAR meses = DISTINCTCOUNT(DM_Calendario[anio_mes]) VAR proy = [Proyección de cierre de mes] VAR acum = [Ventas acumuladas mes] VAR hab = MAX(DM_Calendario[dias_habiles_del_mes]) VAR trans = MAX(DM_Calendario[dias_habiles_transcurridos]) RETURN SWITCH(TRUE(), meses <> 1, "Seleccioná un mes: la proyección de cierre se calcula sobre los días hábiles de un solo mes", ISBLANK(proy) || proy = 0, "Sin venta registrada en el mes", "Cierre proyectado " & (IF(proy < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(proy) >= 1000000, FORMAT(ABS(proy) / 1000000, "#,##0.0") & "M", ABS(proy) >= 10000, FORMAT(ABS(proy) / 1000, "#,##0") & "K", FORMAT(ABS(proy), "#,##0"))) & " · van " & (IF(acum < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(acum) >= 1000000, FORMAT(ABS(acum) / 1000000, "#,##0.0") & "M", ABS(acum) >= 10000, FORMAT(ABS(acum) / 1000, "#,##0") & "K", FORMAT(ABS(acum), "#,##0"))) & " en " & FORMAT(trans, "0") & " de " & FORMAT(hab, "0") & " días hábiles")
 		displayFolder: _Narrativa
-		lineageTag: 93a1c5ee-9ceb-40d2-97b0-4e2cef2bfc70
+		lineageTag: 4be186f8-26e8-40ce-8a41-5f87f59356ac
 
 	column empresa_id
 		dataType: string
 		isHidden
-		lineageTag: dc090918-9a32-4608-b108-7cdfaf927893
+		lineageTag: 20f8b553-86de-4b25-be5f-b2595369ee44
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
-		lineageTag: a1620a1c-062b-42f1-8d06-e314741f1ef5
+		lineageTag: d084a902-e6cd-4156-bf3f-2e6f593d10d7
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column fecha
 		dataType: dateTime
 		formatString: dd/MM/yyyy
-		lineageTag: 70d055e9-5301-4df7-bad5-32ed002c4bfb
+		lineageTag: 8adb15ee-051b-4f74-9cd9-aae0d3189a85
 		summarizeBy: none
 		sourceColumn: fecha
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
-		lineageTag: 19666dba-cc77-4c6f-8eb1-4cd7d31e8871
+		lineageTag: 5311df4f-cea5-4a80-843b-0c9f5ff01161
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column ventas_brutas
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: dcdf49b2-247d-4902-908b-e1df68c84257
-		summarizeBy: none
+		lineageTag: f22c8a57-f7d2-4c55-8b62-a0b741737cec
+		summarizeBy: sum
 		sourceColumn: ventas_brutas
 
+		annotation SummarizationSetBy = Automatic
+
 	column devoluciones
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 87de53b1-3371-4652-9c18-ea2fdece029e
-		summarizeBy: none
+		lineageTag: 3c946d88-7862-4bb2-af8a-df60bc741172
+		summarizeBy: sum
 		sourceColumn: devoluciones
 
+		annotation SummarizationSetBy = Automatic
+
 	column ventas_netas
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 694c3039-1532-4356-9ead-7d4e0d42f4c1
-		summarizeBy: none
+		lineageTag: d6e5e67e-d3ac-4c5c-bb84-c23cf2ce0d02
+		summarizeBy: sum
 		sourceColumn: ventas_netas
 
+		annotation SummarizationSetBy = Automatic
+
 	column costo
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 2347be44-d1c6-4add-96cd-af9135cd0d57
-		summarizeBy: none
+		lineageTag: 6d03bd09-e622-4185-a60c-6e87e8ab9fa1
+		summarizeBy: sum
 		sourceColumn: costo
 
+		annotation SummarizationSetBy = Automatic
+
 	column margen
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 32034aad-217b-43ad-b058-f4e3e07f099b
-		summarizeBy: none
+		lineageTag: 5c149551-f56d-4b64-b05e-daa5be0be06f
+		summarizeBy: sum
 		sourceColumn: margen
 
+		annotation SummarizationSetBy = Automatic
+
 	column cantidad_vendida
-		dataType: decimal
+		dataType: double
 		formatString: #,0.00
-		lineageTag: 328a74be-41ef-484e-865e-4d7fe3ea9e73
-		summarizeBy: none
+		lineageTag: 213eb62f-1df6-4a35-9091-113e0df9b01d
+		summarizeBy: sum
 		sourceColumn: cantidad_vendida
+
+		annotation SummarizationSetBy = Automatic
 
 	column documentos
 		dataType: int64
 		formatString: #,0
-		lineageTag: 78a6ec90-f002-4cf2-b25a-8bec0f323e80
+		lineageTag: 6d75ccee-a448-4253-92e2-f120edac1ef2
 		summarizeBy: none
 		sourceColumn: documentos
 
 	column clientes_activos
 		dataType: int64
 		formatString: #,0
-		lineageTag: ea872a58-eff9-4f2d-b1a3-04eaaa471c5c
+		lineageTag: ce89e5a8-b7f0-47e5-b5fe-408aaeb1048b
 		summarizeBy: none
 		sourceColumn: clientes_activos
 
 	column es_dia_sin_venta
 		dataType: boolean
-		lineageTag: 4af1fd2d-fc1c-4369-acd8-1ef124f4b5da
+		lineageTag: 7590e5ed-7c5f-414f-b5ce-f4fcd791df80
 		summarizeBy: none
 		sourceColumn: es_dia_sin_venta
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
-		lineageTag: 2d1136ca-484e-4f72-80f7-34235c8d074a
+		lineageTag: 052c51a2-e652-4a01-9433-536c4ec0b4e5
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
-		lineageTag: 83854eab-c938-455e-afee-58cb13742c26
+		lineageTag: d3701e87-034a-49c3-95aa-36af4a8ebbbd
 		summarizeBy: none
 		sourceColumn: version_proceso
 
