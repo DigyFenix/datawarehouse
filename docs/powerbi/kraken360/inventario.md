@@ -128,6 +128,41 @@ Generador `consumo/powerbi/generar_paginas_inventario.js`. Filtros comunes: lín
 | Análisis: consumo mín/prom/máx, lead time, stock mín, punto de pedido, stock máx, existencias, sugerencia, monto | medidas `Consumo mínimo/promedio/máximo mensual` (12 meses, mes sin venta = 0), `Lead time (días)` (segmentador `MD_Lead time`, 15 por defecto), `Stock mínimo` = Cmín×LT/30, `Punto de pedido` = Smín + Cprom×LT/30, `Stock máximo` = Smín + Cmáx×LT/30, `Sugerencia de compra` = Smáx − existencia si existencia < punto de pedido, `Monto de sugerencia de compra`, `Semáforo de existencias` (↓/↑) | Kraken no publica sus fórmulas; estas son las estándar y quedan documentadas en el modelo. El lead time real por proveedor vive en `product_supplierinfo.delay` (gap G10) |
 | Tendencia 24 meses con pronóstico | línea `Unidades vendidas 24 meses` | sin pronóstico (no es estable en PBIR) |
 
+## 10 · Cuentas por cobrar · 13 · Cuentas por pagar (`capturas/10-cartera-cuentas-por-cobrar.png`; CxP sin captura, espejo de CxC a pedido de Edwin)
+
+Generador `consumo/powerbi/generar_paginas_cartera.js` (`paginaCartera`, parametrizada por hecho y socio).
+
+| Visual Kraken | Réplica | Notas |
+|---|---|---|
+| Saldo total · no vencido (%) · vencido (%) | `Saldo por cobrar`, `Saldo corriente` + `% No vencido`, `Saldo vencido` + `% Vencido` (CxP: `Saldo por pagar`, `Por pagar no vencido`, `Por pagar vencido`) | — |
+| Filtros Estado · buscar cliente · buscar documento | columna calculada `Estado` (Vencido / No vencido) en la cartera; `documento_origen` | — |
+| Saldos por estado y rangos de antigüedad | matriz `Cliente`/`Proveedor` × `Rango de vencimiento` (columna calculada: Próx. 31+, 22-30, 15-21, 8-14, 7 días · 1-15, 16-30, 31-60, 61-90, 91+) | rangos finos como Kraken, aparte del aging estándar del modelo |
+| Saldo por vendedor | **no replicable**: la partida de cartera no lleva vendedor; se muestra saldo por cliente | gap G12 (vendedor del documento origen) |
+| Saldo por sector | columna calculada `Sector` en DM_Cliente (nombre de su condición de pago) | en Iron la mayoría de clientes no tiene condición en la ficha → "(En blanco)" |
+| Detalle de saldos | matriz `documento_origen` con `Fecha de factura`, `Días de crédito de la partida`, `Días transcurridos de la partida`, `Estado de la partida`, `Rango de la partida`, saldo | — |
+| Límite de crédito por cliente | `Límite de crédito` (`res_partner.credit_limit`, nuevo en seed 70; SAP `CreditLine`) y `% Límite utilizado` | Iron no configura límites: todo nulo |
+| Saldo por sucursal | por `DM_Empresa` | — |
+
+## 11 · Análisis de utilidad (`capturas/11-utilidad-analisis.png`)
+
+| Visual Kraken | Réplica | Notas |
+|---|---|---|
+| Costo · Ganancia · Resultado · Margen % | `Costo de lo vendido` (= `Costo de ventas`), `Ganancia` (= `Margen bruto`), `Ventas netas`, `% Margen` | **en Iron el costo es 0 (gap G9)**: la página renderiza pero sin margen hasta extraer el costo |
+| Costo y ganancia por sector / cliente / vendedor / línea | barras apiladas (gris = costo, pizarra = ganancia) | — |
+| Utilidades por mes (apiladas + margen %) | `lineStackedColumnComboChart` con `% Margen` en eje secundario | — |
+| Detalle de ventas | matriz `Producto`: unidades, `Precio promedio unidad`, venta, costo, ganancia, margen | — |
+
+## 12 · Recuperación y cobros (`capturas/12-cobros-recuperacion.png`)
+
+| Visual Kraken | Réplica | Notas |
+|---|---|---|
+| Días autorizados · días promedio · sobregiro · saldo | `Días autorizados` (promedio de días de crédito pactados en partidas abiertas), `Días promedio de cartera` (antigüedad ponderada por saldo), `Sobregiro en días` (diferencia), `Saldo por cobrar` | definiciones propias; Kraken no las publica |
+| Tabla cliente (sobregiro, saldo) | matriz `Cliente` | — |
+| Cargos, abonos y saldos mensuales | combo: `Cargos del mes` (facturación con IVA), `Abonos del mes` (cobros de clientes), línea `Saldo al cierre del mes` (cartera histórica al último corte del mes) | 12 meses; el histórico diario de Iron arranca el 2026-07-27 |
+| Totales | `Cargos totales 12 meses`, `Abonos totales 12 meses`, `Cargos menos abonos 12 meses` | recuperación total = abonos |
+| Días de crédito autorizado vs promedio por mes | líneas de `Días autorizados` y `Días promedio de cartera` por mes del documento | Kraken muestra una línea plana (foto repetida); aquí por mes de la partida |
+| Saldo vigente / vencido por rango | donas sobre `Rango de vencimiento` con `Saldo corriente` / `Saldo vencido` | — |
+
 ## Gaps — qué falta y cómo se obtiene de Odoo
 
 **Resueltos en la sesión 28 (seed `metadata-store/seeds/70_paquete_odoo_comercial.sql`):**
@@ -153,6 +188,7 @@ definir canal; `grupo_nombre` requiere OITB. Todo compila en ambas ramas.
 | **G6 Dólares** | todo en USD | 1 tasa en `res_currency_rate` | Confirmar que Iron registra tasas; sin serie, "Dólares" no se publica | dato del cliente |
 | **G9 Costo de ventas en Odoo** | costo desplazado, margen | `costo` = 0 en las líneas de factura; valoración solo para 83 productos | Extraer `product_template.standard_price` (propiedad jsonb por compañía) o el costo de `stock_valuation_layer` por movimiento y llevarlo a `plata_documento_linea.costo_local` | extracción + dbt |
 | **G10 Lead time por proveedor** | lead time real | parámetro global (15 días) | Extraer `product_supplierinfo` (product_tmpl_id, partner_id, delay) → `lead_time_dias` en producto | extracción + dbt |
+| **G12 Vendedor en cartera** | saldo por vendedor | la partida de cartera no lleva vendedor | Propagar `vendedor_codigo` del documento origen a `plata_partida_cartera` (join por documento_origen) y `vendedor_clave` al hecho | dbt |
 | **G7 Unidad Std** | cantidad en unidad estándar | `uom_id` numérico, sin factor | Extraer `uom_uom` (nombre, factor, categoría) → `factor_std` en producto; medida `Unidades estándar` | extracción + dbt |
 
 ## Mapeo de layout (lienzo 1280 × 960, grilla del contrato visual)

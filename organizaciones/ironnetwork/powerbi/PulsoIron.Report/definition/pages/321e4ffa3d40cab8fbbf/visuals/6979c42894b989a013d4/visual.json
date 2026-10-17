@@ -23,11 +23,11 @@
                       "Entity": "FC_Ventas"
                     }
                   },
-                  "Property": "Costo"
+                  "Property": "Costo de lo vendido"
                 }
               },
-              "queryRef": "FC_Ventas.Costo",
-              "nativeQueryRef": "Costo"
+              "queryRef": "FC_Ventas.Costo de lo vendido",
+              "nativeQueryRef": "Costo de lo vendido"
             },
             {
               "field": {

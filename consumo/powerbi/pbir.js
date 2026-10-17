@@ -131,9 +131,9 @@ function navegador(slug) {
   });
 }
 // Encabezado Kraken: título, "al 16 oct (79%)", empresa activa, navegación.
-function encabezado(slug, medidaTitulo, medidaCorte) {
+function encabezado(slug, medidaTitulo, medidaCorte, tablaTitulo = T.VENTAS) {
   return [
-    texto(slug, 'chrome-titulo', T.VENTAS, medidaTitulo, [xCol(1), 8, wCol(4), 28], { size: 16, bold: true }),
+    texto(slug, 'chrome-titulo', tablaTitulo, medidaTitulo, [xCol(1), 8, wCol(4), 28], { size: 16, bold: true }),
     texto(slug, 'chrome-corte', T.VENTAS, medidaCorte, [xCol(1), 36, wCol(4), 20], { size: 12 }),
     texto(slug, 'chrome-empresa', T.VENTAS, 'Empresa activa', [xCol(1), 56, wCol(4), 16], { size: 10, colorHex: C.TINTA_SUAVE }),
     navegador(slug),

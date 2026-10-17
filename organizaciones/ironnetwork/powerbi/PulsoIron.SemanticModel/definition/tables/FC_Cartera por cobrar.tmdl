@@ -370,7 +370,7 @@ table 'FC_Cartera por cobrar'
 		displayFolder: 15 Cuentas por cobrar
 
 	/// Saldo histórico al último corte disponible dentro del mes del eje (la línea "Saldo" de cargos y abonos).
-	measure 'Saldo al cierre del mes' = VAR f = MAX(DM_Calendario[fecha]) VAR corte = CALCULATE(MAX('FC_Cartera cobrar histórico'[fecha_corte]), REMOVEFILTERS(DM_Calendario), 'FC_Cartera cobrar histórico'[fecha_corte] <= f) RETURN IF(ISBLANK(corte), BLANK(), CALCULATE([Saldo histórico por cobrar], REMOVEFILTERS(DM_Calendario), 'FC_Cartera cobrar histórico'[fecha_corte] = corte))
+	measure 'Saldo al cierre del mes' = VAR f = MAX(DM_Calendario[fecha]) VAR hayDato = MIN(DM_Calendario[fecha]) <= [Corte de ventas] VAR corte = CALCULATE(MAX('FC_Cartera cobrar histórico'[fecha_corte]), REMOVEFILTERS(DM_Calendario), 'FC_Cartera cobrar histórico'[fecha_corte] <= f) RETURN IF(ISBLANK(corte) || NOT hayDato, BLANK(), CALCULATE([Saldo histórico por cobrar], REMOVEFILTERS(DM_Calendario), 'FC_Cartera cobrar histórico'[fecha_corte] = corte))
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
 

@@ -36,7 +36,7 @@ function paginaCartera(cfg) {
   const { slug, nombre, titulo, F, DIM, dimCol, dimAlias, m } = cfg;
   P.reiniciar();
   const vs = [];
-  vs.push(...encabezado(slug, titulo, 'Subtítulo de corte mensual'));
+  vs.push(...encabezado(slug, titulo, 'Subtítulo de corte mensual', F));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 52], { sync: 'empresa' }));
   vs.push(segmentador(slug, 'estado', F, 'Estado', [xCol(1), 148, wCol(2), 52], { sync: slug + '-estado' }));
   vs.push(kpiSaldo(slug, 'saldo-total', [xCol(3), 88, wCol(2), 112], 'Saldo total', [m.saldo], F, 'Partidas abiertas al corte'));
@@ -88,21 +88,20 @@ function paginaUtilidad() {
   vs.push(...encabezado(slug, 'Título de Utilidad', 'Subtítulo de corte mensual'));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 52], { sync: 'empresa' }));
   vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), 148, wCol(2), 52], { seleccion: ANIO_ACTUAL, sync: 'anio' }));
-  vs.push(kpis(slug, 'resultado', [[V, 'Costo'], [V, 'Ganancia'], [V, 'Ventas netas'], [V, '% Margen']], [xCol(3), 88, wCol(5), 112], 'Resultado', 'Costo · ganancia · resultado (venta) · margen %'));
+  vs.push(kpis(slug, 'resultado', [[V, 'Costo de lo vendido'], [V, 'Ganancia'], [V, 'Ventas netas'], [V, '% Margen']], [xCol(3), 88, wCol(5), 112], 'Resultado', 'Costo · ganancia · resultado (venta) · margen %'));
   vs.push(segmentador(slug, 'f-linea', T.PROD, 'grupo_nombre', [xCol(8), 88, wCol(2), 52], { sync: 'linea' }));
   vs.push(segmentador(slug, 'f-sector', T.CLI, 'Sector', [xCol(8), 148, wCol(2), 52], { sync: 'sector' }));
-  vs.push(segmentador(slug, 'f-buscar-cliente', T.CLI, 'nombre', [xCol(10), 88, wCol(2), 52], { busqueda: true }));
-  vs.push(segmentador(slug, 'f-buscar-producto', T.PROD, 'nombre', [xCol(10), 148, wCol(2), 52], { busqueda: true }));
-  vs.push(segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(12), 88, wCol(1), 112], { unico: true, sync: 'moneda', titulo: 'Moneda' }));
+  vs.push(segmentador(slug, 'f-buscar-cliente', T.CLI, 'nombre', [xCol(10), 88, wCol(3), 52], { busqueda: true }));
+  vs.push(segmentador(slug, 'f-buscar-producto', T.PROD, 'nombre', [xCol(10), 148, wCol(3), 52], { busqueda: true }));
 
-  const CG = ['Costo', 'Ganancia'];
+  const CG = ['Costo de lo vendido', 'Ganancia'];
   const colores = [C.GRIS_SERIE, C.PIZARRA];
   // Fila 1: mes (lista) · sector · cliente · por mes (apiladas + margen)
   vs.push(segmentador(slug, 'mes', T.CAL, 'mes_nombre_corto', [xCol(1), FILA[0], wCol(2), ALTO], { modo: 'VerticalList', titulo: 'Mes', sync: 'mes' }));
   vs.push(barras(slug, 'sector', [xCol(3), FILA[0], wCol(2), ALTO], T.CLI, 'Sector', 'Costo y ganancia por sector', CG, colores, { leyenda: true }));
   vs.push(barras(slug, 'cliente', [xCol(5), FILA[0], wCol(3), ALTO], T.CLI, 'nombre', 'Análisis de utilidades por cliente', CG, colores, { leyenda: true }));
   vs.push(visual(id(slug, 'por-mes'), 'lineStackedColumnComboChart', [xCol(8), FILA[0], wCol(5), ALTO], {
-    roles: { Category: [pColumna(T.CAL, 'mes_nombre_corto')], Y: [pMedida(V, 'Costo'), pMedida(V, 'Ganancia')], Y2: [pMedida(V, '% Margen')] },
+    roles: { Category: [pColumna(T.CAL, 'mes_nombre_corto')], Y: [pMedida(V, 'Costo de lo vendido'), pMedida(V, 'Ganancia')], Y2: [pMedida(V, '% Margen')] },
     sort: ordenAsc(T.CAL, 'mes_nombre_corto'),
     objects: {
       categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
@@ -110,7 +109,7 @@ function paginaUtilidad() {
       labels: [{ properties: { show: bool(true), fontSize: num(8), labelDisplayUnits: str('1000'), labelPrecision: num(0) } }],
       legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(8) } }],
       dataPoint: [
-        { properties: { fill: color(C.GRIS_SERIE) }, selector: meta(V, 'Costo') },
+        { properties: { fill: color(C.GRIS_SERIE) }, selector: meta(V, 'Costo de lo vendido') },
         { properties: { fill: color(C.PIZARRA) }, selector: meta(V, 'Ganancia') },
         { properties: { fill: color(C.TINTA) }, selector: meta(V, '% Margen') },
       ],
@@ -123,7 +122,7 @@ function paginaUtilidad() {
   vs.push(barras(slug, 'linea', [xCol(4), FILA[1], wCol(3), ALTO], T.PROD, 'grupo_nombre', 'Costo y ganancia por línea', CG, colores, { leyenda: true }));
   vs.push(matriz(slug, 'detalle', [xCol(7), FILA[1], wCol(6), ALTO * 2 + 16], 'Detalle de ventas', {
     filas: [[T.PROD, 'Producto']],
-    valores: [[V, 'Unidades vendidas'], [V, 'Precio promedio unidad'], [V, 'Ventas netas'], [V, 'Costo'], [V, 'Ganancia'], [V, '% Margen']],
+    valores: [[V, 'Unidades vendidas'], [V, 'Precio promedio unidad'], [V, 'Ventas netas'], [V, 'Costo de lo vendido'], [V, 'Ganancia'], [V, '% Margen']],
     filaTotal: true, columnaTotal: false, ordenPor: [V, 'Ventas netas'], anchoFilas: 200,
   }));
   vs.push(dona(slug, 'linea-dona', [xCol(4), FILA[2], wCol(3), ALTO], T.PROD, 'tipo_producto', 'Ganancia por categoría', 'Ganancia'));
@@ -137,7 +136,7 @@ function paginaCobros() {
   const F = CXC.F;
   P.reiniciar();
   const vs = [];
-  vs.push(...encabezado(slug, 'Título de Cobros', 'Subtítulo de corte mensual'));
+  vs.push(...encabezado(slug, 'Título de Cobros', 'Subtítulo de corte mensual', F));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 52], { sync: 'empresa' }));
   vs.push(segmentador(slug, 'buscar', T.CLI, 'nombre', [xCol(1), 148, wCol(2), 52], { busqueda: true }));
   vs.push(kpiSaldo(slug, 'dias-aut', [xCol(3), 88, wCol(2), 112], 'Días autorizados', ['Días autorizados'], F, 'Crédito pactado promedio'));

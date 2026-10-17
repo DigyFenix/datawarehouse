@@ -2764,7 +2764,7 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += """
 		displayFolder: 15 Cuentas por cobrar
 
 	/// Saldo histórico al último corte disponible dentro del mes del eje (la línea "Saldo" de cargos y abonos).
-	measure 'Saldo al cierre del mes' = VAR f = MAX(Calendario[fecha]) VAR corte = CALCULATE(MAX('Cartera cobrar histórico'[fecha_corte]), REMOVEFILTERS(Calendario), 'Cartera cobrar histórico'[fecha_corte] <= f) RETURN IF(ISBLANK(corte), BLANK(), CALCULATE([Saldo histórico por cobrar], REMOVEFILTERS(Calendario), 'Cartera cobrar histórico'[fecha_corte] = corte))
+	measure 'Saldo al cierre del mes' = VAR f = MAX(Calendario[fecha]) VAR hayDato = MIN(Calendario[fecha]) <= [Corte de ventas] VAR corte = CALCULATE(MAX('Cartera cobrar histórico'[fecha_corte]), REMOVEFILTERS(Calendario), 'Cartera cobrar histórico'[fecha_corte] <= f) RETURN IF(ISBLANK(corte) || NOT hayDato, BLANK(), CALCULATE([Saldo histórico por cobrar], REMOVEFILTERS(Calendario), 'Cartera cobrar histórico'[fecha_corte] = corte))
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
 
@@ -2871,7 +2871,7 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 	measure 'Ganancia' = [Margen bruto]
 		formatString: "Q" #,0
 		displayFolder: 18 Utilidad
-	measure 'Costo' = [Costo de ventas]
+	measure 'Costo de lo vendido' = [Costo de ventas]
 		formatString: "Q" #,0
 		displayFolder: 18 Utilidad
 	measure 'Título de Utilidad' = "Análisis de utilidad"
@@ -3125,6 +3125,13 @@ def validar_referencias(defi: Path) -> list[str]:
                 columnas_por_tabla[tabla_actual].add(m.group(2) or m.group(1))
 
     fallos: list[str] = []
+
+    # Medida con el nombre de una columna de SU tabla (DAX no distingue mayúsculas): Desktop
+    # rechaza el modelo entero con "No se puede crear la medida … ya existe una columna".
+    for nombre, ubicaciones in sorted(donde_medida.items()):
+        for tab in ubicaciones:
+            if nombre.lower() in {c.lower() for c in columnas_por_tabla.get(tab, set())}:
+                fallos.append(f"medida '{nombre}' choca con la columna homónima de '{tab}'")
 
     # Nombres de medida repetidos. Es el error que más caro sale: el TMDL es válido, el
     # generador termina en verde y Desktop revienta al abrir el modelo.

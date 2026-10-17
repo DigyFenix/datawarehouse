@@ -4,10 +4,10 @@
   "position": {
     "x": 648,
     "y": 464,
-    "z": 1900,
+    "z": 1800,
     "height": 480,
     "width": 608,
-    "tabOrder": 19
+    "tabOrder": 18
   },
   "visual": {
     "visualType": "pivotTable",
@@ -83,11 +83,11 @@
                       "Entity": "FC_Ventas"
                     }
                   },
-                  "Property": "Costo"
+                  "Property": "Costo de lo vendido"
                 }
               },
-              "queryRef": "FC_Ventas.Costo",
-              "nativeQueryRef": "Costo"
+              "queryRef": "FC_Ventas.Costo de lo vendido",
+              "nativeQueryRef": "Costo de lo vendido"
             },
             {
               "field": {

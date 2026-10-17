@@ -61,6 +61,17 @@ el seed 70 → `precio_lista`). Verificado: 137 unidades, Q 230 212 de valor, 40
 sugerencia. **9 páginas / 172 visuales validan en cero.** Gaps nuevos: G9 costo de ventas en
 Odoo, G10 lead time por proveedor.
 
+### Cartera, utilidad y cobros (cuarta tanda) — y cuentas por pagar a pedido de Edwin
+
+`consumo/powerbi/generar_paginas_cartera.js`: Cuentas por cobrar, Análisis de utilidad,
+Recuperación y cobros, Cuentas por pagar (75 visuales; CxC y CxP comparten la función).
+Modelo: columnas calculadas en ambas carteras (`Estado`, `Rango de vencimiento` fino, `Días de
+crédito`, `Días transcurridos`), días autorizados / promedio / sobregiro, límite de crédito
+(`credit_limit` nuevo en seed 70; Iron no lo configura), cargos y abonos de 12 meses, saldo al
+cierre del mes desde el histórico, `Sector` del cliente, alias `Proveedor`. Verificado: CxC
+Q 886 447,12 = Postgres; no vencido 571 070,47; CxP 14 676. **13 páginas / 247 visuales en
+cero.** Gaps nuevos: G12 vendedor en cartera; recordatorio G9 (costo 0 → utilidad vacía).
+
 ### Trampas de esta sesión (cuestan horas)
 
 1. **`stackedBarChart` no es tipo nativo** (sale «objeto visual personalizado»): el apilado es
@@ -78,6 +89,10 @@ Odoo, G10 lead time por proveedor.
    `System.Windows.Automation`): el bridge no puede. Ya quedaron guardadas.
 6. El MCP `powerbi-modeling` pide aceptar la EULA por sesión; Edwin autorizó explícitamente.
 7. `.pbi/localSettings.json` y `powerbi.zip` no se versionan (`.gitignore`).
+11. **Una medida con el nombre de una columna de su tabla (sin distinguir mayúsculas) impide
+    que Desktop abra el modelo** («No se puede crear la medida 'Costo'…»): `validar_referencias`
+    ahora lo detecta. El bridge solo dice `bridgeStatus: error`; el texto del modal se lee por
+    UI Automation.
 8. **Un filtro sobre `Calendario[fecha]` dentro de CALCULATE borra el mes del eje** (tabla
    marcada como calendario): toda ventana (`DATESBETWEEN`) va con `KEEPFILTERS`.
 9. **`renombrar_dax` prefija también la DECLARACIÓN** `column Cliente = …` → `column DM_Cliente`;

@@ -4,10 +4,10 @@
   "position": {
     "x": 336,
     "y": 464,
-    "z": 1800,
+    "z": 1700,
     "height": 232,
     "width": 296,
-    "tabOrder": 18
+    "tabOrder": 17
   },
   "visual": {
     "visualType": "barChart",
@@ -41,11 +41,11 @@
                       "Entity": "FC_Ventas"
                     }
                   },
-                  "Property": "Costo"
+                  "Property": "Costo de lo vendido"
                 }
               },
-              "queryRef": "FC_Ventas.Costo",
-              "nativeQueryRef": "Costo"
+              "queryRef": "FC_Ventas.Costo de lo vendido",
+              "nativeQueryRef": "Costo de lo vendido"
             },
             {
               "field": {
@@ -74,7 +74,7 @@
                     "Entity": "FC_Ventas"
                   }
                 },
-                "Property": "Costo"
+                "Property": "Costo de lo vendido"
               }
             },
             "direction": "Descending"
@@ -203,7 +203,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Costo"
+            "metadata": "FC_Ventas.Costo de lo vendido"
           }
         },
         {

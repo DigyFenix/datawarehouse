@@ -1048,7 +1048,7 @@ table FC_Ventas
 	measure 'Ganancia' = [Margen bruto]
 		formatString: "Q" #,0
 		displayFolder: 18 Utilidad
-	measure 'Costo' = [Costo de ventas]
+	measure 'Costo de lo vendido' = [Costo de ventas]
 		formatString: "Q" #,0
 		displayFolder: 18 Utilidad
 	measure 'Título de Utilidad' = "Análisis de utilidad"

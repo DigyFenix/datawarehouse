@@ -20,13 +20,13 @@
                 "Measure": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "FC_Ventas"
+                      "Entity": "FC_Cartera por pagar"
                     }
                   },
                   "Property": "Título de Cuentas por pagar"
                 }
               },
-              "queryRef": "FC_Ventas.Título de Cuentas por pagar",
+              "queryRef": "FC_Cartera por pagar.Título de Cuentas por pagar",
               "nativeQueryRef": "Título de Cuentas por pagar"
             }
           ]
