@@ -1024,6 +1024,36 @@ table FC_Ventas
 	measure 'Título de Análisis de inventario' = "Análisis de inventario"
 		displayFolder: _Narrativa
 
+	/// Cargos del mes = facturación con IVA de los últimos 12 meses, por mes del eje.
+	measure 'Cargos del mes' = CALCULATE([Ventas netas con IVA], KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+
+	/// Abonos del mes = cobros de clientes de los últimos 12 meses, por mes del eje.
+	measure 'Abonos del mes' = CALCULATE([Cobros de clientes], KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+
+	measure 'Cargos totales 12 meses' = CALCULATE([Ventas netas con IVA], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+	measure 'Abonos totales 12 meses' = CALCULATE([Cobros de clientes], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+	measure 'Cargos menos abonos 12 meses' = [Cargos totales 12 meses] - [Abonos totales 12 meses]
+		formatString: "Q" #,0;-"Q" #,0;"Q" 0
+		displayFolder: 16 Cobros
+
+	/// Utilidad: nombres como los muestra Kraken.
+	measure 'Ganancia' = [Margen bruto]
+		formatString: "Q" #,0
+		displayFolder: 18 Utilidad
+	measure 'Costo' = [Costo de ventas]
+		formatString: "Q" #,0
+		displayFolder: 18 Utilidad
+	measure 'Título de Utilidad' = "Análisis de utilidad"
+		displayFolder: _Narrativa
+
 	partition FC_Ventas = m
 		mode: import
 		source =

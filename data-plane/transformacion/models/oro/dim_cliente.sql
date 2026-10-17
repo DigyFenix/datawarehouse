@@ -19,6 +19,7 @@ select
     d.nit,
     d.grupo_codigo,
     d.condicion_pago_codigo,
+    d.limite_credito,
     d.pais,
     d.region,
     d.es_proveedor                                    as es_tambien_proveedor,
@@ -59,6 +60,6 @@ union all
 -- MIEMBRO NO DEFINIDO: lo toma el hecho cuando su referencia no existe en la dimensión.
 select
     {{ clave_no_definido() }}, 'GLOBAL', {{ codigo_no_definido() }}, {{ nombre_no_definido() }},
-    null, null, null, null, null, false, false, true,
+    null, null, null, null, null, null, false, false, true,
     null, null, null, null,
     {{ columnas_vigencia() }}

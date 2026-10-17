@@ -92,6 +92,11 @@ table DM_Proveedor
 		summarizeBy: none
 		sourceColumn: es_vigente
 
+	/// Alias legible para encabezados de matrices.
+	column Proveedor = DM_Proveedor[nombre]
+		dataType: string
+		summarizeBy: none
+
 	partition DM_Proveedor = m
 		mode: import
 		source =

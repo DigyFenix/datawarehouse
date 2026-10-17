@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Cliente.clase_abc_actual_nombre",
-              "nativeQueryRef": "clase_abc_actual_nombre"
+              "nativeQueryRef": "clase_abc_actual_nombre",
+              "active": true
             }
           ]
         },

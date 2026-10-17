@@ -23,6 +23,7 @@ select
     (datos->>'CardType') = 'S'                        as es_proveedor,
     nullif(datos->>'GroupCode', '')                   as grupo_codigo,
     nullif(datos->>'GroupNum', '')                    as condicion_pago_codigo,
+    (nullif(datos->>'CreditLine', ''))::numeric(18,4) as limite_credito,
     nullif(trim(datos->>'Currency'), '')              as moneda_codigo,
     nullif(trim(datos->>'Country'), '')               as pais,
     nullif(datos->>'Territory', '')                   as region,
@@ -49,6 +50,7 @@ select
     case when jsonb_typeof(datos->'property_payment_term_id') = 'object'
          then (select v from jsonb_each_text(datos->'property_payment_term_id') as t(k, v) limit 1)
          else nullif(datos->>'property_payment_term_id', '') end as condicion_pago_codigo,
+    (nullif(datos->>'credit_limit', ''))::numeric(18,4) as limite_credito,
     null::text                                        as moneda_codigo,
     nullif(datos->>'country_id', '')                  as pais,
     null::text                                        as region,

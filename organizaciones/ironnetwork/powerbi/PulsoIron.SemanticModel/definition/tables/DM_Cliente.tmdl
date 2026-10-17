@@ -37,6 +37,12 @@ table DM_Cliente
 		summarizeBy: none
 		sourceColumn: condicion_pago_codigo
 
+	column limite_credito
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: limite_credito
+		formatString: #,0.00
+
 	column pais
 		dataType: string
 		summarizeBy: none
@@ -143,6 +149,11 @@ table DM_Cliente
 	column 'Rango de meses sin compra orden' = VAR n = DM_Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), 9, n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 12, 3, 4)
 		dataType: int64
 		isHidden
+		summarizeBy: none
+
+	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días).
+	column Sector = LOOKUPVALUE('DM_Condición de pago'[nombre], 'DM_Condición de pago'[condicion_pago_codigo], DM_Cliente[condicion_pago_codigo], 'DM_Condición de pago'[empresa_id], DM_Cliente[empresa_id])
+		dataType: string
 		summarizeBy: none
 
 	partition DM_Cliente = m

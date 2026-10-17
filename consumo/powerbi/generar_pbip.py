@@ -2686,6 +2686,213 @@ TABLAS_EXTRA["MD_Lead time"] = """table 'MD_Lead time'
 \t\tsource = GENERATESERIES(5, 60, 5)
 """
 
+# ---------------------------------------------------------------------------------------------
+# CUENTAS POR COBRAR / PAGAR, UTILIDAD Y COBROS (réplica de Kraken 360, sesión 28).
+# ---------------------------------------------------------------------------------------------
+MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += """
+	/// Días de crédito pactados en la partida (vencimiento − documento).
+	column 'Días de crédito' = DATEDIFF('Cartera por cobrar'[fecha_documento], 'Cartera por cobrar'[fecha_vencimiento], DAY)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Días desde el documento hasta el corte.
+	column 'Días transcurridos' = DATEDIFF('Cartera por cobrar'[fecha_documento], 'Cartera por cobrar'[fecha_corte], DAY)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Vencido / No vencido (días vencido positivos = vencido; negativos = días que faltan).
+	column Estado = IF('Cartera por cobrar'[dias_vencido] > 0, "Vencido", "No vencido")
+		dataType: string
+		summarizeBy: none
+
+	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+).
+	column 'Rango de vencimiento' = VAR d = 'Cartera por cobrar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "91+ días", d > 60, "61-90 días", d > 30, "31-60 días", d > 15, "16-30 días", d > 0, "1-15 días", d > -8, "Próx. 7 días", d > -15, "Próx. 8-14 días", d > -22, "Próx. 15-21 días", d > -31, "Próx. 22-30 días", "Próx. 31+ días")
+		dataType: string
+		summarizeBy: none
+		sortByColumn: 'Rango de vencimiento orden'
+
+	column 'Rango de vencimiento orden' = VAR d = 'Cartera por cobrar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, 10, d > 60, 9, d > 30, 8, d > 15, 7, d > 0, 6, d > -8, 5, d > -15, 4, d > -22, 3, d > -31, 2, 1)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+
+	/// Proporción del saldo que aún no vence.
+	measure '% No vencido' = DIVIDE([Saldo corriente], [Saldo por cobrar])
+		formatString: 0%
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Límite de crédito autorizado (suma de los clientes en contexto; en Odoo `credit_limit`, en SAP B1 `CreditLine`).
+	measure 'Límite de crédito' = SUM(Cliente[limite_credito])
+		formatString: "Q" #,0
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Saldo por cobrar sobre el límite de crédito.
+	measure '% Límite utilizado' = DIVIDE([Saldo por cobrar], [Límite de crédito])
+		formatString: 0%
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Promedio simple de los días de crédito pactados en las partidas abiertas.
+	measure 'Días autorizados' = AVERAGEX('Cartera por cobrar', 'Cartera por cobrar'[Días de crédito])
+		formatString: #,0.0
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Antigüedad promedio de la cartera abierta, ponderada por saldo (días desde el documento).
+	measure 'Días promedio de cartera' = DIVIDE(SUMX('Cartera por cobrar', 'Cartera por cobrar'[saldo_pendiente] * 'Cartera por cobrar'[Días transcurridos]), [Saldo por cobrar])
+		formatString: #,0
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Cuántos días por encima (+) o por debajo (−) del crédito autorizado está la cartera.
+	measure 'Sobregiro en días' = [Días promedio de cartera] - [Días autorizados]
+		formatString: +#,0;-#,0;0
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Detalle de la partida (una fila por documento): fecha, días, estado, rango.
+	measure 'Fecha de factura' = MAX('Cartera por cobrar'[fecha_documento])
+		formatString: dd/MM/yyyy
+		displayFolder: 15 Cuentas por cobrar
+	measure 'Días de crédito de la partida' = MAX('Cartera por cobrar'[Días de crédito])
+		formatString: 0
+		displayFolder: 15 Cuentas por cobrar
+	measure 'Días transcurridos de la partida' = MAX('Cartera por cobrar'[Días transcurridos])
+		formatString: 0
+		displayFolder: 15 Cuentas por cobrar
+	measure 'Estado de la partida' = MAX('Cartera por cobrar'[Estado])
+		displayFolder: 15 Cuentas por cobrar
+	measure 'Rango de la partida' = MAX('Cartera por cobrar'[Rango de vencimiento])
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Saldo histórico al último corte disponible dentro del mes del eje (la línea "Saldo" de cargos y abonos).
+	measure 'Saldo al cierre del mes' = VAR f = MAX(Calendario[fecha]) VAR corte = CALCULATE(MAX('Cartera cobrar histórico'[fecha_corte]), REMOVEFILTERS(Calendario), 'Cartera cobrar histórico'[fecha_corte] <= f) RETURN IF(ISBLANK(corte), BLANK(), CALCULATE([Saldo histórico por cobrar], REMOVEFILTERS(Calendario), 'Cartera cobrar histórico'[fecha_corte] = corte))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+
+	/// Títulos.
+	measure 'Título de Cuentas por cobrar' = "Cuentas por cobrar"
+		displayFolder: _Narrativa
+	measure 'Título de Cobros' = "Recuperación y cobros"
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["hecho_cartera_pagar"] += """
+	/// Días de crédito pactados en la partida (vencimiento − documento).
+	column 'Días de crédito' = DATEDIFF('Cartera por pagar'[fecha_documento], 'Cartera por pagar'[fecha_vencimiento], DAY)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Días desde el documento hasta el corte.
+	column 'Días transcurridos' = DATEDIFF('Cartera por pagar'[fecha_documento], 'Cartera por pagar'[fecha_corte], DAY)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Vencido / No vencido (días vencido positivos = vencido; negativos = días que faltan).
+	column Estado = IF('Cartera por pagar'[dias_vencido] > 0, "Vencido", "No vencido")
+		dataType: string
+		summarizeBy: none
+
+	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+).
+	column 'Rango de vencimiento' = VAR d = 'Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "91+ días", d > 60, "61-90 días", d > 30, "31-60 días", d > 15, "16-30 días", d > 0, "1-15 días", d > -8, "Próx. 7 días", d > -15, "Próx. 8-14 días", d > -22, "Próx. 15-21 días", d > -31, "Próx. 22-30 días", "Próx. 31+ días")
+		dataType: string
+		summarizeBy: none
+		sortByColumn: 'Rango de vencimiento orden'
+
+	column 'Rango de vencimiento orden' = VAR d = 'Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, 10, d > 60, 9, d > 30, 8, d > 15, 7, d > 0, 6, d > -8, 5, d > -15, 4, d > -22, 3, d > -31, 2, 1)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+
+	/// Saldo por pagar que aún no vence.
+	measure 'Por pagar no vencido' = CALCULATE([Saldo por pagar], KEEPFILTERS('Antigüedad'[es_vencido] = FALSE))
+		formatString: "Q" #,0
+		displayFolder: 17 Cuentas por pagar
+
+	measure '% Por pagar no vencido' = DIVIDE([Por pagar no vencido], [Saldo por pagar])
+		formatString: 0%
+		displayFolder: 17 Cuentas por pagar
+
+	/// Días de crédito promedio que dan los proveedores en las partidas abiertas.
+	measure 'Días autorizados por proveedores' = AVERAGEX('Cartera por pagar', 'Cartera por pagar'[Días de crédito])
+		formatString: #,0.0
+		displayFolder: 17 Cuentas por pagar
+
+	/// Antigüedad promedio de la deuda abierta, ponderada por saldo.
+	measure 'Días promedio por pagar' = DIVIDE(SUMX('Cartera por pagar', 'Cartera por pagar'[saldo_pendiente_absoluto] * 'Cartera por pagar'[Días transcurridos]), [Saldo por pagar])
+		formatString: #,0
+		displayFolder: 17 Cuentas por pagar
+
+	measure 'Sobregiro en días por pagar' = [Días promedio por pagar] - [Días autorizados por proveedores]
+		formatString: +#,0;-#,0;0
+		displayFolder: 17 Cuentas por pagar
+
+	/// Detalle de la partida por pagar.
+	measure 'Fecha de factura por pagar' = MAX('Cartera por pagar'[fecha_documento])
+		formatString: dd/MM/yyyy
+		displayFolder: 17 Cuentas por pagar
+	measure 'Días de crédito de la partida por pagar' = MAX('Cartera por pagar'[Días de crédito])
+		formatString: 0
+		displayFolder: 17 Cuentas por pagar
+	measure 'Días transcurridos de la partida por pagar' = MAX('Cartera por pagar'[Días transcurridos])
+		formatString: 0
+		displayFolder: 17 Cuentas por pagar
+	measure 'Estado de la partida por pagar' = MAX('Cartera por pagar'[Estado])
+		displayFolder: 17 Cuentas por pagar
+	measure 'Rango de la partida por pagar' = MAX('Cartera por pagar'[Rango de vencimiento])
+		displayFolder: 17 Cuentas por pagar
+
+	measure 'Título de Cuentas por pagar' = "Cuentas por pagar"
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
+	/// Cargos del mes = facturación con IVA de los últimos 12 meses, por mes del eje.
+	measure 'Cargos del mes' = CALCULATE([Ventas netas con IVA], KEEPFILTERS(DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+
+	/// Abonos del mes = cobros de clientes de los últimos 12 meses, por mes del eje.
+	measure 'Abonos del mes' = CALCULATE([Cobros de clientes], KEEPFILTERS(DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+
+	measure 'Cargos totales 12 meses' = CALCULATE([Ventas netas con IVA], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+	measure 'Abonos totales 12 meses' = CALCULATE([Cobros de clientes], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+	measure 'Cargos menos abonos 12 meses' = [Cargos totales 12 meses] - [Abonos totales 12 meses]
+		formatString: "Q" #,0;-"Q" #,0;"Q" 0
+		displayFolder: 16 Cobros
+
+	/// Utilidad: nombres como los muestra Kraken.
+	measure 'Ganancia' = [Margen bruto]
+		formatString: "Q" #,0
+		displayFolder: 18 Utilidad
+	measure 'Costo' = [Costo de ventas]
+		formatString: "Q" #,0
+		displayFolder: 18 Utilidad
+	measure 'Título de Utilidad' = "Análisis de utilidad"
+		displayFolder: _Narrativa
+"""
+
+MEDIDAS_POR_TABLA["dim_cliente"] += r"""
+	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días).
+	column Sector = LOOKUPVALUE('Condición de pago'[nombre], 'Condición de pago'[condicion_pago_codigo], Cliente[condicion_pago_codigo], 'Condición de pago'[empresa_id], Cliente[empresa_id])
+		dataType: string
+		summarizeBy: none
+"""
+
+MEDIDAS_POR_TABLA.setdefault("dim_proveedor", "")
+MEDIDAS_POR_TABLA["dim_proveedor"] += r"""
+	/// Alias legible para encabezados de matrices.
+	column Proveedor = Proveedor[nombre]
+		dataType: string
+		summarizeBy: none
+"""
+
 GRUPO_MONEDA = r"""table 'MD_Moneda de análisis'
 
 	calculationGroup

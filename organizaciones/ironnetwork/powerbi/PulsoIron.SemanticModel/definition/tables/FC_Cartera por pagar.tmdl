@@ -236,6 +236,75 @@ table 'FC_Cartera por pagar'
 		formatString: 0.0%
 		displayFolder: 03 Antigüedad
 
+	/// Días de crédito pactados en la partida (vencimiento − documento).
+	column 'Días de crédito' = DATEDIFF('FC_Cartera por pagar'[fecha_documento], 'FC_Cartera por pagar'[fecha_vencimiento], DAY)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Días desde el documento hasta el corte.
+	column 'Días transcurridos' = DATEDIFF('FC_Cartera por pagar'[fecha_documento], 'FC_Cartera por pagar'[fecha_corte], DAY)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Vencido / No vencido (días vencido positivos = vencido; negativos = días que faltan).
+	column Estado = IF('FC_Cartera por pagar'[dias_vencido] > 0, "Vencido", "No vencido")
+		dataType: string
+		summarizeBy: none
+
+	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+).
+	column 'Rango de vencimiento' = VAR d = 'FC_Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "91+ días", d > 60, "61-90 días", d > 30, "31-60 días", d > 15, "16-30 días", d > 0, "1-15 días", d > -8, "Próx. 7 días", d > -15, "Próx. 8-14 días", d > -22, "Próx. 15-21 días", d > -31, "Próx. 22-30 días", "Próx. 31+ días")
+		dataType: string
+		summarizeBy: none
+		sortByColumn: 'Rango de vencimiento orden'
+
+	column 'Rango de vencimiento orden' = VAR d = 'FC_Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, 10, d > 60, 9, d > 30, 8, d > 15, 7, d > 0, 6, d > -8, 5, d > -15, 4, d > -22, 3, d > -31, 2, 1)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+
+	/// Saldo por pagar que aún no vence.
+	measure 'Por pagar no vencido' = CALCULATE([Saldo por pagar], KEEPFILTERS('DM_Antigüedad'[es_vencido] = FALSE))
+		formatString: "Q" #,0
+		displayFolder: 17 Cuentas por pagar
+
+	measure '% Por pagar no vencido' = DIVIDE([Por pagar no vencido], [Saldo por pagar])
+		formatString: 0%
+		displayFolder: 17 Cuentas por pagar
+
+	/// Días de crédito promedio que dan los proveedores en las partidas abiertas.
+	measure 'Días autorizados por proveedores' = AVERAGEX('FC_Cartera por pagar', 'FC_Cartera por pagar'[Días de crédito])
+		formatString: #,0.0
+		displayFolder: 17 Cuentas por pagar
+
+	/// Antigüedad promedio de la deuda abierta, ponderada por saldo.
+	measure 'Días promedio por pagar' = DIVIDE(SUMX('FC_Cartera por pagar', 'FC_Cartera por pagar'[saldo_pendiente_absoluto] * 'FC_Cartera por pagar'[Días transcurridos]), [Saldo por pagar])
+		formatString: #,0
+		displayFolder: 17 Cuentas por pagar
+
+	measure 'Sobregiro en días por pagar' = [Días promedio por pagar] - [Días autorizados por proveedores]
+		formatString: +#,0;-#,0;0
+		displayFolder: 17 Cuentas por pagar
+
+	/// Detalle de la partida por pagar.
+	measure 'Fecha de factura por pagar' = MAX('FC_Cartera por pagar'[fecha_documento])
+		formatString: dd/MM/yyyy
+		displayFolder: 17 Cuentas por pagar
+	measure 'Días de crédito de la partida por pagar' = MAX('FC_Cartera por pagar'[Días de crédito])
+		formatString: 0
+		displayFolder: 17 Cuentas por pagar
+	measure 'Días transcurridos de la partida por pagar' = MAX('FC_Cartera por pagar'[Días transcurridos])
+		formatString: 0
+		displayFolder: 17 Cuentas por pagar
+	measure 'Estado de la partida por pagar' = MAX('FC_Cartera por pagar'[Estado])
+		displayFolder: 17 Cuentas por pagar
+	measure 'Rango de la partida por pagar' = MAX('FC_Cartera por pagar'[Rango de vencimiento])
+		displayFolder: 17 Cuentas por pagar
+
+	measure 'Título de Cuentas por pagar' = "Cuentas por pagar"
+		displayFolder: _Narrativa
+
 	partition 'FC_Cartera por pagar' = m
 		mode: import
 		source =

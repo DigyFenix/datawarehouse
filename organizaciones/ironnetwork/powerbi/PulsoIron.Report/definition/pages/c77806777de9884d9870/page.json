@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "c77806777de9884d9870",
+  "displayName": "Cuentas por pagar",
+  "displayOption": "FitToPage",
+  "height": 960,
+  "width": 1280
+}

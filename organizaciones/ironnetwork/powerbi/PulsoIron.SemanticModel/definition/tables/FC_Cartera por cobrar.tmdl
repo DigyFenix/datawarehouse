@@ -296,6 +296,90 @@ table 'FC_Cartera por cobrar'
 	measure 'Alerta de vencido' = VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Sin cartera vencida de terceros", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " vencido de terceros hoy · " & FORMAT(p, "0.0%") & " de la cartera")
 		displayFolder: _Narrativa
 
+	/// Días de crédito pactados en la partida (vencimiento − documento).
+	column 'Días de crédito' = DATEDIFF('FC_Cartera por cobrar'[fecha_documento], 'FC_Cartera por cobrar'[fecha_vencimiento], DAY)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Días desde el documento hasta el corte.
+	column 'Días transcurridos' = DATEDIFF('FC_Cartera por cobrar'[fecha_documento], 'FC_Cartera por cobrar'[fecha_corte], DAY)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Vencido / No vencido (días vencido positivos = vencido; negativos = días que faltan).
+	column Estado = IF('FC_Cartera por cobrar'[dias_vencido] > 0, "Vencido", "No vencido")
+		dataType: string
+		summarizeBy: none
+
+	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+).
+	column 'Rango de vencimiento' = VAR d = 'FC_Cartera por cobrar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "91+ días", d > 60, "61-90 días", d > 30, "31-60 días", d > 15, "16-30 días", d > 0, "1-15 días", d > -8, "Próx. 7 días", d > -15, "Próx. 8-14 días", d > -22, "Próx. 15-21 días", d > -31, "Próx. 22-30 días", "Próx. 31+ días")
+		dataType: string
+		summarizeBy: none
+		sortByColumn: 'Rango de vencimiento orden'
+
+	column 'Rango de vencimiento orden' = VAR d = 'FC_Cartera por cobrar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, 10, d > 60, 9, d > 30, 8, d > 15, 7, d > 0, 6, d > -8, 5, d > -15, 4, d > -22, 3, d > -31, 2, 1)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+
+	/// Proporción del saldo que aún no vence.
+	measure '% No vencido' = DIVIDE([Saldo corriente], [Saldo por cobrar])
+		formatString: 0%
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Límite de crédito autorizado (suma de los clientes en contexto; en Odoo `credit_limit`, en SAP B1 `CreditLine`).
+	measure 'Límite de crédito' = SUM(DM_Cliente[limite_credito])
+		formatString: "Q" #,0
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Saldo por cobrar sobre el límite de crédito.
+	measure '% Límite utilizado' = DIVIDE([Saldo por cobrar], [Límite de crédito])
+		formatString: 0%
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Promedio simple de los días de crédito pactados en las partidas abiertas.
+	measure 'Días autorizados' = AVERAGEX('FC_Cartera por cobrar', 'FC_Cartera por cobrar'[Días de crédito])
+		formatString: #,0.0
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Antigüedad promedio de la cartera abierta, ponderada por saldo (días desde el documento).
+	measure 'Días promedio de cartera' = DIVIDE(SUMX('FC_Cartera por cobrar', 'FC_Cartera por cobrar'[saldo_pendiente] * 'FC_Cartera por cobrar'[Días transcurridos]), [Saldo por cobrar])
+		formatString: #,0
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Cuántos días por encima (+) o por debajo (−) del crédito autorizado está la cartera.
+	measure 'Sobregiro en días' = [Días promedio de cartera] - [Días autorizados]
+		formatString: +#,0;-#,0;0
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Detalle de la partida (una fila por documento): fecha, días, estado, rango.
+	measure 'Fecha de factura' = MAX('FC_Cartera por cobrar'[fecha_documento])
+		formatString: dd/MM/yyyy
+		displayFolder: 15 Cuentas por cobrar
+	measure 'Días de crédito de la partida' = MAX('FC_Cartera por cobrar'[Días de crédito])
+		formatString: 0
+		displayFolder: 15 Cuentas por cobrar
+	measure 'Días transcurridos de la partida' = MAX('FC_Cartera por cobrar'[Días transcurridos])
+		formatString: 0
+		displayFolder: 15 Cuentas por cobrar
+	measure 'Estado de la partida' = MAX('FC_Cartera por cobrar'[Estado])
+		displayFolder: 15 Cuentas por cobrar
+	measure 'Rango de la partida' = MAX('FC_Cartera por cobrar'[Rango de vencimiento])
+		displayFolder: 15 Cuentas por cobrar
+
+	/// Saldo histórico al último corte disponible dentro del mes del eje (la línea "Saldo" de cargos y abonos).
+	measure 'Saldo al cierre del mes' = VAR f = MAX(DM_Calendario[fecha]) VAR corte = CALCULATE(MAX('FC_Cartera cobrar histórico'[fecha_corte]), REMOVEFILTERS(DM_Calendario), 'FC_Cartera cobrar histórico'[fecha_corte] <= f) RETURN IF(ISBLANK(corte), BLANK(), CALCULATE([Saldo histórico por cobrar], REMOVEFILTERS(DM_Calendario), 'FC_Cartera cobrar histórico'[fecha_corte] = corte))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+
+	/// Títulos.
+	measure 'Título de Cuentas por cobrar' = "Cuentas por cobrar"
+		displayFolder: _Narrativa
+	measure 'Título de Cobros' = "Recuperación y cobros"
+		displayFolder: _Narrativa
+
 	partition 'FC_Cartera por cobrar' = m
 		mode: import
 		source =

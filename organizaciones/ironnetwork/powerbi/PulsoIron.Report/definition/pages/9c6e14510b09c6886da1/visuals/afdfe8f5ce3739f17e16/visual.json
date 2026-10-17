@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Producto.Línea",
-              "nativeQueryRef": "Línea"
+              "nativeQueryRef": "Línea",
+              "active": true
             },
             {
               "field": {
@@ -41,7 +42,8 @@
                 }
               },
               "queryRef": "DM_Producto.Producto",
-              "nativeQueryRef": "Producto"
+              "nativeQueryRef": "Producto",
+              "active": false
             }
           ]
         },

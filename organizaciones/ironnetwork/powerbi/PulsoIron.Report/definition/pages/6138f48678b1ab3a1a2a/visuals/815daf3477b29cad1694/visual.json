@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Bodega.nombre",
-              "nativeQueryRef": "nombre"
+              "nativeQueryRef": "nombre",
+              "active": true
             }
           ]
         },

@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Producto.grupo_nombre",
-              "nativeQueryRef": "grupo_nombre"
+              "nativeQueryRef": "grupo_nombre",
+              "active": true
             }
           ]
         },
