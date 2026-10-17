@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "b529f14da00000c56d3c",
+  "displayName": "Clientes recuperados",
+  "displayOption": "FitToPage",
+  "height": 960,
+  "width": 1280
+}

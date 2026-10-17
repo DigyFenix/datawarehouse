@@ -47,6 +47,11 @@ table DM_Vendedor
 		summarizeBy: none
 		sourceColumn: es_vigente
 
+	/// Alias legible para encabezados de matrices.
+	column Vendedor = DM_Vendedor[nombre]
+		dataType: string
+		summarizeBy: none
+
 	partition DM_Vendedor = m
 		mode: import
 		source =

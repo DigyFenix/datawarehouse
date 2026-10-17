@@ -339,6 +339,12 @@ table DM_Calendario
 		level 'Día de semana'
 			column: dia_semana_nombre
 
+	/// Alias legible del año para encabezados de matrices.
+	column Año = DM_Calendario[anio]
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
 	/// El período que el usuario tiene seleccionado, dicho como lo diría una persona: "agosto 2026", "2026" o "todo el histórico". Todos los títulos de página lo usan, así que nadie tiene que mirar el segmentador para saber qué está viendo.
 	measure 'Período activo' = VAR ini = MIN(DM_Calendario[fecha]) VAR fin = MAX(DM_Calendario[fecha]) VAR tini = CALCULATE(MIN(DM_Calendario[fecha]), ALL(DM_Calendario)) VAR tfin = CALCULATE(MAX(DM_Calendario[fecha]), ALL(DM_Calendario)) RETURN SWITCH(TRUE(), ini = tini && fin = tfin, "todo el histórico", YEAR(ini) = YEAR(fin) && ini = DATE(YEAR(ini), 1, 1) && fin = DATE(YEAR(fin), 12, 31), FORMAT(ini, "yyyy"), ini = DATE(YEAR(ini), MONTH(ini), 1) && fin = EOMONTH(ini, 0), FORMAT(ini, "mmmm") & " " & FORMAT(ini, "yyyy"), FORMAT(ini, "dd/MM/yyyy") & " – " & FORMAT(fin, "dd/MM/yyyy"))
 		displayFolder: _Narrativa

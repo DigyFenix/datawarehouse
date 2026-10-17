@@ -23,29 +23,11 @@
                       "Entity": "DM_Calendario"
                     }
                   },
-                  "Property": "anio"
+                  "Property": "Año"
                 }
               },
-              "queryRef": "DM_Calendario.anio",
-              "nativeQueryRef": "anio"
-            }
-          ]
-        },
-        "Columns": {
-          "projections": [
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "DM_Calendario"
-                    }
-                  },
-                  "Property": "mes_nombre_corto"
-                }
-              },
-              "queryRef": "DM_Calendario.mes_nombre_corto",
-              "nativeQueryRef": "mes_nombre_corto"
+              "queryRef": "DM_Calendario.Año",
+              "nativeQueryRef": "Año"
             }
           ]
         },
@@ -66,6 +48,24 @@
               "nativeQueryRef": "Variación vs año anterior"
             }
           ]
+        },
+        "Columns": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DM_Calendario"
+                    }
+                  },
+                  "Property": "mes_nombre_corto"
+                }
+              },
+              "queryRef": "DM_Calendario.mes_nombre_corto",
+              "nativeQueryRef": "mes_nombre_corto"
+            }
+          ]
         }
       }
     },
@@ -83,7 +83,7 @@
             "autoSizeColumnWidth": {
               "expr": {
                 "Literal": {
-                  "Value": "true"
+                  "Value": "false"
                 }
               }
             },
@@ -111,13 +111,6 @@
               "expr": {
                 "Literal": {
                   "Value": "9D"
-                }
-              }
-            },
-            "bold": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
                 }
               }
             }
@@ -219,6 +212,13 @@
               }
             },
             "columnSubtotalsLabel": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Total'"
+                }
+              }
+            },
+            "rowSubtotalsLabel": {
               "expr": {
                 "Literal": {
                   "Value": "'Total'"

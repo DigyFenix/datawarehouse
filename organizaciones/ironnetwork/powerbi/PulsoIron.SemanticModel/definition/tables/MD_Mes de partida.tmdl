@@ -1,0 +1,11 @@
+table 'MD_Mes de partida'
+
+	column 'Mes de partida'
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: [Value]
+
+	partition 'MD_Mes de partida' = calculated
+		mode: import
+		source = GENERATESERIES(-24, 0, 1)

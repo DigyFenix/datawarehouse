@@ -615,6 +615,294 @@ table FC_Ventas
 	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & ")"
 		displayFolder: _Narrativa
 
+	/// Primera compra del cliente de esta línea (sobre TODO el hecho). Base de las cohortes de clientes nuevos.
+	column primera_compra_cliente = VAR c = FC_Ventas[cliente_clave] RETURN CALCULATE(MIN(FC_Ventas[fecha_documento]), FILTER(ALL(FC_Ventas), FC_Ventas[cliente_clave] = c))
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		isHidden
+		summarizeBy: none
+
+	/// La línea pertenece al PRIMER mes de relación del cliente (venta de estreno vs recompra).
+	column es_primer_mes_cliente = EOMONTH(FC_Ventas[fecha_documento], 0) = EOMONTH(FC_Ventas[primera_compra_cliente], 0)
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+
+	/// Mes del documento (fin de mes) para contar meses distintos con compra.
+	column mes_documento = EOMONTH(FC_Ventas[fecha_documento], 0)
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		isHidden
+		summarizeBy: none
+
+	/// Compra anterior del mismo cliente (última fecha estrictamente menor). Base de los recuperados.
+	column fecha_compra_anterior_cliente = VAR c = FC_Ventas[cliente_clave] VAR f = FC_Ventas[fecha_documento] RETURN CALCULATE(MAX(FC_Ventas[fecha_documento]), FILTER(ALL(FC_Ventas), FC_Ventas[cliente_clave] = c && FC_Ventas[fecha_documento] < f))
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		isHidden
+		summarizeBy: none
+
+	/// La línea es una compra de RETORNO: el cliente llevaba 6 meses o más sin comprar.
+	column es_compra_recuperacion = NOT ISBLANK(FC_Ventas[fecha_compra_anterior_cliente]) && DATEDIFF(FC_Ventas[fecha_compra_anterior_cliente], FC_Ventas[fecha_documento], MONTH) >= 6
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+
+	/// Meses hacia atrás desde el corte que delimitan la ventana de las cohortes (segmentador "Mes de partida", -12 por defecto).
+	measure 'Meses de partida' = SELECTEDVALUE('MD_Mes de partida'[Mes de partida], -12)
+		formatString: 0
+		displayFolder: _Auxiliar
+
+	/// Primer día del mes de partida: inicio de la ventana de cohortes.
+	measure 'Inicio de ventana' = VAR f = [Corte de ventas] VAR e = EDATE(f, [Meses de partida]) RETURN DATE(YEAR(e), MONTH(e), 1)
+		formatString: dd/MM/yyyy
+		displayFolder: _Auxiliar
+
+	/// Primer día del mes que abre los últimos 12 meses (corte incluido): la "cartera de clientes" se lee siempre a 12 meses.
+	measure 'Inicio 12 meses' = VAR f = [Corte de ventas] VAR e = EDATE(f, -11) RETURN DATE(YEAR(e), MONTH(e), 1)
+		formatString: dd/MM/yyyy
+		displayFolder: _Auxiliar
+
+	/// Venta del mes en curso al corte (el "acumulado del mes" de Kraken), independiente del año seleccionado.
+	measure 'Venta del mes en curso' = VAR f = [Corte de ventas] RETURN CALCULATE([Ventas netas], DATESBETWEEN(DM_Calendario[fecha], DATE(YEAR(f), MONTH(f), 1), f))
+		formatString: "Q" #,0
+		displayFolder: 10 Seguimiento
+
+	/// Mismo tramo del mes, un año antes.
+	measure 'Venta del mes en curso año anterior' = VAR f = EDATE([Corte de ventas], -12) RETURN CALCULATE([Ventas netas], DATESBETWEEN(DM_Calendario[fecha], DATE(YEAR(f), MONTH(f), 1), f))
+		formatString: "Q" #,0
+		displayFolder: 10 Seguimiento
+
+	/// Variación del mes en curso contra el mismo tramo del año anterior.
+	measure 'Variación del mes en curso vs año anterior' = DIVIDE([Venta del mes en curso] - [Venta del mes en curso año anterior], [Venta del mes en curso año anterior])
+		formatString: +0%;-0%;0%
+		displayFolder: 10 Seguimiento
+
+	/// Diferencia absoluta del acumulado del año contra el acumulado del año anterior a la misma fecha (la "Variación" de la matriz de oportunidades).
+	measure 'Diferencia acumulada vs año anterior' = IF(ISBLANK([Ventas acumuladas año]) && ISBLANK([Ventas acumuladas año anterior]), BLANK(), [Ventas acumuladas año] - [Ventas acumuladas año anterior])
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Icono de la matriz de oportunidades: ✔ crece, ✖ cae, – sin comparativo.
+	measure 'Semáforo acumulado' = VAR d = [Diferencia acumulada vs año anterior] RETURN SWITCH(TRUE(), ISBLANK(d), "–", d < 0, "✖", "✔")
+		displayFolder: 11 Clientes
+
+	/// Atrición: lo que falta para igualar el acumulado del año anterior (0 si ya se superó).
+	measure 'Faltante vs año anterior' = VAR d = [Diferencia acumulada vs año anterior] RETURN IF(ISBLANK(d), BLANK(), MAX(0, -d))
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Penetración: lo vendido por encima del acumulado del año anterior (0 si aún no se alcanza).
+	measure 'Superávit vs año anterior' = VAR d = [Diferencia acumulada vs año anterior] RETURN IF(ISBLANK(d), BLANK(), MAX(0, d))
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Base de la barra de oportunidad según la vista elegida: Atrición = acumulado actual; Penetración = acumulado del año anterior.
+	measure 'Venta actual' = IF(SELECTEDVALUE('MD_Vista de oportunidad'[Vista], "Atrición") = "Atrición", [Ventas acumuladas año], [Ventas acumuladas año anterior])
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Tramo rojo (solo en Atrición): faltante contra el año anterior.
+	measure 'Faltante de venta' = IF(SELECTEDVALUE('MD_Vista de oportunidad'[Vista], "Atrición") = "Atrición", [Faltante vs año anterior], BLANK())
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Tramo verde (solo en Penetración): superávit sobre el año anterior.
+	measure 'Superávit de venta' = IF(SELECTEDVALUE('MD_Vista de oportunidad'[Vista], "Atrición") = "Penetración", [Superávit vs año anterior], BLANK())
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Fondo gris del ranking de vendedores en acumulado del año.
+	measure 'Resto a máximo vendedor acumulado' = VAR m = MAXX(ALLSELECTED(DM_Vendedor[nombre]), [Ventas acumuladas año]) VAR v = [Ventas acumuladas año] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Venta de los últimos 12 meses al corte. Respeta el mes del eje cuando lo hay (intersección), así sirve para el KPI y para el desglose mensual.
+	measure 'Ventas 12 meses' = CALCULATE([Ventas netas], KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: "Q" #,0
+		displayFolder: 12 Doce meses
+
+	/// Los mismos 12 meses, un año antes (gris de referencia del desglose mensual).
+	measure 'Ventas 12 meses año anterior' = CALCULATE([Ventas netas], KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], EDATE([Inicio 12 meses], -12), EDATE([Corte de ventas], -12))))
+		formatString: "Q" #,0
+		displayFolder: 12 Doce meses
+
+	/// Clientes distintos con venta en los últimos 12 meses.
+	measure 'Clientes 12 meses' = CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])), KEEPFILTERS(FC_Ventas[monto_sin_impuesto] <> 0))
+		formatString: #,0
+		displayFolder: 12 Doce meses
+
+	/// Productos distintos vendidos en los últimos 12 meses.
+	measure 'Productos 12 meses' = CALCULATE(DISTINCTCOUNT(FC_Ventas[producto_clave]), KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: #,0
+		displayFolder: 12 Doce meses
+
+	/// Fondo gris del ranking por cliente a 12 meses.
+	measure 'Resto a máximo cliente 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Cliente[nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por producto a 12 meses.
+	measure 'Resto a máximo producto 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Producto[nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por vendedor a 12 meses.
+	measure 'Resto a máximo vendedor 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Vendedor[nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por sector a 12 meses.
+	measure 'Resto a máximo sector 12 meses' = VAR m = MAXX(ALLSELECTED('DM_Condición de pago'[nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por línea a 12 meses.
+	measure 'Resto a máximo línea 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por categoría a 12 meses.
+	measure 'Resto a máximo categoría 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Cliente[clase_abc_actual_nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Clientes nuevos: primera compra dentro de la ventana. Ventana = mes de partida → corte.
+	measure 'Clientes nuevos en ventana' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FILTER(ALL(FC_Ventas[primera_compra_cliente]), FC_Ventas[primera_compra_cliente] >= ini && FC_Ventas[primera_compra_cliente] <= fin))
+		formatString: #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Venta de esos clientes dentro de la ventana.
+	measure 'Ventas de clientes nuevos en ventana' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], DATESBETWEEN(DM_Calendario[fecha], ini, fin), FILTER(ALL(FC_Ventas[primera_compra_cliente]), FC_Ventas[primera_compra_cliente] >= ini && FC_Ventas[primera_compra_cliente] <= fin))
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Venta total de esos clientes (todo el histórico cargado, no solo la ventana).
+	measure 'Ventas totales de clientes nuevos' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], REMOVEFILTERS(DM_Calendario), FILTER(ALL(FC_Ventas[primera_compra_cliente]), FC_Ventas[primera_compra_cliente] >= ini && FC_Ventas[primera_compra_cliente] <= fin))
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Venta por mes de esos clientes (eje = mes del calendario, recortado a la ventana).
+	measure 'Ventas de clientes nuevos del mes' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], ini, fin)), FILTER(ALL(FC_Ventas[primera_compra_cliente]), FC_Ventas[primera_compra_cliente] >= ini && FC_Ventas[primera_compra_cliente] <= fin))
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Cuántos clientes nuevos aporta cada mes (línea del gráfico): los que estrenan en ese mes.
+	measure 'Clientes nuevos del mes' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], ini, fin)), FC_Ventas[es_primer_mes_cliente] = TRUE())
+		formatString: #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Venta de nuevos en su primer mes (barra oscura de la retención).
+	measure 'Venta de nuevos en su primer mes' = CALCULATE([Ventas de clientes nuevos del mes], FC_Ventas[es_primer_mes_cliente] = TRUE())
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Venta de nuevos en meses posteriores al de estreno (recompra: la prueba de retención).
+	measure 'Venta de nuevos en recompra' = CALCULATE([Ventas de clientes nuevos del mes], NOT FC_Ventas[es_primer_mes_cliente] = TRUE())
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Retenidos: nuevos de la ventana que volvieron a comprar en un mes distinto al de estreno.
+	measure 'Clientes nuevos retenidos' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FILTER(ALL(FC_Ventas[primera_compra_cliente]), FC_Ventas[primera_compra_cliente] >= ini && FC_Ventas[primera_compra_cliente] <= fin), NOT FC_Ventas[es_primer_mes_cliente] = TRUE())
+		formatString: #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Los que no volvieron a comprar.
+	measure 'Clientes nuevos no retenidos' = [Clientes nuevos en ventana] - [Clientes nuevos retenidos]
+		formatString: #,0
+		displayFolder: 13 Clientes nuevos
+
+	measure '% Retención de nuevos' = DIVIDE([Clientes nuevos retenidos], [Clientes nuevos en ventana])
+		formatString: 0%
+		displayFolder: 13 Clientes nuevos
+
+	measure '% Abandono de nuevos' = DIVIDE([Clientes nuevos no retenidos], [Clientes nuevos en ventana])
+		formatString: 0%
+		displayFolder: 13 Clientes nuevos
+
+	/// Venta en ventana de los nuevos retenidos (por cliente deja en blanco a los no retenidos: la tabla los omite sola).
+	measure 'Ventas de nuevos retenidos' = IF([Clientes nuevos retenidos] > 0, [Ventas de clientes nuevos en ventana])
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Venta en ventana de los nuevos que no volvieron.
+	measure 'Ventas de nuevos no retenidos' = IF([Clientes nuevos en ventana] > 0 && [Clientes nuevos retenidos] = 0, [Ventas de clientes nuevos en ventana])
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes nuevos
+
+	/// Clientes recuperados: con una compra de retorno (6+ meses sin comprar) dentro de la ventana. Ventana = mes de partida → corte.
+	measure 'Clientes recuperados en ventana' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FILTER(VALUES(FC_Ventas[cliente_clave]), CALCULATE(COUNTROWS(FC_Ventas), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FC_Ventas[es_compra_recuperacion] = TRUE()) > 0))
+		formatString: #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Venta de esos clientes dentro de la ventana.
+	measure 'Ventas de clientes recuperados en ventana' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], DATESBETWEEN(DM_Calendario[fecha], ini, fin), FILTER(VALUES(FC_Ventas[cliente_clave]), CALCULATE(COUNTROWS(FC_Ventas), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FC_Ventas[es_compra_recuperacion] = TRUE()) > 0))
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Venta total de esos clientes (todo el histórico cargado, no solo la ventana).
+	measure 'Ventas totales de clientes recuperados' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], REMOVEFILTERS(DM_Calendario), FILTER(VALUES(FC_Ventas[cliente_clave]), CALCULATE(COUNTROWS(FC_Ventas), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FC_Ventas[es_compra_recuperacion] = TRUE()) > 0))
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Venta por mes de esos clientes (eje = mes del calendario, recortado a la ventana).
+	measure 'Ventas de clientes recuperados del mes' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], ini, fin)), FILTER(VALUES(FC_Ventas[cliente_clave]), CALCULATE(COUNTROWS(FC_Ventas), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FC_Ventas[es_compra_recuperacion] = TRUE()) > 0))
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Cuántos clientes recuperados aporta cada mes (línea del gráfico): los que estrenan en ese mes.
+	measure 'Clientes recuperados del mes' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], ini, fin)), FC_Ventas[es_compra_recuperacion] = TRUE())
+		formatString: #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Venta de recuperados en su mes de retorno (barra oscura de la retención).
+	measure 'Venta de recuperados en su mes de retorno' = CALCULATE([Ventas de clientes recuperados del mes], FC_Ventas[es_compra_recuperacion] = TRUE())
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Venta de recuperados en meses posteriores al de estreno (recompra: la prueba de retención).
+	measure 'Venta de recuperados en recompra' = CALCULATE([Ventas de clientes recuperados del mes], NOT FC_Ventas[es_compra_recuperacion] = TRUE())
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Retenidos: recuperados de la ventana que volvieron a comprar en un mes distinto al de estreno.
+	measure 'Clientes recuperados retenidos' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(FC_Ventas[cliente_clave]), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FILTER(VALUES(FC_Ventas[cliente_clave]), CALCULATE(COUNTROWS(FC_Ventas), DATESBETWEEN(DM_Calendario[fecha], ini, fin), FC_Ventas[es_compra_recuperacion] = TRUE()) > 0), NOT FC_Ventas[es_compra_recuperacion] = TRUE())
+		formatString: #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Los que no volvieron a comprar.
+	measure 'Clientes recuperados no retenidos' = [Clientes recuperados en ventana] - [Clientes recuperados retenidos]
+		formatString: #,0
+		displayFolder: 13 Clientes recuperados
+
+	measure '% Retención de recuperados' = DIVIDE([Clientes recuperados retenidos], [Clientes recuperados en ventana])
+		formatString: 0%
+		displayFolder: 13 Clientes recuperados
+
+	measure '% Abandono de recuperados' = DIVIDE([Clientes recuperados no retenidos], [Clientes recuperados en ventana])
+		formatString: 0%
+		displayFolder: 13 Clientes recuperados
+
+	/// Venta en ventana de los recuperados retenidos (por cliente deja en blanco a los no retenidos: la tabla los omite sola).
+	measure 'Ventas de recuperados retenidos' = IF([Clientes recuperados retenidos] > 0, [Ventas de clientes recuperados en ventana])
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Venta en ventana de los recuperados que no volvieron.
+	measure 'Ventas de recuperados no retenidos' = IF([Clientes recuperados en ventana] > 0 && [Clientes recuperados retenidos] = 0, [Ventas de clientes recuperados en ventana])
+		formatString: "Q" #,0
+		displayFolder: 13 Clientes recuperados
+
+	/// Títulos del dashboard de clientes.
+	measure 'Título de Matriz de oportunidades' = "Matriz de oportunidades"
+		displayFolder: _Narrativa
+	measure 'Título de Cartera de clientes' = "Cartera de clientes"
+		displayFolder: _Narrativa
+	measure 'Título de Clientes nuevos' = "Clientes nuevos"
+		displayFolder: _Narrativa
+	measure 'Título de Clientes recuperados' = "Clientes recuperados"
+		displayFolder: _Narrativa
+
 	partition FC_Ventas = m
 		mode: import
 		source =

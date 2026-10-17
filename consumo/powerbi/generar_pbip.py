@@ -258,6 +258,15 @@ def _renombra_linea(linea: str) -> str:
     return "".join(out)
 
 
+def alias_columnas(tmdl: str) -> str:
+    """Las columnas alias `column Cliente = Cliente[nombre]` se declaran con el nombre de negocio,
+    que coincide con el nombre corto de la tabla; renombrar_dax lo convierte en DM_Cliente en
+    la DECLARACIÓN también. Aquí se devuelve el nombre al encabezado (la referencia DAX de la
+    derecha queda correctamente con prefijo)."""
+    import re as _re
+    return _re.sub(r"^(\t+column )DM_(\w+)( = )", r"\1\2\3", tmdl, flags=_re.M)
+
+
 def renombrar_dax(bloque: str) -> str:
     """Aplica los prefijos DM_/FC_ a las referencias de tabla dentro de expresiones DAX."""
     listo = []
@@ -1998,6 +2007,12 @@ MEDIDAS_POR_TABLA["tipo_cambio"] = r"""
 _ABR = dax_importe_abreviado
 
 MEDIDAS_POR_TABLA["dim_tiempo"] = rf"""
+	/// Alias legible del año para encabezados de matrices.
+	column Año = Calendario[anio]
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
 	/// El período que el usuario tiene seleccionado, dicho como lo diría una persona: "agosto 2026", "2026" o "todo el histórico". Todos los títulos de página lo usan, así que nadie tiene que mirar el segmentador para saber qué está viendo.
 	measure 'Período activo' = VAR ini = MIN(Calendario[fecha]) VAR fin = MAX(Calendario[fecha]) VAR tini = CALCULATE(MIN(Calendario[fecha]), ALL(Calendario)) VAR tfin = CALCULATE(MAX(Calendario[fecha]), ALL(Calendario)) RETURN SWITCH(TRUE(), ini = tini && fin = tfin, "todo el histórico", YEAR(ini) = YEAR(fin) && ini = DATE(YEAR(ini), 1, 1) && fin = DATE(YEAR(fin), 12, 31), FORMAT(ini, "yyyy"), ini = DATE(YEAR(ini), MONTH(ini), 1) && fin = EOMONTH(ini, 0), FORMAT(ini, "mmmm") & " " & FORMAT(ini, "yyyy"), FORMAT(ini, "dd/MM/yyyy") & " – " & FORMAT(fin, "dd/MM/yyyy"))
 		displayFolder: _Narrativa
@@ -2201,6 +2216,323 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 	/// Subtítulo del seguimiento: "al 16 oct (52%)" — corte real y fracción del mes transcurrida.
 	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & ")"
 		displayFolder: _Narrativa
+"""
+
+# ---------------------------------------------------------------------------------------------
+# DASHBOARD DE CLIENTES (réplica de Kraken 360, sesión 28): matriz de oportunidades, cartera de
+# 12 meses, cohortes de clientes nuevos y recuperados. Columnas calculadas en el hecho y en
+# Cliente + medidas de ventana (mes de partida → corte) y de 12 meses.
+# ---------------------------------------------------------------------------------------------
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
+	/// Primera compra del cliente de esta línea (sobre TODO el hecho). Base de las cohortes de clientes nuevos.
+	column primera_compra_cliente = VAR c = Ventas[cliente_clave] RETURN CALCULATE(MIN(Ventas[fecha_documento]), FILTER(ALL(Ventas), Ventas[cliente_clave] = c))
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		isHidden
+		summarizeBy: none
+
+	/// La línea pertenece al PRIMER mes de relación del cliente (venta de estreno vs recompra).
+	column es_primer_mes_cliente = EOMONTH(Ventas[fecha_documento], 0) = EOMONTH(Ventas[primera_compra_cliente], 0)
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+
+	/// Mes del documento (fin de mes) para contar meses distintos con compra.
+	column mes_documento = EOMONTH(Ventas[fecha_documento], 0)
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		isHidden
+		summarizeBy: none
+
+	/// Compra anterior del mismo cliente (última fecha estrictamente menor). Base de los recuperados.
+	column fecha_compra_anterior_cliente = VAR c = Ventas[cliente_clave] VAR f = Ventas[fecha_documento] RETURN CALCULATE(MAX(Ventas[fecha_documento]), FILTER(ALL(Ventas), Ventas[cliente_clave] = c && Ventas[fecha_documento] < f))
+		dataType: dateTime
+		formatString: dd/MM/yyyy
+		isHidden
+		summarizeBy: none
+
+	/// La línea es una compra de RETORNO: el cliente llevaba 6 meses o más sin comprar.
+	column es_compra_recuperacion = NOT ISBLANK(Ventas[fecha_compra_anterior_cliente]) && DATEDIFF(Ventas[fecha_compra_anterior_cliente], Ventas[fecha_documento], MONTH) >= 6
+		dataType: boolean
+		isHidden
+		summarizeBy: none
+
+	/// Meses hacia atrás desde el corte que delimitan la ventana de las cohortes (segmentador "Mes de partida", -12 por defecto).
+	measure 'Meses de partida' = SELECTEDVALUE('MD_Mes de partida'[Mes de partida], -12)
+		formatString: 0
+		displayFolder: _Auxiliar
+
+	/// Primer día del mes de partida: inicio de la ventana de cohortes.
+	measure 'Inicio de ventana' = VAR f = [Corte de ventas] VAR e = EDATE(f, [Meses de partida]) RETURN DATE(YEAR(e), MONTH(e), 1)
+		formatString: dd/MM/yyyy
+		displayFolder: _Auxiliar
+
+	/// Primer día del mes que abre los últimos 12 meses (corte incluido): la "cartera de clientes" se lee siempre a 12 meses.
+	measure 'Inicio 12 meses' = VAR f = [Corte de ventas] VAR e = EDATE(f, -11) RETURN DATE(YEAR(e), MONTH(e), 1)
+		formatString: dd/MM/yyyy
+		displayFolder: _Auxiliar
+
+	/// Venta del mes en curso al corte (el "acumulado del mes" de Kraken), independiente del año seleccionado.
+	measure 'Venta del mes en curso' = VAR f = [Corte de ventas] RETURN CALCULATE([Ventas netas], DATESBETWEEN(Calendario[fecha], DATE(YEAR(f), MONTH(f), 1), f))
+		formatString: "Q" #,0
+		displayFolder: 10 Seguimiento
+
+	/// Mismo tramo del mes, un año antes.
+	measure 'Venta del mes en curso año anterior' = VAR f = EDATE([Corte de ventas], -12) RETURN CALCULATE([Ventas netas], DATESBETWEEN(Calendario[fecha], DATE(YEAR(f), MONTH(f), 1), f))
+		formatString: "Q" #,0
+		displayFolder: 10 Seguimiento
+
+	/// Variación del mes en curso contra el mismo tramo del año anterior.
+	measure 'Variación del mes en curso vs año anterior' = DIVIDE([Venta del mes en curso] - [Venta del mes en curso año anterior], [Venta del mes en curso año anterior])
+		formatString: +0%;-0%;0%
+		displayFolder: 10 Seguimiento
+
+	/// Diferencia absoluta del acumulado del año contra el acumulado del año anterior a la misma fecha (la "Variación" de la matriz de oportunidades).
+	measure 'Diferencia acumulada vs año anterior' = IF(ISBLANK([Ventas acumuladas año]) && ISBLANK([Ventas acumuladas año anterior]), BLANK(), [Ventas acumuladas año] - [Ventas acumuladas año anterior])
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Icono de la matriz de oportunidades: ✔ crece, ✖ cae, – sin comparativo.
+	measure 'Semáforo acumulado' = VAR d = [Diferencia acumulada vs año anterior] RETURN SWITCH(TRUE(), ISBLANK(d), "–", d < 0, "✖", "✔")
+		displayFolder: 11 Clientes
+
+	/// Atrición: lo que falta para igualar el acumulado del año anterior (0 si ya se superó).
+	measure 'Faltante vs año anterior' = VAR d = [Diferencia acumulada vs año anterior] RETURN IF(ISBLANK(d), BLANK(), MAX(0, -d))
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Penetración: lo vendido por encima del acumulado del año anterior (0 si aún no se alcanza).
+	measure 'Superávit vs año anterior' = VAR d = [Diferencia acumulada vs año anterior] RETURN IF(ISBLANK(d), BLANK(), MAX(0, d))
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Base de la barra de oportunidad según la vista elegida: Atrición = acumulado actual; Penetración = acumulado del año anterior.
+	measure 'Venta actual' = IF(SELECTEDVALUE('MD_Vista de oportunidad'[Vista], "Atrición") = "Atrición", [Ventas acumuladas año], [Ventas acumuladas año anterior])
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Tramo rojo (solo en Atrición): faltante contra el año anterior.
+	measure 'Faltante de venta' = IF(SELECTEDVALUE('MD_Vista de oportunidad'[Vista], "Atrición") = "Atrición", [Faltante vs año anterior], BLANK())
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Tramo verde (solo en Penetración): superávit sobre el año anterior.
+	measure 'Superávit de venta' = IF(SELECTEDVALUE('MD_Vista de oportunidad'[Vista], "Atrición") = "Penetración", [Superávit vs año anterior], BLANK())
+		formatString: "Q" #,0
+		displayFolder: 11 Clientes
+
+	/// Fondo gris del ranking de vendedores en acumulado del año.
+	measure 'Resto a máximo vendedor acumulado' = VAR m = MAXX(ALLSELECTED(Vendedor[nombre]), [Ventas acumuladas año]) VAR v = [Ventas acumuladas año] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Venta de los últimos 12 meses al corte. Respeta el mes del eje cuando lo hay (intersección), así sirve para el KPI y para el desglose mensual.
+	measure 'Ventas 12 meses' = CALCULATE([Ventas netas], KEEPFILTERS(DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: "Q" #,0
+		displayFolder: 12 Doce meses
+
+	/// Los mismos 12 meses, un año antes (gris de referencia del desglose mensual).
+	measure 'Ventas 12 meses año anterior' = CALCULATE([Ventas netas], KEEPFILTERS(DATESBETWEEN(Calendario[fecha], EDATE([Inicio 12 meses], -12), EDATE([Corte de ventas], -12))))
+		formatString: "Q" #,0
+		displayFolder: 12 Doce meses
+
+	/// Clientes distintos con venta en los últimos 12 meses.
+	measure 'Clientes 12 meses' = CALCULATE(DISTINCTCOUNT(Ventas[cliente_clave]), KEEPFILTERS(DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])), KEEPFILTERS(Ventas[monto_sin_impuesto] <> 0))
+		formatString: #,0
+		displayFolder: 12 Doce meses
+
+	/// Productos distintos vendidos en los últimos 12 meses.
+	measure 'Productos 12 meses' = CALCULATE(DISTINCTCOUNT(Ventas[producto_clave]), KEEPFILTERS(DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: #,0
+		displayFolder: 12 Doce meses
+"""
+
+# Fondos grises de los rankings a 12 meses (misma idea que 'Resto a máximo <dim>').
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += "".join(rf"""
+	/// Fondo gris del ranking por {dim} a 12 meses.
+	measure 'Resto a máximo {dim} 12 meses' = VAR m = MAXX(ALLSELECTED({col}), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+""" for dim, col in [("cliente", "Cliente[nombre]"), ("producto", "Producto[nombre]"), ("vendedor", "Vendedor[nombre]"),
+                       ("sector", "'Condición de pago'[nombre]"), ("línea", "Producto[grupo_nombre]"),
+                       ("categoría", "Cliente[clase_abc_actual_nombre]")])
+
+# Cohortes: nuevos (primera compra dentro de la ventana) y recuperados (compra de retorno dentro
+# de la ventana). Las dos familias comparten la forma; cambia el filtro que define el conjunto.
+def _cohorte(nombre: str, nombre_min: str, filtro_cliente: str, filtro_linea_estreno: str, estreno: str) -> str:
+    return rf"""
+	/// Clientes {nombre_min}: {filtro_cliente.split('--')[0].strip()}. Ventana = mes de partida → corte.
+	measure 'Clientes {nombre_min} en ventana' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(Ventas[cliente_clave]), DATESBETWEEN(Calendario[fecha], ini, fin), {filtro_cliente.split('--')[1].strip()})
+		formatString: #,0
+		displayFolder: 13 {nombre}
+
+	/// Venta de esos clientes dentro de la ventana.
+	measure 'Ventas de clientes {nombre_min} en ventana' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], DATESBETWEEN(Calendario[fecha], ini, fin), {filtro_cliente.split('--')[1].strip()})
+		formatString: "Q" #,0
+		displayFolder: 13 {nombre}
+
+	/// Venta total de esos clientes (todo el histórico cargado, no solo la ventana).
+	measure 'Ventas totales de clientes {nombre_min}' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], REMOVEFILTERS(Calendario), {filtro_cliente.split('--')[1].strip()})
+		formatString: "Q" #,0
+		displayFolder: 13 {nombre}
+
+	/// Venta por mes de esos clientes (eje = mes del calendario, recortado a la ventana).
+	measure 'Ventas de clientes {nombre_min} del mes' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE([Ventas netas], KEEPFILTERS(DATESBETWEEN(Calendario[fecha], ini, fin)), {filtro_cliente.split('--')[1].strip()})
+		formatString: "Q" #,0
+		displayFolder: 13 {nombre}
+
+	/// Cuántos clientes {nombre_min} aporta cada mes (línea del gráfico): los que estrenan en ese mes.
+	measure 'Clientes {nombre_min} del mes' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(Ventas[cliente_clave]), KEEPFILTERS(DATESBETWEEN(Calendario[fecha], ini, fin)), {filtro_linea_estreno})
+		formatString: #,0
+		displayFolder: 13 {nombre}
+
+	/// Venta de {nombre_min} en su {estreno} (barra oscura de la retención).
+	measure 'Venta de {nombre_min} en su {estreno}' = CALCULATE([Ventas de clientes {nombre_min} del mes], {filtro_linea_estreno})
+		formatString: "Q" #,0
+		displayFolder: 13 {nombre}
+
+	/// Venta de {nombre_min} en meses posteriores al de estreno (recompra: la prueba de retención).
+	measure 'Venta de {nombre_min} en recompra' = CALCULATE([Ventas de clientes {nombre_min} del mes], NOT {filtro_linea_estreno})
+		formatString: "Q" #,0
+		displayFolder: 13 {nombre}
+
+	/// Retenidos: {nombre_min} de la ventana que volvieron a comprar en un mes distinto al de estreno.
+	measure 'Clientes {nombre_min} retenidos' = VAR ini = [Inicio de ventana] VAR fin = [Corte de ventas] RETURN CALCULATE(DISTINCTCOUNT(Ventas[cliente_clave]), DATESBETWEEN(Calendario[fecha], ini, fin), {filtro_cliente.split('--')[1].strip()}, NOT {filtro_linea_estreno})
+		formatString: #,0
+		displayFolder: 13 {nombre}
+
+	/// Los que no volvieron a comprar.
+	measure 'Clientes {nombre_min} no retenidos' = [Clientes {nombre_min} en ventana] - [Clientes {nombre_min} retenidos]
+		formatString: #,0
+		displayFolder: 13 {nombre}
+
+	measure '% Retención de {nombre_min}' = DIVIDE([Clientes {nombre_min} retenidos], [Clientes {nombre_min} en ventana])
+		formatString: 0%
+		displayFolder: 13 {nombre}
+
+	measure '% Abandono de {nombre_min}' = DIVIDE([Clientes {nombre_min} no retenidos], [Clientes {nombre_min} en ventana])
+		formatString: 0%
+		displayFolder: 13 {nombre}
+
+	/// Venta en ventana de los {nombre_min} retenidos (por cliente deja en blanco a los no retenidos: la tabla los omite sola).
+	measure 'Ventas de {nombre_min} retenidos' = IF([Clientes {nombre_min} retenidos] > 0, [Ventas de clientes {nombre_min} en ventana])
+		formatString: "Q" #,0
+		displayFolder: 13 {nombre}
+
+	/// Venta en ventana de los {nombre_min} que no volvieron.
+	measure 'Ventas de {nombre_min} no retenidos' = IF([Clientes {nombre_min} en ventana] > 0 && [Clientes {nombre_min} retenidos] = 0, [Ventas de clientes {nombre_min} en ventana])
+		formatString: "Q" #,0
+		displayFolder: 13 {nombre}
+"""
+
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += _cohorte(
+    "Clientes nuevos", "nuevos",
+    "primera compra dentro de la ventana -- FILTER(ALL(Ventas[primera_compra_cliente]), Ventas[primera_compra_cliente] >= ini && Ventas[primera_compra_cliente] <= fin)",
+    "Ventas[es_primer_mes_cliente] = TRUE()", "primer mes")
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += _cohorte(
+    "Clientes recuperados", "recuperados",
+    "con una compra de retorno (6+ meses sin comprar) dentro de la ventana -- FILTER(VALUES(Ventas[cliente_clave]), CALCULATE(COUNTROWS(Ventas), DATESBETWEEN(Calendario[fecha], ini, fin), Ventas[es_compra_recuperacion] = TRUE()) > 0)",
+    "Ventas[es_compra_recuperacion] = TRUE()", "mes de retorno")
+
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
+	/// Títulos del dashboard de clientes.
+	measure 'Título de Matriz de oportunidades' = "Matriz de oportunidades"
+		displayFolder: _Narrativa
+	measure 'Título de Cartera de clientes' = "Cartera de clientes"
+		displayFolder: _Narrativa
+	measure 'Título de Clientes nuevos' = "Clientes nuevos"
+		displayFolder: _Narrativa
+	measure 'Título de Clientes recuperados' = "Clientes recuperados"
+		displayFolder: _Narrativa
+"""
+
+# Cliente: meses con compra y meses sin compra (12 meses al corte), en rangos como los de Kraken.
+MEDIDAS_POR_TABLA.setdefault("dim_cliente", "")
+MEDIDAS_POR_TABLA["dim_cliente"] += r"""
+	/// Alias legibles para encabezados de matrices (las columnas físicas conservan su nombre).
+	column Cliente = Cliente[nombre]
+		dataType: string
+		summarizeBy: none
+
+	column Clase = Cliente[clase_abc_actual_nombre]
+		dataType: string
+		summarizeBy: none
+
+	/// Meses distintos con compra en los últimos 12 meses al corte.
+	column 'Meses con compra 12m' = VAR fin = CALCULATE(MAX(Ventas[fecha_documento]), REMOVEFILTERS()) VAR e = EDATE(fin, -11) VAR ini = DATE(YEAR(e), MONTH(e), 1) RETURN CALCULATE(DISTINCTCOUNT(Ventas[mes_documento]), Ventas[fecha_documento] >= ini && Ventas[fecha_documento] <= fin)
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Rango de frecuencia (meses con compra en 12): 1-3 · 4-6 · 7-9 · 10-12.
+	column 'Rango de meses con compra' = VAR n = Cliente[Meses con compra 12m] RETURN SWITCH(TRUE(), ISBLANK(n) || n = 0, "0", n <= 3, "1-3", n <= 6, "4-6", n <= 9, "7-9", "10-12")
+		dataType: string
+		summarizeBy: none
+		sortByColumn: 'Rango de meses con compra orden'
+
+	column 'Rango de meses con compra orden' = VAR n = Cliente[Meses con compra 12m] RETURN SWITCH(TRUE(), ISBLANK(n) || n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 9, 3, 4)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+
+	/// Meses consecutivos sin compra al corte (desde la última compra).
+	column 'Meses sin compra' = VAR fin = CALCULATE(MAX(Ventas[fecha_documento]), REMOVEFILTERS()) VAR u = CALCULATE(MAX(Ventas[fecha_documento])) RETURN IF(ISBLANK(u), BLANK(), DATEDIFF(u, fin, MONTH))
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+
+	/// Rango de abandono (meses sin compra): 0 · 1-3 · 4-6 · 7-12 · +12.
+	column 'Rango de meses sin compra' = VAR n = Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), "Sin compra", n = 0, "0 meses", n <= 3, "1-3 meses", n <= 6, "4-6 meses", n <= 12, "7-12 meses", "+12 meses")
+		dataType: string
+		summarizeBy: none
+		sortByColumn: 'Rango de meses sin compra orden'
+
+	column 'Rango de meses sin compra orden' = VAR n = Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), 9, n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 12, 3, 4)
+		dataType: int64
+		isHidden
+		summarizeBy: none
+"""
+
+# Tablas de parámetro del dashboard de clientes (calculadas; nombre final, no pasan por ETIQUETA).
+TABLAS_EXTRA: dict[str, str] = {
+    "MD_Mes de partida": """table 'MD_Mes de partida'
+
+\tcolumn 'Mes de partida'
+\t\tdataType: int64
+\t\tformatString: 0
+\t\tsummarizeBy: none
+\t\tsourceColumn: [Value]
+
+\tpartition 'MD_Mes de partida' = calculated
+\t\tmode: import
+\t\tsource = GENERATESERIES(-24, 0, 1)
+""",
+    "MD_Vista de oportunidad": """table 'MD_Vista de oportunidad'
+
+\tcolumn Vista
+\t\tdataType: string
+\t\tsummarizeBy: none
+\t\tsourceColumn: [Vista]
+\t\tsortByColumn: Orden
+
+\tcolumn Orden
+\t\tdataType: int64
+\t\tisHidden
+\t\tsummarizeBy: none
+\t\tsourceColumn: [Orden]
+
+\tpartition 'MD_Vista de oportunidad' = calculated
+\t\tmode: import
+\t\tsource = DATATABLE("Vista", STRING, "Orden", INTEGER, {{"Atrición", 1}, {"Penetración", 2}})
+""",
+}
+
+MEDIDAS_POR_TABLA.setdefault("dim_vendedor", "")
+MEDIDAS_POR_TABLA["dim_vendedor"] += r"""
+	/// Alias legible para encabezados de matrices.
+	column Vendedor = Vendedor[nombre]
+		dataType: string
+		summarizeBy: none
 """
 
 GRUPO_MONEDA = r"""table 'MD_Moneda de análisis'
@@ -2551,7 +2883,7 @@ def main() -> int:
         presentes.append(tabla)
         rel_cols[tabla] = {c for c, _ in cols}
         (defi / "tables" / f"{ETIQUETA.get(tabla, tabla)}.tmdl").write_text(
-            aplicar_moneda(gen_tabla(tabla, cols, base), moneda), encoding="utf-8")
+            alias_columnas(aplicar_moneda(gen_tabla(tabla, cols, base), moneda)), encoding="utf-8")
     # Ya no hay tabla única de métricas: cada medida vive en la tabla que mide. Si quedó de una
     # generación anterior se borra, o Desktop cargaría medidas duplicadas.
     viejo = defi / "tables" / "_ Métricas.tmdl"
@@ -2572,6 +2904,10 @@ def main() -> int:
         (defi / "tables" / f"MD_{nombre_par}.tmdl").write_text(
             gen_parametro_campo(nombre_par, vivos), encoding="utf-8")
         parametros_escritos.append(f"MD_{nombre_par}")
+
+    for nombre_extra, tmdl_extra in TABLAS_EXTRA.items():
+        (defi / "tables" / f"{nombre_extra}.tmdl").write_text(tmdl_extra, encoding="utf-8")
+        parametros_escritos.append(nombre_extra)
 
     # ---------------- limpieza de artefactos de Power BI Desktop ----------------
     # Al abrir el proyecto, Desktop crea una tabla de fechas oculta por cada columna de fecha

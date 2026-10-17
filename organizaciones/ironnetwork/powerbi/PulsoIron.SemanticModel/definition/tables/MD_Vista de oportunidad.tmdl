@@ -1,0 +1,17 @@
+table 'MD_Vista de oportunidad'
+
+	column Vista
+		dataType: string
+		summarizeBy: none
+		sourceColumn: [Vista]
+		sortByColumn: Orden
+
+	column Orden
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: [Orden]
+
+	partition 'MD_Vista de oportunidad' = calculated
+		mode: import
+		source = DATATABLE("Vista", STRING, "Orden", INTEGER, {{"Atrición", 1}, {"Penetración", 2}})
