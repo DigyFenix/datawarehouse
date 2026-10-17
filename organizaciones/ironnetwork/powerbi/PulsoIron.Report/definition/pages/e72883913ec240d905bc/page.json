@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
   "name": "e72883913ec240d905bc",
-  "displayName": "01 · Histórico de ventas",
+  "displayName": "Histórico de ventas",
   "displayOption": "FitToPage",
   "height": 960,
   "width": 1280

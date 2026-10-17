@@ -4,10 +4,10 @@
   "position": {
     "x": 24,
     "y": 588,
-    "z": 1400,
+    "z": 1700,
     "height": 108,
     "width": 192,
-    "tabOrder": 14
+    "tabOrder": 17
   },
   "visual": {
     "visualType": "slicer",
@@ -34,23 +34,6 @@
         }
       }
     },
-    "expansionStates": [
-      {
-        "roles": [
-          "Values"
-        ],
-        "levels": [
-          {
-            "queryRefs": [
-              "DM_Producto.nombre"
-            ],
-            "isCollapsed": true,
-            "isPinned": true
-          }
-        ],
-        "root": {}
-      }
-    ],
     "objects": {
       "data": [
         {
@@ -91,7 +74,14 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Buscar producto'"
+                  "Value": "'Buscar producto y/o SKU'"
+                }
+              }
+            },
+            "bold": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
                 }
               }
             }

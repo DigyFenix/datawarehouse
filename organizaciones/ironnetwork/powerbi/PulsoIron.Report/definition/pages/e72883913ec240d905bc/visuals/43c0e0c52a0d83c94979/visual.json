@@ -2,12 +2,12 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "43c0e0c52a0d83c94979",
   "position": {
-    "x": 544,
+    "x": 440,
     "y": 712,
-    "z": 1500,
+    "z": 1800,
     "height": 232,
-    "width": 296,
-    "tabOrder": 15
+    "width": 192,
+    "tabOrder": 18
   },
   "visual": {
     "visualType": "azureMap",
@@ -64,6 +64,23 @@
             }
           }
         }
+      ],
+      "bubbleLayer": [
+        {
+          "properties": {
+            "fillColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#4f6d78'"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       ]
     },
     "visualContainerObjects": {
@@ -81,6 +98,31 @@
               "expr": {
                 "Literal": {
                   "Value": "'Venta por ubicación'"
+                }
+              }
+            },
+            "alignment": {
+              "expr": {
+                "Literal": {
+                  "Value": "'center'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "12D"
+                }
+              }
+            },
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#1f2a2e'"
+                    }
+                  }
                 }
               }
             }

@@ -4,10 +4,10 @@
   "position": {
     "x": 24,
     "y": 464,
-    "z": 1300,
+    "z": 1600,
     "height": 108,
     "width": 192,
-    "tabOrder": 13
+    "tabOrder": 16
   },
   "visual": {
     "visualType": "slicer",
@@ -34,23 +34,6 @@
         }
       }
     },
-    "expansionStates": [
-      {
-        "roles": [
-          "Values"
-        ],
-        "levels": [
-          {
-            "queryRefs": [
-              "DM_Cliente.nombre"
-            ],
-            "isCollapsed": true,
-            "isPinned": true
-          }
-        ],
-        "root": {}
-      }
-    ],
     "objects": {
       "data": [
         {
@@ -92,6 +75,13 @@
               "expr": {
                 "Literal": {
                   "Value": "'Buscar cliente'"
+                }
+              }
+            },
+            "bold": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
                 }
               }
             }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
   "name": "6138f48678b1ab3a1a2a",
-  "displayName": "02 · Seguimiento de ventas",
+  "displayName": "Seguimiento de ventas",
   "displayOption": "FitToPage",
   "height": 960,
   "width": 1280

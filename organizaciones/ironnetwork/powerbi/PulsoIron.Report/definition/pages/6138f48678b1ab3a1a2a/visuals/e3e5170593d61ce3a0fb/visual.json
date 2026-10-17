@@ -4,10 +4,10 @@
   "position": {
     "x": 24,
     "y": 216,
-    "z": 800,
-    "height": 232,
+    "z": 1000,
+    "height": 148,
     "width": 192,
-    "tabOrder": 8
+    "tabOrder": 10
   },
   "visual": {
     "visualType": "slicer",
@@ -34,23 +34,6 @@
         }
       }
     },
-    "expansionStates": [
-      {
-        "roles": [
-          "Values"
-        ],
-        "levels": [
-          {
-            "queryRefs": [
-              "DM_Calendario.anio_mes"
-            ],
-            "isCollapsed": true,
-            "isPinned": true
-          }
-        ],
-        "root": {}
-      }
-    ],
     "objects": {
       "data": [
         {
@@ -126,6 +109,33 @@
               "expr": {
                 "Literal": {
                   "Value": "'Año y mes'"
+                }
+              }
+            },
+            "bold": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "selection": [
+        {
+          "properties": {
+            "strictSingleSelect": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "selectAllCheckboxEnabled": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
                 }
               }
             }

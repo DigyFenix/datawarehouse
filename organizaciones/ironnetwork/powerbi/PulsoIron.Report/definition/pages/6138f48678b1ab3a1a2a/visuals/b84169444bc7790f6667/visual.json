@@ -2,12 +2,12 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "b84169444bc7790f6667",
   "position": {
-    "x": 856,
-    "y": 712,
-    "z": 2000,
-    "height": 112,
-    "width": 400,
-    "tabOrder": 20
+    "x": 24,
+    "y": 372,
+    "z": 1100,
+    "height": 76,
+    "width": 192,
+    "tabOrder": 11
   },
   "visual": {
     "visualType": "slicer",
@@ -34,23 +34,6 @@
         }
       }
     },
-    "expansionStates": [
-      {
-        "roles": [
-          "Values"
-        ],
-        "levels": [
-          {
-            "queryRefs": [
-              "DM_Empresa.nombre"
-            ],
-            "isCollapsed": true,
-            "isPinned": true
-          }
-        ],
-        "root": {}
-      }
-    ],
     "objects": {
       "data": [
         {
@@ -84,6 +67,13 @@
               "expr": {
                 "Literal": {
                   "Value": "'Empresa'"
+                }
+              }
+            },
+            "bold": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
                 }
               }
             }

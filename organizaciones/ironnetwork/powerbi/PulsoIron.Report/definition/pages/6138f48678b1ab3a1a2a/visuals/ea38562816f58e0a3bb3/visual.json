@@ -4,10 +4,10 @@
   "position": {
     "x": 648,
     "y": 464,
-    "z": 1600,
+    "z": 1900,
     "height": 232,
     "width": 296,
-    "tabOrder": 16
+    "tabOrder": 19
   },
   "visual": {
     "visualType": "azureMap",
@@ -64,6 +64,23 @@
             }
           }
         }
+      ],
+      "bubbleLayer": [
+        {
+          "properties": {
+            "fillColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#4f6d78'"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       ]
     },
     "visualContainerObjects": {
@@ -81,6 +98,31 @@
               "expr": {
                 "Literal": {
                   "Value": "'Venta por ubicación del cliente'"
+                }
+              }
+            },
+            "alignment": {
+              "expr": {
+                "Literal": {
+                  "Value": "'center'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "12D"
+                }
+              }
+            },
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#1f2a2e'"
+                    }
+                  }
                 }
               }
             }

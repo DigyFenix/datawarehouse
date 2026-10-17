@@ -11,7 +11,7 @@
       "type": "SharedResources"
     },
     "customTheme": {
-      "name": "quilate-theme.json",
+      "name": "ironnetwork-theme.json",
       "reportVersionAtImport": {
         "visual": "2.11.0",
         "report": "3.4.0",
@@ -52,8 +52,8 @@
       "type": "RegisteredResources",
       "items": [
         {
-          "name": "quilate-theme.json",
-          "path": "quilate-theme.json",
+          "name": "ironnetwork-theme.json",
+          "path": "ironnetwork-theme.json",
           "type": "CustomTheme"
         }
       ]

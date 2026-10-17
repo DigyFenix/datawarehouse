@@ -2,12 +2,12 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "3fd7b09332b578156edd",
   "position": {
-    "x": 1112,
-    "y": 88,
-    "z": 700,
-    "height": 112,
-    "width": 144,
-    "tabOrder": 7
+    "x": 960,
+    "y": 140,
+    "z": 900,
+    "height": 48,
+    "width": 296,
+    "tabOrder": 9
   },
   "visual": {
     "visualType": "slicer",
@@ -34,23 +34,6 @@
         }
       }
     },
-    "expansionStates": [
-      {
-        "roles": [
-          "Values"
-        ],
-        "levels": [
-          {
-            "queryRefs": [
-              "MD_Vista de ventas.Vista de ventas"
-            ],
-            "isCollapsed": true,
-            "isPinned": true
-          }
-        ],
-        "root": {}
-      }
-    ],
     "objects": {
       "data": [
         {
@@ -76,14 +59,7 @@
             "show": {
               "expr": {
                 "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "text": {
-              "expr": {
-                "Literal": {
-                  "Value": "'Medida'"
+                  "Value": "false"
                 }
               }
             }

@@ -3,11 +3,11 @@
   "name": "c4570869138a91cbafdb",
   "position": {
     "x": 24,
-    "y": 936,
-    "z": 1800,
-    "height": 24,
-    "width": 1256,
-    "tabOrder": 18
+    "y": 940,
+    "z": 2200,
+    "height": 20,
+    "width": 1232,
+    "tabOrder": 22
   },
   "visual": {
     "visualType": "cardVisual",
@@ -44,12 +44,19 @@
                 }
               }
             },
+            "fontFamily": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Segoe UI'"
+                }
+              }
+            },
             "fontColor": {
               "solid": {
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#8a9099'"
+                      "Value": "'#6b7680'"
                     }
                   }
                 }
@@ -100,6 +107,33 @@
           }
         }
       ],
+      "fillCustom": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "id": "default"
+          }
+        }
+      ],
       "padding": [
         {
           "properties": {
@@ -130,6 +164,22 @@
               "expr": {
                 "Literal": {
                   "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "id": "default"
+          }
+        }
+      ],
+      "spacing": [
+        {
+          "properties": {
+            "verticalSpacing": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
                 }
               }
             }

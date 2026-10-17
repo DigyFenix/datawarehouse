@@ -2157,15 +2157,44 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += rf"""
 		displayFolder: 10 Seguimiento
 
 	/// Título de la página de histórico: corte real del dato y porcentaje del año transcurrido.
-	measure 'Título de Histórico de ventas' = VAR f = [Corte de ventas] RETURN "Histórico de ventas · al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del año], "0%") & " del año)"
+	measure 'Título de Histórico de ventas' = VAR f = [Corte de ventas] RETURN "Histórico de ventas"
 		displayFolder: _Narrativa
 
 	/// Título de la página de seguimiento: corte real del dato y porcentaje del mes transcurrido.
-	measure 'Título de Seguimiento de ventas' = VAR f = [Corte de ventas] RETURN "Seguimiento de ventas · al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & " del mes)"
+	measure 'Título de Seguimiento de ventas' = VAR f = [Corte de ventas] RETURN "Seguimiento de ventas"
 		displayFolder: _Narrativa
 
 	/// Etiqueta de dato para las columnas mensuales: importe abreviado y variación contra el mismo mes del año anterior en una sola línea ("1.3M · +29%"). Sin año anterior solo muestra el importe.
 	measure 'Etiqueta de venta mensual' = VAR v = [Ventas netas] VAR vr = [Variación vs año anterior] RETURN IF(ISBLANK(v), BLANK(), {_ABR('v')} & IF(ISBLANK(vr), "", " · " & FORMAT(vr, "+0%;-0%;0%")))
+		displayFolder: _Narrativa
+"""
+
+# Fondo gris "hasta el máximo" de los rankings (estilo Kraken): la barra de cada categoría se
+# completa con el resto hasta el valor del líder. Una medida por dimensión porque ALLSELECTED
+# necesita la columna concreta que ocupa el eje.
+_RESTO = [
+    ("cliente", "Cliente[nombre]"), ("producto", "Producto[nombre]"), ("vendedor", "Vendedor[nombre]"),
+    ("sector", "Cliente[condicion_pago_codigo]"), ("sucursal", "Bodega[nombre]"),
+    ("línea", "Producto[grupo_codigo]"), ("canal", "Cliente[grupo_codigo]"), ("empresa", "Empresa[nombre]"),
+]
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += "".join(rf"""
+	/// Fondo gris del ranking por {dim}: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo {dim}' = VAR m = MAXX(ALLSELECTED({col}), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+""" for dim, col in _RESTO)
+
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
+	/// Empresa seleccionada en el segmentador, o "Todas".
+	measure 'Empresa activa' = SELECTEDVALUE(Empresa[nombre], "Todas")
+		displayFolder: _Narrativa
+
+	/// Subtítulo del histórico: "al 16 oct (79%)" — corte real y fracción del año transcurrida.
+	measure 'Subtítulo de corte anual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del año], "0%") & ")"
+		displayFolder: _Narrativa
+
+	/// Subtítulo del seguimiento: "al 16 oct (52%)" — corte real y fracción del mes transcurrida.
+	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & ")"
 		displayFolder: _Narrativa
 """
 

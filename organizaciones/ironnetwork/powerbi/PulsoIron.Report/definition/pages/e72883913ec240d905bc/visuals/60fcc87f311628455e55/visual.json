@@ -1,27 +1,35 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
-  "name": "bba5f4b89db5bb99983a",
+  "name": "60fcc87f311628455e55",
   "position": {
-    "x": 0,
-    "y": 0,
-    "z": 100,
-    "height": 72,
-    "width": 1280,
-    "tabOrder": 1
+    "x": 960,
+    "y": 188,
+    "z": 1000,
+    "height": 12,
+    "width": 296,
+    "tabOrder": 10
   },
   "visual": {
-    "visualType": "shape",
+    "visualType": "textbox",
     "objects": {
-      "shape": [
+      "general": [
         {
           "properties": {
-            "tileShape": {
-              "expr": {
-                "Literal": {
-                  "Value": "'rectangle'"
-                }
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Resultados en moneda de presentación, sin IVA",
+                    "textStyle": {
+                      "fontFamily": "Segoe UI",
+                      "fontSize": "9px",
+                      "color": "#6b7680"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "center"
               }
-            }
+            ]
           }
         }
       ]

@@ -4,10 +4,10 @@
   "position": {
     "x": 960,
     "y": 216,
-    "z": 900,
+    "z": 1200,
     "height": 232,
     "width": 296,
-    "tabOrder": 9
+    "tabOrder": 12
   },
   "visual": {
     "visualType": "donutChart",
@@ -99,6 +99,13 @@
                   "Value": "'Both'"
                 }
               }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "9D"
+                }
+              }
             }
           }
         }
@@ -119,6 +126,31 @@
               "expr": {
                 "Literal": {
                   "Value": "'Venta por sucursal'"
+                }
+              }
+            },
+            "alignment": {
+              "expr": {
+                "Literal": {
+                  "Value": "'center'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "12D"
+                }
+              }
+            },
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#1f2a2e'"
+                    }
+                  }
                 }
               }
             }

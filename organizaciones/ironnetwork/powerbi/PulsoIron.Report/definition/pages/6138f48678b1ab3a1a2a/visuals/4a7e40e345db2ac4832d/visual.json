@@ -2,15 +2,15 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "4a7e40e345db2ac4832d",
   "position": {
-    "x": 24,
+    "x": 648,
     "y": 712,
-    "z": 1800,
+    "z": 2200,
     "height": 232,
-    "width": 400,
-    "tabOrder": 18
+    "width": 608,
+    "tabOrder": 22
   },
   "visual": {
-    "visualType": "barChart",
+    "visualType": "stackedBarChart",
     "query": {
       "queryState": {
         "Category": {
@@ -46,6 +46,20 @@
               },
               "queryRef": "FC_Ventas.Ventas netas",
               "nativeQueryRef": "Ventas netas"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Resto a máximo línea"
+                }
+              },
+              "queryRef": "FC_Ventas.Resto a máximo línea",
+              "nativeQueryRef": "Resto a máximo línea"
             }
           ]
         }
@@ -79,6 +93,13 @@
                   "Value": "false"
                 }
               }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "9D"
+                }
+              }
             }
           }
         }
@@ -99,6 +120,13 @@
                   "Value": "false"
                 }
               }
+            },
+            "gridlineShow": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
             }
           }
         }
@@ -113,6 +141,31 @@
                 }
               }
             },
+            "showAll": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "9D"
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "showSeries": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
             "labelPosition": {
               "expr": {
                 "Literal": {
@@ -120,6 +173,61 @@
                 }
               }
             }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Ventas netas"
+          }
+        },
+        {
+          "properties": {
+            "showSeries": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Resto a máximo línea"
+          }
+        }
+      ],
+      "dataPoint": [
+        {
+          "properties": {
+            "fill": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#4f6d78'"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Ventas netas"
+          }
+        },
+        {
+          "properties": {
+            "fill": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#e1e4e6'"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Resto a máximo línea"
           }
         }
       ],
@@ -152,6 +260,31 @@
               "expr": {
                 "Literal": {
                   "Value": "'Venta por línea'"
+                }
+              }
+            },
+            "alignment": {
+              "expr": {
+                "Literal": {
+                  "Value": "'center'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "12D"
+                }
+              }
+            },
+            "fontColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#1f2a2e'"
+                    }
+                  }
                 }
               }
             }

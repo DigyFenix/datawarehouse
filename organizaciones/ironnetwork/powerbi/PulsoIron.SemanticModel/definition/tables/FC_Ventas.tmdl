@@ -536,15 +536,67 @@ table FC_Ventas
 		displayFolder: 10 Seguimiento
 
 	/// Título de la página de histórico: corte real del dato y porcentaje del año transcurrido.
-	measure 'Título de Histórico de ventas' = VAR f = [Corte de ventas] RETURN "Histórico de ventas · al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del año], "0%") & " del año)"
+	measure 'Título de Histórico de ventas' = VAR f = [Corte de ventas] RETURN "Histórico de ventas"
 		displayFolder: _Narrativa
 
 	/// Título de la página de seguimiento: corte real del dato y porcentaje del mes transcurrido.
-	measure 'Título de Seguimiento de ventas' = VAR f = [Corte de ventas] RETURN "Seguimiento de ventas · al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & " del mes)"
+	measure 'Título de Seguimiento de ventas' = VAR f = [Corte de ventas] RETURN "Seguimiento de ventas"
 		displayFolder: _Narrativa
 
 	/// Etiqueta de dato para las columnas mensuales: importe abreviado y variación contra el mismo mes del año anterior en una sola línea ("1.3M · +29%"). Sin año anterior solo muestra el importe.
 	measure 'Etiqueta de venta mensual' = VAR v = [Ventas netas] VAR vr = [Variación vs año anterior] RETURN IF(ISBLANK(v), BLANK(), (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & IF(ISBLANK(vr), "", " · " & FORMAT(vr, "+0%;-0%;0%")))
+		displayFolder: _Narrativa
+
+	/// Fondo gris del ranking por cliente: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo cliente' = VAR m = MAXX(ALLSELECTED(DM_Cliente[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por producto: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo producto' = VAR m = MAXX(ALLSELECTED(DM_Producto[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por vendedor: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo vendedor' = VAR m = MAXX(ALLSELECTED(DM_Vendedor[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por sector: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo sector' = VAR m = MAXX(ALLSELECTED(DM_Cliente[condicion_pago_codigo]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por sucursal: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo sucursal' = VAR m = MAXX(ALLSELECTED(DM_Bodega[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por línea: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo línea' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_codigo]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por canal: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo canal' = VAR m = MAXX(ALLSELECTED(DM_Cliente[grupo_codigo]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Fondo gris del ranking por empresa: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
+	measure 'Resto a máximo empresa' = VAR m = MAXX(ALLSELECTED(DM_Empresa[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Empresa seleccionada en el segmentador, o "Todas".
+	measure 'Empresa activa' = SELECTEDVALUE(DM_Empresa[nombre], "Todas")
+		displayFolder: _Narrativa
+
+	/// Subtítulo del histórico: "al 16 oct (79%)" — corte real y fracción del año transcurrida.
+	measure 'Subtítulo de corte anual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del año], "0%") & ")"
+		displayFolder: _Narrativa
+
+	/// Subtítulo del seguimiento: "al 16 oct (52%)" — corte real y fracción del mes transcurrida.
+	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & ")"
 		displayFolder: _Narrativa
 
 	partition FC_Ventas = m
