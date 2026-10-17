@@ -28,6 +28,8 @@ const T = {
 const C = {
   PIZARRA: '#4f6d78', GRIS_SERIE: '#e1e4e6', PANEL: '#dde4e7', TINTA: '#1f2a2e', TINTA_SUAVE: '#6b7680',
   VERDE_CELDA: '#c6e5c9', ROJO_CELDA: '#f4c7c3', ROJO: '#d9534f', VERDE: '#2f9e44', PIZARRA_CLARA: '#9fb4bb', BLANCO: '#ffffff',
+  // Patrón visual (sesión 29): bandas de tabla, líneas de grilla y encabezados discretos.
+  FILA_ALT: '#f4f7f8', GRILLA: '#e6ebee', ENCABEZADO: '#eef2f4',
 };
 
 // ---- grilla ----
@@ -85,6 +87,16 @@ const vcDesnudo = {
   padding: [{ properties: { top: num(0), bottom: num(0), left: num(0), right: num(0) } }],
 };
 
+// ---- etiquetas de barras y columnas (decisión de Edwin, sesión 29) ----
+// Fondo blanco casi sólido (transparencia 5 %) y texto del color de su serie, para distinguir
+// varios valores entre sí. `series`: [[tabla, medida, hex]]; `extra`: propiedades base adicionales.
+const FONDO_ETIQUETA = { enableBackground: bool(true), backgroundColor: color(C.BLANCO), backgroundTransparency: num(5) };
+function etiquetasBarra(series, extra = {}) {
+  const base = { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), ...FONDO_ETIQUETA, ...extra };
+  if (series.length === 1) base.color = color(series[0][2]);
+  return [{ properties: base }, ...(series.length > 1 ? series.map(([t, m, hex]) => ({ properties: { showSeries: bool(true), color: color(hex) }, selector: meta(t, m) })) : [])];
+}
+
 // ---- fábricas ----
 function texto(slug, clave, tabla, medida, pos, { size = 12, bold = false, colorHex = C.TINTA, align = 'left' } = {}) {
   return visual(id(slug, clave), 'cardVisual', pos, {
@@ -107,8 +119,9 @@ function textoEstatico(slug, clave, contenido, pos, { size = 9, colorHex = C.TIN
     vc: vcDesnudo,
   });
 }
+// 13 páginas: nombres cortos de página (displayName) + 9 columnas de ancho para que no se trunquen.
 function navegador(slug) {
-  return visual(id(slug, 'chrome-nav'), 'pageNavigator', [xCol(6), 16, wCol(5), 32], {
+  return visual(id(slug, 'chrome-nav'), 'pageNavigator', [xCol(4), 16, wCol(9), 32], {
     objects: {
       fill: [
         { properties: { show: bool(true) } },
@@ -116,8 +129,8 @@ function navegador(slug) {
         { properties: { show: bool(true), fillColor: color(C.PANEL), transparency: num(0) }, selector: sel('selected') },
       ],
       text: [
-        { properties: { fontColor: color(C.TINTA), fontSize: num(9), fontFamily: str('Segoe UI Semibold') } },
-        { properties: { fontColor: color(C.TINTA), fontSize: num(9), fontFamily: str('Segoe UI Semibold') }, selector: sel('default') },
+        { properties: { fontColor: color(C.TINTA), fontSize: num(8), fontFamily: str('Segoe UI Semibold'), leftMargin: num(1), rightMargin: num(1) } },
+        { properties: { fontColor: color(C.TINTA), fontSize: num(8), fontFamily: str('Segoe UI Semibold'), leftMargin: num(1), rightMargin: num(1) }, selector: sel('default') },
         { properties: { fontColor: color(C.TINTA), bold: bool(true) }, selector: sel('selected') },
       ],
       outline: [
@@ -133,7 +146,7 @@ function navegador(slug) {
 // Encabezado Kraken: título, "al 16 oct (79%)", empresa activa, navegación.
 function encabezado(slug, medidaTitulo, medidaCorte, tablaTitulo = T.VENTAS) {
   return [
-    texto(slug, 'chrome-titulo', tablaTitulo, medidaTitulo, [xCol(1), 8, wCol(4), 28], { size: 16, bold: true }),
+    texto(slug, 'chrome-titulo', tablaTitulo, medidaTitulo, [xCol(1), 8, wCol(3), 28], { size: 16, bold: true }),
     texto(slug, 'chrome-corte', T.VENTAS, medidaCorte, [xCol(1), 36, wCol(4), 20], { size: 12 }),
     texto(slug, 'chrome-empresa', T.VENTAS, 'Empresa activa', [xCol(1), 56, wCol(4), 16], { size: 10, colorHex: C.TINTA_SUAVE }),
     navegador(slug),
@@ -158,30 +171,39 @@ function segmentador(slug, clave, tabla, columna, pos, { modo = 'Dropdown', sele
     } };
   }
   if (busqueda) general.properties.selfFilterEnabled = bool(true);
+  // Rótulo discreto (8 pt, gris) para que "Todas" nunca quede sin contexto; ítems a 10 pt para leerse.
   const objects = {
     data: [{ properties: { mode: str(modo) } }],
     general: [general],
-    header: [{ properties: { show: bool(Boolean(titulo)), ...(titulo ? { text: str(titulo), bold: bool(true) } : {}) } }],
+    header: [{ properties: { show: bool(Boolean(titulo)), ...(titulo ? { text: str(titulo), bold: bool(false), textSize: num(8), fontColor: color(C.TINTA_SUAVE), outlineStyle: str('None') } : {}) } }],
+    items: [{ properties: { textSize: num(10), fontColor: color(C.TINTA) } }],
   };
   if (unico) objects.selection = [{ properties: { strictSingleSelect: bool(true), selectAllCheckboxEnabled: bool(false) } }];
   return visual(id(slug, clave), 'slicer', pos, {
     roles: { Values: [pColumna(tabla, columna, true)] },
     sort: descendente ? { sort: [{ field: campoColumna(tabla, columna), direction: 'Descending' }], isDefaultSort: true } : undefined,
     objects,
+    // Relleno 2/2: rótulo (28) + desplegable (32) + 4 = 64 px, la altura estándar de un segmentador con rótulo.
+    vc: { padding: [{ properties: { top: num(2), bottom: num(2), left: num(6), right: num(6) } }] },
     sync,
   });
 }
 
 // Panel de KPIs estilo Kraken: fondo gris-azul, título centrado, etiqueta arriba del valor.
-function kpis(slug, clave, medidas, pos, titulo, subtitulo = 'Resultados en moneda de presentación · sin IVA') {
+// medidas: [tabla, medida, rótulo?] — el rótulo corto evita que el nombre de la medida se corte a 8 pt.
+function kpis(slug, clave, medidas, pos, titulo, subtitulo = 'Moneda de presentación · sin IVA') {
   return visual(id(slug, clave), 'cardVisual', pos, {
     roles: { Data: medidas.map(([t, m]) => pMedida(t, m)) },
     objects: {
-      value: [{ properties: { fontSize: num(13), fontFamily: str('Segoe UI Semibold'), fontColor: color(C.TINTA), horizontalAlignment: str('center'), labelDisplayUnits: str('1'), labelPrecision: int(0) }, selector: sel('default') }],
-      label: [{ properties: { show: bool(true), fontSize: num(8), position: str('aboveValue'), fontColor: color(C.TINTA_SUAVE), horizontalAlignment: str('center') }, selector: sel('default') }],
+      // 12 pt y relleno de 2: con 13 pt "Q 571,070" se truncaba en los paneles de dos valores.
+      value: [{ properties: { fontSize: num(12), fontFamily: str('Segoe UI Semibold'), fontColor: color(C.TINTA), horizontalAlignment: str('center'), labelDisplayUnits: str('1'), labelPrecision: int(0) }, selector: sel('default') }],
+      label: [
+        { properties: { show: bool(true), fontSize: num(8), position: str('aboveValue'), fontColor: color(C.TINTA_SUAVE), horizontalAlignment: str('center'), textWrap: bool(true) }, selector: sel('default') },
+        ...medidas.filter(([, , r]) => r).map(([t, m, r]) => ({ properties: { text: str(r) }, selector: meta(t, m) })),
+      ],
       outline: [{ properties: { show: bool(false) }, selector: sel('default') }],
-      padding: [{ properties: { paddingUniform: int(4) }, selector: sel('default') }],
-      layout: [{ properties: { paddingUniform: int(4), style: str('Table'), backgroundShow: bool(false) }, selector: sel('default') }],
+      padding: [{ properties: { paddingUniform: int(2) }, selector: sel('default') }],
+      layout: [{ properties: { paddingUniform: int(2), style: str('Table'), backgroundShow: bool(false) }, selector: sel('default') }],
       spacing: [{ properties: { verticalSpacing: num(2) }, selector: sel('default') }],
     },
     vc: {
@@ -191,23 +213,21 @@ function kpis(slug, clave, medidas, pos, titulo, subtitulo = 'Resultados en mone
   });
 }
 
-// Ranking Kraken: barra pizarra + "resto hasta el máximo" en gris apilado detrás (barChart = apilado).
-function ranking(slug, clave, pos, tabla, columna, titulo, dim, medida = 'Ventas netas', resto = `Resto a máximo ${dim}`, tablaMedida = T.VENTAS) {
+// Ranking: barra simple con el monto fuera del extremo. (Sesión 29: se retiró la barra fantasma
+// "resto a máximo" apilada detrás — Power BI oculta toda etiqueta que no cabe en su segmento apilado,
+// así que las barras cortas quedaban sin monto. El parámetro `resto` se conserva por compatibilidad.)
+function ranking(slug, clave, pos, tabla, columna, titulo, dim, medida = 'Ventas netas', resto = `Resto a máximo ${dim}`, tablaMedida = T.VENTAS, { margen = 45 } = {}) {
+  void resto;
   return visual(id(slug, clave), 'barChart', pos, {
-    roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(tablaMedida, medida), pMedida(T.VENTAS, resto)] },
+    roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(tablaMedida, medida)] },
     sort: ordenDesc(tablaMedida, medida),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(8), maxMarginFactor: num(45) } }],
+      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(8), maxMarginFactor: num(margen) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
-      labels: [
-        { properties: { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } },
-        { properties: { showSeries: bool(true), labelPosition: str('InsideEnd') }, selector: meta(tablaMedida, medida) },
-        { properties: { showSeries: bool(false) }, selector: meta(T.VENTAS, resto) },
-      ],
-      dataPoint: [
-        { properties: { fill: color(C.PIZARRA) }, selector: meta(tablaMedida, medida) },
-        { properties: { fill: color(C.GRIS_SERIE) }, selector: meta(T.VENTAS, resto) },
-      ],
+      // OutsideEnd sin desborde: Power BI acorta las barras para que el monto completo quepa dentro del visual
+      // (con desborde, el monto de la barra más larga se salía del visual; con Auto, lo recortaba dentro de la barra).
+      labels: etiquetasBarra([[tablaMedida, medida, C.PIZARRA]], { labelPosition: str('OutsideEnd'), labelOverflow: bool(false) }),
+      dataPoint: [{ properties: { fill: color(C.PIZARRA) } }, { properties: { fill: color(C.PIZARRA) }, selector: meta(tablaMedida, medida) }],
       legend: [{ properties: { show: bool(false) } }],
     },
     vc: vcTitulo(titulo),
@@ -221,7 +241,7 @@ function barras(slug, clave, pos, tabla, columna, titulo, medidas, colores = [C.
     objects: {
       categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(8), maxMarginFactor: num(45) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
-      labels: [{ properties: { show: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } }],
+      labels: etiquetasBarra(medidas.map((m, i) => [T.VENTAS, m, colores[i] || C.PIZARRA]), { labelOverflow: bool(true) }),
       dataPoint: [{ properties: { fill: color(colores[0] || C.PIZARRA) } }, ...medidas.map((m, i) => ({ properties: { fill: color(colores[i] || C.PIZARRA) }, selector: meta(T.VENTAS, m) }))],
       legend: [{ properties: { show: bool(leyenda), position: str('Top'), fontSize: num(8) } }],
     },
@@ -234,7 +254,7 @@ function dona(slug, clave, pos, tabla, columna, titulo, medida = 'Ventas netas',
     sort: ordenDesc(tablaMedida, medida),
     objects: {
       legend: [{ properties: { show: bool(false) } }],
-      labels: [{ properties: { show: bool(true), labelStyle: str('Both'), fontSize: num(9) } }],
+      labels: [{ properties: { show: bool(true), labelStyle: str('Both'), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } }],
     },
     vc: vcTitulo(titulo),
   });
@@ -242,7 +262,12 @@ function dona(slug, clave, pos, tabla, columna, titulo, medida = 'Ventas netas',
 function mapa(slug, clave, pos, titulo, medida = 'Ventas netas') {
   return visual(id(slug, clave), 'azureMap', pos, {
     roles: { Category: [pColumna(T.DIR, 'ciudad')], Size: [pMedida(T.VENTAS, medida)] },
-    objects: { legend: [{ properties: { show: bool(false) } }], bubbleLayer: [{ properties: { fillColor: color(C.PIZARRA) } }] },
+    objects: {
+      legend: [{ properties: { show: bool(false) } }],
+      bubbleLayer: [{ properties: { fillColor: color(C.PIZARRA) } }],
+      // Sin selector de estilo ni botones de zoom: tapaban el mapa en 2 columnas.
+      mapControls: [{ properties: { showNavigationControls: bool(false), showStylePicker: bool(false), showSelectionControl: bool(false), autoZoom: bool(true) } }],
+    },
     vc: vcTitulo(titulo),
   });
 }
@@ -265,29 +290,64 @@ const subtotalesMatriz = ({ filaTotal = false, columnaTotal = true } = {}) => [
   { properties: { columnSubtotals: bool(columnaTotal) }, selector: sel('Column') },
 ];
 // Matriz genérica: filas (columna), columnas (opcional), valores (medidas [tabla, medida]).
-function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn, filaTotal = false, columnaTotal = true, ordenPor, anchoFilas }) {
+// anchoColumnas: { 'medida': px } fija el ancho de columnas de valores concretas (p. ej. una medida de nombre largo en una matriz angosta).
+function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn, filaTotal = false, columnaTotal = true, ordenPor, anchoFilas, anchoColumnas, expandir }) {
   const roles = { Rows: filas.map(([t, c]) => pColumna(t, c)), Values: valores.map(([t, m]) => pMedida(t, m)) };
   if (columnas) roles.Columns = columnas.map(([t, c]) => pColumna(t, c));
-  return visual(id(slug, clave), 'pivotTable', pos, {
+  const v = visual(id(slug, clave), 'pivotTable', pos, {
     roles,
     sort: ordenPor ? ordenDesc(ordenPor[0], ordenPor[1]) : undefined,
     objects: {
-      columnHeaders: [{ properties: { columnAdjustment: str('growToFit'), autoSizeColumnWidth: bool(false), fontSize: num(9), bold: bool(true) } }],
-      rowHeaders: [{ properties: { fontSize: num(9), wordWrap: bool(false) } }],
-      values: [{ properties: { fontSize: num(9) } }, ...(semaforoEn ? semaforo(semaforoEn[1], semaforoEn[0]) : [])],
-      subTotals: subtotalesMatriz({ filaTotal, columnaTotal }),
-      grid: [{ properties: { rowPadding: num(2) } }],
+      // Estilo de tabla (sesión 29): encabezados discretos (8 pt, gris, sin negrita, solo línea inferior),
+      // bandas alternas, grilla horizontal fina sin verticales, totales en negrita sobre fondo panel.
+      // Sin ancho fijo de filas, las columnas crecen hasta llenar el visual (las matrices chicas dejaban medio panel vacío).
+      columnHeaders: [{ properties: { columnAdjustment: str('growToFit'), autoSizeColumnWidth: bool(!anchoFilas), autoExpand: bool(true), fontSize: num(8), bold: bool(false), fontColor: color(C.TINTA_SUAVE), backColor: color(C.BLANCO), outlineStyle: str('BottomOnly'), outlineColor: color(C.PIZARRA_CLARA), outlineWeight: num(1), wordWrap: bool(true) } }],
+      rowHeaders: [{ properties: { fontSize: num(9), bold: bool(false), wordWrap: bool(false), fontColor: color(C.TINTA), backColor: color(C.BLANCO), outlineStyle: str('None') } }],
+      values: [
+        { properties: { fontSize: num(9), fontColorPrimary: color(C.TINTA), fontColorSecondary: color(C.TINTA), backColorPrimary: color(C.BLANCO), backColorSecondary: color(C.FILA_ALT), outlineStyle: str('None') } },
+        ...(semaforoEn ? semaforo(semaforoEn[1], semaforoEn[0]) : []),
+      ],
+      subTotals: [
+        ...subtotalesMatriz({ filaTotal, columnaTotal }),
+        { properties: { fontSize: num(9), fontColor: color(C.TINTA), backColor: color(C.ENCABEZADO), applyToHeaders: bool(true) } },
+      ],
+      grid: [{ properties: { rowPadding: num(3), gridVertical: bool(false), gridHorizontal: bool(true), gridHorizontalColor: color(C.GRILLA), gridHorizontalWeight: num(1), outlineColor: color(C.GRILLA), outlineWeight: num(1), textSize: num(9) } }],
       // Ancho fijo del encabezado de fila: con autoajuste el nombre del cliente se come todo el ancho y los valores quedan detrás del scroll.
-      ...(anchoFilas ? { columnWidth: [{ properties: { value: num(anchoFilas) }, selector: meta(filas[0][0], filas[0][1]) }] } : {}),
+      ...((anchoFilas || anchoColumnas) ? { columnWidth: [
+        ...(anchoFilas ? [{ properties: { value: num(anchoFilas) }, selector: meta(filas[0][0], filas[0][1]) }] : []),
+        ...Object.entries(anchoColumnas || {}).map(([m, px]) => ({ properties: { value: num(px) }, selector: meta((valores.find(([, v]) => v === m) || [T.VENTAS])[0], m) })),
+      ] } : {}),
     },
-    vc: vcTitulo(titulo),
+    // stylePreset None: el preset por defecto pisa cualquier color de fila/encabezado puesto en objects.
+    vc: { ...vcTitulo(titulo), stylePreset: [{ properties: { name: str('None') } }] },
   });
+  // Columnas jerárquicas (p. ej. Estado › Rango): `expandir` lista los valores del primer nivel que se
+  // abren de entrada (Desktop exige los nodos en root.children).
+  if (columnas && columnas.length > 1 && expandir) {
+    v.visual.expansionStates = [{
+      roles: ['Columns'],
+      // Formato tal como lo escribe Desktop: isCollapsed:true en todos los niveles (= solo nodos concretos abiertos).
+      levels: columnas.map(([t, c], i) => (i < columnas.length - 1
+        ? { queryRefs: [`${t}.${c}`], isCollapsed: false, isPinned: true, identityKeys: [campoColumna(t, c)] }
+        : { queryRefs: [`${t}.${c}`], isCollapsed: false, isPinned: true })),
+      root: { children: expandir.map((valor) => ({ identityValues: [{ Literal: { Value: `'${valor}'` } }], isToggled: true })) },
+    }];
+  }
+  return v;
 }
+// Eje de valores visible: montos completos, nunca "0.3 mill.".
+const ejeValores = (extra = {}) => [{ properties: { showAxisTitle: bool(false), fontSize: num(9), labelDisplayUnits: str('1'), labelPrecision: int(0), gridlineColor: color(C.GRILLA), ...extra } }];
+// Eje de categorías con título explícito (p. ej. «Día del mes») cuando el valor solo no se entiende.
+const ejeCategoria = (titulo, extra = {}) => [{ properties: { showAxisTitle: bool(Boolean(titulo)), ...(titulo ? { titleText: str(titulo), titleFontSize: num(9), titleColor: color(C.TINTA_SUAVE) } : {}), fontSize: num(9), ...extra } }];
+// Marcadores para TODA gráfica de líneas (entrada base de lineStyles; los selectores por serie se agregan después).
+const marcadores = { properties: { showMarker: bool(true), markerShape: str('circle'), markerSize: num(4), strokeWidth: num(2) } };
+// Series diarias (30+ puntos): marcador más pequeño para que la línea no se vea como un collar.
+const marcadoresFinos = { properties: { showMarker: bool(true), markerShape: str('circle'), markerSize: num(2), strokeWidth: num(2) } };
 // Bloque "Moneda" de Kraken: moneda + medida.
 function bloqueMoneda(slug, col = 10, ancho = 3) {
   return [
-    segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(col), 88, wCol(ancho), 76], { unico: true, sync: 'moneda', titulo: 'Moneda' }),
-    segmentador(slug, 'vista', T.VISTA, 'Vista de ventas', [xCol(col), 166, wCol(ancho), 48], { sync: 'vista' }),
+    segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(col), 88, wCol(ancho), 64], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }),
+    segmentador(slug, 'vista', T.VISTA, 'Vista de ventas', [xCol(col), 152, wCol(ancho), 64], { sync: 'vista', titulo: 'Vista' }),
   ];
 }
 // Columnas mensuales estilo Kraken: año anterior en gris detrás, año actual en pizarra con etiqueta.
@@ -303,8 +363,8 @@ function columnasMensuales(slug, clave, pos, titulo, actual = 'Ventas netas', an
       categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(10) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
       labels: [
-        { properties: { show: bool(true), showAll: bool(true), fontSize: num(9), labelPosition: str('OutsideEnd'), labelDisplayUnits: str('1'), labelPrecision: int(0) } },
-        { properties: { showSeries: bool(true), color: color(C.PIZARRA) }, selector: meta(T.VENTAS, actual) },
+        // Columnas verticales: monto completo a 8 pt con desborde permitido (decisión de Edwin: nunca unidades automáticas).
+        ...etiquetasBarra([[T.VENTAS, actual, C.PIZARRA], [T.VENTAS, anterior, C.TINTA_SUAVE]], { labelPosition: str('OutsideEnd'), labelOverflow: bool(true) }),
         { properties: { showSeries: bool(false) }, selector: meta(T.VENTAS, anterior) },
       ],
       legend: [{ properties: { show: bool(false) } }],
@@ -329,9 +389,9 @@ function comboMensual(slug, clave, pos, titulo, columnas, linea, columna = 'mes_
       categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false), secShow: bool(false) } }],
       labels: [
-        { properties: { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } },
+        ...etiquetasBarra(columnas.map((m, i) => [T.VENTAS, m, i === 0 ? C.PIZARRA : C.PIZARRA_CLARA])),
         // La línea (promedio / conteo) no lleva etiqueta: ensucia las columnas.
-        { properties: { showSeries: bool(false) }, selector: meta(T.VENTAS, linea) },
+        { properties: { show: bool(false), showSeries: bool(false) }, selector: meta(T.VENTAS, linea) },
       ],
       legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(9) } }],
       dataPoint: [
@@ -350,6 +410,7 @@ function columnasApiladas(slug, clave, pos, titulo, medidas, colores = [C.PIZARR
     objects: {
       categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
+      // Sin etiquetas: en apilado Power BI recorta todo monto que no cabe en su segmento ("Q 34..."); el detalle va en el tooltip.
       labels: [{ properties: { show: bool(false) } }],
       legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(9) } }],
       dataPoint: medidas.map((m, i) => ({ properties: { fill: color(colores[i] || C.PIZARRA) }, selector: meta(T.VENTAS, m) })),
@@ -398,6 +459,6 @@ function reporteDeArgs() {
 module.exports = {
   W, H, FILA, ALTO, T, C, xCol, wCol, id, lit, str, num, int, bool, color, sel, meta, campoMedida, campoColumna,
   pMedida, pColumna, fx, ordenDesc, ordenAsc, visual, reiniciar, vcTitulo, vcDesnudo, texto, textoEstatico, navegador,
-  encabezado, pie, segmentador, kpis, ranking, barras, dona, mapa, semaforo, subtotalesMatriz, matriz, bloqueMoneda,
+  encabezado, pie, segmentador, kpis, ranking, barras, dona, mapa, semaforo, subtotalesMatriz, matriz, marcadores, marcadoresFinos, ejeValores, ejeCategoria, etiquetasBarra, bloqueMoneda,
   columnasMensuales, comboMensual, columnasApiladas, escribirPaginas, reporteDeArgs,
 };

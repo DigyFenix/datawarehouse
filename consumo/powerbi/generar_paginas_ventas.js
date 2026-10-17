@@ -7,7 +7,7 @@
 // Solo reescribe sus propias páginas; las demás conservan su lugar en pages.json.
 'use strict';
 const P = require('./pbir');
-const { T, C, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, mapa, matriz, bloqueMoneda, columnasMensuales, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, bool, color, meta, vcTitulo } = P;
+const { T, C, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, mapa, matriz, marcadoresFinos, ejeValores, ejeCategoria, bloqueMoneda, columnasMensuales, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, bool, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
 const hoy = new Date();
@@ -22,14 +22,14 @@ function pagina01() {
   vs.push(...encabezado(slug, 'Título de Histórico de ventas', 'Subtítulo de corte anual'));
 
   // --- KPIs: empresa + año · resultado del año · moneda
-  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 52], { sync: 'empresa' }));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), 148, wCol(2), 52], { seleccion: ANIO_ACTUAL, sync: 'anio' }));
+  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), 152, wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
   vs.push(kpis(slug, 'resultado-anio', [
-    [T.VENTAS, 'Ventas acumuladas año'],
-    [T.VENTAS, 'Variación acumulada vs año anterior'],
-    [T.VENTAS, 'Documentos de venta'],
-    [T.VENTAS, 'Clientes con venta'],
-    [T.VENTAS, 'Productos vendidos'],
+    [T.VENTAS, 'Ventas acumuladas año', 'Ventas del año'],
+    [T.VENTAS, 'Variación acumulada vs año anterior', 'vs. año anterior'],
+    [T.VENTAS, 'Documentos de venta', 'Documentos'],
+    [T.VENTAS, 'Clientes con venta', 'Clientes'],
+    [T.VENTAS, 'Productos vendidos', 'Productos'],
     [T.VENTAS, 'Ticket promedio'],
   ], [xCol(3), 88, wCol(7), 112], 'Resultado del año'));
   vs.push(...bloqueMoneda(slug));
@@ -46,15 +46,16 @@ function pagina01() {
   vs.push(dona(slug, 'canal', [xCol(10), FILA[1], wCol(3), ALTO], T.CANAL, 'nombre', 'Venta por canal'));
 
   // --- Fila 3: sector · cliente top · ubicación · línea · producto top · vendedor
-  vs.push(ranking(slug, 'sector', [xCol(1), FILA[2], wCol(2), ALTO], T.CONDPAGO, 'nombre', 'Venta por sector', 'sector'));
-  vs.push(ranking(slug, 'cliente', [xCol(3), FILA[2], wCol(2), ALTO], T.CLI, 'nombre', 'Venta por cliente · top 100', 'cliente'));
-  vs.push(mapa(slug, 'ubicacion', [xCol(5), FILA[2], wCol(2), ALTO], 'Venta por ubicación'));
-  vs.push(ranking(slug, 'linea', [xCol(7), FILA[2], wCol(2), ALTO], T.PROD, 'grupo_nombre', 'Venta por línea', 'línea'));
-  vs.push(ranking(slug, 'producto', [xCol(9), FILA[2], wCol(2), ALTO], T.PROD, 'nombre', 'Venta por producto · top 100', 'producto'));
+  // Sin mapa (sesión 29): con todo el año, las ciudades sin geocodificar caían en Australia (gap G5);
+  // su ancho se reparte para que los montos completos quepan junto a la barra.
+  vs.push(ranking(slug, 'sector', [xCol(1), FILA[2], wCol(2), ALTO], T.CONDPAGO, 'nombre', 'Venta por sector', 'sector', undefined, undefined, undefined, { margen: 30 }));
+  vs.push(ranking(slug, 'cliente', [xCol(3), FILA[2], wCol(3), ALTO], T.CLI, 'nombre', 'Venta por cliente · top 100', 'cliente'));
+  vs.push(ranking(slug, 'linea', [xCol(6), FILA[2], wCol(2), ALTO], T.PROD, 'grupo_nombre', 'Venta por línea', 'línea'));
+  vs.push(ranking(slug, 'producto', [xCol(8), FILA[2], wCol(3), ALTO], T.PROD, 'nombre', 'Venta por producto · top 100', 'producto'));
   vs.push(ranking(slug, 'vendedor', [xCol(11), FILA[2], wCol(2), ALTO], T.VEND, 'nombre', 'Venta por vendedor', 'vendedor'));
 
   vs.push(pie(slug));
-  return { id: id('pagina', slug), nombre: 'Histórico de ventas', visuales: vs };
+  return { id: id('pagina', slug), nombre: 'Histórico', visuales: vs };
 }
 
 // ============================================================ PÁGINA 02 · SEGUIMIENTO DE VENTAS
@@ -64,13 +65,13 @@ function pagina02() {
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Seguimiento de ventas', 'Subtítulo de corte mensual'));
 
-  vs.push(kpis(slug, 'resultado-dia', [[T.VENTAS, 'Venta del día']], [xCol(1), 88, wCol(2), 112], 'Resultado del día'));
+  vs.push(kpis(slug, 'resultado-dia', [[T.VENTAS, 'Venta del día']], [xCol(1), 88, wCol(2), 112], 'Resultado del día', 'Sin IVA'));
   vs.push(kpis(slug, 'resultado-mes', [
-    [T.VENTAS, 'Ventas netas'],
-    [T.VENTAS, 'Variación vs año anterior'],
-    [T.VENTAS, 'Documentos de venta'],
-    [T.VENTAS, 'Clientes con venta'],
-    [T.VENTAS, 'Productos vendidos'],
+    [T.VENTAS, 'Ventas netas', 'Ventas del mes'],
+    [T.VENTAS, 'Variación vs año anterior', 'vs. año anterior'],
+    [T.VENTAS, 'Documentos de venta', 'Documentos'],
+    [T.VENTAS, 'Clientes con venta', 'Clientes'],
+    [T.VENTAS, 'Productos vendidos', 'Productos'],
     [T.VENTAS, 'Ticket promedio'],
   ], [xCol(3), 88, wCol(7), 112], 'Resultado'));
   vs.push(...bloqueMoneda(slug));
@@ -93,10 +94,12 @@ function pagina02() {
     },
     sort: ordenAsc(T.CAL, 'dia'),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
-      valueAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
-      legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(9) } }],
+      categoryAxis: ejeCategoria('Día del mes'),
+      valueAxis: ejeValores({ start: num(0) }),
+      // Sin leyenda: los nombres de las medidas no caben; el subtítulo explica las dos líneas.
+      legend: [{ properties: { show: bool(false) } }],
       lineStyles: [
+        marcadoresFinos,
         { properties: { strokeWidth: num(2) }, selector: meta(T.VENTAS, 'Venta acumulada del mes al día') },
         { properties: { lineStyle: str('dotted'), strokeWidth: num(2) }, selector: meta(T.VENTAS, 'Venta acumulada del mes al día año anterior') },
       ],
@@ -105,7 +108,7 @@ function pagina02() {
         { properties: { fill: color(C.PIZARRA_CLARA) }, selector: meta(T.VENTAS, 'Venta acumulada del mes al día año anterior') },
       ],
     },
-    vc: vcTitulo('Venta del mes'),
+    vc: vcTitulo('Venta del mes', 'Acumulado por día · sólida: este mes · punteada: mismo mes del año anterior'),
   }));
   vs.push(mapa(slug, 'ubicacion', [xCol(7), FILA[1], wCol(3), ALTO], 'Venta por ubicación del cliente'));
   vs.push(ranking(slug, 'sucursal', [xCol(10), FILA[1], wCol(3), ALTO], T.BOD, 'nombre', 'Venta por sucursal', 'sucursal'));
@@ -115,7 +118,7 @@ function pagina02() {
   vs.push(ranking(slug, 'linea', [xCol(7), FILA[2], wCol(6), ALTO], T.PROD, 'grupo_nombre', 'Venta por línea', 'línea'));
 
   vs.push(pie(slug));
-  return { id: id('pagina', slug), nombre: 'Seguimiento de ventas', visuales: vs };
+  return { id: id('pagina', slug), nombre: 'Seguimiento', visuales: vs };
 }
 
 P.escribirPaginas(REPORT, [pagina01(), pagina02()]);

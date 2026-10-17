@@ -68,7 +68,7 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "13D"
+                  "Value": "12D"
                 }
               }
             },
@@ -158,10 +158,45 @@
                   "Value": "'center'"
                 }
               }
+            },
+            "textWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
             }
           },
           "selector": {
             "id": "default"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Unidades'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Inventario.Unidades en existencia"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Productos a comprar'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Productos con sugerencia de compra"
           }
         }
       ],
@@ -187,7 +222,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "4L"
+                  "Value": "2L"
                 }
               }
             }
@@ -203,7 +238,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "4L"
+                  "Value": "2L"
                 }
               }
             },
@@ -258,7 +293,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Análisis de inventario'"
+                  "Value": "'Reposición'"
                 }
               }
             },
@@ -303,7 +338,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Existencias · productos con sugerencia de compra · lead time del segmentador'"
+                  "Value": "'Existencias · productos con sugerencia · lead time elegido'"
                 }
               }
             },

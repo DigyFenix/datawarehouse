@@ -124,7 +124,7 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "13D"
+                  "Value": "12D"
                 }
               }
             },
@@ -214,10 +214,115 @@
                   "Value": "'center'"
                 }
               }
+            },
+            "textWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
             }
           },
           "selector": {
             "id": "default"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Clientes nuevos'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Clientes nuevos en ventana"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Retenidos'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Clientes nuevos retenidos"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'% Retención'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.% Retención de nuevos"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'No retenidos'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Clientes nuevos no retenidos"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'% Abandono'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.% Abandono de nuevos"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Venta en la ventana'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Ventas de clientes nuevos en ventana"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Venta total'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Ventas totales de clientes nuevos"
           }
         }
       ],
@@ -243,7 +348,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "4L"
+                  "Value": "2L"
                 }
               }
             }
@@ -259,7 +364,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "4L"
+                  "Value": "2L"
                 }
               }
             },
@@ -359,7 +464,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Resultados en moneda de presentación · sin IVA'"
+                  "Value": "'Moneda de presentación · sin IVA'"
                 }
               }
             },

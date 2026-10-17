@@ -110,7 +110,7 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "13D"
+                  "Value": "12D"
                 }
               }
             },
@@ -200,10 +200,87 @@
                   "Value": "'center'"
                 }
               }
+            },
+            "textWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
             }
           },
           "selector": {
             "id": "default"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Ventas del mes'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Ventas netas"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'vs. año anterior'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Variación vs año anterior"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Documentos'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Documentos de venta"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Clientes'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Clientes con venta"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Productos'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Productos vendidos"
           }
         }
       ],
@@ -229,7 +306,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "4L"
+                  "Value": "2L"
                 }
               }
             }
@@ -245,7 +322,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "4L"
+                  "Value": "2L"
                 }
               }
             },
@@ -345,7 +422,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Resultados en moneda de presentación · sin IVA'"
+                  "Value": "'Moneda de presentación · sin IVA'"
                 }
               }
             },

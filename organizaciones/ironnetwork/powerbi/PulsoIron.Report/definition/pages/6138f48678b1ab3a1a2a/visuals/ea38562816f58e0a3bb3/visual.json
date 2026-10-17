@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Dirección de entrega.ciudad",
-              "nativeQueryRef": "ciudad",
-              "active": true
+              "nativeQueryRef": "ciudad"
             }
           ]
         },
@@ -77,6 +76,40 @@
                       "Value": "'#4f6d78'"
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "mapControls": [
+        {
+          "properties": {
+            "showNavigationControls": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "showStylePicker": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "showSelectionControl": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "autoZoom": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
                 }
               }
             }

@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Vendedor.nombre",
-              "nativeQueryRef": "nombre",
-              "active": true
+              "nativeQueryRef": "nombre"
             }
           ]
         },
@@ -47,20 +46,6 @@
               },
               "queryRef": "FC_Ventas.Ventas netas",
               "nativeQueryRef": "Ventas netas"
-            },
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "FC_Ventas"
-                    }
-                  },
-                  "Property": "Resto a máximo vendedor"
-                }
-              },
-              "queryRef": "FC_Ventas.Resto a máximo vendedor",
-              "nativeQueryRef": "Resto a máximo vendedor"
             }
           ]
         }
@@ -176,42 +161,57 @@
                   "Value": "0L"
                 }
               }
-            }
-          }
-        },
-        {
-          "properties": {
-            "showSeries": {
+            },
+            "enableBackground": {
               "expr": {
                 "Literal": {
                   "Value": "true"
                 }
               }
             },
+            "backgroundColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#ffffff'"
+                    }
+                  }
+                }
+              }
+            },
+            "backgroundTransparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "5D"
+                }
+              }
+            },
             "labelPosition": {
               "expr": {
                 "Literal": {
-                  "Value": "'InsideEnd'"
+                  "Value": "'OutsideEnd'"
                 }
               }
-            }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Ventas netas"
-          }
-        },
-        {
-          "properties": {
-            "showSeries": {
+            },
+            "labelOverflow": {
               "expr": {
                 "Literal": {
                   "Value": "false"
                 }
               }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#4f6d78'"
+                    }
+                  }
+                }
+              }
             }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Resto a máximo vendedor"
           }
         }
       ],
@@ -229,9 +229,6 @@
                 }
               }
             }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Ventas netas"
           }
         },
         {
@@ -241,7 +238,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e1e4e6'"
+                      "Value": "'#4f6d78'"
                     }
                   }
                 }
@@ -249,7 +246,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Resto a máximo vendedor"
+            "metadata": "FC_Ventas.Ventas netas"
           }
         }
       ],

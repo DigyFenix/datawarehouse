@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Producto.grupo_nombre",
-              "nativeQueryRef": "grupo_nombre",
-              "active": true
+              "nativeQueryRef": "grupo_nombre"
             }
           ]
         },
@@ -47,20 +46,6 @@
               },
               "queryRef": "FC_Ventas.Ventas 12 meses",
               "nativeQueryRef": "Ventas 12 meses"
-            },
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "FC_Ventas"
-                    }
-                  },
-                  "Property": "Resto a máximo línea 12 meses"
-                }
-              },
-              "queryRef": "FC_Ventas.Resto a máximo línea 12 meses",
-              "nativeQueryRef": "Resto a máximo línea 12 meses"
             }
           ]
         }
@@ -176,42 +161,57 @@
                   "Value": "0L"
                 }
               }
-            }
-          }
-        },
-        {
-          "properties": {
-            "showSeries": {
+            },
+            "enableBackground": {
               "expr": {
                 "Literal": {
                   "Value": "true"
                 }
               }
             },
+            "backgroundColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#ffffff'"
+                    }
+                  }
+                }
+              }
+            },
+            "backgroundTransparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "5D"
+                }
+              }
+            },
             "labelPosition": {
               "expr": {
                 "Literal": {
-                  "Value": "'InsideEnd'"
+                  "Value": "'OutsideEnd'"
                 }
               }
-            }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Ventas 12 meses"
-          }
-        },
-        {
-          "properties": {
-            "showSeries": {
+            },
+            "labelOverflow": {
               "expr": {
                 "Literal": {
                   "Value": "false"
                 }
               }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#4f6d78'"
+                    }
+                  }
+                }
+              }
             }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Resto a máximo línea 12 meses"
           }
         }
       ],
@@ -229,9 +229,6 @@
                 }
               }
             }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Ventas 12 meses"
           }
         },
         {
@@ -241,7 +238,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e1e4e6'"
+                      "Value": "'#4f6d78'"
                     }
                   }
                 }
@@ -249,7 +246,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Resto a máximo línea 12 meses"
+            "metadata": "FC_Ventas.Ventas 12 meses"
           }
         }
       ],
@@ -281,7 +278,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Ventas por línea · últimos 12 meses'"
+                  "Value": "'Ventas por línea'"
                 }
               }
             },

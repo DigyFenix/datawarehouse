@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Producto.grupo_nombre",
-              "nativeQueryRef": "grupo_nombre",
-              "active": true
+              "nativeQueryRef": "grupo_nombre"
             }
           ]
         },
@@ -47,20 +46,6 @@
               },
               "queryRef": "FC_Inventario.Valor de inventario",
               "nativeQueryRef": "Valor de inventario"
-            },
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "FC_Ventas"
-                    }
-                  },
-                  "Property": "Resto a máximo línea valor"
-                }
-              },
-              "queryRef": "FC_Ventas.Resto a máximo línea valor",
-              "nativeQueryRef": "Resto a máximo línea valor"
             }
           ]
         }
@@ -176,42 +161,57 @@
                   "Value": "0L"
                 }
               }
-            }
-          }
-        },
-        {
-          "properties": {
-            "showSeries": {
+            },
+            "enableBackground": {
               "expr": {
                 "Literal": {
                   "Value": "true"
                 }
               }
             },
+            "backgroundColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#ffffff'"
+                    }
+                  }
+                }
+              }
+            },
+            "backgroundTransparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "5D"
+                }
+              }
+            },
             "labelPosition": {
               "expr": {
                 "Literal": {
-                  "Value": "'InsideEnd'"
+                  "Value": "'OutsideEnd'"
                 }
               }
-            }
-          },
-          "selector": {
-            "metadata": "FC_Inventario.Valor de inventario"
-          }
-        },
-        {
-          "properties": {
-            "showSeries": {
+            },
+            "labelOverflow": {
               "expr": {
                 "Literal": {
                   "Value": "false"
                 }
               }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#4f6d78'"
+                    }
+                  }
+                }
+              }
             }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Resto a máximo línea valor"
           }
         }
       ],
@@ -229,9 +229,6 @@
                 }
               }
             }
-          },
-          "selector": {
-            "metadata": "FC_Inventario.Valor de inventario"
           }
         },
         {
@@ -241,7 +238,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e1e4e6'"
+                      "Value": "'#4f6d78'"
                     }
                   }
                 }
@@ -249,7 +246,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Resto a máximo línea valor"
+            "metadata": "FC_Inventario.Valor de inventario"
           }
         }
       ],
@@ -281,7 +278,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Costo de las existencias por línea'"
+                  "Value": "'Costo por línea'"
                 }
               }
             },

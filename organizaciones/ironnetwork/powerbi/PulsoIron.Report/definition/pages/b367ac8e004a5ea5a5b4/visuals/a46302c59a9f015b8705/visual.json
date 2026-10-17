@@ -54,7 +54,7 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "13D"
+                  "Value": "12D"
                 }
               }
             },
@@ -144,10 +144,45 @@
                   "Value": "'center'"
                 }
               }
+            },
+            "textWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
             }
           },
           "selector": {
             "id": "default"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Vencido'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Cartera por cobrar.Saldo vencido"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'% del saldo'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Cartera por cobrar.% Vencido"
           }
         }
       ],
@@ -173,7 +208,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "4L"
+                  "Value": "2L"
                 }
               }
             }
@@ -189,7 +224,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "4L"
+                  "Value": "2L"
                 }
               }
             },

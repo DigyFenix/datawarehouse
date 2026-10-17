@@ -253,8 +253,8 @@ table 'FC_Cartera por pagar'
 		dataType: string
 		summarizeBy: none
 
-	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+).
-	column 'Rango de vencimiento' = VAR d = 'FC_Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "91+ días", d > 60, "61-90 días", d > 30, "31-60 días", d > 15, "16-30 días", d > 0, "1-15 días", d > -8, "Próx. 7 días", d > -15, "Próx. 8-14 días", d > -22, "Próx. 15-21 días", d > -31, "Próx. 22-30 días", "Próx. 31+ días")
+	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+). Etiquetas en lenguaje claro («Vence en 22-30», «Vencido 31-60»): Edwin pidió retirar el «Próx.» y la jerarquía Estado › Rango no abre por PBIR.
+	column 'Rango de vencimiento' = VAR d = 'FC_Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "Vencido 91+", d > 60, "Vencido 61-90", d > 30, "Vencido 31-60", d > 15, "Vencido 16-30", d > 0, "Vencido 1-15", d > -8, "Vence en 7", d > -15, "Vence en 8-14", d > -22, "Vence en 15-21", d > -31, "Vence en 22-30", "Vence en 31+")
 		dataType: string
 		summarizeBy: none
 		sortByColumn: 'Rango de vencimiento orden'
