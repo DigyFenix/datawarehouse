@@ -1,7 +1,8 @@
 {#
-  Dimensión OPCIONAL. Fuerte en SAP B1 (maestro propio); en Odoo el "vendedor" es el usuario
-  responsable del documento y no hay maestro comercial, así que la tabla queda vacía y el
-  hecho cruza contra el miembro default de Oro.
+  Dimensión OPCIONAL. Fuerte en SAP B1 (maestro propio OSLP). En Odoo el "vendedor" es el
+  usuario responsable del documento (account_move.invoice_user_id → res_users): el nombre
+  vive en el partner del usuario (res_users.partner_id → res_partner.name). Los usuarios
+  `share` (portal, externos) no venden y se excluyen.
 #}
 {{ config(materialized='table') }}
 
@@ -19,17 +20,17 @@ from {{ source('bronce', 'oslp') }}
 
 {% else %}
 
--- Odoo no tiene maestro de vendedores en el paquete base: el responsable sale de
--- account_move.invoice_user_id y se resuelve contra el miembro default.
 select
-    cast(null as text)    as empresa_id,
-    cast(null as text)    as vendedor_codigo,
-    cast(null as text)    as nombre,
-    cast(null as boolean) as activo,
-    cast(null as text)    as fuente_origen,
-    cast(null as timestamptz) as extraido_en,
-    '{{ this.name }}'::text as proceso_transformacion,
-    '{{ var("version_proceso", "2.0") }}'::text as version_proceso
-where false
+    u.empresa_id,
+    u.datos->>'id'                                    as vendedor_codigo,
+    coalesce(nullif(trim(p.datos->>'name'), ''), u.datos->>'login', 'Usuario ' || (u.datos->>'id'))
+                                                      as nombre,
+    coalesce((u.datos->>'active')::boolean, true)      as activo,
+    {{ columnas_trazabilidad('u') }}
+from {{ source('bronce', 'res_users') }} u
+left join {{ source('bronce', 'res_partner') }} p
+       on p.datos->>'id' = u.datos->>'partner_id'
+      and p.empresa_id   = u.empresa_id
+where coalesce((u.datos->>'share')::boolean, false) = false
 
 {% endif %}

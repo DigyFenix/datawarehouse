@@ -9,6 +9,8 @@ select
     datos->>'ItemCode'                                as producto_codigo,
     trim(datos->>'ItemName')                          as nombre,
     nullif(datos->>'ItmsGrpCod', '')                  as grupo_codigo,
+    -- OITB (nombre del grupo) no está en el paquete base SAP: queda null hasta extraerlo.
+    null::text                                        as grupo_nombre,
     nullif(trim(datos->>'InvntryUom'), '')            as unidad_medida,
     case when datos->>'InvntItem' = 'Y' then 'bien' else 'servicio' end as tipo_producto,
     coalesce(datos->>'validFor', 'Y') = 'Y'           as activo,
@@ -23,6 +25,9 @@ select
     v.datos->>'product_tmpl_id'                       as producto_codigo,
     {{ odoo_texto('t.datos', 'name') }}               as nombre,
     nullif(t.datos->>'categ_id', '')                  as grupo_codigo,
+    -- Nombre de la categoría: `name` es texto plano en product_category (no jsonb).
+    coalesce(nullif(trim(c.datos->>'name'), ''), nullif(trim(c.datos->>'complete_name'), ''))
+                                                      as grupo_nombre,
     nullif(t.datos->>'uom_id', '')                    as unidad_medida,
     case when t.datos->>'type' = 'service' then 'servicio' else 'bien' end as tipo_producto,
     coalesce((v.datos->>'active')::boolean, true)      as activo,
@@ -31,5 +36,8 @@ from {{ source('bronce', 'product_product') }} v
 left join {{ source('bronce', 'product_template') }} t
        on t.datos->>'id' = v.datos->>'product_tmpl_id'
       and t.empresa_id   = v.empresa_id
+left join {{ source('bronce', 'product_category') }} c
+       on c.datos->>'id' = t.datos->>'categ_id'
+      and c.empresa_id   = t.empresa_id
 
 {% endif %}

@@ -39,6 +39,8 @@ const DIR = 'DM_Dirección de entrega';
 const EMP = 'DM_Empresa';
 const MONEDA = 'MD_Moneda de análisis';
 const VISTA = 'MD_Vista de ventas';
+const CANAL = 'DM_Canal';
+const CONDPAGO = 'DM_Condición de pago';
 const CARGA = 'FC_Estado de carga';
 
 // Colores de Kraken (capturas): pizarra para la serie, gris para la referencia, panel gris-azul.
@@ -344,13 +346,13 @@ function pagina01() {
   // --- Fila 2: matrices año × mes (montos y variación) · dona canal
   vs.push(matriz(slug, 'matriz-montos', 'Ventas netas', [xCol(1), FILA[1], wCol(9), 120], 'Venta por año y mes', false));
   vs.push(matriz(slug, 'matriz-variacion', 'Variación vs año anterior', [xCol(1), FILA[1] + 128, wCol(9), 104], 'Variación contra el mismo mes del año anterior'));
-  vs.push(dona(slug, 'canal', [xCol(10), FILA[1], wCol(3), ALTO], CLI, 'grupo_codigo', 'Venta por canal'));
+  vs.push(dona(slug, 'canal', [xCol(10), FILA[1], wCol(3), ALTO], CANAL, 'nombre', 'Venta por canal'));
 
   // --- Fila 3: sector · cliente top · ubicación · línea · producto top · vendedor
-  vs.push(ranking(slug, 'sector', [xCol(1), FILA[2], wCol(2), ALTO], CLI, 'condicion_pago_codigo', 'Venta por sector', 'sector'));
+  vs.push(ranking(slug, 'sector', [xCol(1), FILA[2], wCol(2), ALTO], CONDPAGO, 'nombre', 'Venta por sector', 'sector'));
   vs.push(ranking(slug, 'cliente', [xCol(3), FILA[2], wCol(2), ALTO], CLI, 'nombre', 'Venta por cliente · top 100', 'cliente'));
   vs.push(mapa(slug, 'ubicacion', [xCol(5), FILA[2], wCol(2), ALTO], 'Venta por ubicación'));
-  vs.push(ranking(slug, 'linea', [xCol(7), FILA[2], wCol(2), ALTO], PROD, 'grupo_codigo', 'Venta por línea', 'línea'));
+  vs.push(ranking(slug, 'linea', [xCol(7), FILA[2], wCol(2), ALTO], PROD, 'grupo_nombre', 'Venta por línea', 'línea'));
   vs.push(ranking(slug, 'producto', [xCol(9), FILA[2], wCol(2), ALTO], PROD, 'nombre', 'Venta por producto · top 100', 'producto'));
   vs.push(ranking(slug, 'vendedor', [xCol(11), FILA[2], wCol(2), ALTO], VEND, 'nombre', 'Venta por vendedor', 'vendedor'));
 
@@ -381,7 +383,7 @@ function pagina02() {
   vs.push(segmentador(slug, 'anio-mes', CAL, 'anio_mes', [xCol(1), FILA[0], wCol(2), 148], { modo: 'VerticalList', seleccion: MES_ACTUAL, sync: 'periodo', titulo: 'Año y mes', unico: true, descendente: true }));
   vs.push(segmentador(slug, 'empresa', EMP, 'nombre', [xCol(1), FILA[0] + 156, wCol(2), 76], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(ranking(slug, 'vendedor', [xCol(3), FILA[0], wCol(2), ALTO], VEND, 'nombre', 'Venta por vendedor', 'vendedor'));
-  vs.push(ranking(slug, 'sector', [xCol(5), FILA[0], wCol(2), ALTO], CLI, 'condicion_pago_codigo', 'Venta por sector', 'sector'));
+  vs.push(ranking(slug, 'sector', [xCol(5), FILA[0], wCol(2), ALTO], CONDPAGO, 'nombre', 'Venta por sector', 'sector'));
   vs.push(ranking(slug, 'cliente', [xCol(7), FILA[0], wCol(3), ALTO], CLI, 'nombre', 'Venta por cliente · top 100', 'cliente'));
   vs.push(ranking(slug, 'producto', [xCol(10), FILA[0], wCol(3), ALTO], PROD, 'nombre', 'Venta por producto · top 100', 'producto'));
 
@@ -413,8 +415,8 @@ function pagina02() {
   vs.push(ranking(slug, 'sucursal', [xCol(10), FILA[1], wCol(3), ALTO], BOD, 'nombre', 'Venta por sucursal', 'sucursal'));
 
   // --- Fila 3: canal · línea
-  vs.push(ranking(slug, 'canal', [xCol(1), FILA[2], wCol(6), ALTO], CLI, 'grupo_codigo', 'Venta por canal', 'canal'));
-  vs.push(ranking(slug, 'linea', [xCol(7), FILA[2], wCol(6), ALTO], PROD, 'grupo_codigo', 'Venta por línea', 'línea'));
+  vs.push(ranking(slug, 'canal', [xCol(1), FILA[2], wCol(6), ALTO], CANAL, 'nombre', 'Venta por canal', 'canal'));
+  vs.push(ranking(slug, 'linea', [xCol(7), FILA[2], wCol(6), ALTO], PROD, 'grupo_nombre', 'Venta por línea', 'línea'));
 
   vs.push(pie(slug));
   return { id: id('pagina', slug), nombre: 'Seguimiento de ventas', visuales: vs };

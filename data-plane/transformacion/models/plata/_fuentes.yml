@@ -122,3 +122,13 @@ sources:
         description: >
           Pedidos de venta (líneas). El backlog se deriva: product_uom_qty − qty_invoiced.
           Solo líneas de producto (display_type IS NULL en origen).
+      - name: product_category
+        description: Categorías de producto (línea). name es texto plano; complete_name trae la ruta.
+      - name: res_users
+        description: >
+          Usuarios = vendedores (invoice_user_id del documento). El nombre vive en su
+          res_partner (partner_id). share=true son usuarios de portal, no venden.
+      - name: crm_team
+        description: Equipos de venta = canal comercial (account_move.team_id). name es jsonb.
+      - name: account_payment_term
+        description: Condiciones de pago = "sector" crédito/contado (invoice_payment_term_id). name es jsonb.

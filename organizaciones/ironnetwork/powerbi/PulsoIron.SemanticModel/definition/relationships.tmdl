@@ -47,350 +47,358 @@ relationship rel_012
 	toColumn: 'DM_Tipo de documento'.tipo_documento_clave
 
 relationship rel_013
+	fromColumn: FC_Ventas.canal_clave
+	toColumn: DM_Canal.canal_clave
+
+relationship rel_014
+	fromColumn: FC_Ventas.condicion_pago_clave
+	toColumn: 'DM_Condición de pago'.condicion_pago_clave
+
+relationship rel_015
 	fromColumn: FC_Compras.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_014
+relationship rel_016
 	fromColumn: FC_Compras.proveedor_clave
 	toColumn: DM_Proveedor.proveedor_clave
 
-relationship rel_015
+relationship rel_017
 	fromColumn: FC_Compras.socio_clave
 	toColumn: 'DM_Socio de negocio'.socio_clave
 
-relationship rel_016
+relationship rel_018
 	fromColumn: FC_Compras.producto_clave
 	toColumn: DM_Producto.producto_clave
 
-relationship rel_017
+relationship rel_019
 	fromColumn: FC_Compras.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_018
+relationship rel_020
 	fromColumn: FC_Compras.almacen_clave
 	toColumn: DM_Bodega.almacen_clave
 
-relationship rel_019
+relationship rel_021
 	fromColumn: FC_Compras.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_020
+relationship rel_022
 	fromColumn: FC_Compras.cuenta_clave
 	toColumn: 'DM_Cuenta contable'.cuenta_clave
 
-relationship rel_021
+relationship rel_023
 	fromColumn: FC_Compras.centro_costo_clave
 	toColumn: 'DM_Centro de costo'.centro_costo_clave
 
-relationship rel_022
+relationship rel_024
 	fromColumn: FC_Compras.tipo_documento_clave
 	toColumn: 'DM_Tipo de documento'.tipo_documento_clave
 
-relationship rel_023
+relationship rel_025
 	fromColumn: 'FC_Cartera por cobrar'.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_024
+relationship rel_026
 	fromColumn: 'FC_Cartera por cobrar'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_025
+relationship rel_027
 	fromColumn: 'FC_Cartera por cobrar'.socio_clave
 	toColumn: 'DM_Socio de negocio'.socio_clave
 
-relationship rel_026
+relationship rel_028
 	fromColumn: 'FC_Cartera por cobrar'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_027
+relationship rel_029
 	fromColumn: 'FC_Cartera por cobrar'.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_028
+relationship rel_030
 	fromColumn: 'FC_Cartera por cobrar'.cuenta_clave
 	toColumn: 'DM_Cuenta contable'.cuenta_clave
 
-relationship rel_029
+relationship rel_031
 	isActive: false
 	fromColumn: 'FC_Cartera por cobrar'.tiempo_vencimiento_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_030
+relationship rel_032
 	fromColumn: 'FC_Cartera por cobrar'.rango_aging_clave
 	toColumn: DM_Antigüedad.rango_aging_clave
 
-relationship rel_031
+relationship rel_033
 	fromColumn: 'FC_Cartera por pagar'.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_032
+relationship rel_034
 	fromColumn: 'FC_Cartera por pagar'.proveedor_clave
 	toColumn: DM_Proveedor.proveedor_clave
 
-relationship rel_033
+relationship rel_035
 	fromColumn: 'FC_Cartera por pagar'.socio_clave
 	toColumn: 'DM_Socio de negocio'.socio_clave
 
-relationship rel_034
+relationship rel_036
 	fromColumn: 'FC_Cartera por pagar'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_035
+relationship rel_037
 	fromColumn: 'FC_Cartera por pagar'.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_036
+relationship rel_038
 	fromColumn: 'FC_Cartera por pagar'.cuenta_clave
 	toColumn: 'DM_Cuenta contable'.cuenta_clave
 
-relationship rel_037
+relationship rel_039
 	isActive: false
 	fromColumn: 'FC_Cartera por pagar'.tiempo_vencimiento_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_038
+relationship rel_040
 	fromColumn: 'FC_Cartera por pagar'.rango_aging_clave
 	toColumn: DM_Antigüedad.rango_aging_clave
 
-relationship rel_039
+relationship rel_041
 	fromColumn: 'FC_Cartera cobrar histórico'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_040
+relationship rel_042
 	fromColumn: 'FC_Cartera cobrar histórico'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_041
+relationship rel_043
 	fromColumn: 'FC_Cartera cobrar histórico'.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_042
+relationship rel_044
 	fromColumn: 'FC_Cartera cobrar histórico'.cuenta_clave
 	toColumn: 'DM_Cuenta contable'.cuenta_clave
 
-relationship rel_043
+relationship rel_045
 	fromColumn: 'FC_Cartera cobrar histórico'.fecha_corte_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_044
+relationship rel_046
 	isActive: false
 	fromColumn: 'FC_Cartera cobrar histórico'.tiempo_vencimiento_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_045
+relationship rel_047
 	fromColumn: 'FC_Cartera cobrar histórico'.rango_aging_clave
 	toColumn: DM_Antigüedad.rango_aging_clave
 
-relationship rel_046
+relationship rel_048
 	fromColumn: 'FC_Cartera pagar histórico'.proveedor_clave
 	toColumn: DM_Proveedor.proveedor_clave
 
-relationship rel_047
+relationship rel_049
 	fromColumn: 'FC_Cartera pagar histórico'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_048
+relationship rel_050
 	fromColumn: 'FC_Cartera pagar histórico'.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_049
+relationship rel_051
 	fromColumn: 'FC_Cartera pagar histórico'.cuenta_clave
 	toColumn: 'DM_Cuenta contable'.cuenta_clave
 
-relationship rel_050
+relationship rel_052
 	fromColumn: 'FC_Cartera pagar histórico'.fecha_corte_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_051
+relationship rel_053
 	isActive: false
 	fromColumn: 'FC_Cartera pagar histórico'.tiempo_vencimiento_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_052
+relationship rel_054
 	fromColumn: 'FC_Cartera pagar histórico'.rango_aging_clave
 	toColumn: DM_Antigüedad.rango_aging_clave
 
-relationship rel_053
+relationship rel_055
 	fromColumn: 'FC_Pagos recibidos'.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_054
+relationship rel_056
 	fromColumn: 'FC_Pagos recibidos'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_055
+relationship rel_057
 	fromColumn: 'FC_Pagos recibidos'.socio_clave
 	toColumn: 'DM_Socio de negocio'.socio_clave
 
-relationship rel_056
+relationship rel_058
 	fromColumn: 'FC_Pagos recibidos'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_057
+relationship rel_059
 	fromColumn: 'FC_Pagos recibidos'.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_058
+relationship rel_060
 	fromColumn: 'FC_Pagos efectuados'.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_059
+relationship rel_061
 	fromColumn: 'FC_Pagos efectuados'.proveedor_clave
 	toColumn: DM_Proveedor.proveedor_clave
 
-relationship rel_060
+relationship rel_062
 	fromColumn: 'FC_Pagos efectuados'.socio_clave
 	toColumn: 'DM_Socio de negocio'.socio_clave
 
-relationship rel_061
+relationship rel_063
 	fromColumn: 'FC_Pagos efectuados'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_062
+relationship rel_064
 	fromColumn: 'FC_Pagos efectuados'.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_063
+relationship rel_065
 	fromColumn: FC_Inventario.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_064
+relationship rel_066
 	fromColumn: FC_Inventario.producto_clave
 	toColumn: DM_Producto.producto_clave
 
-relationship rel_065
+relationship rel_067
 	fromColumn: FC_Inventario.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_066
+relationship rel_068
 	fromColumn: FC_Inventario.almacen_clave
 	toColumn: DM_Bodega.almacen_clave
 
-relationship rel_067
+relationship rel_069
 	fromColumn: 'FC_Tipo de cambio'.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_068
+relationship rel_070
 	fromColumn: 'FC_Tipo de cambio'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_069
+relationship rel_071
 	fromColumn: 'FC_Tipo de cambio'.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_070
+relationship rel_072
 	fromColumn: 'FC_Campos de usuario'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_071
+relationship rel_073
 	fromColumn: 'FC_Campos de usuario'.proveedor_clave
 	toColumn: DM_Proveedor.proveedor_clave
 
-relationship rel_072
+relationship rel_074
 	fromColumn: 'FC_Campos de usuario'.producto_clave
 	toColumn: DM_Producto.producto_clave
 
-relationship rel_073
+relationship rel_075
 	fromColumn: 'FC_Venta diaria'.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_074
+relationship rel_076
 	fromColumn: 'FC_Venta diaria'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_075
+relationship rel_077
 	fromColumn: 'FC_Proyección de caja'.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_076
+relationship rel_078
 	fromColumn: 'FC_Proyección de caja'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_077
+relationship rel_079
 	fromColumn: FC_Pedidos.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_078
+relationship rel_080
 	fromColumn: FC_Pedidos.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_079
+relationship rel_081
 	fromColumn: FC_Pedidos.socio_clave
 	toColumn: 'DM_Socio de negocio'.socio_clave
 
-relationship rel_080
+relationship rel_082
 	fromColumn: FC_Pedidos.producto_clave
 	toColumn: DM_Producto.producto_clave
 
-relationship rel_081
+relationship rel_083
 	fromColumn: FC_Pedidos.vendedor_clave
 	toColumn: DM_Vendedor.vendedor_clave
 
-relationship rel_082
+relationship rel_084
 	fromColumn: FC_Pedidos.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_083
+relationship rel_085
 	fromColumn: FC_Pedidos.almacen_clave
 	toColumn: DM_Bodega.almacen_clave
 
-relationship rel_084
+relationship rel_086
 	fromColumn: FC_Pedidos.moneda_clave
 	toColumn: DM_Moneda.moneda_clave
 
-relationship rel_085
+relationship rel_087
 	isActive: false
 	fromColumn: FC_Pedidos.tiempo_vencimiento_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_086
+relationship rel_088
 	fromColumn: 'FC_Resultados contables'.tiempo_clave
 	toColumn: DM_Calendario.tiempo_clave
 
-relationship rel_087
+relationship rel_089
 	fromColumn: 'FC_Resultados contables'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_088
+relationship rel_090
 	fromColumn: 'FC_Resultados contables'.cuenta_clave
 	toColumn: 'DM_Cuenta contable'.cuenta_clave
 
-relationship rel_089
+relationship rel_091
 	fromColumn: 'FC_Resultados contables'.centro_costo_clave
 	toColumn: 'DM_Centro de costo'.centro_costo_clave
 
-relationship rel_090
+relationship rel_092
 	fromColumn: 'FC_Estado de carga'.organizacion_clave
 	toColumn: DM_Empresa.organizacion_clave
 
-relationship rel_091
+relationship rel_093
 	fromColumn: 'DM_Clasificación ABC'.anio_clave
 	toColumn: 'DM_Año de clasificación'.anio_clave
 
-relationship rel_092
+relationship rel_094
 	fromColumn: 'DM_Clasificación ABC Proveedor'.anio_clave
 	toColumn: 'DM_Año de clasificación'.anio_clave
 
-relationship rel_093
+relationship rel_095
 	fromColumn: DM_Calendario.anio
 	toColumn: 'DM_Año de clasificación'.anio_clave
 
-relationship rel_094
+relationship rel_096
 	fromColumn: 'DM_Clasificación ABC'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_095
+relationship rel_097
 	fromColumn: 'DM_Clasificación ABC Proveedor'.proveedor_clave
 	toColumn: DM_Proveedor.proveedor_clave
 
-relationship rel_096
+relationship rel_098
 	fromColumn: 'DM_Clasificación RFM'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_097
+relationship rel_099
 	fromColumn: 'DM_Comportamiento de pago'.cliente_clave
 	toColumn: DM_Cliente.cliente_clave
 
-relationship rel_098
+relationship rel_100
 	fromColumn: 'DM_Análisis de producto'.producto_clave
 	toColumn: DM_Producto.producto_clave

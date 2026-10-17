@@ -36,6 +36,16 @@ models:
       - name: almacen_codigo
         data_tests: [not_null]
 
+  - name: plata_canal
+    columns:
+      - name: canal_codigo
+        data_tests: [not_null]
+
+  - name: plata_condicion_pago
+    columns:
+      - name: condicion_pago_codigo
+        data_tests: [not_null]
+
   - name: plata_documento_comercial
     description: Cabecera de venta y compra unificadas por `flujo`.
     columns:

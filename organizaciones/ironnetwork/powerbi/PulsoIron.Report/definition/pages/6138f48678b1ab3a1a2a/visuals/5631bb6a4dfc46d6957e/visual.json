@@ -20,14 +20,14 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DM_Cliente"
+                      "Entity": "DM_Canal"
                     }
                   },
-                  "Property": "grupo_codigo"
+                  "Property": "nombre"
                 }
               },
-              "queryRef": "DM_Cliente.grupo_codigo",
-              "nativeQueryRef": "grupo_codigo"
+              "queryRef": "DM_Canal.nombre",
+              "nativeQueryRef": "nombre"
             }
           ]
         },

@@ -21,7 +21,9 @@ select
     {{ clave_o_no_definido('ds', 'socio_clave') }}    as socio_clave,
     -- ¿A DÓNDE se vende? La dirección de ENTREGA del documento (ShipToCode → CRD1), que es
     -- distinta de quién compra: un cliente puede tener 20 puntos de entrega.
-    {{ clave_o_no_definido('ddir', 'direccion_clave') }} as direccion_clave,
+    -- Fallback: sin dirección de entrega propia, la dirección PRINCIPAL del socio (en Odoo
+    -- partner_shipping_id suele ser el propio cliente; en Cresta solo 27% trae ShipToCode).
+    coalesce(ddir.direccion_clave, ddir0.direccion_clave, {{ clave_no_definido() }}) as direccion_clave,
     -- Línea sin código de artículo = servicio/flete/gasto → miembro SERVICIO (-2), no
     -- "No definido": es una categoría de negocio real, no un dato faltante.
     case when l.producto_codigo is null then -2
@@ -33,6 +35,10 @@ select
     {{ clave_o_no_definido('dcu', 'cuenta_clave') }}  as cuenta_clave,
     {{ clave_o_no_definido('dcc', 'centro_costo_clave') }} as centro_costo_clave,
     {{ clave_o_no_definido('dtd', 'tipo_documento_clave') }} as tipo_documento_clave,
+    -- Canal (equipo de ventas) y condición de pago DEL DOCUMENTO; si el documento no la
+    -- trae, se usa la del cliente (condicion_pago_codigo de dim_cliente).
+    {{ clave_o_no_definido('dcan', 'canal_clave') }}  as canal_clave,
+    {{ clave_o_no_definido('dcp', 'condicion_pago_clave') }} as condicion_pago_clave,
 
     -- ---------- atributos degenerados ----------
     l.empresa_id,
@@ -97,6 +103,13 @@ left join {{ ref('dim_direccion') }} ddir
        and ddir.socio_codigo     = l.socio_codigo
        and ddir.tipo             = 'entrega'
        and ddir.direccion_codigo = cab.direccion_entrega_codigo
+-- La fila PROPIA del socio (direccion_codigo = socio_codigo): los contactos hijos también
+-- son 'principal' y colgarían del mismo socio — unirse por socio duplicaría líneas.
+left join {{ ref('dim_direccion') }} ddir0
+       on  ddir0.empresa_id       = l.empresa_id
+       and ddir0.direccion_codigo = l.socio_codigo
+       and ddir0.socio_codigo     = l.socio_codigo
+       and ddir0.tipo             = 'principal'
 left join {{ ref('dim_producto') }} dp
        on dp.producto_codigo = l.producto_codigo and dp.empresa_id = l.empresa_id
 left join {{ ref('dim_vendedor') }} dv
@@ -113,4 +126,9 @@ left join {{ ref('dim_centro_costo') }} dcc
        on dcc.centro_costo_codigo = l.centro_costo_codigo and dcc.empresa_id = l.empresa_id
 left join {{ ref('dim_tipo_documento') }} dtd
        on dtd.tipo_documento_codigo = 'venta_' || l.tipo_documento
+left join {{ ref('dim_canal') }} dcan
+       on dcan.canal_codigo = cab.canal_codigo and dcan.empresa_id = l.empresa_id
+left join {{ ref('dim_condicion_pago') }} dcp
+       on dcp.condicion_pago_codigo = coalesce(cab.condicion_pago_codigo, dc.condicion_pago_codigo)
+      and dcp.empresa_id = l.empresa_id
 where l.flujo = 'venta'

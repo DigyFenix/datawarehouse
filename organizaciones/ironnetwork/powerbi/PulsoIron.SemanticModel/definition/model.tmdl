@@ -24,6 +24,8 @@ ref table DM_Moneda
 ref table 'DM_Cuenta contable'
 ref table 'DM_Centro de costo'
 ref table 'DM_Tipo de documento'
+ref table DM_Canal
+ref table 'DM_Condición de pago'
 ref table DM_Antigüedad
 ref table 'DM_Clasificación ABC'
 ref table 'DM_Clasificación ABC Proveedor'

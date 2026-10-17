@@ -72,6 +72,18 @@ table FC_Ventas
 		summarizeBy: none
 		sourceColumn: tipo_documento_clave
 
+	column canal_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: canal_clave
+
+	column condicion_pago_clave
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: condicion_pago_clave
+
 	column empresa_id
 		dataType: string
 		isHidden
@@ -563,7 +575,7 @@ table FC_Ventas
 		displayFolder: _Auxiliar
 
 	/// Fondo gris del ranking por sector: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
-	measure 'Resto a máximo sector' = VAR m = MAXX(ALLSELECTED(DM_Cliente[condicion_pago_codigo]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+	measure 'Resto a máximo sector' = VAR m = MAXX(ALLSELECTED('DM_Condición de pago'[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 
@@ -573,12 +585,12 @@ table FC_Ventas
 		displayFolder: _Auxiliar
 
 	/// Fondo gris del ranking por línea: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
-	measure 'Resto a máximo línea' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_codigo]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+	measure 'Resto a máximo línea' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 
 	/// Fondo gris del ranking por canal: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
-	measure 'Resto a máximo canal' = VAR m = MAXX(ALLSELECTED(DM_Cliente[grupo_codigo]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+	measure 'Resto a máximo canal' = VAR m = MAXX(ALLSELECTED(DM_Canal[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 

@@ -20,14 +20,14 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DM_Cliente"
+                      "Entity": "DM_Condición de pago"
                     }
                   },
-                  "Property": "condicion_pago_codigo"
+                  "Property": "nombre"
                 }
               },
-              "queryRef": "DM_Cliente.condicion_pago_codigo",
-              "nativeQueryRef": "condicion_pago_codigo"
+              "queryRef": "DM_Condición de pago.nombre",
+              "nativeQueryRef": "nombre"
             }
           ]
         },

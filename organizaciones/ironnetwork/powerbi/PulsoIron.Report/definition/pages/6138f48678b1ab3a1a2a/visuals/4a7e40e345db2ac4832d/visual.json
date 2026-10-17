@@ -23,11 +23,11 @@
                       "Entity": "DM_Producto"
                     }
                   },
-                  "Property": "grupo_codigo"
+                  "Property": "grupo_nombre"
                 }
               },
-              "queryRef": "DM_Producto.grupo_codigo",
-              "nativeQueryRef": "grupo_codigo"
+              "queryRef": "DM_Producto.grupo_nombre",
+              "nativeQueryRef": "grupo_nombre"
             }
           ]
         },

@@ -27,6 +27,11 @@ table DM_Producto
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
+	column grupo_nombre
+		dataType: string
+		summarizeBy: none
+		sourceColumn: grupo_nombre
+
 	column unidad_medida
 		dataType: string
 		summarizeBy: none

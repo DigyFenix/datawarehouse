@@ -44,7 +44,11 @@ select
     coalesce((datos->>'customer_rank')::int, 0) > 0    as es_cliente,
     coalesce((datos->>'supplier_rank')::int, 0) > 0    as es_proveedor,
     null::text                                        as grupo_codigo,
-    nullif(datos->>'property_payment_term_id', '')    as condicion_pago_codigo,
+    -- Propiedad POR COMPAÑÍA: Odoo la guarda como jsonb {"<company_id>": <term_id>}; tomar el
+    -- texto crudo dejaba '{"4": 4}' como código. Se extrae el valor de la primera compañía.
+    case when jsonb_typeof(datos->'property_payment_term_id') = 'object'
+         then (select v from jsonb_each_text(datos->'property_payment_term_id') as t(k, v) limit 1)
+         else nullif(datos->>'property_payment_term_id', '') end as condicion_pago_codigo,
     null::text                                        as moneda_codigo,
     nullif(datos->>'country_id', '')                  as pais,
     null::text                                        as region,

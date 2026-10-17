@@ -361,6 +361,16 @@ models:
       - name: almacen_clave
         data_tests: [not_null, unique]
 
+  - name: dim_canal
+    columns:
+      - name: canal_clave
+        data_tests: [not_null, unique]
+
+  - name: dim_condicion_pago
+    columns:
+      - name: condicion_pago_clave
+        data_tests: [not_null, unique]
+
   - name: dim_centro_costo
     columns:
       - name: centro_costo_clave

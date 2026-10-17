@@ -54,7 +54,7 @@ DIMENSIONES = [
     "dim_tiempo", "dim_cliente", "dim_proveedor", "dim_socio_negocio", "dim_direccion",
     "dim_producto", "dim_vendedor",
     "dim_organizacion", "dim_almacen", "dim_moneda", "dim_cuenta", "dim_centro_costo",
-    "dim_tipo_documento", "dim_rango_aging", "clasificacion_abc_cliente",
+    "dim_tipo_documento", "dim_canal", "dim_condicion_pago", "dim_rango_aging", "clasificacion_abc_cliente",
     "clasificacion_abc_proveedor", "clasificacion_rfm_cliente",
     "comportamiento_pago_cliente", "analisis_producto", "dim_anio",
 ]
@@ -184,6 +184,7 @@ ETIQUETA = {
     "dim_producto": "Producto", "dim_vendedor": "Vendedor", "dim_organizacion": "Empresa",
     "dim_almacen": "Bodega", "dim_moneda": "Moneda", "dim_cuenta": "Cuenta contable",
     "dim_centro_costo": "Centro de costo", "dim_tipo_documento": "Tipo de documento",
+    "dim_canal": "Canal", "dim_condicion_pago": "Condición de pago",
     "dim_rango_aging": "Antigüedad", "clasificacion_abc_cliente": "Clasificación ABC",
     "clasificacion_abc_proveedor": "Clasificación ABC Proveedor",
     "clasificacion_rfm_cliente": "Clasificación RFM",
@@ -2174,8 +2175,8 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += rf"""
 # necesita la columna concreta que ocupa el eje.
 _RESTO = [
     ("cliente", "Cliente[nombre]"), ("producto", "Producto[nombre]"), ("vendedor", "Vendedor[nombre]"),
-    ("sector", "Cliente[condicion_pago_codigo]"), ("sucursal", "Bodega[nombre]"),
-    ("línea", "Producto[grupo_codigo]"), ("canal", "Cliente[grupo_codigo]"), ("empresa", "Empresa[nombre]"),
+    ("sector", "'Condición de pago'[nombre]"), ("sucursal", "Bodega[nombre]"),
+    ("línea", "Producto[grupo_nombre]"), ("canal", "Canal[nombre]"), ("empresa", "Empresa[nombre]"),
 ]
 MEDIDAS_POR_TABLA["hecho_venta_linea"] += "".join(rf"""
 	/// Fondo gris del ranking por {dim}: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
@@ -2602,6 +2603,7 @@ def main() -> int:
         ("dim_almacen", "almacen_clave"), ("dim_moneda", "moneda_clave"),
         ("dim_cuenta", "cuenta_clave"), ("dim_centro_costo", "centro_costo_clave"),
         ("dim_tipo_documento", "tipo_documento_clave"),
+        ("dim_canal", "canal_clave"), ("dim_condicion_pago", "condicion_pago_clave"),
     ]
     rels, n = [], 0
     for hecho in [h for h in HECHOS if h in presentes]:

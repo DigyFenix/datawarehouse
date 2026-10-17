@@ -71,20 +71,28 @@ Mes anterior / lista) y se agrega:
 
 ## Gaps — qué falta y cómo se obtiene de Odoo
 
+**Resueltos en la sesión 28 (seed `metadata-store/seeds/70_paquete_odoo_comercial.sql`):**
+
+| Gap | Resolución | Verificado en Iron (2026-10-17) |
+|---|---|---|
+| G2 Vendedor | `res_users` → `plata_vendedor` (rama Odoo, nombre vía `res_partner`) | 4 vendedores con venta; dos muestran su login porque así se llama su partner en Odoo |
+| G2 Canal | `crm_team` → `plata_canal` / `dim_canal` + `canal_clave` en el hecho (`account_move.team_id`) | Ventas · VENTAS-INORGANICAS · VENTAS-ORGANICAS |
+| G2 Línea | `product_category` → `grupo_nombre` en `plata_producto` / `dim_producto` | Software, COMPUTADORA, INTERNET, Microsoft… |
+| G4 Sector | `account_payment_term` → `plata_condicion_pago` / `dim_condicion_pago` + `condicion_pago_clave` en el hecho (condición DEL DOCUMENTO, con fallback a la del cliente; la propiedad jsonb `{"4": 4}` del socio ya se lee bien) | 30 días, 15 días, Pago inmediato… |
+| G5 Ubicación (parcial) | `partner_shipping_id` ahora se extrae (el seed 69 lo sembró bajo el objeto SAP `ventas_factura`); el hecho cae a la dirección PRINCIPAL del socio cuando no hay dirección de entrega propia | 759 de 761 líneas con dirección; la ciudad sigue vacía en la mayoría (calidad de captura en el Odoo de Iron) |
+
+SAP B1 (Cresta): `dim_canal` y `dim_condicion_pago` quedan en No definido hasta extraer OCTG /
+definir canal; `grupo_nombre` requiere OITB. Todo compila en ambas ramas.
+
+**Pendientes:**
+
 | Gap | Qué pide Kraken | Qué hay | Cómo se obtiene | Dónde se toca |
 |---|---|---|---|---|
-| **G1 Meta de venta** | Cump Meta (año y mes), "Meta al día" | nada | Kraken la captura en su propio sistema; Odoo no la tiene. Propuesta: tabla `oro.meta_venta` (empresa_id, anio, mes, vendedor_codigo opcional, meta_monto) alimentada desde el portal admin (pantalla nueva) o, de arranque, seed por organización. Medidas: `Meta de venta`, `Cumplimiento de meta`, `Meta al día` = meta × `% Avance del mes` | portal + dbt (seed/ modelo) + generador PBIP |
-| **G2 Vendedor / Canal / Línea** | nombres reales | vendedor = `invoice_user_id` sin maestro; canal no se extrae; línea = `categ_id` sin nombre | Extraer 3 maestros nuevos de Odoo (read-only): `res_users` (+`res_partner.name` del usuario) → `plata_vendedor` rama Odoo; `crm_team` (+ `account_move.team_id`, `sale_order.team_id`) → nueva columna `canal` en documento comercial y dimensión; `product_category` → `nombre_grupo` en `plata_producto`. Política de ingesta por organización (seed `70_paquete_odoo_comercial.sql`, parametrizado como el 65) | metadata-store seeds + extracción + dbt Plata/Oro + generador PBIP |
-| **G3 Sucursal** | venta por sucursal | `stock_warehouse` (Iron: 1) | En Odoo la "sucursal" puede ser almacén, diario (`journal_id`) o compañía hija. Iron tiene un solo almacén: la dona sale con un valor. Confirmar con Iron qué llaman sucursal | definición de negocio, luego mapeo |
-| **G4 Sector (Crédito/Contado)** | venta por condición de pago | `property_payment_term_id` llega como jsonb `{"4": 4}` (propiedad por compañía) | Extraer `account_payment_term` (nombres) y `account_move.invoice_payment_term_id` (la condición DEL DOCUMENTO, más exacta que la del cliente). Corregir en Plata la lectura de la propiedad por compañía | extracción + dbt |
-| **G5 Ubicación** | mapa por ciudad | 9/228 direcciones con ciudad, 1 con coordenadas | Es calidad de captura en el Odoo de Iron, no del warehouse. El mapa se construye igual; se llena cuando Iron complete direcciones. Alternativa: geocodificar por `zip`/`city` en Plata (no se hace sin pedirlo) | dato del cliente |
-| **G6 Dólares** | todo en USD | serie de tipo de cambio de Iron con 1 tasa (`res_currency_rate`) | Confirmar que Iron registra tasas en Odoo; si no, la conversión a USD no es confiable y el botón "Dólares" no se publica | dato del cliente |
-| **G7 Unidad Std** | cantidad en unidad estándar | `uom_id` numérico, sin factor | Extraer `uom_uom` (nombre, factor, categoría) → `unidad_medida_nombre` y `factor_std` en producto; medida `Unidades estándar` | extracción + dbt |
-
-Orden propuesto: G2 y G4 (una sola ampliación de la política de ingesta Odoo) → G1 (meta) →
-G7 → G3/G5/G6 (dependen de Iron).
-
----
+| **G1 Meta de venta** | Cump Meta (año y mes), "Meta al día" | nada | Kraken la captura en su propio sistema; Odoo no la tiene. Propuesta: tabla `oro.meta_venta` (empresa_id, anio, mes, vendedor_codigo opcional, meta_monto) alimentada desde el portal admin (pantalla nueva) o, de arranque, seed por organización. Medidas: `Meta de venta`, `Cumplimiento de meta`, `Meta al día` = meta × `% Avance del mes` | portal + dbt + generador PBIP |
+| **G3 Sucursal** | venta por sucursal | `stock_warehouse` (Iron: 1) y la factura no lo trae | En Odoo la "sucursal" puede ser almacén, diario (`journal_id`) o compañía hija. Confirmar con Iron qué llaman sucursal | definición de negocio |
+| **G5 Ciudades** | mapa por ciudad | 38 de 256 direcciones con ciudad | Calidad de captura en el Odoo de Iron. Alternativa: geocodificar por `zip`/`city` en Plata (no se hace sin pedirlo) | dato del cliente |
+| **G6 Dólares** | todo en USD | 1 tasa en `res_currency_rate` | Confirmar que Iron registra tasas; sin serie, "Dólares" no se publica | dato del cliente |
+| **G7 Unidad Std** | cantidad en unidad estándar | `uom_id` numérico, sin factor | Extraer `uom_uom` (nombre, factor, categoría) → `factor_std` en producto; medida `Unidades estándar` | extracción + dbt |
 
 ## Mapeo de layout (lienzo 1280 × 960, grilla del contrato visual)
 
