@@ -1,5 +1,75 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 28 (2026-10-17) — KRAKEN 360 REPLICADO EN POWER BI PARA IRON; CRESTA FUERA DE DISCO — leer esto primero ══════
+
+Cambio de fondo: **Claude construye el Power BI por código, página por página, replicando capturas
+de Kraken 360** (BI comercial que Iron conoce y que se conecta a Odoo). Edwin lo decidió al inicio
+(«no, yo no construyo las páginas… no vamos a adivinar sino a replicar las imágenes») y revierte
+la decisión 15 del STATE. El tenant de trabajo pasa a ser **Iron Network (Odoo)**; la base
+`dw_grupocresta` (6.8 GB) se **eliminó** para liberar disco (sin dump: se recupera con
+`actualizar.py grupocresta`, ~180 corridas contra HANA). La organización sigue en el portal.
+
+### Lo construido
+
+- `organizaciones/ironnetwork/powerbi/PulsoIron.pbip` — PBIP de Iron (38 tablas, 100
+  relaciones, tema propio `theme/ironnetwork-theme.json` con la paleta pizarra/gris de Kraken).
+- `consumo/powerbi/generar_paginas_ventas.js` — generador determinista PBIR de **Histórico de
+  ventas** y **Seguimiento de ventas** (43 visuales, lienzo 1280×960, tres filas). Validado con
+  `powerbi-report-author validate` (0 errores) y `validar_reporte.py`; renderizado y leído en
+  Desktop con datos. Capturas de referencia y de resultado en `docs/powerbi/kraken360/capturas/`.
+- `docs/powerbi/kraken360/inventario.md` — ficha visual → métrica → dimensión → gap, y layout.
+- Medidas nuevas en `generar_pbip.py` (carpeta «10 Seguimiento» + narrativa): `Corte de
+  ventas`, `% Avance del año/mes`, `Venta del día`, `Venta acumulada del mes al día` (y año
+  anterior), `Resto a máximo <dim>` ×8 (barra fantasma de los rankings), `Empresa activa`,
+  subtítulos de corte, `Pie de ventas`.
+- **Cifras verificadas** contra `oro.hecho_venta_linea`: ventas 3 371 937,33 · 761 líneas · 433
+  documentos · corte 2026-10-16. `dbt build` 231/231, cuadre 0.
+
+### Extracción Odoo ampliada (seed 70) — los gaps G2/G4 de Kraken
+
+`metadata-store/seeds/70_paquete_odoo_comercial.sql` (aplicado a ironnetwork en local): maestros
+`product_category`, `res_users`, `crm_team`, `account_payment_term` + `team_id`,
+`invoice_payment_term_id` y `partner_shipping_id` en `account_move`. Trampa encontrada: el seed
+69 sembró `partner_shipping_id` bajo el objeto `ventas_factura` (nombre del paquete SAP) y por
+eso un tenant Odoo nunca lo extrajo. Plata/Oro: `plata_canal`, `plata_condicion_pago`,
+`dim_canal`, `dim_condicion_pago` (+ llaves), `grupo_nombre` en producto, rama Odoo real de
+`plata_vendedor`, claves nuevas en `hecho_venta_linea`, y **fallback a la dirección principal
+del socio** (unido por `direccion_codigo = socio_codigo`: unir por socio duplicó líneas, 761→934,
+y se corrigió). La condición de pago del socio llegaba como jsonb de propiedad por compañía;
+ahora se lee el valor. SAP (Cresta) compila con esas dimensiones vacías (No definido).
+
+### Trampas de esta sesión (cuestan horas)
+
+1. **`stackedBarChart` no es tipo nativo** (sale «objeto visual personalizado»): el apilado es
+   `barChart`; el agrupado es `clusteredBarChart`.
+2. **`sortDefinition` va dentro de `visual.query`**, no en la raíz del visual.
+3. **Color condicional (`FillRule`) con `Input` distinto a la medida proyectada invalida la
+   consulta del visual** («Power BI generó una consulta no válida»). Solo colorear por la
+   medida mostrada.
+4. **`powerbi-desktop reload` NO aplica cambios del TMDL** (ni medidas ni tablas nuevas) cuando
+   el modelo tiene «cambios pendientes»; para medidas se sincronizó por XMLA
+   (`measure_operations Create`) y para tablas hay que **cerrar y reabrir** Desktop.
+5. **Credenciales de una base nueva:** Desktop guarda credenciales por `servidor;base`; con
+   `dw_ironnetwork` usó la vieja y falló en silencio, y el diálogo quedó tapado por un modal
+   «Preparando informe» invisible. Se resolvió por UI Automation (PowerShell +
+   `System.Windows.Automation`): el bridge no puede. Ya quedaron guardadas.
+6. El MCP `powerbi-modeling` pide aceptar la EULA por sesión; Edwin autorizó explícitamente.
+7. `.pbi/localSettings.json` y `powerbi.zip` no se versionan (`.gitignore`).
+
+### PENDIENTE
+
+1. **No guardar desde Desktop** (reescribe el PBIR). Cerrar con «no guardar»; banner de
+   autorrecuperación: «no recuperar».
+2. Gaps abiertos (`inventario.md`): **G1 meta de venta** (tabla `oro.meta_venta` alimentada
+   desde el portal), G3 sucursal (definición de Iron), G5 ciudades (dato de Iron), G6 tasas
+   USD, G7 `uom_uom`.
+3. Pulido menor: encabezado de matriz dice `anio`; «Variación acumulada» en «--» hasta tener
+   2025; dos vendedores muestran su login porque así se llama su partner en Odoo.
+4. Siguientes tableros de Kraken: Edwin pasa capturas a `docs/powerbi/kraken360/capturas/`
+   (`NN-tablero.png`); el ciclo es `generar_pbip.py` → `generar_paginas_ventas.js` (o un
+   generador nuevo por familia) → validar → reabrir Desktop → `RefreshWithXMLA Full` → captura.
+5. Docker Desktop no devuelve al host los 6.8 GB liberados hasta compactar el `.vhdx`.
+
 ## ══════ SESIÓN 26 (2026-08-11) — OBSIDIAN SOBRE LA MEMORIA: UN CANAL DE EDWIN HACIA CLAUDE — leer esto primero ══════
 
 Sesión de **herramientas, no de producto**. El repo no se tocó (`git status` limpio, `HEAD` sigue

@@ -1,7 +1,7 @@
 # STATE — Quilate Analytics · Power BI Product
 
-FASE_ACTUAL: F5 (piloto de construcción POR CÓDIGO aprobado por Edwin para la página 00 — decisión 18; la 00 está construida y renderizada, Edwin evalúa el estándar antes de extender a 01 y 09)
-ULTIMA_ACTUALIZACION: 2026-09-10 (sesión 27 — refresco de datos de Grupo Cresta y regeneración del modelo)
+FASE_ACTUAL: F5 (construcción POR CÓDIGO confirmada por Edwin — decisión 21; tenant de trabajo Iron Network; páginas «Histórico de ventas» y «Seguimiento de ventas» replicadas de Kraken 360 y verificadas con datos)
+ULTIMA_ACTUALIZACION: 2026-10-17 (sesión 28 — réplica de Kraken 360 para Iron; Cresta fuera de disco)
 GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
 
 > **CAMBIO DE RUMBO (2026-08-08, decisión de Edwin):** la ola 1 se generó completa por código
@@ -82,6 +82,9 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 | 18 | **La decisión 15 se reabre con un piloto autorizado por Edwin (2026-08-10):** la página 00 se construyó por código con el flujo nuevo — CLIs `powerbi-report-authoring` (metadatos + validador) y `powerbi-desktop` (bridge: reload + screenshot) — y quedó renderizada con datos reales | La ola abortada de la sesión 23 se generó A CIEGAS; el flujo nuevo cierra el loop: cada cambio se valida y SE VE antes de darse por bueno (7 iteraciones para la 00). Edwin juzga el estándar visual con el render; si aprueba, se extiende a 01 y 09 con el playbook §13 del contrato | F5 |
 | 19 | El tema tenía ~15 propiedades inválidas que Desktop ignoraba en silencio; se corrigieron y el registro exige `.json` en `customTheme.name`, `resourcePackages.name` y `path`, más el `name` interno igual | El validador oficial las acusó todas; un tema «que funciona» a ojo puede estar tirando la mitad de sus estilos. El tema vive en 2 copias (fuente + RegisteredResources) que se sincronizan siempre | F5 |
 | 20 | El lado SQL de §7 lo ejecuta el agente vía `docker exec quilate-postgres psql` con el stack arriba; la vía manual queda de fallback | La Nota B de v3.1 asumía que hacía falta un MCP de Postgres; es falso — así se validó el cuadre desde siempre. Corregido en el contrato v3.1.1 | F5 |
+| 21 | **Claude construye las páginas por código replicando capturas de Kraken 360** (decisión de Edwin, 2026-10-17); el tenant de trabajo es Iron Network y la base de Cresta se eliminó para liberar disco | Lo que faltaba en los dos intentos anteriores era una referencia visual concreta; con la captura, el generador determinista + validador + bridge + captura leída cierra el loop sin adivinar. Fidelidad a Kraken manda sobre el contrato F3 cuando chocan (lienzo 1280×960, tres filas) | F5 |
+| 22 | Los rankings usan `barChart` apilado con una medida «Resto a máximo <dim>» en gris (barra fantasma); el color condicional solo se aplica sobre la medida mostrada; `sortDefinition` vive en `visual.query` | Tres trampas PBIR verificadas en render: `stackedBarChart` no es nativo, un `FillRule` con `Input` ajeno invalida la consulta, y `sortDefinition` en la raíz rompe el esquema | F5 |
+| 23 | Lo que Kraken muestra y el warehouse no tiene se resuelve ampliando la extracción (seed 70: categoría, vendedor, equipo de ventas, condición de pago, dirección de entrega), nunca inventando en el reporte | Es el principio del producto: el tablero es una ventana a datos gobernados. `dim_canal` y `dim_condicion_pago` nuevas; SAP compila con ellas vacías | F5 |
 
 ## Bloqueos abiertos
 
