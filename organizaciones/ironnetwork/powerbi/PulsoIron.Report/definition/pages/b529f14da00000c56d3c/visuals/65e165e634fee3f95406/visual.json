@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Calendario.mes_anio_etiqueta",
-              "nativeQueryRef": "mes_anio_etiqueta",
-              "active": true
+              "nativeQueryRef": "mes_anio_etiqueta"
             }
           ]
         },

@@ -13,25 +13,6 @@
     "visualType": "pivotTable",
     "query": {
       "queryState": {
-        "Columns": {
-          "projections": [
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "DM_Cliente"
-                    }
-                  },
-                  "Property": "Rango de meses con compra"
-                }
-              },
-              "queryRef": "DM_Cliente.Rango de meses con compra",
-              "nativeQueryRef": "Rango de meses con compra",
-              "active": true
-            }
-          ]
-        },
         "Rows": {
           "projections": [
             {
@@ -46,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Cliente.Clase",
-              "nativeQueryRef": "Clase",
-              "active": true
+              "nativeQueryRef": "Clase"
             }
           ]
         },
@@ -66,6 +46,24 @@
               },
               "queryRef": "FC_Ventas.Clientes 12 meses",
               "nativeQueryRef": "Clientes 12 meses"
+            }
+          ]
+        },
+        "Columns": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DM_Cliente"
+                    }
+                  },
+                  "Property": "Rango de meses con compra"
+                }
+              },
+              "queryRef": "DM_Cliente.Rango de meses con compra",
+              "nativeQueryRef": "Rango de meses con compra"
             }
           ]
         }
@@ -113,6 +111,13 @@
               "expr": {
                 "Literal": {
                   "Value": "9D"
+                }
+              }
+            },
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
                 }
               }
             }

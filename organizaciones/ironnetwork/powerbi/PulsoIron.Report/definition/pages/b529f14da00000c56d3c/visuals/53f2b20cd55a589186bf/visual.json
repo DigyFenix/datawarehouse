@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Cliente.Cliente",
-              "nativeQueryRef": "Cliente",
-              "active": true
+              "nativeQueryRef": "Cliente"
             }
           ]
         },
@@ -77,14 +76,14 @@
             "columnAdjustment": {
               "expr": {
                 "Literal": {
-                  "Value": "'fitToContent'"
+                  "Value": "'growToFit'"
                 }
               }
             },
             "autoSizeColumnWidth": {
               "expr": {
                 "Literal": {
-                  "Value": "true"
+                  "Value": "false"
                 }
               }
             },
@@ -112,6 +111,13 @@
               "expr": {
                 "Literal": {
                   "Value": "9D"
+                }
+              }
+            },
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
                 }
               }
             }

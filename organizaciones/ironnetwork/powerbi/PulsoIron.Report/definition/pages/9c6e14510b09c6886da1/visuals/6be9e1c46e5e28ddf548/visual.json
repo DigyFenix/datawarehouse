@@ -38,13 +38,13 @@
                 "Measure": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "FC_Ventas"
+                      "Entity": "FC_Inventario"
                     }
                   },
                   "Property": "Valor de inventario"
                 }
               },
-              "queryRef": "FC_Ventas.Valor de inventario",
+              "queryRef": "FC_Inventario.Valor de inventario",
               "nativeQueryRef": "Valor de inventario"
             },
             {
@@ -71,7 +71,7 @@
               "Measure": {
                 "Expression": {
                   "SourceRef": {
-                    "Entity": "FC_Ventas"
+                    "Entity": "FC_Inventario"
                   }
                 },
                 "Property": "Valor de inventario"
@@ -196,7 +196,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Valor de inventario"
+            "metadata": "FC_Inventario.Valor de inventario"
           }
         },
         {
@@ -230,7 +230,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Valor de inventario"
+            "metadata": "FC_Inventario.Valor de inventario"
           }
         },
         {

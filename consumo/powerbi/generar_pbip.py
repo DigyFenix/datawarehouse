@@ -2556,17 +2556,17 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 		displayFolder: 14 Inventario
 
 	/// Promedio mensual de unidades de los últimos 12 meses: la línea punteada de referencia del gráfico (constante en todos los meses).
-	measure 'Promedio mensual de unidades 12 meses' = DIVIDE(CALCULATE([Unidades vendidas], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])), 12)
+	measure 'Promedio mensual de unidades 12 meses' = VAR enVentana = CALCULATE(COUNTROWS(Calendario), KEEPFILTERS(DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))) > 0 RETURN IF(enVentana, DIVIDE(CALCULATE([Unidades vendidas], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])), 12))
 		formatString: #,0
 		displayFolder: 14 Inventario
 
 	/// Costo de lo vendido en los últimos 12 meses, dividido entre 12: el "costo desplazado promedio mensual" de Kraken.
-	measure 'Costo desplazado promedio mensual' = DIVIDE(CALCULATE([Costo de ventas], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])), 12)
+	measure 'Costo desplazado promedio mensual' = DIVIDE([Costo desplazado 12 meses], 12)
 		formatString: "Q" #,0
 		displayFolder: 14 Inventario
 
-	/// Costo de lo vendido en los últimos 12 meses (el "costo desplazado" por producto).
-	measure 'Costo desplazado 12 meses' = CALCULATE([Costo de ventas], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
+	/// Costo de lo vendido en los últimos 12 meses (el "costo desplazado" por producto). Si el ERP no trae costo en la línea (Odoo: la factura no lo guarda; el paquete base no extrae standard_price), se estima con unidades vendidas × costo unitario actual del producto.
+	measure 'Costo desplazado 12 meses' = VAR directo = CALCULATE([Costo de ventas], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])) RETURN IF(directo <> 0, directo, SUMX(VALUES(Producto[producto_clave]), CALCULATE([Unidades vendidas], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas])) * CALCULATE(MAX('Análisis de producto'[costo_unitario_actual]))))
 		formatString: "Q" #,0
 		displayFolder: 14 Inventario
 
@@ -2581,7 +2581,7 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 		displayFolder: 14 Inventario
 
 	/// Precio de lista del producto en el ERP (Odoo: list_price). En SAP B1 no se extrae aún.
-	measure 'Precio de lista' = MAX(Producto[precio_lista])
+	measure 'Precio de lista' = IF(HASONEVALUE(Producto[producto_clave]), MAX(Producto[precio_lista]))
 		formatString: "Q" #,0.00
 		displayFolder: 14 Inventario
 

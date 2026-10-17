@@ -51,6 +51,16 @@ nuevos/recuperados, matriz de oportunidades). Verificado en Desktop con datos: 7
 retenidos, 2 recuperados, matrices ABC × rangos, 12 meses por mes. Capturas de resultado en
 `docs/powerbi/kraken360/capturas/resultado-0[3-6]-*.png`. Las 6 páginas validan en cero.
 
+### Dashboard de inventarios (tercera tanda de capturas)
+
+`consumo/powerbi/generar_paginas_inventario.js`: Existencias, Costo y Análisis de inventario (49
+visuales). Modelo: consumo mín/prom/máx mensual, lead time como parámetro (`MD_Lead time`),
+stock mín/máx, punto de pedido, sugerencia y monto, costo desplazado (estimado por unidades ×
+costo unitario porque Odoo no trae costo en la línea), precio de lista (`list_price` nuevo en
+el seed 70 → `precio_lista`). Verificado: 137 unidades, Q 230 212 de valor, 400 productos con
+sugerencia. **9 páginas / 172 visuales validan en cero.** Gaps nuevos: G9 costo de ventas en
+Odoo, G10 lead time por proveedor.
+
 ### Trampas de esta sesión (cuestan horas)
 
 1. **`stackedBarChart` no es tipo nativo** (sale «objeto visual personalizado»): el apilado es

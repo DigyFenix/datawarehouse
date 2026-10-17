@@ -113,6 +113,21 @@ Misma página parametrizada (`paginaCohorte` en `generar_paginas_clientes.js`); 
 En Iron el modelo arranca en 2026-01-08, así que con partida -12 todos los clientes son «nuevos»
 (72) y solo hay 2 recuperados; cobra sentido con historia.
 
+## 07 · Existencias · 08 · Costo · 09 · Análisis de inventario (`capturas/07-09-inventario-*.png`)
+
+Generador `consumo/powerbi/generar_paginas_inventario.js`. Filtros comunes: línea, bodega, buscar producto, moneda.
+
+| Visual Kraken | Réplica | Notas |
+|---|---|---|
+| Existencias (KPI) | `Unidades en existencia` (FC_Inventario, foto al último corte) | Iron: 137 unidades, 1 bodega |
+| Existencias y precio de venta por línea y producto | matriz `Línea` → `Producto` con `Unidades en existencia`, `Precio de lista` (nuevo: `product_template.list_price`), `Precio promedio de venta 12 meses` | — |
+| Distribución por bodega / sucursal / línea | rankings con fantasma y dona sobre `Unidades en existencia` (o `Valor de inventario` en 08) | sucursal = bodega hasta resolver G3 |
+| Tendencia mensual de unidades vendidas 12m con promedio | combo columnas `Unidades vendidas 12 meses` + línea `Promedio mensual de unidades 12 meses` | promedio solo dentro de la ventana |
+| Costo de las existencias · costo desplazado promedio mensual · meses de inventario | `Valor de inventario`, `Costo desplazado promedio mensual`, `Meses de inventario al costo` | **las líneas de factura de Odoo no traen costo** (`Costo de ventas` = 0): el costo desplazado se estima con unidades vendidas × `costo_unitario_actual` del producto; solo 83 de 840 productos tienen costo en la valoración de Iron → "meses de inventario" sale inflado (gap G9) |
+| Matriz de costo por producto | existencias, `Costo promedio ponderado`, `Valor de inventario`, `Costo desplazado 12 meses`, `Meses de inventario al costo` | — |
+| Análisis: consumo mín/prom/máx, lead time, stock mín, punto de pedido, stock máx, existencias, sugerencia, monto | medidas `Consumo mínimo/promedio/máximo mensual` (12 meses, mes sin venta = 0), `Lead time (días)` (segmentador `MD_Lead time`, 15 por defecto), `Stock mínimo` = Cmín×LT/30, `Punto de pedido` = Smín + Cprom×LT/30, `Stock máximo` = Smín + Cmáx×LT/30, `Sugerencia de compra` = Smáx − existencia si existencia < punto de pedido, `Monto de sugerencia de compra`, `Semáforo de existencias` (↓/↑) | Kraken no publica sus fórmulas; estas son las estándar y quedan documentadas en el modelo. El lead time real por proveedor vive en `product_supplierinfo.delay` (gap G10) |
+| Tendencia 24 meses con pronóstico | línea `Unidades vendidas 24 meses` | sin pronóstico (no es estable en PBIR) |
+
 ## Gaps — qué falta y cómo se obtiene de Odoo
 
 **Resueltos en la sesión 28 (seed `metadata-store/seeds/70_paquete_odoo_comercial.sql`):**
@@ -136,6 +151,8 @@ definir canal; `grupo_nombre` requiere OITB. Todo compila en ambas ramas.
 | **G3 Sucursal** | venta por sucursal | `stock_warehouse` (Iron: 1) y la factura no lo trae | En Odoo la "sucursal" puede ser almacén, diario (`journal_id`) o compañía hija. Confirmar con Iron qué llaman sucursal | definición de negocio |
 | **G5 Ciudades** | mapa por ciudad | 38 de 256 direcciones con ciudad | Calidad de captura en el Odoo de Iron. Alternativa: geocodificar por `zip`/`city` en Plata (no se hace sin pedirlo) | dato del cliente |
 | **G6 Dólares** | todo en USD | 1 tasa en `res_currency_rate` | Confirmar que Iron registra tasas; sin serie, "Dólares" no se publica | dato del cliente |
+| **G9 Costo de ventas en Odoo** | costo desplazado, margen | `costo` = 0 en las líneas de factura; valoración solo para 83 productos | Extraer `product_template.standard_price` (propiedad jsonb por compañía) o el costo de `stock_valuation_layer` por movimiento y llevarlo a `plata_documento_linea.costo_local` | extracción + dbt |
+| **G10 Lead time por proveedor** | lead time real | parámetro global (15 días) | Extraer `product_supplierinfo` (product_tmpl_id, partner_id, delay) → `lead_time_dias` en producto | extracción + dbt |
 | **G7 Unidad Std** | cantidad en unidad estándar | `uom_id` numérico, sin factor | Extraer `uom_uom` (nombre, factor, categoría) → `factor_std` en producto; medida `Unidades estándar` | extracción + dbt |
 
 ## Mapeo de layout (lienzo 1280 × 960, grilla del contrato visual)

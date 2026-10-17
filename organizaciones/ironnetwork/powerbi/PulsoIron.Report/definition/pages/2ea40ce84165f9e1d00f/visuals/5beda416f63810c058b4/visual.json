@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Condición de pago.nombre",
-              "nativeQueryRef": "nombre",
-              "active": true
+              "nativeQueryRef": "nombre"
             }
           ]
         },

@@ -27,26 +27,7 @@
                 }
               },
               "queryRef": "DM_Calendario.mes_anio_etiqueta",
-              "nativeQueryRef": "mes_anio_etiqueta",
-              "active": true
-            }
-          ]
-        },
-        "Tooltips": {
-          "projections": [
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "FC_Ventas"
-                    }
-                  },
-                  "Property": "Variación vs año anterior"
-                }
-              },
-              "queryRef": "FC_Ventas.Variación vs año anterior",
-              "nativeQueryRef": "Variación vs año anterior"
+              "nativeQueryRef": "mes_anio_etiqueta"
             }
           ]
         },
@@ -79,6 +60,24 @@
               },
               "queryRef": "FC_Ventas.Ventas 12 meses",
               "nativeQueryRef": "Ventas 12 meses"
+            }
+          ]
+        },
+        "Tooltips": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Variación vs año anterior"
+                }
+              },
+              "queryRef": "FC_Ventas.Variación vs año anterior",
+              "nativeQueryRef": "Variación vs año anterior"
             }
           ]
         }

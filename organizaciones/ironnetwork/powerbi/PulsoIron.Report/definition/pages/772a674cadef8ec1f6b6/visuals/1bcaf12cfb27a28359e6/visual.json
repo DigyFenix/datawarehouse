@@ -152,6 +152,13 @@
                 }
               }
             },
+            "showAll": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
             "fontSize": {
               "expr": {
                 "Literal": {
@@ -173,6 +180,20 @@
                 }
               }
             }
+          }
+        },
+        {
+          "properties": {
+            "showSeries": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Promedio mensual de unidades 12 meses"
           }
         }
       ],

@@ -1,6 +1,6 @@
 # STATE — Quilate Analytics · Power BI Product
 
-FASE_ACTUAL: F5 (construcción POR CÓDIGO confirmada por Edwin — decisión 21; tenant de trabajo Iron Network; 6 páginas replicadas de Kraken 360 y verificadas con datos: Histórico y Seguimiento de ventas, Matriz de oportunidades, Cartera 12 meses, Clientes nuevos y recuperados)
+FASE_ACTUAL: F5 (construcción POR CÓDIGO confirmada por Edwin — decisión 21; tenant de trabajo Iron Network; 9 páginas replicadas de Kraken 360 y verificadas con datos: ventas (2), clientes (4) e inventarios (3))
 ULTIMA_ACTUALIZACION: 2026-10-17 (sesión 28 — réplica de Kraken 360 para Iron; Cresta fuera de disco)
 GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
 

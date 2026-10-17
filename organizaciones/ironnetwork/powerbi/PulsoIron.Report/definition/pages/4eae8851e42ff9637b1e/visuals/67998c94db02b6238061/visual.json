@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Vendedor.Vendedor",
-              "nativeQueryRef": "Vendedor",
-              "active": true
+              "nativeQueryRef": "Vendedor"
             }
           ]
         },
@@ -140,6 +139,13 @@
               "expr": {
                 "Literal": {
                   "Value": "9D"
+                }
+              }
+            },
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
                 }
               }
             }

@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Canal.nombre",
-              "nativeQueryRef": "nombre",
-              "active": true
+              "nativeQueryRef": "nombre"
             }
           ]
         },

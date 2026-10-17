@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Calendario.mes_anio_etiqueta",
-              "nativeQueryRef": "mes_anio_etiqueta",
-              "active": true
+              "nativeQueryRef": "mes_anio_etiqueta"
             }
           ]
         },
@@ -153,6 +152,13 @@
                 }
               }
             },
+            "showAll": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
             "fontSize": {
               "expr": {
                 "Literal": {
@@ -174,6 +180,20 @@
                 }
               }
             }
+          }
+        },
+        {
+          "properties": {
+            "showSeries": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Clientes recuperados del mes"
           }
         }
       ],

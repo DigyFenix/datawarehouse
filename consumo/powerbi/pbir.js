@@ -192,20 +192,20 @@ function kpis(slug, clave, medidas, pos, titulo, subtitulo = 'Resultados en mone
 }
 
 // Ranking Kraken: barra pizarra + "resto hasta el máximo" en gris apilado detrás (barChart = apilado).
-function ranking(slug, clave, pos, tabla, columna, titulo, dim, medida = 'Ventas netas', resto = `Resto a máximo ${dim}`) {
+function ranking(slug, clave, pos, tabla, columna, titulo, dim, medida = 'Ventas netas', resto = `Resto a máximo ${dim}`, tablaMedida = T.VENTAS) {
   return visual(id(slug, clave), 'barChart', pos, {
-    roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(T.VENTAS, medida), pMedida(T.VENTAS, resto)] },
-    sort: ordenDesc(T.VENTAS, medida),
+    roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(tablaMedida, medida), pMedida(T.VENTAS, resto)] },
+    sort: ordenDesc(tablaMedida, medida),
     objects: {
       categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(8), maxMarginFactor: num(45) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
       labels: [
         { properties: { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } },
-        { properties: { showSeries: bool(true), labelPosition: str('InsideEnd') }, selector: meta(T.VENTAS, medida) },
+        { properties: { showSeries: bool(true), labelPosition: str('InsideEnd') }, selector: meta(tablaMedida, medida) },
         { properties: { showSeries: bool(false) }, selector: meta(T.VENTAS, resto) },
       ],
       dataPoint: [
-        { properties: { fill: color(C.PIZARRA) }, selector: meta(T.VENTAS, medida) },
+        { properties: { fill: color(C.PIZARRA) }, selector: meta(tablaMedida, medida) },
         { properties: { fill: color(C.GRIS_SERIE) }, selector: meta(T.VENTAS, resto) },
       ],
       legend: [{ properties: { show: bool(false) } }],
@@ -228,10 +228,10 @@ function barras(slug, clave, pos, tabla, columna, titulo, medidas, colores = [C.
     vc: vcTitulo(titulo),
   });
 }
-function dona(slug, clave, pos, tabla, columna, titulo, medida = 'Ventas netas') {
+function dona(slug, clave, pos, tabla, columna, titulo, medida = 'Ventas netas', tablaMedida = T.VENTAS) {
   return visual(id(slug, clave), 'donutChart', pos, {
-    roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(T.VENTAS, medida)] },
-    sort: ordenDesc(T.VENTAS, medida),
+    roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(tablaMedida, medida)] },
+    sort: ordenDesc(tablaMedida, medida),
     objects: {
       legend: [{ properties: { show: bool(false) } }],
       labels: [{ properties: { show: bool(true), labelStyle: str('Both'), fontSize: num(9) } }],
@@ -273,7 +273,7 @@ function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn
     sort: ordenPor ? ordenDesc(ordenPor[0], ordenPor[1]) : undefined,
     objects: {
       columnHeaders: [{ properties: { columnAdjustment: str('growToFit'), autoSizeColumnWidth: bool(false), fontSize: num(9), bold: bool(true) } }],
-      rowHeaders: [{ properties: { fontSize: num(9) } }],
+      rowHeaders: [{ properties: { fontSize: num(9), wordWrap: bool(false) } }],
       values: [{ properties: { fontSize: num(9) } }, ...(semaforoEn ? semaforo(semaforoEn[1], semaforoEn[0]) : [])],
       subTotals: subtotalesMatriz({ filaTotal, columnaTotal }),
       grid: [{ properties: { rowPadding: num(2) } }],
@@ -328,7 +328,11 @@ function comboMensual(slug, clave, pos, titulo, columnas, linea, columna = 'mes_
     objects: {
       categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false), secShow: bool(false) } }],
-      labels: [{ properties: { show: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } }],
+      labels: [
+        { properties: { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } },
+        // La línea (promedio / conteo) no lleva etiqueta: ensucia las columnas.
+        { properties: { showSeries: bool(false) }, selector: meta(T.VENTAS, linea) },
+      ],
       legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(9) } }],
       dataPoint: [
         ...columnas.map((m, i) => ({ properties: { fill: color(i === 0 ? C.PIZARRA : C.PIZARRA_CLARA) }, selector: meta(T.VENTAS, m) })),

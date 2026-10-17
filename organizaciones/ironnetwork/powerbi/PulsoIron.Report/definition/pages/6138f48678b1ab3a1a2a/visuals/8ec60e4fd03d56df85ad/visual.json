@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Cliente.nombre",
-              "nativeQueryRef": "nombre",
-              "active": true
+              "nativeQueryRef": "nombre"
             }
           ]
         },

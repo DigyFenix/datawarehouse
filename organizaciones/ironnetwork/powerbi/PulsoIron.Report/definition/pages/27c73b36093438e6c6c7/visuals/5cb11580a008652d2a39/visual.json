@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Vendedor.nombre",
-              "nativeQueryRef": "nombre",
-              "active": true
+              "nativeQueryRef": "nombre"
             }
           ]
         },

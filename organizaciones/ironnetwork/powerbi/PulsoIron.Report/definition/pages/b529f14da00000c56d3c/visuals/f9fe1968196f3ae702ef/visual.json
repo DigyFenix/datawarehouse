@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Vendedor.Vendedor",
-              "nativeQueryRef": "Vendedor",
-              "active": true
+              "nativeQueryRef": "Vendedor"
             }
           ]
         },
@@ -105,14 +104,14 @@
             "columnAdjustment": {
               "expr": {
                 "Literal": {
-                  "Value": "'fitToContent'"
+                  "Value": "'growToFit'"
                 }
               }
             },
             "autoSizeColumnWidth": {
               "expr": {
                 "Literal": {
-                  "Value": "true"
+                  "Value": "false"
                 }
               }
             },
@@ -140,6 +139,13 @@
               "expr": {
                 "Literal": {
                   "Value": "9D"
+                }
+              }
+            },
+            "wordWrap": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
                 }
               }
             }

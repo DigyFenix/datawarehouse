@@ -7,7 +7,7 @@ const P = require('./pbir');
 const { T, C, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, matriz, comboMensual, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, bool, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
-const V = T.VENTAS, INV = 'FC_Inventario', ANAL = 'DM_Análisis de producto', LEAD = 'MD_Lead time';
+const V = T.VENTAS, INV = 'FC_Inventario', LEAD = 'MD_Lead time';
 
 // Filtros Kraken del dashboard: línea, bodega, buscar producto, moneda.
 function filtrosInventario(slug, col = 7) {
@@ -19,7 +19,7 @@ function filtrosInventario(slug, col = 7) {
   ];
 }
 // Ranking por bodega / línea con fantasma, sobre una medida de inventario.
-const rkInv = (slug, clave, pos, tabla, col, titulo, medida, resto) => ranking(slug, clave, pos, tabla, col, titulo, '', medida, resto);
+const rkInv = (slug, clave, pos, tabla, col, titulo, medida, resto) => ranking(slug, clave, pos, tabla, col, titulo, '', medida, resto, INV);
 // Tendencia mensual de unidades vendidas con línea punteada del promedio (12 meses).
 function tendenciaUnidades(slug, pos, titulo = 'Tendencia mensual de unidades vendidas · últimos 12 meses') {
   return comboMensual(slug, 'tendencia-unidades', pos, titulo, ['Unidades vendidas 12 meses'], 'Promedio mensual de unidades 12 meses');
@@ -40,7 +40,7 @@ function paginaExistencias() {
   vs.push(matrizProductos(slug, [xCol(1), FILA[0], wCol(5), ALTO * 3 + 32], 'Existencias y precio de venta por línea y producto',
     [[INV, 'Unidades en existencia'], [V, 'Precio de lista'], [V, 'Precio promedio de venta 12 meses']]));
   vs.push(rkInv(slug, 'bodega', [xCol(6), FILA[0], wCol(4), ALTO * 2 + 16], T.BOD, 'nombre', 'Distribución de las existencias por bodega', 'Unidades en existencia', 'Resto a máximo bodega existencias'));
-  vs.push(dona(slug, 'sucursal', [xCol(10), FILA[0], wCol(3), ALTO], T.BOD, 'nombre', 'Distribución de las existencias por sucursal', 'Unidades en existencia'));
+  vs.push(dona(slug, 'sucursal', [xCol(10), FILA[0], wCol(3), ALTO], T.BOD, 'nombre', 'Distribución de las existencias por sucursal', 'Unidades en existencia', INV));
   vs.push(rkInv(slug, 'linea', [xCol(10), FILA[1], wCol(3), ALTO], T.PROD, 'grupo_nombre', 'Distribución de las existencias por línea', 'Unidades en existencia', 'Resto a máximo línea existencias'));
   vs.push(tendenciaUnidades(slug, [xCol(6), FILA[2], wCol(7), ALTO]));
   vs.push(pie(slug));
@@ -59,7 +59,7 @@ function paginaCosto() {
   vs.push(matrizProductos(slug, [xCol(1), FILA[0], wCol(5), ALTO * 3 + 32], 'Costo de las existencias por producto',
     [[INV, 'Unidades en existencia'], [INV, 'Costo promedio ponderado'], [INV, 'Valor de inventario'], [V, 'Costo desplazado 12 meses'], [V, 'Meses de inventario al costo']]));
   vs.push(rkInv(slug, 'bodega', [xCol(6), FILA[0], wCol(4), ALTO * 2 + 16], T.BOD, 'nombre', 'Costo de las existencias por bodega', 'Valor de inventario', 'Resto a máximo bodega valor'));
-  vs.push(dona(slug, 'sucursal', [xCol(10), FILA[0], wCol(3), ALTO], T.BOD, 'nombre', 'Costo de las existencias por sucursal', 'Valor de inventario'));
+  vs.push(dona(slug, 'sucursal', [xCol(10), FILA[0], wCol(3), ALTO], T.BOD, 'nombre', 'Costo de las existencias por sucursal', 'Valor de inventario', INV));
   vs.push(rkInv(slug, 'linea', [xCol(10), FILA[1], wCol(3), ALTO], T.PROD, 'grupo_nombre', 'Costo de las existencias por línea', 'Valor de inventario', 'Resto a máximo línea valor'));
   vs.push(tendenciaUnidades(slug, [xCol(6), FILA[2], wCol(7), ALTO]));
   vs.push(pie(slug));
@@ -78,7 +78,7 @@ function paginaAnalisis() {
   vs.push(...filtrosInventario(slug));
   vs.push(rkInv(slug, 'linea', [xCol(1), FILA[0], wCol(3), ALTO], T.PROD, 'grupo_nombre', 'Existencias por línea', 'Unidades en existencia', 'Resto a máximo línea existencias'));
   vs.push(rkInv(slug, 'bodega', [xCol(1), FILA[1], wCol(3), ALTO], T.BOD, 'nombre', 'Existencias por bodega', 'Unidades en existencia', 'Resto a máximo bodega existencias'));
-  vs.push(dona(slug, 'sucursal', [xCol(1), FILA[2], wCol(3), ALTO], T.BOD, 'nombre', 'Existencias por sucursal', 'Unidades en existencia'));
+  vs.push(dona(slug, 'sucursal', [xCol(1), FILA[2], wCol(3), ALTO], T.BOD, 'nombre', 'Existencias por sucursal', 'Unidades en existencia', INV));
   vs.push(matriz(slug, 'analisis', [xCol(4), FILA[0], wCol(9), ALTO * 2 + 16], 'Análisis del inventario', {
     filas: [[T.PROD, 'Producto']],
     valores: [[V, 'Consumo mínimo mensual'], [V, 'Consumo promedio mensual'], [V, 'Consumo máximo mensual'], [V, 'Lead time (días)'], [V, 'Stock mínimo'], [V, 'Punto de pedido'], [V, 'Stock máximo'], [V, 'Semáforo de existencias'], [INV, 'Unidades en existencia'], [V, 'Sugerencia de compra'], [V, 'Monto de sugerencia de compra']],

@@ -38,13 +38,13 @@
                 "Measure": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "FC_Ventas"
+                      "Entity": "FC_Inventario"
                     }
                   },
                   "Property": "Unidades en existencia"
                 }
               },
-              "queryRef": "FC_Ventas.Unidades en existencia",
+              "queryRef": "FC_Inventario.Unidades en existencia",
               "nativeQueryRef": "Unidades en existencia"
             }
           ]
@@ -57,7 +57,7 @@
               "Measure": {
                 "Expression": {
                   "SourceRef": {
-                    "Entity": "FC_Ventas"
+                    "Entity": "FC_Inventario"
                   }
                 },
                 "Property": "Unidades en existencia"
