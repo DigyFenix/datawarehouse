@@ -4,10 +4,10 @@
   "position": {
     "x": 24,
     "y": 464,
-    "z": 1300,
+    "z": 1200,
     "height": 120,
     "width": 920,
-    "tabOrder": 13
+    "tabOrder": 12
   },
   "visual": {
     "visualType": "pivotTable",
@@ -134,70 +134,6 @@
                 }
               }
             }
-          }
-        },
-        {
-          "properties": {
-            "backColor": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "FillRule": {
-                      "Input": {
-                        "Measure": {
-                          "Expression": {
-                            "SourceRef": {
-                              "Entity": "FC_Ventas"
-                            }
-                          },
-                          "Property": "Variación vs año anterior"
-                        }
-                      },
-                      "FillRule": {
-                        "linearGradient3": {
-                          "min": {
-                            "color": {
-                              "Literal": {
-                                "Value": "'#f4c7c3'"
-                              }
-                            }
-                          },
-                          "mid": {
-                            "color": {
-                              "Literal": {
-                                "Value": "'#ffffff'"
-                              }
-                            },
-                            "value": {
-                              "Literal": {
-                                "Value": "0D"
-                              }
-                            }
-                          },
-                          "max": {
-                            "color": {
-                              "Literal": {
-                                "Value": "'#c6e5c9'"
-                              }
-                            }
-                          },
-                          "nullColoringStrategy": {
-                            "strategy": {
-                              "Literal": {
-                                "Value": "'asZero'"
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Ventas netas"
           }
         }
       ],

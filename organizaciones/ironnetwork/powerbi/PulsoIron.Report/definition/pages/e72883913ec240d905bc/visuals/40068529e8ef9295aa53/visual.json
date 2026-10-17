@@ -4,10 +4,10 @@
   "position": {
     "x": 24,
     "y": 216,
-    "z": 1100,
+    "z": 1000,
     "height": 232,
     "width": 920,
-    "tabOrder": 11
+    "tabOrder": 10
   },
   "visual": {
     "visualType": "clusteredColumnChart",
@@ -179,6 +179,20 @@
                   "Value": "'OutsideEnd'"
                 }
               }
+            },
+            "labelDisplayUnits": {
+              "expr": {
+                "Literal": {
+                  "Value": "'1'"
+                }
+              }
+            },
+            "labelPrecision": {
+              "expr": {
+                "Literal": {
+                  "Value": "0L"
+                }
+              }
             }
           }
         },
@@ -188,25 +202,6 @@
               "expr": {
                 "Literal": {
                   "Value": "true"
-                }
-              }
-            },
-            "showDynamicLabels": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "dynamicLabelValue": {
-              "expr": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "FC_Ventas"
-                    }
-                  },
-                  "Property": "Etiqueta de venta mensual"
                 }
               }
             },

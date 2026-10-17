@@ -4,10 +4,10 @@
   "position": {
     "x": 648,
     "y": 464,
-    "z": 1900,
+    "z": 1800,
     "height": 232,
     "width": 296,
-    "tabOrder": 19
+    "tabOrder": 18
   },
   "visual": {
     "visualType": "azureMap",

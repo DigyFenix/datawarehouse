@@ -595,6 +595,10 @@ table FC_Ventas
 	measure 'Subtítulo de corte anual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del año], "0%") & ")"
 		displayFolder: _Narrativa
 
+	/// Pie de las páginas de ventas: habla del corte de VENTAS, no del dominio más rezagado (en Iron, tipos de cambio con una sola tasa arrastraría la frescura global a 2025 y desmentiría un tablero correcto).
+	measure 'Pie de ventas' = VAR f = [Corte de ventas] VAR d = [Días desde última extracción] RETURN IF(ISBLANK(f), "Sin ventas cargadas", "Ventas del ERP al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmmm") & " de " & FORMAT(f, "yyyy") & " · extraído hace " & FORMAT(d, "0") & IF(d = 1, " día", " días"))
+		displayFolder: _Narrativa
+
 	/// Subtítulo del seguimiento: "al 16 oct (52%)" — corte real y fracción del mes transcurrida.
 	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & ")"
 		displayFolder: _Narrativa

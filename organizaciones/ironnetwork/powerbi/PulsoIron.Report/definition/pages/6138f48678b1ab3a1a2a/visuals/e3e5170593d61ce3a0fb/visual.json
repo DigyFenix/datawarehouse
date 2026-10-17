@@ -4,10 +4,10 @@
   "position": {
     "x": 24,
     "y": 216,
-    "z": 1000,
+    "z": 900,
     "height": 148,
     "width": 192,
-    "tabOrder": 10
+    "tabOrder": 9
   },
   "visual": {
     "visualType": "slicer",
@@ -32,6 +32,24 @@
             }
           ]
         }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "DM_Calendario"
+                  }
+                },
+                "Property": "anio_mes"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
       }
     },
     "objects": {

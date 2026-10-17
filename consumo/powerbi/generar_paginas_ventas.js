@@ -160,11 +160,11 @@ function encabezado(slug, medidaTitulo, medidaCorte) {
   ];
 }
 function pie(slug) {
-  return texto(slug, 'chrome-pie', CARGA, 'Pie de frescura', [xCol(1), H - 20, wCol(12), 20], { size: 9, colorHex: TINTA_SUAVE });
+  return texto(slug, 'chrome-pie', VENTAS, 'Pie de ventas', [xCol(1), H - 20, wCol(12), 20], { size: 9, colorHex: TINTA_SUAVE });
 }
 
 // Segmentador. modo: Dropdown | VerticalList | Basic (tiles con orientación horizontal).
-function segmentador(slug, clave, tabla, columna, pos, { modo = 'Dropdown', seleccion, sync, busqueda = false, titulo, horizontal = false, unico = false } = {}) {
+function segmentador(slug, clave, tabla, columna, pos, { modo = 'Dropdown', seleccion, sync, busqueda = false, titulo, horizontal = false, unico = false, descendente = false } = {}) {
   const general = { properties: {} };
   if (seleccion !== undefined) {
     const valor = typeof seleccion === 'number' ? `${seleccion}L` : `'${seleccion}'`;
@@ -187,6 +187,7 @@ function segmentador(slug, clave, tabla, columna, pos, { modo = 'Dropdown', sele
   if (unico) objects.selection = [{ properties: { strictSingleSelect: bool(true), selectAllCheckboxEnabled: bool(false) } }];
   return visual(id(slug, clave), 'slicer', pos, {
     roles: { Values: [pColumna(tabla, columna, true)] },
+    sort: descendente ? { sort: [{ field: campoColumna(tabla, columna), direction: 'Descending' }], isDefaultSort: true } : undefined,
     objects,
     sync,
   });
@@ -197,7 +198,7 @@ function kpis(slug, clave, medidas, pos, titulo) {
   return visual(id(slug, clave), 'cardVisual', pos, {
     roles: { Data: medidas.map(([t, m]) => pMedida(t, m)) },
     objects: {
-      value: [{ properties: { fontSize: num(16), fontFamily: str('Segoe UI Semibold'), fontColor: color(TINTA), horizontalAlignment: str('center') }, selector: sel('default') }],
+      value: [{ properties: { fontSize: num(13), fontFamily: str('Segoe UI Semibold'), fontColor: color(TINTA), horizontalAlignment: str('center'), labelDisplayUnits: str('1'), labelPrecision: int(0) }, selector: sel('default') }],
       label: [{ properties: { show: bool(true), fontSize: num(9), position: str('aboveValue'), fontColor: color(TINTA_SUAVE), horizontalAlignment: str('center') }, selector: sel('default') }],
       outline: [{ properties: { show: bool(false) }, selector: sel('default') }],
       padding: [{ properties: { paddingUniform: int(4) }, selector: sel('default') }],
@@ -205,7 +206,7 @@ function kpis(slug, clave, medidas, pos, titulo) {
       spacing: [{ properties: { verticalSpacing: num(2) }, selector: sel('default') }],
     },
     vc: {
-      ...vcTitulo(titulo),
+      ...vcTitulo(titulo, 'Resultados en moneda de presentación · sin IVA'),
       background: [{ properties: { show: bool(true), color: color(PANEL), transparency: num(0) } }],
     },
   });
@@ -214,15 +215,15 @@ function kpis(slug, clave, medidas, pos, titulo) {
 // Ranking Kraken: barra pizarra + "resto hasta el máximo" en gris apilado detrás.
 function ranking(slug, clave, pos, tabla, columna, titulo, dim) {
   const resto = `Resto a máximo ${dim}`;
-  return visual(id(slug, clave), 'stackedBarChart', pos, {
+  return visual(id(slug, clave), 'barChart', pos, {
     roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(VENTAS, 'Ventas netas'), pMedida(VENTAS, resto)] },
     sort: ordenDesc(VENTAS, 'Ventas netas'),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
+      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(8), maxMarginFactor: num(45) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
       labels: [
-        { properties: { show: bool(true), showAll: bool(true), fontSize: num(9) } },
-        { properties: { showSeries: bool(true), labelPosition: str('OutsideEnd') }, selector: meta(VENTAS, 'Ventas netas') },
+        { properties: { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } },
+        { properties: { showSeries: bool(true), labelPosition: str('InsideEnd') }, selector: meta(VENTAS, 'Ventas netas') },
         { properties: { showSeries: bool(false) }, selector: meta(VENTAS, resto) },
       ],
       dataPoint: [
@@ -268,13 +269,14 @@ const semaforo = (medidaMostrada) => [{
   } } } } } },
   selector: meta(VENTAS, medidaMostrada),
 }];
-function matriz(slug, clave, medida, pos, titulo) {
+function matriz(slug, clave, medida, pos, titulo, conSemaforo = true) {
   return visual(id(slug, clave), 'pivotTable', pos, {
     roles: { Rows: [pColumna(CAL, 'anio')], Columns: [pColumna(CAL, 'mes_nombre_corto')], Values: [pMedida(VENTAS, medida)] },
     objects: {
       columnHeaders: [{ properties: { columnAdjustment: str('growToFit'), autoSizeColumnWidth: bool(true), fontSize: num(9), bold: bool(true) } }],
       rowHeaders: [{ properties: { fontSize: num(9), bold: bool(true) } }],
-      values: [{ properties: { fontSize: num(9) } }, ...semaforo(medida)],
+      // El semáforo colorea por la variación a/a: solo donde la medida mostrada ES la variación (un Input distinto al proyectado invalida la consulta del visual).
+      values: [{ properties: { fontSize: num(9) } }, ...(conSemaforo ? semaforo(medida) : [])],
       subTotals: [
         { properties: { rowSubtotals: bool(false), columnSubtotals: bool(true), columnSubtotalsLabel: str('Total'), bold: bool(true) } },
         { properties: { rowSubtotals: bool(false) }, selector: sel('Row') },
@@ -288,9 +290,8 @@ function matriz(slug, clave, medida, pos, titulo) {
 // Bloque "Moneda" de Kraken: tiles de moneda + desplegable de medida + nota.
 function bloqueMoneda(slug) {
   return [
-    segmentador(slug, 'moneda', MONEDA, 'Moneda de análisis', [xCol(10), 88, wCol(3), 52], { modo: 'Basic', horizontal: true, unico: true, sync: 'moneda', titulo: 'Moneda' }),
-    segmentador(slug, 'vista', VISTA, 'Vista de ventas', [xCol(10), 140, wCol(3), 48], { sync: 'vista' }),
-    textoEstatico(slug, 'nota-moneda', 'Resultados en moneda de presentación, sin IVA', [xCol(10), 188, wCol(3), 12]),
+    segmentador(slug, 'moneda', MONEDA, 'Moneda de análisis', [xCol(10), 88, wCol(3), 76], { unico: true, sync: 'moneda', titulo: 'Moneda' }),
+    segmentador(slug, 'vista', VISTA, 'Vista de ventas', [xCol(10), 166, wCol(3), 48], { sync: 'vista' }),
   ];
 }
 
@@ -326,8 +327,8 @@ function pagina01() {
       categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(10) } }],
       valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
       labels: [
-        { properties: { show: bool(true), showAll: bool(true), fontSize: num(9), labelPosition: str('OutsideEnd') } },
-        { properties: { showSeries: bool(true), showDynamicLabels: bool(true), dynamicLabelValue: fx(VENTAS, 'Etiqueta de venta mensual'), color: color(PIZARRA) }, selector: meta(VENTAS, 'Ventas netas') },
+        { properties: { show: bool(true), showAll: bool(true), fontSize: num(9), labelPosition: str('OutsideEnd'), labelDisplayUnits: str('1'), labelPrecision: int(0) } },
+        { properties: { showSeries: bool(true), color: color(PIZARRA) }, selector: meta(VENTAS, 'Ventas netas') },
         { properties: { showSeries: bool(false) }, selector: meta(VENTAS, 'Ventas año anterior') },
       ],
       legend: [{ properties: { show: bool(false) } }],
@@ -341,7 +342,7 @@ function pagina01() {
   vs.push(dona(slug, 'sucursal', [xCol(10), FILA[0], wCol(3), ALTO], BOD, 'nombre', 'Venta por sucursal'));
 
   // --- Fila 2: matrices año × mes (montos y variación) · dona canal
-  vs.push(matriz(slug, 'matriz-montos', 'Ventas netas', [xCol(1), FILA[1], wCol(9), 120], 'Venta por año y mes'));
+  vs.push(matriz(slug, 'matriz-montos', 'Ventas netas', [xCol(1), FILA[1], wCol(9), 120], 'Venta por año y mes', false));
   vs.push(matriz(slug, 'matriz-variacion', 'Variación vs año anterior', [xCol(1), FILA[1] + 128, wCol(9), 104], 'Variación contra el mismo mes del año anterior'));
   vs.push(dona(slug, 'canal', [xCol(10), FILA[1], wCol(3), ALTO], CLI, 'grupo_codigo', 'Venta por canal'));
 
@@ -377,7 +378,7 @@ function pagina02() {
   vs.push(...bloqueMoneda(slug));
 
   // --- Fila 1: año-mes (lista) + empresa · vendedor · sector · cliente top · producto top
-  vs.push(segmentador(slug, 'anio-mes', CAL, 'anio_mes', [xCol(1), FILA[0], wCol(2), 148], { modo: 'VerticalList', seleccion: MES_ACTUAL, sync: 'periodo', titulo: 'Año y mes', unico: true }));
+  vs.push(segmentador(slug, 'anio-mes', CAL, 'anio_mes', [xCol(1), FILA[0], wCol(2), 148], { modo: 'VerticalList', seleccion: MES_ACTUAL, sync: 'periodo', titulo: 'Año y mes', unico: true, descendente: true }));
   vs.push(segmentador(slug, 'empresa', EMP, 'nombre', [xCol(1), FILA[0] + 156, wCol(2), 76], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(ranking(slug, 'vendedor', [xCol(3), FILA[0], wCol(2), ALTO], VEND, 'nombre', 'Venta por vendedor', 'vendedor'));
   vs.push(ranking(slug, 'sector', [xCol(5), FILA[0], wCol(2), ALTO], CLI, 'condicion_pago_codigo', 'Venta por sector', 'sector'));

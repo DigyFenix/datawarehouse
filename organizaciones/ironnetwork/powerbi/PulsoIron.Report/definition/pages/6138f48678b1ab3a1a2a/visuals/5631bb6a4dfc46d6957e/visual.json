@@ -4,13 +4,13 @@
   "position": {
     "x": 24,
     "y": 712,
-    "z": 2100,
+    "z": 2000,
     "height": 232,
     "width": 608,
-    "tabOrder": 21
+    "tabOrder": 20
   },
   "visual": {
-    "visualType": "stackedBarChart",
+    "visualType": "barChart",
     "query": {
       "queryState": {
         "Category": {
@@ -97,7 +97,14 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "9D"
+                  "Value": "8D"
+                }
+              }
+            },
+            "maxMarginFactor": {
+              "expr": {
+                "Literal": {
+                  "Value": "45D"
                 }
               }
             }
@@ -151,7 +158,21 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "9D"
+                  "Value": "8D"
+                }
+              }
+            },
+            "labelDisplayUnits": {
+              "expr": {
+                "Literal": {
+                  "Value": "'1'"
+                }
+              }
+            },
+            "labelPrecision": {
+              "expr": {
+                "Literal": {
+                  "Value": "0L"
                 }
               }
             }
@@ -169,7 +190,7 @@
             "labelPosition": {
               "expr": {
                 "Literal": {
-                  "Value": "'OutsideEnd'"
+                  "Value": "'InsideEnd'"
                 }
               }
             }
