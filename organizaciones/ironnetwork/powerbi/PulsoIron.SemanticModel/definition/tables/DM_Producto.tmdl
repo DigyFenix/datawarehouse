@@ -32,6 +32,12 @@ table DM_Producto
 		summarizeBy: none
 		sourceColumn: grupo_nombre
 
+	column precio_lista
+		dataType: decimal
+		summarizeBy: none
+		sourceColumn: precio_lista
+		formatString: #,0.00
+
 	column unidad_medida
 		dataType: string
 		summarizeBy: none
@@ -66,6 +72,14 @@ table DM_Producto
 		isHidden
 		summarizeBy: none
 		sourceColumn: es_vigente
+
+	/// Alias legibles para encabezados de matrices.
+	column Producto = DM_Producto[nombre]
+		dataType: string
+		summarizeBy: none
+	column Línea = DM_Producto[grupo_nombre]
+		dataType: string
+		summarizeBy: none
 
 	partition DM_Producto = m
 		mode: import

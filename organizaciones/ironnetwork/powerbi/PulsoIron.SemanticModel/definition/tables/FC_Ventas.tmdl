@@ -903,6 +903,127 @@ table FC_Ventas
 	measure 'Título de Clientes recuperados' = "Clientes recuperados"
 		displayFolder: _Narrativa
 
+	/// Unidades vendidas en los últimos 12 meses; respeta el mes del eje (KEEPFILTERS).
+	measure 'Unidades vendidas 12 meses' = CALCULATE([Unidades vendidas], KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Primer día del mes que abre los últimos 24 meses (tendencia larga de unidades).
+	measure 'Inicio 24 meses' = VAR f = [Corte de ventas] VAR e = EDATE(f, -23) RETURN DATE(YEAR(e), MONTH(e), 1)
+		formatString: dd/MM/yyyy
+		displayFolder: _Auxiliar
+
+	/// Unidades vendidas en los últimos 24 meses por mes.
+	measure 'Unidades vendidas 24 meses' = CALCULATE([Unidades vendidas], KEEPFILTERS(DATESBETWEEN(DM_Calendario[fecha], [Inicio 24 meses], [Corte de ventas])))
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Promedio mensual de unidades de los últimos 12 meses: la línea punteada de referencia del gráfico (constante en todos los meses).
+	measure 'Promedio mensual de unidades 12 meses' = DIVIDE(CALCULATE([Unidades vendidas], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])), 12)
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Costo de lo vendido en los últimos 12 meses, dividido entre 12: el "costo desplazado promedio mensual" de Kraken.
+	measure 'Costo desplazado promedio mensual' = DIVIDE(CALCULATE([Costo de ventas], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])), 12)
+		formatString: "Q" #,0
+		displayFolder: 14 Inventario
+
+	/// Costo de lo vendido en los últimos 12 meses (el "costo desplazado" por producto).
+	measure 'Costo desplazado 12 meses' = CALCULATE([Costo de ventas], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
+		formatString: "Q" #,0
+		displayFolder: 14 Inventario
+
+	/// Meses que dura el inventario al ritmo de costo de los últimos 12 meses (valor ÷ costo desplazado mensual).
+	measure 'Meses de inventario al costo' = DIVIDE([Valor de inventario], [Costo desplazado promedio mensual])
+		formatString: #,0.0
+		displayFolder: 14 Inventario
+
+	/// Precio promedio al que se vendió el producto en los últimos 12 meses (venta ÷ unidades).
+	measure 'Precio promedio de venta 12 meses' = DIVIDE(CALCULATE([Ventas netas], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])), CALCULATE([Unidades vendidas], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])))
+		formatString: "Q" #,0.00
+		displayFolder: 14 Inventario
+
+	/// Precio de lista del producto en el ERP (Odoo: list_price). En SAP B1 no se extrae aún.
+	measure 'Precio de lista' = MAX(DM_Producto[precio_lista])
+		formatString: "Q" #,0.00
+		displayFolder: 14 Inventario
+
+	/// Consumo (unidades vendidas) del mes más bajo de los últimos 12; un mes sin venta cuenta como 0.
+	measure 'Consumo mínimo mensual' = VAR meses = CALCULATETABLE(VALUES(DM_Calendario[anio_mes]), REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])) RETURN MINX(meses, CALCULATE([Unidades vendidas]) + 0)
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Consumo mensual promedio de los últimos 12 meses (meses sin venta incluidos como 0).
+	measure 'Consumo promedio mensual' = VAR meses = CALCULATETABLE(VALUES(DM_Calendario[anio_mes]), REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])) RETURN AVERAGEX(meses, CALCULATE([Unidades vendidas]) + 0)
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Consumo del mes más alto de los últimos 12.
+	measure 'Consumo máximo mensual' = VAR meses = CALCULATETABLE(VALUES(DM_Calendario[anio_mes]), REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas])) RETURN MAXX(meses, CALCULATE([Unidades vendidas]) + 0)
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Días de reposición del proveedor (segmentador "Lead time"; 15 por defecto). Odoo lo guarda por proveedor en product_supplierinfo.delay — pendiente de extraer.
+	measure 'Lead time (días)' = SELECTEDVALUE('MD_Lead time'[Lead time], 15)
+		formatString: 0
+		displayFolder: 14 Inventario
+
+	/// Stock mínimo = consumo mínimo mensual × lead time en meses.
+	measure 'Stock mínimo' = [Consumo mínimo mensual] * [Lead time (días)] / 30
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Punto de pedido = stock mínimo + consumo promedio mensual × lead time en meses.
+	measure 'Punto de pedido' = [Stock mínimo] + [Consumo promedio mensual] * [Lead time (días)] / 30
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Stock máximo = stock mínimo + consumo máximo mensual × lead time en meses.
+	measure 'Stock máximo' = [Stock mínimo] + [Consumo máximo mensual] * [Lead time (días)] / 30
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Cuánto comprar: si la existencia está bajo el punto de pedido, lo que falta para el stock máximo.
+	measure 'Sugerencia de compra' = VAR e = COALESCE([Unidades en existencia], 0) VAR pp = [Punto de pedido] RETURN IF(NOT ISBLANK(pp) && pp > 0 && e < pp, [Stock máximo] - e, BLANK())
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Monto de la sugerencia al costo unitario actual del producto.
+	measure 'Monto de sugerencia de compra' = [Sugerencia de compra] * COALESCE([Costo promedio ponderado], CALCULATE(MAX('DM_Análisis de producto'[costo_unitario_actual])))
+		formatString: "Q" #,0
+		displayFolder: 14 Inventario
+
+	/// Icono de la tabla de análisis: ↓ bajo el punto de pedido, ↑ por encima.
+	measure 'Semáforo de existencias' = VAR e = COALESCE([Unidades en existencia], 0) VAR pp = [Punto de pedido] RETURN IF(ISBLANK(pp) || pp = 0, "", IF(e < pp, "↓", "↑"))
+		displayFolder: 14 Inventario
+
+	/// Productos con sugerencia de compra mayor que cero.
+	measure 'Productos con sugerencia de compra' = COUNTROWS(FILTER(VALUES(DM_Producto[producto_clave]), [Sugerencia de compra] > 0))
+		formatString: #,0
+		displayFolder: 14 Inventario
+
+	/// Fondo gris del ranking de existencias por bodega / línea.
+	measure 'Resto a máximo bodega existencias' = VAR m = MAXX(ALLSELECTED(DM_Bodega[nombre]), [Unidades en existencia]) VAR v = [Unidades en existencia] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: #,0
+		displayFolder: _Auxiliar
+	measure 'Resto a máximo línea existencias' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_nombre]), [Unidades en existencia]) VAR v = [Unidades en existencia] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: #,0
+		displayFolder: _Auxiliar
+	measure 'Resto a máximo bodega valor' = VAR m = MAXX(ALLSELECTED(DM_Bodega[nombre]), [Valor de inventario]) VAR v = [Valor de inventario] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+	measure 'Resto a máximo línea valor' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_nombre]), [Valor de inventario]) VAR v = [Valor de inventario] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		formatString: "Q" #,0
+		displayFolder: _Auxiliar
+
+	/// Títulos del dashboard de inventarios.
+	measure 'Título de Existencias de inventario' = "Existencias de inventario"
+		displayFolder: _Narrativa
+	measure 'Título de Costo del inventario' = "Costo del inventario"
+		displayFolder: _Narrativa
+	measure 'Título de Análisis de inventario' = "Análisis de inventario"
+		displayFolder: _Narrativa
+
 	partition FC_Ventas = m
 		mode: import
 		source =

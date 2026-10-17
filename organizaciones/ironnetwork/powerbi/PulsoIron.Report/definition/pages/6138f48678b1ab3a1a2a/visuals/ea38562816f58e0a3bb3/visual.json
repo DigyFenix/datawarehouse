@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Dirección de entrega.ciudad",
-              "nativeQueryRef": "ciudad"
+              "nativeQueryRef": "ciudad",
+              "active": true
             }
           ]
         },

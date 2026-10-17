@@ -92,6 +92,9 @@ SELECT org.id, v.* FROM org, (VALUES
   ('condiciones_pago','account_payment_term','active',    false,'bool','Activa','condicion_pago','activo','directo',true,true,'paquete_base',NULL,NULL),
   ('condiciones_pago','account_payment_term','company_id',false,'int','Compañía (NULL = compartida)','condicion_pago',NULL,'directo',false,true,'paquete_base',NULL,NULL),
 
+  -- ============ product_template: precio de lista (tablero de existencias) ============
+  ('productos','product_template','list_price',false,'num','Precio de venta de lista','producto','precio_lista','cast_numeric',true,true,'paquete_base',NULL,NULL),
+
   -- ============ account_move: referencias del documento ============
   ('movimientos','account_move','team_id',                false,'int','Equipo de ventas del documento → canal','documento_comercial','canal_codigo','directo',true,true,'paquete_base',NULL,NULL),
   ('movimientos','account_move','invoice_payment_term_id',false,'int','Condición de pago DEL DOCUMENTO (más exacta que la del cliente)','documento_comercial','condicion_pago_codigo','directo',true,true,'paquete_base',NULL,NULL),

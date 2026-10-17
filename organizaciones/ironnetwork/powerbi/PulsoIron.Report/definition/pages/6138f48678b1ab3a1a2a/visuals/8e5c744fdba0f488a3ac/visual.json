@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Calendario.dia",
-              "nativeQueryRef": "dia"
+              "nativeQueryRef": "dia",
+              "active": true
             }
           ]
         },

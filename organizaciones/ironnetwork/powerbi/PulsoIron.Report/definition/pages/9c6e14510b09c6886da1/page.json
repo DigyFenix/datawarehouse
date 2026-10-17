@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "9c6e14510b09c6886da1",
+  "displayName": "Costo del inventario",
+  "displayOption": "FitToPage",
+  "height": 960,
+  "width": 1280
+}

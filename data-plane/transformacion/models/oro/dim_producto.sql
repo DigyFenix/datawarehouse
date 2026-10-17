@@ -10,6 +10,7 @@ select
     d.nombre,
     d.grupo_codigo,
     d.grupo_nombre,
+    d.precio_lista,
     d.unidad_medida,
     d.tipo_producto,
     d.activo,
@@ -22,7 +23,7 @@ union all
 
 select
     {{ clave_no_definido() }}, 'GLOBAL', {{ codigo_no_definido() }}, {{ nombre_no_definido() }},
-    null, null, null, null, true,
+    null, null, null, null, null, true,
     {{ columnas_vigencia() }}
 
 union all
@@ -33,5 +34,5 @@ union all
 -- Mismo patrón que el miembro MULTIPLE (-2) de dim_centro_costo.
 select
     -2, 'GLOBAL', 'SERVICIO', 'Servicio (sin artículo)',
-    null, null, null, 'servicio', true,
+    null, null, null, null, 'servicio', true,
     {{ columnas_vigencia() }}

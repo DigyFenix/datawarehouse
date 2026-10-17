@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "PulsoIron"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "992d69dd-6cfc-4069-8760-4c489cfd7caf"
+  }
+}
