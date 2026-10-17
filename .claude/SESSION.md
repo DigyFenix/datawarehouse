@@ -101,7 +101,33 @@ cero.** Gaps nuevos: G12 vendedor en cartera; recordatorio G9 (costo 0 → utili
 10. Una matriz con `autoSizeColumnWidth` deja el nombre del cliente comerse todo el ancho y
     los valores detrás del scroll: `columnWidth` fijo por selector de la columna de filas.
 
-### PENDIENTE
+### PENDIENTE — PRÓXIMA SESIÓN: MEJORAS DEL TABLERO (decisión de Edwin al cierre)
+
+**Kraken 360 quedó replicado completo: 13 páginas / 246 visuales** (ventas 2, clientes 4,
+inventarios 3, cartera-utilidad-cobros 4, incluida Cuentas por pagar como espejo de CxC). La
+próxima sesión es de **mejoras sobre lo construido: aprovechar espacios, pulir layout y
+revisar hoja por hoja con Edwin**. Por dónde empezar:
+
+1. Abrir Desktop y refrescar: `powerbi-desktop open …/PulsoIron.pbip` → MCP `ListLocalInstances`
+   + `Connect` → `RefreshWithXMLA Full` (credenciales ya guardadas; EULA del MCP se acepta por
+   sesión con autorización de Edwin). Capturas de referencia en
+   `docs/powerbi/kraken360/capturas/resultado-*.png`.
+2. Huecos de layout conocidos: 03 (fila 3 cols 1-2 vacía), 04 (fila 3 cols 7-12 sin visual
+   propio), 05/06 (fila 3 col 9-12 corto), 08 (columna 1-5 fila 3 vacía bajo la matriz), 11
+   (fila 3 col 1-3 es un visual alto; «Ganancia por categoría» en blanco por G9), 12 (dona
+   vigente deja aire). Moneda falta en 03, 04 y 11 por espacio.
+3. Encabezados físicos que aún se ven: `documento_origen` (detalle de saldos), `Rango de
+   vencimiento` ok; `anio` resuelto con alias `Año`. Patrón: columna calculada alias en el
+   bloque de la tabla (`alias_columnas()` revierte el prefijo).
+4. Los generadores: `consumo/powerbi/pbir.js` (helpers) + `generar_paginas_{ventas,clientes,
+   inventario,cartera}.js`. Ciclo: `generar_pbip.py` → generadores → `validate` +
+   `validar_reporte.py` → reload (solo páginas) o reabrir Desktop (cambios de modelo) →
+   `Calculate`/`Full` → captura leída.
+5. Gaps de datos abiertos (inventario.md): G1 meta, G3 sucursal, G5 ciudades, G6 tasas, G7 UoM,
+   G9 costo en Odoo (deja utilidad y costo desplazado en cero/estimado), G10 lead time por
+   proveedor, G11 límite de crédito sin configurar en Iron, G12 vendedor en cartera.
+
+### PENDIENTE (general)
 
 1. **No guardar desde Desktop** (reescribe el PBIR). Cerrar con «no guardar»; banner de
    autorrecuperación: «no recuperar».
