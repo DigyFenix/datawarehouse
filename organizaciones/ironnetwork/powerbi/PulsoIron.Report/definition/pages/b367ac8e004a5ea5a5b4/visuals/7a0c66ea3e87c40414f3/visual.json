@@ -101,6 +101,17 @@
                 }
               }
             },
+            "labelColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#6b7680'"
+                    }
+                  }
+                }
+              }
+            },
             "maxMarginFactor": {
               "expr": {
                 "Literal": {
@@ -320,6 +331,24 @@
               "expr": {
                 "Literal": {
                   "Value": "8D"
+                }
+              }
+            },
+            "labelColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#6b7680'"
+                    }
+                  }
+                }
+              }
+            },
+            "showTitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
                 }
               }
             }

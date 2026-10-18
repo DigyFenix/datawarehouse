@@ -88,7 +88,7 @@ function paginaAnalisis() {
     roles: { Category: [pColumna(T.CAL, 'mes_anio_etiqueta')], Y: [pMedida(V, 'Unidades vendidas 24 meses')] },
     sort: ordenAsc(T.CAL, 'mes_anio_etiqueta'),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
+      categoryAxis: P.ejeCat(),
       valueAxis: P.ejeValores({ start: num(0) }),
       labels: [{ properties: { show: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: num(0), color: color(C.PIZARRA) } }],
       legend: [{ properties: { show: bool(false) } }],

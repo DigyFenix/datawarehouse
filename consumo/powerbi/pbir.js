@@ -26,7 +26,7 @@ const T = {
 
 // Colores de Kraken (capturas): pizarra, gris de referencia, panel gris-azul, rojo/verde de estado.
 const C = {
-  PIZARRA: '#4f6d78', GRIS_SERIE: '#e1e4e6', PANEL: '#dde4e7', TINTA: '#1f2a2e', TINTA_SUAVE: '#6b7680',
+  PIZARRA: '#4f6d78', GRIS_SERIE: '#e1e4e6', PANEL: '#e9eef0', TINTA: '#1f2a2e', TINTA_SUAVE: '#6b7680',
   VERDE_CELDA: '#c6e5c9', ROJO_CELDA: '#f4c7c3', ROJO: '#d9534f', VERDE: '#2f9e44', PIZARRA_CLARA: '#9fb4bb', BLANCO: '#ffffff',
   // Patrón visual (sesión 29): bandas de tabla, líneas de grilla y encabezados discretos.
   FILA_ALT: '#f4f7f8', GRILLA: '#e6ebee', ENCABEZADO: '#eef2f4',
@@ -87,6 +87,12 @@ const vcDesnudo = {
   visualHeader: [{ properties: { show: bool(false) } }],
   padding: [{ properties: { top: num(0), bottom: num(0), left: num(0), right: num(0) } }],
 };
+
+// ---- ejes y leyendas (sesión 29, pulido): texto gris suave, grilla fina, sin títulos de eje ----
+const ejeCat = (extra = {}) => [{ properties: { showAxisTitle: bool(false), fontSize: num(9), labelColor: color(C.TINTA_SUAVE), ...extra } }];
+const ejeValOculto = [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }];
+const ejeValGrilla = (extra = {}) => [{ properties: { show: bool(true), showAxisTitle: bool(false), fontSize: num(8), labelColor: color(C.TINTA_SUAVE), labelDisplayUnits: str('1'), labelPrecision: int(0), gridlineShow: bool(true), gridlineColor: color(C.GRILLA), gridlineThickness: num(1), start: num(0), ...extra } }];
+const leyenda = (show = true, position = 'Top') => [{ properties: { show: bool(show), position: str(position), fontSize: num(8), labelColor: color(C.TINTA_SUAVE), showTitle: bool(false) } }];
 
 // ---- etiquetas de barras y columnas (decisión de Edwin, sesión 29) ----
 // Fondo blanco casi sólido (transparencia 5 %) y texto del color de su serie, para distinguir
@@ -225,28 +231,28 @@ function ranking(slug, clave, pos, tabla, columna, titulo, dim, medida = 'Ventas
     roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(tablaMedida, medida)] },
     sort: ordenDesc(tablaMedida, medida),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(8), maxMarginFactor: num(margen) } }],
-      valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
+      categoryAxis: ejeCat({ fontSize: num(8), maxMarginFactor: num(margen) }),
+      valueAxis: ejeValOculto,
       // OutsideEnd sin desborde: Power BI acorta las barras para que el monto completo quepa dentro del visual
       // (con desborde, el monto de la barra más larga se salía del visual; con Auto, lo recortaba dentro de la barra).
       labels: etiquetasBarra([[tablaMedida, medida, C.PIZARRA]], { labelPosition: str('OutsideEnd'), labelOverflow: bool(false) }),
       dataPoint: [{ properties: { fill: color(C.PIZARRA) } }, { properties: { fill: color(C.PIZARRA) }, selector: meta(tablaMedida, medida) }],
-      legend: [{ properties: { show: bool(false) } }],
+      legend: leyenda(false),
     },
     vc: vcTitulo(titulo),
   });
 }
 // Barras simples (sin fantasma) por categoría, orden descendente.
-function barras(slug, clave, pos, tabla, columna, titulo, medidas, colores = [C.PIZARRA, C.ROJO, C.VERDE], { apilado = true, leyenda = false } = {}) {
+function barras(slug, clave, pos, tabla, columna, titulo, medidas, colores = [C.PIZARRA, C.ROJO, C.VERDE], { apilado = true, leyenda: conLeyenda = false } = {}) {
   return visual(id(slug, clave), apilado ? 'barChart' : 'clusteredBarChart', pos, {
     roles: { Category: [pColumna(tabla, columna)], Y: medidas.map((m) => pMedida(T.VENTAS, m)) },
     sort: ordenDesc(T.VENTAS, medidas[0]),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(8), maxMarginFactor: num(45) } }],
-      valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
+      categoryAxis: ejeCat({ fontSize: num(8), maxMarginFactor: num(45) }),
+      valueAxis: ejeValOculto,
       labels: etiquetasBarra(medidas.map((m, i) => [T.VENTAS, m, colores[i] || C.PIZARRA]), { labelOverflow: bool(true) }),
       dataPoint: [{ properties: { fill: color(colores[0] || C.PIZARRA) } }, ...medidas.map((m, i) => ({ properties: { fill: color(colores[i] || C.PIZARRA) }, selector: meta(T.VENTAS, m) }))],
-      legend: [{ properties: { show: bool(leyenda), position: str('Top'), fontSize: num(8) } }],
+      legend: leyenda(conLeyenda),
     },
     vc: vcTitulo(titulo),
   });
@@ -257,8 +263,9 @@ function dona(slug, clave, pos, tabla, columna, titulo, medida = 'Ventas netas',
     sort: ordenDesc(tablaMedida, medida),
     objects: {
       // Nombres en leyenda inferior y solo el monto en el gajo: con "Both" los nombres largos se recortaban ("Vence e… Q 24,267").
-      legend: [{ properties: { show: bool(true), position: str('Bottom'), fontSize: num(8), showTitle: bool(false) } }],
-      labels: [{ properties: { show: bool(true), labelStyle: str('Data'), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } }],
+      legend: leyenda(true, 'Bottom'),
+      labels: [{ properties: { show: bool(true), labelStyle: str('Data'), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), color: color(C.TINTA) } }],
+      dataPoint: [{ properties: { borderShow: bool(true), borderColor: color(C.BLANCO), borderSize: num(2) } }],
     },
     vc: vcTitulo(titulo),
   });
@@ -340,9 +347,9 @@ function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn
   return v;
 }
 // Eje de valores visible: montos completos, nunca "0.3 mill.".
-const ejeValores = (extra = {}) => [{ properties: { showAxisTitle: bool(false), fontSize: num(9), labelDisplayUnits: str('1'), labelPrecision: int(0), gridlineColor: color(C.GRILLA), ...extra } }];
+const ejeValores = (extra = {}) => [{ properties: { showAxisTitle: bool(false), fontSize: num(8), labelColor: color(C.TINTA_SUAVE), labelDisplayUnits: str('1'), labelPrecision: int(0), gridlineColor: color(C.GRILLA), gridlineThickness: num(1), ...extra } }];
 // Eje de categorías con título explícito (p. ej. «Día del mes») cuando el valor solo no se entiende.
-const ejeCategoria = (titulo, extra = {}) => [{ properties: { showAxisTitle: bool(Boolean(titulo)), ...(titulo ? { titleText: str(titulo), titleFontSize: num(9), titleColor: color(C.TINTA_SUAVE) } : {}), fontSize: num(9), ...extra } }];
+const ejeCategoria = (titulo, extra = {}) => [{ properties: { showAxisTitle: bool(Boolean(titulo)), ...(titulo ? { titleText: str(titulo), titleFontSize: num(9), titleColor: color(C.TINTA_SUAVE) } : {}), fontSize: num(9), labelColor: color(C.TINTA_SUAVE), ...extra } }];
 // Marcadores para TODA gráfica de líneas (entrada base de lineStyles; los selectores por serie se agregan después).
 const marcadores = { properties: { showMarker: bool(true), markerShape: str('circle'), markerSize: num(4), strokeWidth: num(2) } };
 // Series diarias (30+ puntos): marcador más pequeño para que la línea no se vea como un collar.
@@ -364,14 +371,14 @@ function columnasMensuales(slug, clave, pos, titulo, actual = 'Ventas netas', an
     },
     sort: ordenAsc(T.CAL, columna),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(10) } }],
-      valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
+      categoryAxis: ejeCat({ innerPadding: int(35) }),
+      valueAxis: ejeValGrilla(),
       labels: [
         // Columnas verticales: monto completo a 8 pt con desborde permitido (decisión de Edwin: nunca unidades automáticas).
         ...etiquetasBarra([[T.VENTAS, actual, C.PIZARRA], [T.VENTAS, anterior, C.TINTA_SUAVE]], { labelPosition: str('OutsideEnd'), labelOverflow: bool(true) }),
         { properties: { showSeries: bool(false) }, selector: meta(T.VENTAS, anterior) },
       ],
-      legend: [{ properties: { show: bool(false) } }],
+      legend: leyenda(false),
       dataPoint: [
         { properties: { fill: color(C.GRIS_SERIE) }, selector: meta(T.VENTAS, anterior) },
         { properties: { fill: color(C.PIZARRA) }, selector: meta(T.VENTAS, actual) },
@@ -390,14 +397,14 @@ function comboMensual(slug, clave, pos, titulo, columnas, linea, columna = 'mes_
     },
     sort: ordenAsc(T.CAL, columna),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
-      valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false), secShow: bool(false) } }],
+      categoryAxis: ejeCat({ innerPadding: int(35) }),
+      valueAxis: ejeValGrilla({ secShow: bool(false) }),
       labels: [
         ...etiquetasBarra(columnas.map((m, i) => [T.VENTAS, m, i === 0 ? C.PIZARRA : C.PIZARRA_CLARA])),
         // La línea (promedio / conteo) no lleva etiqueta: ensucia las columnas.
         { properties: { show: bool(false), showSeries: bool(false) }, selector: meta(T.VENTAS, linea) },
       ],
-      legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(9) } }],
+      legend: leyenda(true),
       dataPoint: [
         ...columnas.map((m, i) => ({ properties: { fill: color(i === 0 ? C.PIZARRA : C.PIZARRA_CLARA) }, selector: meta(T.VENTAS, m) })),
         { properties: { fill: color(C.PIZARRA_CLARA) }, selector: meta(T.VENTAS, linea) },
@@ -412,11 +419,11 @@ function columnasApiladas(slug, clave, pos, titulo, medidas, colores = [C.PIZARR
     roles: { Category: [pColumna(T.CAL, columna)], Y: medidas.map((m) => pMedida(T.VENTAS, m)) },
     sort: ordenAsc(T.CAL, columna),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
-      valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
+      categoryAxis: ejeCat({ innerPadding: int(35) }),
+      valueAxis: ejeValGrilla(),
       // Sin etiquetas: en apilado Power BI recorta todo monto que no cabe en su segmento ("Q 34..."); el detalle va en el tooltip.
       labels: [{ properties: { show: bool(false) } }],
-      legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(9) } }],
+      legend: leyenda(true),
       dataPoint: medidas.map((m, i) => ({ properties: { fill: color(colores[i] || C.PIZARRA) }, selector: meta(T.VENTAS, m) })),
     },
     vc: vcTitulo(titulo),
@@ -463,6 +470,6 @@ function reporteDeArgs() {
 module.exports = {
   W, H, FILA, ALTO, T, C, xCol, wCol, id, lit, str, num, int, bool, color, sel, meta, campoMedida, campoColumna,
   pMedida, pColumna, fx, ordenDesc, ordenAsc, visual, reiniciar, vcTitulo, vcDesnudo, texto, textoEstatico, navegador,
-  encabezado, pie, segmentador, kpis, ranking, barras, dona, mapa, semaforo, subtotalesMatriz, matriz, marcadores, marcadoresFinos, ejeValores, ejeCategoria, etiquetasBarra, bloqueMoneda,
+  encabezado, pie, segmentador, kpis, ranking, barras, dona, mapa, semaforo, subtotalesMatriz, matriz, marcadores, marcadoresFinos, ejeValores, ejeCategoria, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, bloqueMoneda,
   columnasMensuales, comboMensual, columnasApiladas, escribirPaginas, reporteDeArgs,
 };

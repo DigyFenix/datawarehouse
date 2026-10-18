@@ -4,16 +4,16 @@
   "dataColors": [
     "#4f6d78",
     "#9fb4bb",
-    "#c9a63f",
+    "#c5d1d6",
     "#2f7d4f",
+    "#b83f30",
     "#7a8fb8",
-    "#b9781a",
-    "#8b6fa8",
-    "#4a7fa5",
     "#a89060",
     "#6b8f7a",
+    "#8b6fa8",
+    "#5f6b8a",
     "#9c6b5a",
-    "#5f6b8a"
+    "#4a7fa5"
   ],
   "good": "#2f7d4f",
   "neutral": "#8b9389",
@@ -78,7 +78,7 @@
             "show": true,
             "color": {
               "solid": {
-                "color": "#e4e7df"
+                "color": "#e3e8ea"
               }
             },
             "radius": 8
@@ -105,6 +105,19 @@
             "alignment": "left",
             "fontSize": 12,
             "fontFamily": "Segoe UI Semibold"
+          }
+        ],
+        "dropShadow": [
+          {
+            "show": true,
+            "color": {
+              "solid": {
+                "color": "#1f2a2e"
+              }
+            },
+            "position": "Outer",
+            "preset": "BottomRight",
+            "transparency": 92
           }
         ]
       }

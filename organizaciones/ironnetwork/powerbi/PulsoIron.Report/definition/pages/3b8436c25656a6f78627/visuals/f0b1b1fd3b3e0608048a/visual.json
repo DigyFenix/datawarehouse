@@ -86,6 +86,17 @@
                   "Value": "9D"
                 }
               }
+            },
+            "labelColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#6b7680'"
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -103,7 +114,18 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "9D"
+                  "Value": "8D"
+                }
+              }
+            },
+            "labelColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#6b7680'"
+                    }
+                  }
                 }
               }
             },
@@ -129,6 +151,13 @@
                       "Value": "'#e6ebee'"
                     }
                   }
+                }
+              }
+            },
+            "gridlineThickness": {
+              "expr": {
+                "Literal": {
+                  "Value": "1D"
                 }
               }
             },

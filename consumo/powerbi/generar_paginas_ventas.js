@@ -97,7 +97,7 @@ function pagina02() {
       categoryAxis: ejeCategoria('Día del mes'),
       valueAxis: ejeValores({ start: num(0) }),
       // Sin leyenda: los nombres de las medidas no caben; el subtítulo explica las dos líneas.
-      legend: [{ properties: { show: bool(false) } }],
+      legend: P.leyenda(false),
       lineStyles: [
         marcadoresFinos,
         { properties: { strokeWidth: num(2) }, selector: meta(T.VENTAS, 'Venta acumulada del mes al día') },

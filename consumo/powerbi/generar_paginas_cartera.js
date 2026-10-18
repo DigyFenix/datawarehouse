@@ -5,7 +5,7 @@
 // Uso:  node generar_paginas_cartera.js <ruta al .Report> [anio_actual]
 'use strict';
 const P = require('./pbir');
-const { T, C, FILA, ALTO, xCol, wCol, id, segmentador, kpis, barras, dona, matriz, marcadores, ejeValores, etiquetasBarra, encabezado, pie, visual, pColumna, pMedida, ordenAsc, ordenDesc, str, num, bool, color, meta, vcTitulo } = P;
+const { T, C, FILA, ALTO, xCol, wCol, id, segmentador, kpis, barras, dona, matriz, marcadores, ejeValores, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, encabezado, pie, visual, pColumna, pMedida, ordenAsc, ordenDesc, str, num, int, bool, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
 const ANIO_ACTUAL = Number(process.argv[3] || new Date().getFullYear());
@@ -17,14 +17,14 @@ function saldoApilado(slug, clave, pos, tabla, col, titulo, [noVencido, vencido]
     roles: { Category: [pColumna(tabla, col)], Y: [pMedida(tablaMedida, noVencido), pMedida(tablaMedida, vencido)] },
     sort: ordenDesc(tablaMedida, noVencido),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(8), maxMarginFactor: num(45) } }],
-      valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
+      categoryAxis: ejeCat({ fontSize: num(8), maxMarginFactor: num(45) }),
+      valueAxis: ejeValOculto,
       labels: etiquetasBarra([[tablaMedida, noVencido, C.PIZARRA], [tablaMedida, vencido, C.ROJO]], { labelOverflow: bool(true) }),
       dataPoint: [
         { properties: { fill: color(C.PIZARRA) }, selector: meta(tablaMedida, noVencido) },
         { properties: { fill: color(C.ROJO) }, selector: meta(tablaMedida, vencido) },
       ],
-      legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(8) } }],
+      legend: leyenda(true),
     },
     vc: vcTitulo(titulo),
   });
@@ -105,10 +105,10 @@ function paginaUtilidad() {
     roles: { Category: [pColumna(T.CAL, 'mes_nombre_corto')], Y: [pMedida(V, 'Costo de lo vendido'), pMedida(V, 'Ganancia')], Y2: [pMedida(V, '% Margen')] },
     sort: ordenAsc(T.CAL, 'mes_nombre_corto'),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
-      valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false) } }],
+      categoryAxis: ejeCat({ innerPadding: int(35) }),
+      valueAxis: ejeValGrilla(),
       labels: [...etiquetasBarra([[V, 'Costo de lo vendido', C.TINTA_SUAVE], [V, 'Ganancia', C.PIZARRA]]), { properties: { show: bool(false), showSeries: bool(false) }, selector: meta(V, '% Margen') }],
-      legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(8) } }],
+      legend: leyenda(true),
       dataPoint: [
         { properties: { fill: color(C.GRIS_SERIE) }, selector: meta(V, 'Costo de lo vendido') },
         { properties: { fill: color(C.PIZARRA) }, selector: meta(V, 'Ganancia') },
@@ -157,10 +157,10 @@ function paginaCobros() {
     roles: { Category: [pColumna(T.CAL, 'mes_anio_etiqueta')], Y: [pMedida(V, 'Cargos del mes'), pMedida(V, 'Abonos del mes')], Y2: [pMedida(F, 'Saldo al cierre del mes')] },
     sort: ordenAsc(T.CAL, 'mes_anio_etiqueta'),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
-      valueAxis: [{ properties: { show: bool(false), showAxisTitle: bool(false), gridlineShow: bool(false), secShow: bool(false) } }],
+      categoryAxis: ejeCat({ innerPadding: int(35) }),
+      valueAxis: ejeValGrilla({ secShow: bool(false) }),
       labels: etiquetasBarra([[V, 'Cargos del mes', C.ROJO], [V, 'Abonos del mes', C.VERDE], [F, 'Saldo al cierre del mes', '#8e5ea2']]),
-      legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(8) } }],
+      legend: leyenda(true),
       dataPoint: [
         { properties: { fill: color(C.ROJO) }, selector: meta(V, 'Cargos del mes') },
         { properties: { fill: color(C.VERDE) }, selector: meta(V, 'Abonos del mes') },
@@ -174,10 +174,10 @@ function paginaCobros() {
     roles: { Category: [pColumna(T.CAL, 'mes_anio_etiqueta')], Y: [pMedida(F, 'Días autorizados'), pMedida(F, 'Días promedio de cartera')] },
     sort: ordenAsc(T.CAL, 'mes_anio_etiqueta'),
     objects: {
-      categoryAxis: [{ properties: { showAxisTitle: bool(false), fontSize: num(9) } }],
-      valueAxis: ejeValores(),
-      labels: [{ properties: { show: bool(true), fontSize: num(8) } }],
-      legend: [{ properties: { show: bool(true), position: str('Top'), fontSize: num(8) } }],
+      categoryAxis: ejeCat(),
+      valueAxis: ejeValores({ start: num(0) }),
+      labels: [{ properties: { show: bool(true), fontSize: num(8), labelPrecision: int(0) } }],
+      legend: leyenda(true),
       lineStyles: [marcadores],
       dataPoint: [
         { properties: { fill: color(C.PIZARRA) }, selector: meta(F, 'Días autorizados') },
