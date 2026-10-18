@@ -808,7 +808,7 @@ table FC_Ventas
 		displayFolder: 13 Clientes nuevos
 
 	/// Los que no volvieron a comprar.
-	measure 'Clientes nuevos no retenidos' = [Clientes nuevos en ventana] - [Clientes nuevos retenidos]
+	measure 'Clientes nuevos no retenidos' = VAR t = [Clientes nuevos en ventana] RETURN IF(ISBLANK(t), BLANK(), t - COALESCE([Clientes nuevos retenidos], 0))
 		formatString: #,0
 		displayFolder: 13 Clientes nuevos
 
@@ -871,7 +871,7 @@ table FC_Ventas
 		displayFolder: 13 Clientes recuperados
 
 	/// Los que no volvieron a comprar.
-	measure 'Clientes recuperados no retenidos' = [Clientes recuperados en ventana] - [Clientes recuperados retenidos]
+	measure 'Clientes recuperados no retenidos' = VAR t = [Clientes recuperados en ventana] RETURN IF(ISBLANK(t), BLANK(), t - COALESCE([Clientes recuperados retenidos], 0))
 		formatString: #,0
 		displayFolder: 13 Clientes recuperados
 
@@ -1040,7 +1040,17 @@ table FC_Ventas
 	measure 'Abonos totales 12 meses' = CALCULATE([Cobros de clientes], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
-	measure 'Cargos menos abonos 12 meses' = [Cargos totales 12 meses] - [Abonos totales 12 meses]
+	measure 'Cargos menos abonos 12 meses' = VAR c = [Cargos totales 12 meses] VAR a = [Abonos totales 12 meses] RETURN IF(ISBLANK(c) && ISBLANK(a), BLANK(), COALESCE(c, 0) - COALESCE(a, 0))
+		formatString: "Q" #,0;-"Q" #,0;"Q" 0
+		displayFolder: 16 Cobros
+
+	/// Abonos de 12 meses ya conciliados contra factura (estado `paid` en Odoo).
+	measure 'Abonos conciliados 12 meses' = CALCULATE([Abonos totales 12 meses], KEEPFILTERS('FC_Pagos recibidos'[estado] = "paid"))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+
+	/// Abonos de 12 meses registrados pero aún sin conciliar (estado `in_process` en Odoo).
+	measure 'Abonos en proceso 12 meses' = CALCULATE([Abonos totales 12 meses], KEEPFILTERS('FC_Pagos recibidos'[estado] = "in_process"))
 		formatString: "Q" #,0;-"Q" #,0;"Q" 0
 		displayFolder: 16 Cobros
 

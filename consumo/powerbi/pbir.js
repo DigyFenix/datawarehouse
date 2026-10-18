@@ -256,8 +256,9 @@ function dona(slug, clave, pos, tabla, columna, titulo, medida = 'Ventas netas',
     roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(tablaMedida, medida)] },
     sort: ordenDesc(tablaMedida, medida),
     objects: {
-      legend: [{ properties: { show: bool(false) } }],
-      labels: [{ properties: { show: bool(true), labelStyle: str('Both'), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } }],
+      // Nombres en leyenda inferior y solo el monto en el gajo: con "Both" los nombres largos se recortaban ("Vence e… Q 24,267").
+      legend: [{ properties: { show: bool(true), position: str('Bottom'), fontSize: num(8), showTitle: bool(false) } }],
+      labels: [{ properties: { show: bool(true), labelStyle: str('Data'), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0) } }],
     },
     vc: vcTitulo(titulo),
   });

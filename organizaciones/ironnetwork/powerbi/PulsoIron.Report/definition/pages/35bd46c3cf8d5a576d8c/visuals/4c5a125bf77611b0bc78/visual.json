@@ -4,10 +4,10 @@
   "position": {
     "x": 336,
     "y": 464,
-    "z": 1400,
+    "z": 1500,
     "height": 112,
     "width": 608,
-    "tabOrder": 14
+    "tabOrder": 15
   },
   "visual": {
     "visualType": "cardVisual",
@@ -42,6 +42,34 @@
               },
               "queryRef": "FC_Ventas.Abonos totales 12 meses",
               "nativeQueryRef": "Abonos totales 12 meses"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Abonos conciliados 12 meses"
+                }
+              },
+              "queryRef": "FC_Ventas.Abonos conciliados 12 meses",
+              "nativeQueryRef": "Abonos conciliados 12 meses"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Abonos en proceso 12 meses"
+                }
+              },
+              "queryRef": "FC_Ventas.Abonos en proceso 12 meses",
+              "nativeQueryRef": "Abonos en proceso 12 meses"
             },
             {
               "field": {
@@ -204,6 +232,34 @@
             "text": {
               "expr": {
                 "Literal": {
+                  "Value": "'Conciliados'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Abonos conciliados 12 meses"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'En proceso'"
+                }
+              }
+            }
+          },
+          "selector": {
+            "metadata": "FC_Ventas.Abonos en proceso 12 meses"
+          }
+        },
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
                   "Value": "'Cargos − abonos'"
                 }
               }
@@ -352,7 +408,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Cargos · abonos · cargos − abonos'"
+                  "Value": "'Cargos con IVA · abonos = conciliados + en proceso · cargos − abonos'"
                 }
               }
             },

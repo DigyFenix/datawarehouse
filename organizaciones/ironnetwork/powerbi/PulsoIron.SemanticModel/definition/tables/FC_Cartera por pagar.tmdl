@@ -162,7 +162,7 @@ table 'FC_Cartera por pagar'
 		displayFolder: 01 Saldo
 
 	/// Lo que se cobra menos lo que se debe: la liquidez estructural del negocio.
-	measure 'Posición neta' = [Saldo por cobrar] - [Saldo por pagar]
+	measure 'Posición neta' = VAR c = [Saldo por cobrar] VAR p = [Saldo por pagar] RETURN IF(ISBLANK(c) && ISBLANK(p), BLANK(), COALESCE(c, 0) - COALESCE(p, 0))
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 

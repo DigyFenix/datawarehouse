@@ -4,10 +4,10 @@
   "position": {
     "x": 960,
     "y": 584,
-    "z": 1700,
+    "z": 1800,
     "height": 360,
     "width": 296,
-    "tabOrder": 17
+    "tabOrder": 18
   },
   "visual": {
     "visualType": "donutChart",
@@ -76,6 +76,27 @@
             "show": {
               "expr": {
                 "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "position": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Bottom'"
+                }
+              }
+            },
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            },
+            "showTitle": {
+              "expr": {
+                "Literal": {
                   "Value": "false"
                 }
               }
@@ -96,7 +117,7 @@
             "labelStyle": {
               "expr": {
                 "Literal": {
-                  "Value": "'Both'"
+                  "Value": "'Data'"
                 }
               }
             },

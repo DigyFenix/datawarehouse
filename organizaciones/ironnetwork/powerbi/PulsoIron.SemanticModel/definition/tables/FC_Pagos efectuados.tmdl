@@ -118,7 +118,7 @@ table 'FC_Pagos efectuados'
 		displayFolder: 01 Importes
 
 	/// Lo cobrado menos lo pagado en el período filtrado: el pulso de caja operativo.
-	measure 'Flujo neto de caja' = [Monto cobrado] - [Monto pagado]
+	measure 'Flujo neto de caja' = VAR c = [Monto cobrado] VAR p = [Monto pagado] RETURN IF(ISBLANK(c) && ISBLANK(p), BLANK(), COALESCE(c, 0) - COALESCE(p, 0))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -163,7 +163,7 @@ table 'FC_Pagos efectuados'
 		displayFolder: 04 Comparativos
 
 	/// Caja neta acumulada del año: lo cobrado menos lo pagado desde el 1 de enero.
-	measure 'Flujo neto acumulado año' = [Cobros acumulados año] - [Pagos acumulados año]
+	measure 'Flujo neto acumulado año' = VAR c = [Cobros acumulados año] VAR p = [Pagos acumulados año] RETURN IF(ISBLANK(c) && ISBLANK(p), BLANK(), COALESCE(c, 0) - COALESCE(p, 0))
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 

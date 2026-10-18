@@ -144,7 +144,9 @@ function paginaCobros() {
   vs.push(kpiSaldo(slug, 'dias-prom', [xCol(5), 88, wCol(2), 112], 'Días promedio', ['Días promedio de cartera'], F, 'Antigüedad ponderada por saldo'));
   vs.push(kpiSaldo(slug, 'sobregiro', [xCol(7), 88, wCol(2), 112], 'Sobregiro actual en días', ['Sobregiro en días'], F, 'Promedio − autorizado'));
   vs.push(kpiSaldo(slug, 'saldo', [xCol(9), 88, wCol(2), 112], 'Saldo', ['Saldo por cobrar'], F, 'Partidas abiertas al corte'));
-  vs.push(segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(11), 88, wCol(2), 112], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }));
+  vs.push(segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(11), 88, wCol(2), 64], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }));
+  // Estado del cobro (Odoo: conciliado / en proceso): el usuario decide qué abonos cuentan. Sin selección entran todos.
+  vs.push(segmentador(slug, 'estado-cobro', 'FC_Pagos recibidos', 'Estado del cobro', [xCol(11), 152, wCol(2), 64], { titulo: 'Estado del cobro', busqueda: false }));
 
   // Columna 1-3: tabla cliente (sobregiro, saldo)
   vs.push(matriz(slug, 'clientes', [xCol(1), FILA[0], wCol(3), ALTO * 3 + 32], 'Sobregiro y saldo por cliente', {
@@ -167,7 +169,7 @@ function paginaCobros() {
     },
     vc: vcTitulo('Cargos, abonos y saldos mensuales', '12 meses · cargos = facturación con IVA · abonos = cobros · saldo = cartera al cierre del mes'),
   }));
-  vs.push(kpis(slug, 'totales', [[V, 'Cargos totales 12 meses', 'Cargos'], [V, 'Abonos totales 12 meses', 'Abonos'], [V, 'Cargos menos abonos 12 meses', 'Cargos − abonos']], [xCol(4), FILA[1], wCol(6), 112], 'Totales de los últimos 12 meses', 'Cargos · abonos · cargos − abonos'));
+  vs.push(kpis(slug, 'totales', [[V, 'Cargos totales 12 meses', 'Cargos'], [V, 'Abonos totales 12 meses', 'Abonos'], [V, 'Abonos conciliados 12 meses', 'Conciliados'], [V, 'Abonos en proceso 12 meses', 'En proceso'], [V, 'Cargos menos abonos 12 meses', 'Cargos − abonos']], [xCol(4), FILA[1], wCol(6), 112], 'Totales de los últimos 12 meses', 'Cargos con IVA · abonos = conciliados + en proceso · cargos − abonos'));
   vs.push(visual(id(slug, 'dias-credito'), 'lineChart', [xCol(4), FILA[1] + 120, wCol(6), ALTO * 2 - 104], {
     roles: { Category: [pColumna(T.CAL, 'mes_anio_etiqueta')], Y: [pMedida(F, 'Días autorizados'), pMedida(F, 'Días promedio de cartera')] },
     sort: ordenAsc(T.CAL, 'mes_anio_etiqueta'),

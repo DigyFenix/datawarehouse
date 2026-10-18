@@ -1058,7 +1058,7 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] = r"""
 		displayFolder: 01 Saldo
 
 	/// Lo que se cobra menos lo que se debe: la liquidez estructural del negocio.
-	measure 'Posición neta' = [Saldo por cobrar] - [Saldo por pagar]
+	measure 'Posición neta' = VAR c = [Saldo por cobrar] VAR p = [Saldo por pagar] RETURN IF(ISBLANK(c) && ISBLANK(p), BLANK(), COALESCE(c, 0) - COALESCE(p, 0))
 		formatString: "Q" #,0
 		displayFolder: 01 Saldo
 
@@ -1688,6 +1688,11 @@ MEDIDAS_POR_TABLA["hecho_movimiento_contable"] = r"""
 """
 
 MEDIDAS_POR_TABLA["hecho_pago_recibido"] = r"""
+	/// Estado del cobro en lenguaje de negocio. En Odoo `paid` = conciliado contra factura y `in_process` = registrado pero sin conciliar; el usuario decide en el segmentador cuáles cuentan.
+	column 'Estado del cobro' = SWITCH('Pagos recibidos'[estado], "paid", "Conciliado", "in_process", "En proceso", "posted", "Registrado", "draft", "Borrador", "cancel", "Cancelado", "canceled", "Cancelado", BLANK(), "Sin estado", 'Pagos recibidos'[estado])
+		dataType: string
+		summarizeBy: none
+
 	/// Flujo de cobros del período en MONEDA DE PRESENTACIÓN. INFORMATIVO para caja: el saldo de cartera sale del mayor.
 	measure 'Monto cobrado' = SUM('Pagos recibidos'[monto])
 		formatString: "Q" #,0
@@ -1766,7 +1771,7 @@ MEDIDAS_POR_TABLA["hecho_pago_efectuado"] = r"""
 		displayFolder: 01 Importes
 
 	/// Lo cobrado menos lo pagado en el período filtrado: el pulso de caja operativo.
-	measure 'Flujo neto de caja' = [Monto cobrado] - [Monto pagado]
+	measure 'Flujo neto de caja' = VAR c = [Monto cobrado] VAR p = [Monto pagado] RETURN IF(ISBLANK(c) && ISBLANK(p), BLANK(), COALESCE(c, 0) - COALESCE(p, 0))
 		formatString: "Q" #,0
 		displayFolder: 01 Importes
 
@@ -1811,7 +1816,7 @@ MEDIDAS_POR_TABLA["hecho_pago_efectuado"] = r"""
 		displayFolder: 04 Comparativos
 
 	/// Caja neta acumulada del año: lo cobrado menos lo pagado desde el 1 de enero.
-	measure 'Flujo neto acumulado año' = [Cobros acumulados año] - [Pagos acumulados año]
+	measure 'Flujo neto acumulado año' = VAR c = [Cobros acumulados año] VAR p = [Pagos acumulados año] RETURN IF(ISBLANK(c) && ISBLANK(p), BLANK(), COALESCE(c, 0) - COALESCE(p, 0))
 		formatString: "Q" #,0
 		displayFolder: 04 Comparativos
 """
@@ -2402,7 +2407,7 @@ def _cohorte(nombre: str, nombre_min: str, filtro_cliente: str, filtro_linea_est
 		displayFolder: 13 {nombre}
 
 	/// Los que no volvieron a comprar.
-	measure 'Clientes {nombre_min} no retenidos' = [Clientes {nombre_min} en ventana] - [Clientes {nombre_min} retenidos]
+	measure 'Clientes {nombre_min} no retenidos' = VAR t = [Clientes {nombre_min} en ventana] RETURN IF(ISBLANK(t), BLANK(), t - COALESCE([Clientes {nombre_min} retenidos], 0))
 		formatString: #,0
 		displayFolder: 13 {nombre}
 
@@ -2863,7 +2868,17 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 	measure 'Abonos totales 12 meses' = CALCULATE([Cobros de clientes], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
-	measure 'Cargos menos abonos 12 meses' = [Cargos totales 12 meses] - [Abonos totales 12 meses]
+	measure 'Cargos menos abonos 12 meses' = VAR c = [Cargos totales 12 meses] VAR a = [Abonos totales 12 meses] RETURN IF(ISBLANK(c) && ISBLANK(a), BLANK(), COALESCE(c, 0) - COALESCE(a, 0))
+		formatString: "Q" #,0;-"Q" #,0;"Q" 0
+		displayFolder: 16 Cobros
+
+	/// Abonos de 12 meses ya conciliados contra factura (estado `paid` en Odoo).
+	measure 'Abonos conciliados 12 meses' = CALCULATE([Abonos totales 12 meses], KEEPFILTERS('Pagos recibidos'[estado] = "paid"))
+		formatString: "Q" #,0
+		displayFolder: 16 Cobros
+
+	/// Abonos de 12 meses registrados pero aún sin conciliar (estado `in_process` en Odoo).
+	measure 'Abonos en proceso 12 meses' = CALCULATE([Abonos totales 12 meses], KEEPFILTERS('Pagos recibidos'[estado] = "in_process"))
 		formatString: "Q" #,0;-"Q" #,0;"Q" 0
 		displayFolder: 16 Cobros
 
