@@ -615,21 +615,21 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Variación venta acumulada año anterior a la fecha vs año actual por cliente'"
+                  "Value": "'Venta acumulada del año vs año anterior por cliente'"
                 }
               }
             },
             "alignment": {
               "expr": {
                 "Literal": {
-                  "Value": "'center'"
+                  "Value": "'left'"
                 }
               }
             },
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "12D"
+                  "Value": "11D"
                 }
               }
             },

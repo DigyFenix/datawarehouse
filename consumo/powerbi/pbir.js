@@ -74,10 +74,11 @@ function visual(nombre, tipo, [x, y, w, h], { roles, objects, vc, sort, sync, fi
   if (filtros) c.filterConfig = { filters: filtros };
   return c;
 }
+// Títulos a la izquierda (sesión 29): lectura más limpia y profesional que el centrado de Kraken.
 const vcTitulo = (texto, subtitulo) => {
   const t = (v) => (typeof v === 'string' ? str(v) : v);
-  const vc = { title: [{ properties: { show: bool(true), text: t(texto), alignment: str('center'), fontSize: num(12), fontColor: color(C.TINTA) } }] };
-  if (subtitulo) vc.subTitle = [{ properties: { show: bool(true), text: t(subtitulo), alignment: str('center'), fontSize: num(9) } }];
+  const vc = { title: [{ properties: { show: bool(true), text: t(texto), alignment: str('left'), fontSize: num(11), fontColor: color(C.TINTA) } }] };
+  if (subtitulo) vc.subTitle = [{ properties: { show: bool(true), text: t(subtitulo), alignment: str('left'), fontSize: num(9), fontColor: color(C.TINTA_SUAVE) } }];
   return vc;
 };
 const vcDesnudo = {
@@ -157,7 +158,9 @@ function pie(slug) {
 }
 
 // Segmentador. modo: Dropdown | VerticalList. seleccion: valor inicial (string | number).
-function segmentador(slug, clave, tabla, columna, pos, { modo = 'Dropdown', seleccion, sync, busqueda = false, titulo, unico = false, descendente = false } = {}) {
+// busqueda: por defecto activa en todo desplegable de texto (decisión de Edwin, sesión 29); se apaga en listas cortas (año, moneda, vista, estado).
+function segmentador(slug, clave, tabla, columna, pos, { modo = 'Dropdown', seleccion, sync, busqueda, titulo, unico = false, descendente = false } = {}) {
+  if (busqueda === undefined) busqueda = modo === 'Dropdown' && !unico && typeof seleccion !== 'number';
   const general = { properties: {} };
   if (seleccion !== undefined) {
     const valor = typeof seleccion === 'number' ? `${seleccion}L` : `'${seleccion}'`;
@@ -347,7 +350,7 @@ const marcadoresFinos = { properties: { showMarker: bool(true), markerShape: str
 function bloqueMoneda(slug, col = 10, ancho = 3) {
   return [
     segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(col), 88, wCol(ancho), 64], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }),
-    segmentador(slug, 'vista', T.VISTA, 'Vista de ventas', [xCol(col), 152, wCol(ancho), 64], { sync: 'vista', titulo: 'Vista' }),
+    segmentador(slug, 'vista', T.VISTA, 'Vista de ventas', [xCol(col), 152, wCol(ancho), 64], { sync: 'vista', titulo: 'Vista', busqueda: false }),
   ];
 }
 // Columnas mensuales estilo Kraken: año anterior en gris detrás, año actual en pizarra con etiqueta.

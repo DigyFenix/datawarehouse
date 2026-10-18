@@ -151,8 +151,8 @@ table DM_Cliente
 		isHidden
 		summarizeBy: none
 
-	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días).
-	column Sector = LOOKUPVALUE('DM_Condición de pago'[nombre], 'DM_Condición de pago'[condicion_pago_codigo], DM_Cliente[condicion_pago_codigo], 'DM_Condición de pago'[empresa_id], DM_Cliente[empresa_id])
+	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días). Si la ficha no la trae (en Odoo casi nunca), se toma la de su última factura, para que cartera y utilidad digan lo mismo que ventas.
+	column Sector = VAR directo = LOOKUPVALUE('DM_Condición de pago'[nombre], 'DM_Condición de pago'[condicion_pago_codigo], DM_Cliente[condicion_pago_codigo], 'DM_Condición de pago'[empresa_id], DM_Cliente[empresa_id]) VAR ultima = MAXX(TOPN(1, CALCULATETABLE(FC_Ventas), FC_Ventas[fecha_documento], DESC), FC_Ventas[condicion_pago_clave]) VAR porFactura = LOOKUPVALUE('DM_Condición de pago'[nombre], 'DM_Condición de pago'[condicion_pago_clave], ultima) RETURN COALESCE(directo, porFactura, "Sin condición")
 		dataType: string
 		summarizeBy: none
 

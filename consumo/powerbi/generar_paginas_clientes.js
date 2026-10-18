@@ -38,7 +38,7 @@ function paginaOportunidades() {
 
   // Fila 1-2: vendedor (alto) · tabla de clientes · oportunidad (toggle + 3 barras)
   vs.push(ranking(slug, 'vendedor-rk', [xCol(1), FILA[0], wCol(2), ALTO * 2 + 16], T.VEND, 'nombre', 'Venta por vendedor', 'vendedor', 'Ventas acumuladas año', 'Resto a máximo vendedor acumulado'));
-  vs.push(matriz(slug, 'matriz-clientes', [xCol(3), FILA[0], wCol(7), ALTO], 'Variación venta acumulada año anterior a la fecha vs año actual por cliente', {
+  vs.push(matriz(slug, 'matriz-clientes', [xCol(3), FILA[0], wCol(7), ALTO], 'Venta acumulada del año vs año anterior por cliente', {
     filas: [[T.CLI, 'Cliente']],
     valores: [[V, 'Ventas acumuladas año anterior'], [V, 'Ventas acumuladas año'], [V, 'Diferencia acumulada vs año anterior'], [V, 'Semáforo acumulado'], [V, 'Variación acumulada vs año anterior']],
     semaforoEn: [V, 'Diferencia acumulada vs año anterior'], filaTotal: true, columnaTotal: false, ordenPor: [V, 'Diferencia acumulada vs año anterior'], anchoFilas: 200,

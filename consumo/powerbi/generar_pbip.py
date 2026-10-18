@@ -2879,8 +2879,8 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 """
 
 MEDIDAS_POR_TABLA["dim_cliente"] += r"""
-	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días).
-	column Sector = LOOKUPVALUE('Condición de pago'[nombre], 'Condición de pago'[condicion_pago_codigo], Cliente[condicion_pago_codigo], 'Condición de pago'[empresa_id], Cliente[empresa_id])
+	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días). Si la ficha no la trae (en Odoo casi nunca), se toma la de su última factura, para que cartera y utilidad digan lo mismo que ventas.
+	column Sector = VAR directo = LOOKUPVALUE('Condición de pago'[nombre], 'Condición de pago'[condicion_pago_codigo], Cliente[condicion_pago_codigo], 'Condición de pago'[empresa_id], Cliente[empresa_id]) VAR ultima = MAXX(TOPN(1, CALCULATETABLE(Ventas), Ventas[fecha_documento], DESC), Ventas[condicion_pago_clave]) VAR porFactura = LOOKUPVALUE('Condición de pago'[nombre], 'Condición de pago'[condicion_pago_clave], ultima) RETURN COALESCE(directo, porFactura, "Sin condición")
 		dataType: string
 		summarizeBy: none
 """

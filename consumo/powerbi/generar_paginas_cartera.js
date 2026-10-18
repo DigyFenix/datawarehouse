@@ -39,7 +39,7 @@ function paginaCartera(cfg) {
   const vs = [];
   vs.push(...encabezado(slug, titulo, 'Subtítulo de corte mensual', F));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(segmentador(slug, 'estado', F, 'Estado', [xCol(1), 152, wCol(2), 64], { sync: slug + '-estado', titulo: 'Estado de la partida' }));
+  vs.push(segmentador(slug, 'estado', F, 'Estado', [xCol(1), 152, wCol(2), 64], { sync: slug + '-estado', titulo: 'Estado de la partida', busqueda: false }));
   vs.push(kpiSaldo(slug, 'saldo-total', [xCol(3), 88, wCol(2), 112], 'Saldo total', [[m.saldo, 'Saldo']], F, 'Partidas abiertas al corte'));
   vs.push(kpiSaldo(slug, 'saldo-no-vencido', [xCol(5), 88, wCol(2), 112], 'Saldo no vencido', [[m.noVencido, 'No vencido'], [m.pctNoVencido, '% del saldo']], F, 'Aún no vence'));
   vs.push(kpiSaldo(slug, 'saldo-vencido', [xCol(7), 88, wCol(2), 112], 'Saldo vencido', [[m.vencido, 'Vencido'], [m.pctVencido, '% del saldo']], F, 'Pasó su vencimiento'));
