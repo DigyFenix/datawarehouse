@@ -1,5 +1,95 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 29 (2026-10-17) — PULSOIRON PULIDO HOJA POR HOJA, QA DE CIFRAS Y ESTADO DE LOS COBROS — leer esto primero ══════
+
+Sesión de **calidad sobre lo construido**: sin páginas nuevas. Se definió un patrón visual en
+`consumo/powerbi/pbir.js` (se hereda en los cuatro generadores), se pasaron las 13 hojas una
+por una, se cotejaron las cifras del modelo contra `oro.*` (cuadran al centavo) y se resolvió
+cómo tratar los dos estados de pago de Odoo. Cinco commits (`0533e62` → `8d1e7e8`), todo en
+`origin/master`. Capturas antes/después de cada hoja en `docs/powerbi/kraken360/capturas/mejoras/`.
+
+### Patrón visual (decisiones de Edwin, en `pbir.js`)
+
+- **Nunca unidades automáticas**: montos completos en ejes y etiquetas (no «mil»/«mill.»).
+- Interacción por defecto **filtrar** (`report.json › settings.defaultFilterActionIsDataFilter`).
+- Segmentadores con rótulo (8 pt gris) e ítems 10 pt, altura 64 px; **búsqueda activa por
+  defecto en todo desplegable de texto** (apagada en año, moneda, vista, estado).
+- Tablas: encabezados discretos (8 pt, gris, sin negrita, solo línea inferior), bandas alternas,
+  grilla horizontal fina, totales sobre fondo panel; exige `stylePreset: None`. Sin `anchoFilas`
+  las matrices llenan el visual; `anchoColumnas: { medida: px }` para columnas largas.
+- Etiquetas de barras/columnas: **fondo blanco (transparencia 5 %) y texto del color de la
+  serie** (`etiquetasBarra`). En **apiladas** Power BI dibuja la etiqueta dentro del segmento:
+  ahí va blanca sin fondo (`fondo: false`); con fondo parecía partir la barra.
+- Rankings: barra simple con monto `OutsideEnd` sin desborde (la fantasma gris de Kraken se
+  retiró: el apilado oculta toda etiqueta que no cabe en su segmento).
+- Líneas con marcadores (4 px; 2 px en series diarias); título de eje X donde el valor solo no
+  se entiende («Día del mes»); eje desde cero.
+- Columnas y combos con eje de valores visible, grilla fina y barras más anchas
+  (`innerPadding 35`); rankings horizontales con eje oculto. Ejes y leyendas en gris suave.
+- Donas con borde blanco entre gajos, monto en el gajo (`labelStyle 'Data'`) y leyenda abajo.
+- KPIs con rótulo corto por tarjeta (`[tabla, medida, rótulo]`), 12 pt, relleno 2.
+- Títulos de visual a la izquierda, 11 pt; nombres cortos de página en el navegador
+  (Histórico, Seguimiento, Oportunidades, Cartera 12 meses, Nuevos, Recuperados, Existencias,
+  Costo, Reposición, Por cobrar, Utilidad, Cobros, Por pagar).
+- Tema: paleta de categorías en escala pizarra sin dorado, borde claro y sombra sutil
+  (`dropShadow` en `visualStyles.*.*`). **Solo se aplica al reabrir Desktop.**
+
+### Modelo (`generar_pbip.py`, aplicado también al modelo vivo por XMLA)
+
+- `Rango de vencimiento` en lenguaje claro y ordenado: «Vence en 31+ … Vence en 7 | Vencido
+  1-15 … Vencido 91+» (Edwin pidió quitar «Próx.»). La jerarquía Estado › Rango no abre el
+  segundo nivel desde PBIR (tres formatos de `expansionStates` probados): etiqueta plana.
+- `DM_Cliente[Sector]`: si la ficha no trae condición de pago (80 de 83 clientes en Odoo) toma
+  la de la última factura → cartera y utilidad coinciden con ventas (antes «(En blanco)»).
+- Pagos: columna `Estado del cobro` (Conciliado = `paid` / En proceso = `in_process`) en
+  `FC_Pagos recibidos`, medidas `Abonos conciliados 12 meses` y `Abonos en proceso 12 meses`,
+  segmentador en Cobros y dos KPI en el panel de totales. **Decisión de Edwin: no excluir,
+  mostrar ambos y que el usuario filtre.** 12 m: Q 2 590 464 conciliados + Q 297 484 en proceso.
+- Restas seguras ante BLANK (`Cargos menos abonos`, `Clientes no retenidos`, `Posición neta`,
+  `Flujo neto de caja`, `Flujo neto acumulado año`): el lado ausente cuenta como 0.
+
+### QA de cifras (DAX vs Postgres, 2026-10-17)
+
+Ventas netas 3 371 937,33 · 433 docs · 72 clientes · 409 productos · 2 990 unidades · venta
+del día 14 408,93 · CxC 886 447,12 (corriente 571 070,47 / vencido 315 376,65) · CxP 14 675,94
+· inventario 137 u / Q 230 212,05 · cobros 12 m 2 887 948,67 · facturación con IVA 12 m
+3 776 569,79 · días autorizados 27,68 / promedio 38,12. **Todo cuadra.** Cada visual toma su
+medida de la tabla correcta (inventario de `FC_Inventario`, cartera de `FC_Cartera por *`).
+
+**Odoo de Iron no tiene historia 2025**: la extracción de `movimientos` no tiene ventana (solo
+`state='posted'`), Bronce trae todo lo que existe y la primera factura de venta es 2026-01-08
+(asientos desde 2025-10-24). No hay nada que integrar; cohortes y comparativos interanuales
+esperan al segundo año. Si cargan historia: `actualizar.py ironnetwork` sin `--desde`.
+
+### Trampas de esta sesión
+
+1. Slicer: `header.textSize`/`items.textSize` (no `fontSize`), `outlineStyle` (no `outline`).
+   Catálogo autoritativo: `@microsoft/powerbi-core-visual-schema/data/capabilities.json` en el
+   CLI global. `labelOverflow` no existe en combos; `labelStyle` de dona es `'Data'`.
+2. El validador de Microsoft da dos falsos positivos permanentes: «slicer < 76 px» (asume
+   relleno 8/8; usamos 2/2) y `PBIR_FORMATTING_PROP_NESTED` sobre `backgroundColor` (su propia
+   doc usa ese formato y Desktop lo renderiza). `validar_reporte.py` es el que manda.
+3. `generar_pbip.py` borra `.pbi/cache.abf`: si luego se reabre Desktop, abre sin datos →
+   MCP `RefreshWithXMLA Full`. Tras `reload`, los visuales tardan ~40 s en cargar.
+4. Cambios de modelo sin reabrir: MCP `column_operations`/`measure_operations` +
+   `RefreshWithXMLA Calculate`. El bridge queda «Host is not ready» 1–3 min después de cada
+   cambio por XMLA; esperar en bucle a `bridgeStatus: connected`.
+5. **Desktop guardó el proyecto a disco al cierre (21:12)**: 314 archivos reescritos (orden del
+   TMDL, sin salto final, anotación `PBI_ProTooling`). Se descartó con `git checkout --` porque
+   los generadores son la fuente y todo estaba commiteado. Regla vigente: cerrar sin guardar.
+
+### PENDIENTE — PRÓXIMA SESIÓN
+
+1. Reabrir Desktop para ver el tema nuevo (sombra, bordes, paleta) y confirmar que no rompe
+   nada: `powerbi-desktop open …/PulsoIron.pbip` → MCP `Connect` → `RefreshWithXMLA Full`.
+2. Navegador: «Seguimiento» y «Oportunidades» se parten en dos líneas (8 pt, 9 columnas).
+   Opciones: nombres aún más cortos o dos filas.
+3. Alias `Documento` para `documento_origen` en «Detalle de saldos» (columna alias en el bloque
+   de la tabla, `alias_columnas()` revierte el prefijo).
+4. Gaps de datos que dejan visuales vacíos (no son de diseño): G9 costo 0 en Odoo (Utilidad en
+   cero), G11 límite de crédito, categoría «bien» con fila sin nombre, Por pagar con 5 partidas.
+5. Cresta sigue fuera de disco (`actualizar.py grupocresta` ~180 corridas contra HANA).
+
 ## ══════ SESIÓN 28 (2026-10-17) — KRAKEN 360 REPLICADO EN POWER BI PARA IRON; CRESTA FUERA DE DISCO — leer esto primero ══════
 
 Cambio de fondo: **Claude construye el Power BI por código, página por página, replicando capturas
