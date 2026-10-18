@@ -532,7 +532,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Análisis de utilidades por mes'"
+                  "Value": "'Por mes'"
                 }
               }
             },

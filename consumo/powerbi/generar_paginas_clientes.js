@@ -45,7 +45,8 @@ function paginaOportunidades() {
   }));
   vs.push(segmentador(slug, 'vista-oportunidad', T.OPORT, 'Vista', [xCol(10), FILA[0], wCol(3), 64], { seleccion: 'Atrición', unico: true, titulo: 'Vista de oportunidad' }));
   const bloque = (clave, y, tabla, col, titulo) => barras(slug, clave, [xCol(10), y, wCol(3), 144], tabla, col, titulo,
-    ['Venta actual', 'Faltante de venta', 'Superávit de venta'], [C.PIZARRA, C.ROJO, C.VERDE], { leyenda: true });
+    // Apilado: la venta actual y el faltante/superávit forman una sola barra (como Kraken); agrupado dejaba tres barras finas con etiquetas encimadas.
+    ['Venta actual', 'Faltante de venta', 'Superávit de venta'], [C.PIZARRA, C.ROJO, C.VERDE], { apilado: true, leyenda: true });
   vs.push(bloque('oport-linea', FILA[0] + 72, T.PROD, 'grupo_nombre', 'Línea'));
   vs.push(bloque('oport-categoria', FILA[0] + 72 + 152, T.PROD, 'tipo_producto', 'Categoría'));
   vs.push(bloque('oport-producto', FILA[0] + 72 + 304, T.PROD, 'nombre', 'Producto'));

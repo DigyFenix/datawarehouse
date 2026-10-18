@@ -98,8 +98,10 @@ const leyenda = (show = true, position = 'Top') => [{ properties: { show: bool(s
 // Fondo blanco casi sólido (transparencia 5 %) y texto del color de su serie, para distinguir
 // varios valores entre sí. `series`: [[tabla, medida, hex]]; `extra`: propiedades base adicionales.
 const FONDO_ETIQUETA = { enableBackground: bool(true), backgroundColor: color(C.BLANCO), backgroundTransparency: num(5) };
-function etiquetasBarra(series, extra = {}) {
-  const base = { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), ...FONDO_ETIQUETA, ...extra };
+// En barras APILADAS Power BI dibuja la etiqueta dentro de su segmento: con fondo blanco parecía partir la barra, así que ahí va sin fondo (`fondo: false`).
+function etiquetasBarra(series, extra = {}, { fondo = true } = {}) {
+  const base = { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), ...(fondo ? FONDO_ETIQUETA : { enableBackground: bool(false), color: color(C.BLANCO) }), ...extra };
+  if (!fondo) return [{ properties: base }];
   if (series.length === 1) base.color = color(series[0][2]);
   return [{ properties: base }, ...(series.length > 1 ? series.map(([t, m, hex]) => ({ properties: { showSeries: bool(true), color: color(hex) }, selector: meta(t, m) })) : [])];
 }
@@ -250,7 +252,8 @@ function barras(slug, clave, pos, tabla, columna, titulo, medidas, colores = [C.
     objects: {
       categoryAxis: ejeCat({ fontSize: num(8), maxMarginFactor: num(45) }),
       valueAxis: ejeValOculto,
-      labels: etiquetasBarra(medidas.map((m, i) => [T.VENTAS, m, colores[i] || C.PIZARRA]), { labelOverflow: bool(true) }),
+      // OutsideEnd: con fondo blanco, la etiqueta centrada partía la barra en dos.
+      labels: etiquetasBarra(medidas.map((m, i) => [T.VENTAS, m, colores[i] || C.PIZARRA]), apilado ? {} : { labelPosition: str('OutsideEnd'), labelOverflow: bool(true) }, { fondo: !apilado }),
       dataPoint: [{ properties: { fill: color(colores[0] || C.PIZARRA) } }, ...medidas.map((m, i) => ({ properties: { fill: color(colores[i] || C.PIZARRA) }, selector: meta(T.VENTAS, m) }))],
       legend: leyenda(conLeyenda),
     },

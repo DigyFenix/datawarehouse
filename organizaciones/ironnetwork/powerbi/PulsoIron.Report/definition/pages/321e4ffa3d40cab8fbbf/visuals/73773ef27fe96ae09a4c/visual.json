@@ -190,11 +190,11 @@
             "enableBackground": {
               "expr": {
                 "Literal": {
-                  "Value": "true"
+                  "Value": "false"
                 }
               }
             },
-            "backgroundColor": {
+            "color": {
               "solid": {
                 "color": {
                   "expr": {
@@ -204,71 +204,7 @@
                   }
                 }
               }
-            },
-            "backgroundTransparency": {
-              "expr": {
-                "Literal": {
-                  "Value": "5D"
-                }
-              }
-            },
-            "labelOverflow": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
             }
-          }
-        },
-        {
-          "properties": {
-            "showSeries": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "color": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "'#e1e4e6'"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Costo de lo vendido"
-          }
-        },
-        {
-          "properties": {
-            "showSeries": {
-              "expr": {
-                "Literal": {
-                  "Value": "true"
-                }
-              }
-            },
-            "color": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "'#4f6d78'"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "selector": {
-            "metadata": "FC_Ventas.Ganancia"
           }
         }
       ],
@@ -385,7 +321,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Costo y ganancia por línea'"
+                  "Value": "'Por línea'"
                 }
               }
             },

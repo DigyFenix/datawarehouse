@@ -19,7 +19,7 @@ function saldoApilado(slug, clave, pos, tabla, col, titulo, [noVencido, vencido]
     objects: {
       categoryAxis: ejeCat({ fontSize: num(8), maxMarginFactor: num(45) }),
       valueAxis: ejeValOculto,
-      labels: etiquetasBarra([[tablaMedida, noVencido, C.PIZARRA], [tablaMedida, vencido, C.ROJO]], { labelOverflow: bool(true) }),
+      labels: etiquetasBarra([[tablaMedida, noVencido, C.PIZARRA], [tablaMedida, vencido, C.ROJO]], {}, { fondo: false }),
       dataPoint: [
         { properties: { fill: color(C.PIZARRA) }, selector: meta(tablaMedida, noVencido) },
         { properties: { fill: color(C.ROJO) }, selector: meta(tablaMedida, vencido) },
@@ -99,8 +99,8 @@ function paginaUtilidad() {
   const colores = [C.GRIS_SERIE, C.PIZARRA];
   // Fila 1: mes (lista) · sector · cliente · por mes (apiladas + margen)
   vs.push(segmentador(slug, 'mes', T.CAL, 'mes_nombre_corto', [xCol(1), FILA[0], wCol(2), ALTO], { modo: 'VerticalList', titulo: 'Mes', sync: 'mes' }));
-  vs.push(barras(slug, 'sector', [xCol(3), FILA[0], wCol(2), ALTO], T.CLI, 'Sector', 'Costo y ganancia por sector', CG, colores, { leyenda: true }));
-  vs.push(barras(slug, 'cliente', [xCol(5), FILA[0], wCol(3), ALTO], T.CLI, 'nombre', 'Análisis de utilidades por cliente', CG, colores, { leyenda: true }));
+  vs.push(barras(slug, 'sector', [xCol(3), FILA[0], wCol(2), ALTO], T.CLI, 'Sector', 'Por sector', CG, colores, { leyenda: true }));
+  vs.push(barras(slug, 'cliente', [xCol(5), FILA[0], wCol(3), ALTO], T.CLI, 'nombre', 'Por cliente', CG, colores, { leyenda: true }));
   vs.push(visual(id(slug, 'por-mes'), 'lineStackedColumnComboChart', [xCol(8), FILA[0], wCol(5), ALTO], {
     roles: { Category: [pColumna(T.CAL, 'mes_nombre_corto')], Y: [pMedida(V, 'Costo de lo vendido'), pMedida(V, 'Ganancia')], Y2: [pMedida(V, '% Margen')] },
     sort: ordenAsc(T.CAL, 'mes_nombre_corto'),
@@ -116,11 +116,11 @@ function paginaUtilidad() {
       ],
       lineStyles: [marcadores, { properties: { lineStyle: str('dotted'), strokeWidth: num(2) }, selector: meta(V, '% Margen') }],
     },
-    vc: vcTitulo('Análisis de utilidades por mes'),
+    vc: vcTitulo('Por mes'),
   }));
   // Fila 2-3: vendedor (alto) · línea · detalle de ventas
-  vs.push(barras(slug, 'vendedor', [xCol(1), FILA[1], wCol(3), ALTO * 2 + 16], T.VEND, 'nombre', 'Análisis de utilidades por vendedor', CG, colores, { leyenda: true }));
-  vs.push(barras(slug, 'linea', [xCol(4), FILA[1], wCol(3), ALTO], T.PROD, 'grupo_nombre', 'Costo y ganancia por línea', CG, colores, { leyenda: true }));
+  vs.push(barras(slug, 'vendedor', [xCol(1), FILA[1], wCol(3), ALTO * 2 + 16], T.VEND, 'nombre', 'Por vendedor', CG, colores, { leyenda: true }));
+  vs.push(barras(slug, 'linea', [xCol(4), FILA[1], wCol(3), ALTO], T.PROD, 'grupo_nombre', 'Por línea', CG, colores, { leyenda: true }));
   vs.push(matriz(slug, 'detalle', [xCol(7), FILA[1], wCol(6), ALTO * 2 + 16], 'Detalle de ventas', {
     filas: [[T.PROD, 'Producto']],
     valores: [[V, 'Unidades vendidas'], [V, 'Precio promedio unidad'], [V, 'Ventas netas'], [V, 'Costo de lo vendido'], [V, 'Ganancia'], [V, '% Margen']],
