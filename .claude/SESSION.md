@@ -82,15 +82,19 @@ rotación real (Edwin la hace al generar el código nuevo).
 
 ### PENDIENTE: siguiente sesión
 
-1. Edwin: abrir `PulsoIron.pbip` → Actualizar → Publicar sobre el mismo reporte (la URL de
-   Publish to Web se conserva). Después: `git status` y
-   `python consumo/powerbi/validar_reporte.py organizaciones/ironnetwork/powerbi PulsoIron`
-   para confirmar que el guardado de Desktop no borró visuales; commitear el reformateo.
-2. Probar el portal con usuario real: Inicio agrupado, pestañas por grupo, que ninguna hoja
-   muestre la barra, multiselección y botón de enfoque en la web.
+Hecho al cierre (2026-10-19): Edwin actualizó y publicó PulsoIron; el guardado de Desktop se
+validó (13 páginas / 228 visuales, multiselección y enfoque intactos; solo reformateo + quitó el
+recurso `logo_ironnetwork.png`, que ninguna página usaba) y se commiteó.
+
+1. Probar en la web con usuario real: Inicio agrupado, pestañas por grupo, ninguna hoja con
+   barra, multiselección y botón de enfoque en el reporte publicado.
+2. Primera rotación real del enlace desde el admin (crear código nuevo → Rotar → eliminar el
+   viejo) y confirmar que las 13 hojas cargan con el nuevo.
 3. Gateway de Power BI (Edwin) para refresco automático desde producción.
-4. Gaps que dejan visuales vacíos: G9 costo (Utilidad, Costo desplazado), G3 sucursal (dona
-   «Venta por sucursal» 100 % No definido en Histórico).
+4. Preguntar a Iron si registran compras en Odoo (último dato 2026-08-28; CxP 2026-08-31).
+5. Gaps que dejan visuales vacíos: G9 costo (Utilidad, Costo desplazado), G3 sucursal.
+6. Evaluar Power BI Embedded (costo F2 a verificar en la calculadora de Azure) para clientes
+   que no sean socios: es lo único que protege el reporte de verdad.
 
 ## ══════ SESIÓN 31 (2026-10-18) — IRON EN PRODUCCIÓN: SERVIDOR PROPIO EN AWS, PORTAL PÚBLICO CON TLS, PRIMERA CARGA REAL — leer esto primero ══════
 

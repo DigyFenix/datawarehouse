@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "e3e5170593d61ce3a0fb",
   "position": {
     "x": 24,
@@ -74,7 +74,7 @@
                 "Version": 2,
                 "From": [
                   {
-                    "Name": "t",
+                    "Name": "d",
                     "Entity": "DM_Calendario",
                     "Type": 0
                   }
@@ -88,7 +88,7 @@
                             "Column": {
                               "Expression": {
                                 "SourceRef": {
-                                  "Source": "t"
+                                  "Source": "d"
                                 }
                               },
                               "Property": "anio_mes"
@@ -337,11 +337,29 @@
         }
       ]
     },
-    "drillFilterOtherVisuals": true,
     "syncGroup": {
       "groupName": "periodo",
       "fieldChanges": true,
       "filterChanges": true
-    }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "3e00985a109ef5357ef9",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "DM_Calendario"
+              }
+            },
+            "Property": "anio_mes"
+          }
+        },
+        "type": "Categorical"
+      }
+    ]
   }
 }

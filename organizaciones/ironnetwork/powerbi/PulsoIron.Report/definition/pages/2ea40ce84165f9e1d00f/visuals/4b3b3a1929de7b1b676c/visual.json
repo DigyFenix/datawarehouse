@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "4b3b3a1929de7b1b676c",
   "position": {
     "x": 232,
@@ -13,6 +13,25 @@
     "visualType": "pivotTable",
     "query": {
       "queryState": {
+        "Columns": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DM_Cliente"
+                    }
+                  },
+                  "Property": "Rango de meses con compra"
+                }
+              },
+              "queryRef": "DM_Cliente.Rango de meses con compra",
+              "nativeQueryRef": "Rango de meses con compra",
+              "active": true
+            }
+          ]
+        },
         "Rows": {
           "projections": [
             {
@@ -27,7 +46,8 @@
                 }
               },
               "queryRef": "DM_Cliente.Clase",
-              "nativeQueryRef": "Clase"
+              "nativeQueryRef": "Clase",
+              "active": true
             }
           ]
         },
@@ -46,24 +66,6 @@
               },
               "queryRef": "FC_Ventas.Clientes 12 meses",
               "nativeQueryRef": "Clientes 12 meses"
-            }
-          ]
-        },
-        "Columns": {
-          "projections": [
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "DM_Cliente"
-                    }
-                  },
-                  "Property": "Rango de meses con compra"
-                }
-              },
-              "queryRef": "DM_Cliente.Rango de meses con compra",
-              "nativeQueryRef": "Rango de meses con compra"
             }
           ]
         }

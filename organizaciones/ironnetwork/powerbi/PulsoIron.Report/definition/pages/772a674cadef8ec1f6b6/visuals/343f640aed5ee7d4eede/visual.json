@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "343f640aed5ee7d4eede",
   "position": {
     "x": 960,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Bodega.nombre",
-              "nativeQueryRef": "nombre"
+              "nativeQueryRef": "nombre",
+              "active": true
             }
           ]
         },

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "0d6b2c4a0a14a4dc8bdf",
   "position": {
     "x": 24,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "FC_Cartera por pagar.documento_origen",
-              "nativeQueryRef": "documento_origen"
+              "nativeQueryRef": "documento_origen",
+              "active": true
             }
           ]
         },

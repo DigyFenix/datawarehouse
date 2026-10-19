@@ -55,11 +55,6 @@
           "name": "ironnetwork-theme.json",
           "path": "ironnetwork-theme.json",
           "type": "CustomTheme"
-        },
-        {
-          "name": "logo_ironnetwork.png",
-          "path": "logo_ironnetwork.png",
-          "type": "Image"
         }
       ]
     }
@@ -67,10 +62,10 @@
   "settings": {
     "useStylableVisualContainerHeader": true,
     "exportDataMode": "AllowSummarized",
+    "defaultFilterActionIsDataFilter": true,
     "defaultDrillFilterOtherVisuals": true,
     "allowChangeFilterTypes": true,
     "useEnhancedTooltips": true,
-    "useDefaultAggregateDisplayName": true,
-    "defaultFilterActionIsDataFilter": true
+    "useDefaultAggregateDisplayName": true
   }
 }
