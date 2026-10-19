@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { adminGuard, authGuard } from './core/auth.guard';
+import { adminGuard, asistenteGuard, authGuard } from './core/auth.guard';
 
 /**
  * Todas las rutas viven bajo el hash del tenant (portal/<hash>/...): la URL de
@@ -56,6 +56,7 @@ export const routes: Routes = [
           },
           {
             path: 'chatbot',
+            canActivate: [asistenteGuard],
             loadComponent: () =>
               import('./features/chatbot/chatbot.component').then((m) => m.ChatbotComponent),
           },

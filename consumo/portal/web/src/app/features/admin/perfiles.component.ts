@@ -45,7 +45,7 @@ const PESTANAS: PestanaTab[] = [
     <div class="tarjeta tarjeta--tabla">
       <div class="tabla-wrap tabla-responsive">
         <table>
-          <thead><tr><th scope="col">Perfil</th><th scope="col">Tableros</th><th scope="col">Alcances (chatbot)</th><th scope="col">Usuarios</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+          <thead><tr><th scope="col">Perfil</th><th scope="col">Tableros</th>@if (tenant.moduloAsistente()) { <th scope="col">Alcances (asistente)</th> }<th scope="col">Usuarios</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
           <tbody>
             @if (cargando()) {
               <app-skeleton variante="fila-tabla" [columnas]="6"></app-skeleton>
@@ -56,12 +56,14 @@ const PESTANAS: PestanaTab[] = [
                 <tr>
                   <td data-label="Perfil"><strong>{{ p.nombre }}</strong><br /><code class="sutil">{{ p.clave }}</code></td>
                   <td data-label="Tableros">{{ p.tableroIds.length }}</td>
-                  <td data-label="Alcances">
-                    @for (a of p.alcances; track a.recursoTipo + a.recursoClave) {
-                      <span class="chip">{{ a.recursoTipo }}: {{ a.recursoClave }}</span>
-                    }
-                    @if (!p.alcances.length) { <span class="sutil">—</span> }
-                  </td>
+                  @if (tenant.moduloAsistente()) {
+                    <td data-label="Alcances">
+                      @for (a of p.alcances; track a.recursoTipo + a.recursoClave) {
+                        <span class="chip">{{ a.recursoTipo }}: {{ a.recursoClave }}</span>
+                      }
+                      @if (!p.alcances.length) { <span class="sutil">—</span> }
+                    </td>
+                  }
                   <td data-label="Usuarios">{{ p.usuarios }}</td>
                   <td data-label="Estado">@if (p.activo) { <span class="ok">activo</span> } @else { <span class="sutil">inactivo</span> }</td>
                   <td data-label="Acciones" class="col-acciones">
@@ -70,7 +72,9 @@ const PESTANAS: PestanaTab[] = [
                       <div class="menu-acciones__lista">
                         <button type="button" (click)="editar(p); cerrarMenu($event)"><app-icon name="editar" [size]="15"></app-icon> Editar</button>
                         <button type="button" (click)="abrirTableros(p); cerrarMenu($event)"><app-icon name="grafico" [size]="15"></app-icon> Tableros</button>
-                        <button type="button" (click)="abrirAlcances(p); cerrarMenu($event)"><app-icon name="externo" [size]="15"></app-icon> Alcances</button>
+                        @if (tenant.moduloAsistente()) {
+                          <button type="button" (click)="abrirAlcances(p); cerrarMenu($event)"><app-icon name="externo" [size]="15"></app-icon> Alcances</button>
+                        }
                         <button type="button" class="peligro" (click)="eliminar(p); cerrarMenu($event)"><app-icon name="papelera" [size]="15"></app-icon> Eliminar</button>
                       </div>
                     </details>

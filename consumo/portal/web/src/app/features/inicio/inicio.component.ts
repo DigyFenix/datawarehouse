@@ -1,11 +1,14 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { nombreDominio } from '../../core/dominios';
+import { TableroResumen } from '../../core/modelos';
+import { agruparTableros } from '../../core/tableros';
 import { TenantService } from '../../core/tenant.service';
+import { EmptyComponent } from '../../ui/empty.component';
 import { IconComponent } from '../../ui/icon.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
 
@@ -22,13 +25,14 @@ interface ResumenInicio {
 }
 
 /**
- * Inicio: además de los accesos, responde de entrada la pregunta que todo el
- * mundo hace antes de mirar un número — "¿hasta cuándo llega este dato?".
+ * Inicio: los tableros del perfil, agrupados por familia (Ventas, Clientes,
+ * Inventario, Finanzas…) como en Kraken 360, y la respuesta a la pregunta que
+ * todo el mundo hace antes de mirar un número — "¿hasta cuándo llega este dato?".
  */
 @Component({
   selector: 'app-inicio',
   standalone: true,
-  imports: [RouterLink, DatePipe, IconComponent, SkeletonComponent],
+  imports: [RouterLink, DatePipe, EmptyComponent, IconComponent, SkeletonComponent],
   template: `
     <div class="page-header">
       <div class="titulo-grupo">
@@ -37,120 +41,126 @@ interface ResumenInicio {
       </div>
     </div>
 
-    <div class="modulos">
-      <a class="tarjeta modulo" [routerLink]="['/', tenant.hash(), 'tableros']">
-        <app-icon name="grafico" [size]="28" />
-        <h3>Tableros</h3>
-        <p>
-          @if (cargando()) { Dashboards de tu organización. }
-          @else {
-            {{ totalTableros() }}
-            {{ totalTableros() === 1 ? 'tablero disponible' : 'tableros disponibles' }}
-            para tu perfil de acceso.
+    @if (cargandoTableros()) {
+      <div class="grid">
+        @for (i of [1, 2, 3, 4]; track i) { <app-skeleton variante="tarjeta" [alto]="92" /> }
+      </div>
+    } @else {
+      @for (g of grupos(); track g.grupo) {
+        <section class="grupo">
+          @if (g.grupo || grupos().length > 1) {
+            <h3 class="grupo__titulo">{{ g.grupo ?? 'Otros tableros' }}</h3>
           }
-        </p>
-      </a>
-      <a class="tarjeta modulo" [routerLink]="['/', tenant.hash(), 'chatbot']">
-        <app-icon name="chatbot" [size]="28" />
-        <h3>Asistente</h3>
-        <p>Pregunta por tus números en lenguaje natural. Responde solo con métricas certificadas.</p>
-      </a>
-    </div>
-
-    @if (cargando()) {
-      <div class="tarjeta seccion">@for (i of [1, 2, 3]; track i) { <app-skeleton variante="linea" /> }</div>
+          <div class="grid">
+            @for (t of g.tableros; track t.id) {
+              <a class="tarjeta tablero" [routerLink]="['/', tenant.hash(), 'tableros', t.clave]">
+                <app-icon name="grafico" [size]="20" />
+                <span class="tablero__nombre">{{ t.nombre }}</span>
+                @if (t.descripcion) { <span class="tablero__desc">{{ t.descripcion }}</span> }
+              </a>
+            }
+          </div>
+        </section>
+      } @empty {
+        <div class="tarjeta vacio-caja">
+          <app-empty titulo="Sin tableros asignados">
+            Tu perfil aún no tiene tableros. Pide acceso al administrador de tu organización.
+          </app-empty>
+        </div>
+      }
     }
 
-    @if (recientes().length) {
-      <section class="seccion">
-        <span class="eyebrow">Vistos recientemente</span>
-        <div class="chips">
-          @for (t of recientes(); track t.clave) {
-            <a class="chip-tablero" [routerLink]="['/', tenant.hash(), 'tableros', t.clave]">
-              <app-icon name="grafico" [size]="14" />
-              {{ t.nombre }}
-            </a>
-          }
+    @if (tenant.moduloAsistente()) {
+      <section class="grupo">
+        <h3 class="grupo__titulo">Asistente</h3>
+        <div class="grid">
+          <a class="tarjeta tablero" [routerLink]="['/', tenant.hash(), 'chatbot']">
+            <app-icon name="chatbot" [size]="20" />
+            <span class="tablero__nombre">Pregunta por tus números</span>
+            <span class="tablero__desc">Responde solo con métricas certificadas.</span>
+          </a>
         </div>
       </section>
     }
 
     @if (frescura().length) {
-      <section class="seccion">
-        <span class="eyebrow">Hasta cuándo llega el dato</span>
-        <div class="frescura">
-          @for (f of frescura(); track f.dominio) {
-            <div class="dominio" [attr.data-estado]="f.estado">
-              <span class="dominio__nombre">{{ nombreDominio(f.dominio) }}</span>
-              <span class="dominio__fecha">
-                {{ f.fechaDatoMasReciente ? (f.fechaDatoMasReciente | date: 'dd/MM/yyyy') : 'sin dato' }}
-              </span>
-              @if (f.estado) { <span class="badge">{{ f.estado }}</span> }
-            </div>
-          }
-        </div>
-      </section>
+      <!-- Informativo, no navegable: texto sobre el fondo, sin tarjetas ni bordes que parezcan botones. -->
+      <aside class="frescura" aria-label="Hasta cuándo llega el dato">
+        <app-icon name="info" [size]="14" />
+        <span class="frescura__rotulo">Datos al</span>
+        @for (f of frescura(); track f.dominio; let ultimo = $last) {
+          <span class="frescura__item" [attr.data-estado]="f.estado" [attr.title]="f.estado ?? null">
+            <span class="punto" aria-hidden="true"></span>
+            {{ nombreDominio(f.dominio) }}
+            <span class="frescura__fecha">{{ f.fechaDatoMasReciente ? (f.fechaDatoMasReciente | date: 'dd/MM/yyyy') : 'sin dato' }}</span>
+            @if (f.estado && f.estado !== 'Al día') { <span class="frescura__estado">({{ f.estado }})</span> }
+          </span>
+          @if (!ultimo) { <span class="frescura__sep" aria-hidden="true">·</span> }
+        }
+      </aside>
     }
   `,
   styles: [
     `
-      .modulos { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 380px)); gap: var(--sp-3); }
-      .modulo { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-5); text-decoration: none; color: var(--text); }
-      .modulo:hover { border-color: var(--brand-400); box-shadow: var(--sh-2); }
-      .modulo app-icon { color: var(--brand-600); }
-      .modulo h3 { margin: 4px 0 0; }
-      .modulo p { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
-
-      .seccion { margin-top: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
-      .chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-      .chip-tablero {
-        display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
-        padding: 6px var(--sp-3); border-radius: 999px; border: 1px solid var(--border);
-        background: var(--surface); color: var(--text); font-size: var(--fs-sm);
+      .grupo { margin-top: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
+      .grupo:first-of-type { margin-top: var(--sp-3); }
+      .grupo__titulo {
+        margin: 0; font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.04em; color: var(--muted);
       }
-      .chip-tablero:hover { border-color: var(--brand-400); color: var(--brand-700); }
-
-      .frescura { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--sp-2); }
-      .dominio {
-        display: flex; flex-direction: column; gap: 2px; padding: var(--sp-3);
-        border-radius: var(--r); background: var(--surface); border: 1px solid var(--border);
-        border-left: 3px solid var(--ok);
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }
+      .tablero {
+        display: flex; flex-direction: column; gap: 6px; padding: var(--sp-4);
+        text-decoration: none; color: var(--text);
       }
-      .dominio[data-estado='Atrasado'] { border-left-color: var(--warn); }
-      .dominio[data-estado='Desactualizado'] { border-left-color: var(--danger); }
-      .dominio__nombre { font-size: var(--fs-sm); }
-      .dominio__fecha { font-family: var(--mono); font-size: var(--fs-xs); color: var(--muted); }
-      .dominio .badge { align-self: flex-start; margin-top: 4px; }
+      .tablero:hover { border-color: var(--brand-400); box-shadow: var(--sh-2); }
+      .tablero app-icon { color: var(--brand-600); }
+      .tablero__nombre { font-weight: 600; font-size: 15px; }
+      .tablero__desc { color: var(--muted); font-size: var(--fs-sm); }
+
+      .frescura {
+        margin-top: var(--sp-6, 40px); padding-top: var(--sp-3); border-top: 1px solid var(--border);
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+        color: var(--muted); font-size: var(--fs-xs);
+      }
+      .frescura__rotulo { font-weight: 600; }
+      .frescura__item { display: inline-flex; align-items: center; gap: 5px; }
+      .frescura__fecha { font-family: var(--mono); color: var(--text); }
+      .frescura__sep { opacity: 0.5; }
+      .punto { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+      .frescura__item[data-estado='Atrasado'] .punto { background: var(--warn); }
+      .frescura__item[data-estado='Desactualizado'] .punto { background: var(--danger); }
+      .frescura__item[data-estado='Desactualizado'] .frescura__estado { color: var(--danger); }
     `,
   ],
 })
 export class InicioComponent implements OnInit {
   private readonly api = inject(ApiService);
-  private readonly router = inject(Router);
   readonly auth = inject(AuthService);
   readonly tenant = inject(TenantService);
 
   readonly resumen = signal<ResumenInicio | null>(null);
-  readonly cargando = signal(true);
+  private readonly tableros = signal<TableroResumen[]>([]);
+  readonly cargandoTableros = signal(true);
   readonly frescura = computed(() => this.resumen()?.frescura ?? []);
-  readonly recientes = computed(() => this.resumen()?.recientes ?? []);
-  readonly totalTableros = computed(() => this.resumen()?.tableros ?? 0);
+  readonly grupos = computed(() => agruparTableros(this.tableros()));
 
   ngOnInit(): void {
-    this.api.get<ResumenInicio>('/inicio').subscribe({
-      next: (r) => {
-        this.resumen.set(r);
-        this.cargando.set(false);
+    this.api.get<TableroResumen[]>('/tableros').subscribe({
+      next: (lista) => {
+        this.tableros.set(lista);
+        this.cargandoTableros.set(false);
       },
-      // El inicio nunca bloquea: si el resumen falla, quedan los accesos.
-      error: () => this.cargando.set(false),
+      // Sin tableros queda el estado vacío; el error ya lo registra el API.
+      error: () => this.cargandoTableros.set(false),
+    });
+    // El inicio nunca bloquea: si el resumen falla, solo falta la línea de frescura.
+    this.api.get<ResumenInicio>('/inicio').subscribe({
+      next: (r) => this.resumen.set(r),
+      error: () => this.resumen.set(null),
     });
   }
 
   /** Nombre de negocio del dominio (con tildes); ver core/dominios.ts. */
   nombreDominio = nombreDominio;
-
-  irA(ruta: string): void {
-    void this.router.navigate(['/', this.tenant.hash(), ruta]);
-  }
 }

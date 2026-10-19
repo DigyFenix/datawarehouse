@@ -78,6 +78,20 @@ export class PortalOrgController {
     return this.servicio.emitirImpersonacion(id, usuarioId, this.actor(req));
   }
 
+  /**
+   * Restablece la contraseña de un usuario del portal (incluido el admin de la
+   * organización). Devuelve la temporal una sola vez; el cambio es obligatorio al entrar.
+   * @returns { email, passwordTemporal } · 404 si el usuario no existe
+   */
+  @Post('usuarios/:usuarioId/restablecer-password')
+  restablecerPassword(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('usuarioId', ParseIntPipe) usuarioId: number,
+    @Req() req: Request,
+  ) {
+    return this.servicio.restablecerPassword(id, usuarioId, this.actor(req));
+  }
+
   @Get('tableros')
   listarTableros(@Param('id', ParseIntPipe) id: number) {
     return this.servicio.listarTableros(id);

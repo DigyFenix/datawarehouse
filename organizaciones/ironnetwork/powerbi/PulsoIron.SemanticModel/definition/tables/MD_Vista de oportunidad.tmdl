@@ -1,7 +1,9 @@
 table 'MD_Vista de oportunidad'
+	lineageTag: 424ea088-8e6e-4fed-bd2a-57f9d9a071a5
 
 	column Vista
 		dataType: string
+		lineageTag: eab85c65-16f0-4681-981f-5a2562ff3f56
 		summarizeBy: none
 		sourceColumn: [Vista]
 		sortByColumn: Orden
@@ -9,9 +11,11 @@ table 'MD_Vista de oportunidad'
 	column Orden
 		dataType: int64
 		isHidden
+		lineageTag: edc99aa8-d296-4cbc-bea8-0c4390264d7c
 		summarizeBy: none
 		sourceColumn: [Orden]
 
 	partition 'MD_Vista de oportunidad' = calculated
 		mode: import
 		source = DATATABLE("Vista", STRING, "Orden", INTEGER, {{"Atrición", 1}, {"Penetración", 2}})
+

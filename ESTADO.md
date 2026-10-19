@@ -4,14 +4,13 @@
 > Organizaciones activas: **Grupo Cresta** (SAP B1) e **Iron Network** (Odoo 18). Ninguna es
 > «la del proyecto»: el motor no privilegia a ninguna.
 >
-> **Al 2026-08-10 (sesión 25) el cuello de botella sigue siendo CONTENIDO, pero el modo de
-> construcción está en revisión:** con el toolchain nuevo (validador PBIR oficial + Desktop
-> Bridge con screenshots) **la página 00 se construyó por código y quedó renderizada con datos
-> reales** — Edwin autorizó el piloto y ahora evalúa si el estándar visual le alcanza. Si pasa,
-> el agente construye las 11 restantes con el playbook §13; si no, vuelve la construcción manual.
-> El producto Power BI se rige por su propio contrato (`CLAUDE_POWERBI_ANALYTICS_PRODUCT_MASTER_V3.1.md`,
-> v3.1.1 — V3.0 retirado); su progreso vive en `docs/powerbi/STATE.md` — **F0 a F4-lote-1
-> cerradas; F5 con 1/12 páginas construidas**.
+> **Al 2026-10-18 (sesión 31) Iron Network está EN PRODUCCIÓN** en su propio servidor AWS
+> Lightsail (Ohio): `https://ironnetwork.digyfenix.com` para Iron y
+> `https://admin-ironnetwork.digyfenix.com` para el proveedor, con TLS, carga diaria 05:00 y
+> cuadre en cero. **Cuello de botella vigente: el gateway de Power BI** (lo instala Edwin) para
+> que el tablero publicado se refresque solo desde la base de producción; después, commitear la
+> sesión 30–31 y reempaquetar con versión de commit. El producto Power BI sigue su propio
+> contrato; su progreso vive en `docs/powerbi/STATE.md`.
 
 Tablero maestro de avance. Fuente de verdad del progreso. Se actualiza al cerrar cada fase.
 Regla: cada fase se valida contra su **DoD** antes de avanzar (salvo instrucción de entregar
@@ -102,6 +101,26 @@ sola vez** para los dos.
 | 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos; **NITs afiliados en el portal** (migración 112). **2026-08-08**: baja de organización reparada (chocaba con las FK y devolvía 500), quitar rol ya respeta el alcance (borraba el rol en TODAS las organizaciones), Usuarios filtra por la organización activa y **nueva pantalla de Autorizaciones** — el API de grants existía desde la fase 3 pero ninguna pantalla lo consumía. Falta la UI del canónico v2 y el filtro por campo | — |
 | 6 | Consumo (Power BI) | ✅ **modelo vigente (2026-08-08): 36 tablas de datos / 98 relaciones / 294 medidas** — 43 archivos `.tmdl` contando el grupo de cálculo y los 6 parámetros de campo. Las cifras «25/67/140» de este renglón eran de una versión anterior y se corrigieron al regenerar contra el Oro nuevo (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
 | 7 | Validación (4 criterios) | ✅ **completada 2026-08-08** — consistencia (cuadres al centavo), **seguridad/RLS** (IDOR 8/8, RLS fail-closed, certificación 7/7, guardas del agente 12/12), trazabilidad (auditoría por organización, cada consulta del agente auditada) y explicabilidad (toda respuesta lleva métrica, período y estado de certificación). **Onboarding de tenant nuevo validado E2E**: alta → provisionar → extraer 12 objetos → build 195/195 → cuadre 0 desvíos, sin un solo paso a mano | 2026-08-08 |
+
+## Avance 2026-10-18 (sesión 31) — Iron en producción: servidor propio, portal público, primera carga real
+
+**Qué cambió de estado:** el producto dejó de vivir solo en local. Fase de **despliegue** (la que
+la sesión 18 dejó pendiente) cumplida para el primer cliente externo.
+
+- **Arquitectura de producción definida y ensayada:** un servidor por cliente (Lightsail $12),
+  subdominio por cliente, el servidor no tiene el repo (paquete + imágenes por SSH,
+  `infra/produccion/empaquetar.sh`, `RUNBOOK.md`). Ensayo de instalación limpia en local hasta 0
+  errores: destapó 8 bugs que local nunca mostró (orden del init, CRLF, 122/129 en limpio, seed 54,
+  provisionar sin seed 70 ni filtro de metacomandos, alias nginx, healthcheck).
+- **Seguridad aplicada** (revisión con subagente): roles `portal_app`/`pbi_lector`, `pg_hba` con
+  solo `pbi_lector`+SSL desde fuera, TLS de Let's Encrypt en Postgres, freno de login, worker con
+  token y candado, CSP/HSTS, contenedores sin root, logs y memoria acotados.
+- **En producción:** Iron provisionado, 1 tablero "Pulso Iron", primera carga 9,465 filas,
+  231/231 dbt, cuadre 0, ventas Oro = Q 3,371,937 (idéntico a local).
+- **Trato comercial cerrado:** setup US$2,000 + US$200/mes (3 h soporte); asistente aparte.
+
+**Pendiente:** gateway de Power BI (Edwin), asignar perfiles en el portal de Iron, commit.
+Detalle completo en `.claude/SESSION.md` (sesión 31).
 
 ## Avance 2026-08-10 (sesión 25) — la página 00 construida por código: el flujo nuevo funciona
 

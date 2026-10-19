@@ -1,18 +1,23 @@
 table 'MD_Vista de liquidez'
+	lineageTag: 8387dc8c-c27e-48a9-b312-52e12971a3a1
 
 	column 'Vista de liquidez'
 		dataType: string
+		lineageTag: 7f0396e5-c514-47ba-964d-273350549339
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de liquidez · orden'
+
 		relatedColumnDetails
 			groupByColumn: 'Vista de liquidez · campo'
 
 	column 'Vista de liquidez · campo'
 		dataType: string
 		isHidden
+		lineageTag: 23461b48-c78b-4c42-9ee8-945983d38f2a
 		summarizeBy: none
 		sourceColumn: [Value2]
+
 		extendedProperty ParameterMetadata =
 				{
 				  "version": 3,
@@ -22,6 +27,7 @@ table 'MD_Vista de liquidez'
 	column 'Vista de liquidez · orden'
 		dataType: int64
 		isHidden
+		lineageTag: f8c9d8a9-9111-4c0d-aaa8-e28f46a30157
 		summarizeBy: none
 		sourceColumn: [Value3]
 
@@ -37,3 +43,4 @@ table 'MD_Vista de liquidez'
 				  ("Posición neta", NAMEOF('FC_Cartera por pagar'[Posición neta]), 5),
 				  ("Flujo neto próximas 4 semanas", NAMEOF('FC_Proyección de caja'[Flujo neto próximas 4 semanas]), 6)
 				}
+

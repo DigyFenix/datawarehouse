@@ -25,6 +25,8 @@ export const crearOrganizacionSchema = z.object({
     .max(63)
     .regex(/^[a-z0-9_]+$/, 'solo minúsculas, números y guion bajo')
     .optional(),
+  // Módulo Asistente (agente de IA): se vende aparte, apagado por defecto.
+  moduloAsistente: z.boolean().optional(),
 });
 
 export const actualizarOrganizacionSchema = crearOrganizacionSchema.partial().omit({ codigo: true });

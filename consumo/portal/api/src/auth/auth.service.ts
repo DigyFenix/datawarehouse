@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 
 import { AuditoriaPortalService } from '../auditoria/auditoria-portal.service';
+import { LimitadorLogin } from '../common/limitador-login';
 import type { Env } from '../config/env';
 import { CambiarPasswordDto, LoginDto } from './auth.dto';
 import { SesionService } from './sesion.service';
@@ -24,6 +25,13 @@ interface FilaLogin {
 
 @Injectable()
 export class AuthService {
+  private readonly limitador = new LimitadorLogin();
+  /**
+   * Hash de una contraseña aleatoria que nadie conoce: con email inexistente se
+   * verifica contra él para que el tiempo de respuesta no delate qué emails existen.
+   */
+  private readonly hashFicticio = argon2.hash(createHash('sha256').update(String(Math.random())).digest('hex'));
+
   constructor(
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
@@ -44,11 +52,26 @@ export class AuthService {
       [dto.email.toLowerCase()],
     );
     const fila = resultado.rows[0] as FilaLogin | undefined;
-    // Mensaje único: no revelar si el email existe o no.
+    // Mensaje único y mismo costo de tiempo: no revelar si el email existe o no.
     const credencialesInvalidas = new UnauthorizedException('Credenciales inválidas');
-    if (!fila || !fila.activo) throw credencialesInvalidas;
-    const valida = await argon2.verify(fila.hashPassword, dto.password).catch(() => false);
-    if (!valida) throw credencialesInvalidas;
+    this.limitador.verificar(ip, dto.email);
+    const hashAComparar = fila?.activo ? fila.hashPassword : await this.hashFicticio;
+    const valida = await this.limitador.conCupo(() =>
+      argon2.verify(hashAComparar, dto.password).catch(() => false),
+    );
+    if (!fila || !fila.activo || !valida) {
+      this.limitador.registrarFallo(ip, dto.email);
+      await this.auditoria.registrar(pool, {
+        usuarioId: fila?.id ?? null,
+        usuarioEmail: dto.email.toLowerCase(),
+        accion: 'login_fallido',
+        entidad: 'usuarios',
+        entidadId: fila ? String(fila.id) : null,
+        ip,
+      });
+      throw credencialesInvalidas;
+    }
+    this.limitador.registrarExito(ip, dto.email);
 
     const payload: PayloadPortal = {
       sub: fila.id,

@@ -55,6 +55,11 @@
           "name": "ironnetwork-theme.json",
           "path": "ironnetwork-theme.json",
           "type": "CustomTheme"
+        },
+        {
+          "name": "logo_ironnetwork.png",
+          "path": "logo_ironnetwork.png",
+          "type": "Image"
         }
       ]
     }

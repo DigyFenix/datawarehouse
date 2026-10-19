@@ -6,10 +6,15 @@ No expone datos de negocio, solo metadatos y resúmenes de corrida.
 
 from __future__ import annotations
 
+import hmac
+import os
+
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from .candado import CargaEnCurso, candado_carga
 from .config import cargar_postgres
 from .extraccion import extraer_objeto
 from .introspeccion import descubrir
@@ -17,6 +22,20 @@ from .transformacion import transformar_objeto
 
 log = structlog.get_logger()
 app = FastAPI(title="quilate-extraccion-worker")
+
+# Token compartido con el API admin (WORKER_TOKEN). El worker tiene las credenciales del ERP
+# y del superusuario: ningún otro contenedor de la red (p. ej. el API del portal de usuario,
+# que da a internet) debe poder dispararlo. Sin la variable (entorno local) no se exige.
+_TOKEN = os.environ.get("WORKER_TOKEN", "")
+
+
+@app.middleware("http")
+async def _exigir_token(request: Request, call_next):  # type: ignore[no-untyped-def]
+    if _TOKEN and request.url.path != "/health":
+        recibido = request.headers.get("x-worker-token", "")
+        if not hmac.compare_digest(recibido, _TOKEN):
+            return JSONResponse({"success": False, "data": None, "error": "No autorizado"}, status_code=401)
+    return await call_next(request)
 
 
 class DescubrirReq(BaseModel):
@@ -62,8 +81,11 @@ def _extraer(req: ExtraerReq) -> dict:
     """Extrae read-only ERP → Bronce (base del tenant) los campos incluidos del objeto."""
     cfg = cargar_postgres()
     try:
-        resumen = extraer_objeto(cfg, req.sociedad, req.objeto, req.desde, req.hasta)
+        with candado_carga(cfg):
+            resumen = extraer_objeto(cfg, req.sociedad, req.objeto, req.desde, req.hasta)
         return {"success": True, "data": resumen, "error": None}
+    except CargaEnCurso as e:
+        return {"success": False, "data": None, "error": str(e)}
     except Exception as e:  # noqa: BLE001
         log.warning("extraer.error", sociedad=req.sociedad, objeto=req.objeto, error=str(e))
         return {"success": False, "data": None, "error": str(e)}
@@ -75,8 +97,11 @@ def _transformar(req: TransformarReq) -> dict:
     contra la base de datos de la organización indicada."""
     cfg = cargar_postgres()
     try:
-        resumen = transformar_objeto(cfg, req.objeto, req.organizacion)
+        with candado_carga(cfg):
+            resumen = transformar_objeto(cfg, req.objeto, req.organizacion)
         return {"success": True, "data": resumen, "error": None}
+    except CargaEnCurso as e:
+        return {"success": False, "data": None, "error": str(e)}
     except Exception as e:  # noqa: BLE001
         log.warning(
             "transformar.error", objeto=req.objeto, organizacion=req.organizacion, error=str(e)

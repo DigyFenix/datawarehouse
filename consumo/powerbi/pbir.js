@@ -11,10 +11,12 @@ const VC_SCHEMA = 'https://developer.microsoft.com/json-schemas/fabric/item/repo
 const PAGE_SCHEMA = 'https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json';
 const PAGES_SCHEMA = 'https://developer.microsoft.com/json-schemas/fabric/item/report/definition/pagesMetadata/1.1.0/schema.json';
 
-// Lienzo 1280 × 960: tres filas de análisis de 232 px (Kraken trae más visuales de los que caben en 720).
+// Lienzo 1280 × 960 (Kraken trae más visuales de los que caben en 720). Sin navegador de páginas
+// (sesión 30): encabezado de 56 px, franja de filtros/KPIs de dos renglones de 64 px y tres filas de análisis de 240 px.
 const W = 1280, H = 960;
-const FILA = [216, 464, 712];
-const ALTO = 232;
+const BANDA = [64, 128];
+const FILA = [192, 448, 704];
+const ALTO = 240;
 
 // ---- tablas del modelo (nombres del TMDL que emite generar_pbip.py) ----
 const T = {
@@ -128,37 +130,13 @@ function textoEstatico(slug, clave, contenido, pos, { size = 9, colorHex = C.TIN
     vc: vcDesnudo,
   });
 }
-// 13 páginas: nombres cortos de página (displayName) + 9 columnas de ancho para que no se trunquen.
-function navegador(slug) {
-  return visual(id(slug, 'chrome-nav'), 'pageNavigator', [xCol(4), 16, wCol(9), 32], {
-    objects: {
-      fill: [
-        { properties: { show: bool(true) } },
-        { properties: { show: bool(true), fillColor: color(C.BLANCO), transparency: num(0) }, selector: sel('default') },
-        { properties: { show: bool(true), fillColor: color(C.PANEL), transparency: num(0) }, selector: sel('selected') },
-      ],
-      text: [
-        { properties: { fontColor: color(C.TINTA), fontSize: num(8), fontFamily: str('Segoe UI Semibold'), leftMargin: num(1), rightMargin: num(1) } },
-        { properties: { fontColor: color(C.TINTA), fontSize: num(8), fontFamily: str('Segoe UI Semibold'), leftMargin: num(1), rightMargin: num(1) }, selector: sel('default') },
-        { properties: { fontColor: color(C.TINTA), bold: bool(true) }, selector: sel('selected') },
-      ],
-      outline: [
-        { properties: { show: bool(false) } },
-        { properties: { show: bool(false) }, selector: sel('default') },
-        { properties: { show: bool(false) }, selector: sel('selected') },
-        { properties: { show: bool(false) }, selector: sel('hover') },
-      ],
-    },
-    vc: vcDesnudo,
-  });
-}
-// Encabezado Kraken: título, "al 16 oct (79%)", empresa activa, navegación.
+// Encabezado Kraken: título y "al 16 oct (79%)" a la izquierda, empresa activa arriba a la derecha.
+// Sin navegador de páginas (decisión de Edwin, sesión 30): se navega con las pestañas de Power BI y el espacio pasa al análisis.
 function encabezado(slug, medidaTitulo, medidaCorte, tablaTitulo = T.VENTAS) {
   return [
-    texto(slug, 'chrome-titulo', tablaTitulo, medidaTitulo, [xCol(1), 8, wCol(3), 28], { size: 16, bold: true }),
-    texto(slug, 'chrome-corte', T.VENTAS, medidaCorte, [xCol(1), 36, wCol(4), 20], { size: 12 }),
-    texto(slug, 'chrome-empresa', T.VENTAS, 'Empresa activa', [xCol(1), 56, wCol(4), 16], { size: 10, colorHex: C.TINTA_SUAVE }),
-    navegador(slug),
+    texto(slug, 'chrome-titulo', tablaTitulo, medidaTitulo, [xCol(1), 8, wCol(6), 28], { size: 16, bold: true }),
+    texto(slug, 'chrome-corte', T.VENTAS, medidaCorte, [xCol(1), 36, wCol(6), 20], { size: 12 }),
+    texto(slug, 'chrome-empresa', T.VENTAS, 'Empresa activa', [xCol(7), 14, wCol(6), 20], { size: 10, colorHex: C.TINTA_SUAVE, align: 'right' }),
   ];
 }
 function pie(slug) {
@@ -182,20 +160,30 @@ function segmentador(slug, clave, tabla, columna, pos, { modo = 'Dropdown', sele
     } };
   }
   if (busqueda) general.properties.selfFilterEnabled = bool(true);
-  // Rótulo discreto (8 pt, gris) para que "Todas" nunca quede sin contexto; ítems a 10 pt para leerse.
+  // Estilo de campo de formulario (sesión 30, «se ven muy básicos»): tarjeta blanca redondeada, rótulo en
+  // mayúsculas pizarra y desplegable relleno gris-azul; las listas verticales quedan sobre blanco.
+  // (Un subrayado de acento con items.outlineStyle + general.outlineColor no se renderiza en el desplegable.)
+  const lista = modo !== 'Dropdown';
   const objects = {
     data: [{ properties: { mode: str(modo) } }],
     general: [general],
-    header: [{ properties: { show: bool(Boolean(titulo)), ...(titulo ? { text: str(titulo), bold: bool(false), textSize: num(8), fontColor: color(C.TINTA_SUAVE), outlineStyle: str('None') } : {}) } }],
-    items: [{ properties: { textSize: num(10), fontColor: color(C.TINTA) } }],
+    header: [{ properties: { show: bool(Boolean(titulo)), ...(titulo ? { text: str(titulo.toUpperCase()), bold: bool(false), fontFamily: str('Segoe UI Semibold'), textSize: num(8), fontColor: color(C.PIZARRA), background: color(C.BLANCO), outlineStyle: str('None') } : {}) } }],
+    items: [{ properties: { textSize: num(10), fontColor: color(C.TINTA), background: color(lista ? C.BLANCO : C.FILA_ALT) } }],
   };
-  if (unico) objects.selection = [{ properties: { strictSingleSelect: bool(true), selectAllCheckboxEnabled: bool(false) } }];
+  objects.selection = [{ properties: unico
+    ? { strictSingleSelect: bool(true), selectAllCheckboxEnabled: bool(false) }
+    // singleSelect false = varios valores con clic simple, sin Ctrl (en la web nadie sabe del Ctrl; pedido de Edwin, sesión 32).
+    : { singleSelect: bool(false), selectAllCheckboxEnabled: bool(true) } }];
   return visual(id(slug, clave), 'slicer', pos, {
     roles: { Values: [pColumna(tabla, columna, true)] },
     sort: descendente ? { sort: [{ field: campoColumna(tabla, columna), direction: 'Descending' }], isDefaultSort: true } : undefined,
     objects,
     // Relleno 2/2: rótulo (28) + desplegable (32) + 4 = 64 px, la altura estándar de un segmentador con rótulo.
-    vc: { padding: [{ properties: { top: num(2), bottom: num(2), left: num(6), right: num(6) } }] },
+    vc: {
+      padding: [{ properties: { top: num(2), bottom: num(2), left: num(8), right: num(8) } }],
+      background: [{ properties: { show: bool(true), color: color(C.BLANCO), transparency: num(0) } }],
+      border: [{ properties: { show: bool(true), color: color(C.GRILLA), radius: num(8) } }],
+    },
     sync,
   });
 }
@@ -360,8 +348,8 @@ const marcadoresFinos = { properties: { showMarker: bool(true), markerShape: str
 // Bloque "Moneda" de Kraken: moneda + medida.
 function bloqueMoneda(slug, col = 10, ancho = 3) {
   return [
-    segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(col), 88, wCol(ancho), 64], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }),
-    segmentador(slug, 'vista', T.VISTA, 'Vista de ventas', [xCol(col), 152, wCol(ancho), 64], { sync: 'vista', titulo: 'Vista', busqueda: false }),
+    segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(col), BANDA[0], wCol(ancho), 64], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }),
+    segmentador(slug, 'vista', T.VISTA, 'Vista de ventas', [xCol(col), BANDA[1], wCol(ancho), 64], { sync: 'vista', titulo: 'Vista', busqueda: false }),
   ];
 }
 // Columnas mensuales estilo Kraken: año anterior en gris detrás, año actual en pizarra con etiqueta.
@@ -440,8 +428,11 @@ function escribirPaginas(REPORT, paginas) {
     const dir = path.join(pagesDir, pg.id);
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(path.join(dir, 'visuals'), { recursive: true });
+    // Lienzo blanco (Edwin, sesión 30, desde Desktop): ThemeDataColor 0 = blanco del tema, tal como lo escribe Desktop.
+    const blanco = { color: { solid: { color: { expr: { ThemeDataColor: { ColorId: 0, Percent: 0 } } } } } };
     fs.writeFileSync(path.join(dir, 'page.json'), JSON.stringify({
       $schema: PAGE_SCHEMA, name: pg.id, displayName: pg.nombre, displayOption: 'FitToPage', height: H, width: W,
+      objects: { background: [{ properties: blanco }] },
     }, null, 2) + '\n');
     for (const v of pg.visuales) {
       const vdir = path.join(dir, 'visuals', v.name);
@@ -471,8 +462,8 @@ function reporteDeArgs() {
 }
 
 module.exports = {
-  W, H, FILA, ALTO, T, C, xCol, wCol, id, lit, str, num, int, bool, color, sel, meta, campoMedida, campoColumna,
-  pMedida, pColumna, fx, ordenDesc, ordenAsc, visual, reiniciar, vcTitulo, vcDesnudo, texto, textoEstatico, navegador,
+  W, H, BANDA, FILA, ALTO, T, C, xCol, wCol, id, lit, str, num, int, bool, color, sel, meta, campoMedida, campoColumna,
+  pMedida, pColumna, fx, ordenDesc, ordenAsc, visual, reiniciar, vcTitulo, vcDesnudo, texto, textoEstatico,
   encabezado, pie, segmentador, kpis, ranking, barras, dona, mapa, semaforo, subtotalesMatriz, matriz, marcadores, marcadoresFinos, ejeValores, ejeCategoria, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, bloqueMoneda,
   columnasMensuales, comboMensual, columnasApiladas, escribirPaginas, reporteDeArgs,
 };

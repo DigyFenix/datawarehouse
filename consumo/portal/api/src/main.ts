@@ -13,6 +13,9 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
 
   app.setGlobalPrefix('api');
+  // IP real del cliente para auditoría y freno de login: saltos de proxy delante del API
+  // (local: nginx = 1; producción: Caddy + nginx = 2). Caddy no confía en X-Forwarded-For entrante.
+  app.getHttpAdapter().getInstance().set('trust proxy', Number(process.env.SALTOS_PROXY ?? 1));
   // Validación de entradas con Zod (ZodValidationPipe por endpoint).
   app.useGlobalInterceptors(new RespuestaInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());

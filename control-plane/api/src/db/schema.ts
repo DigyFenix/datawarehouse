@@ -37,6 +37,8 @@ export const organizaciones = gobierno.table('organizaciones', {
   // El binario del logo NO se mapea aquí: los select() lo arrastrarían en cada listado.
   // Se lee/escribe con SQL directo (PG_POOL); logo_mime indica presencia y tipo.
   logoMime: text('logo_mime'),
+  // Módulo Asistente (agente de IA) contratado; se vende aparte (migración 132).
+  moduloAsistente: boolean('modulo_asistente').notNull().default(false),
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
 });

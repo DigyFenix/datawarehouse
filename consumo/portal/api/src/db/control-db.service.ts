@@ -16,6 +16,7 @@ export interface OrganizacionTenant {
   colorMarca: string | null;
   baseDatosDw: string;
   logoMime: string | null;
+  moduloAsistente: boolean;
 }
 
 @Injectable()
@@ -43,7 +44,8 @@ export class ControlDbService implements OnModuleDestroy {
       `SELECT id, codigo, nombre,
               color_marca   AS "colorMarca",
               base_datos_dw AS "baseDatosDw",
-              logo_mime     AS "logoMime"
+              logo_mime     AS "logoMime",
+              modulo_asistente AS "moduloAsistente"
          FROM gobierno.organizaciones
         WHERE hash_tenant = $1
           AND estado <> 'inactiva'

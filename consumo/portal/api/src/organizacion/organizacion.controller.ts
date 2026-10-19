@@ -20,6 +20,7 @@ export class OrganizacionController {
       nombre: org.nombre,
       colorMarca: org.colorMarca,
       tieneLogo: org.logoMime !== null,
+      moduloAsistente: org.moduloAsistente,
     };
   }
 

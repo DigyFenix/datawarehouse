@@ -1,11 +1,14 @@
 table 'MD_Lead time'
+	lineageTag: 6e8d6f4d-bd72-4fef-87b6-7d383232bcd2
 
 	column 'Lead time'
 		dataType: int64
 		formatString: 0
+		lineageTag: bb1faa7d-be36-4dc7-854b-e334fe54671d
 		summarizeBy: none
 		sourceColumn: [Value]
 
 	partition 'MD_Lead time' = calculated
 		mode: import
 		source = GENERATESERIES(5, 60, 5)
+

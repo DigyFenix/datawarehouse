@@ -1,152 +1,186 @@
 table 'DM_Clasificación ABC Proveedor'
+	lineageTag: 77ed0bc6-d12f-42a3-8d31-a61cfd8627ab
+
+	/// Cuántos proveedores concentran el 80% de la compra: dependencia de suministro. Cuenta proveedores DISTINTOS, porque la tabla tiene una fila por proveedor y año.
+	measure 'Proveedores A' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 9c93592c-d1f5-40e2-95f4-e3054dcd751a
+
+	/// Proveedores del tramo intermedio de la compra.
+	measure 'Proveedores B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "B"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 69a28632-9761-4640-9ffa-f992a8a6bbad
+
+	/// Cola larga de proveedores: muchos, con poco volumen cada uno.
+	measure 'Proveedores C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "C"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 5b9b69ca-3649-407e-b7bf-00e24912d9fe
+
+	/// Proveedores del catálogo sin compra en el año.
+	measure 'Proveedores sin compra neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "S"))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: ad822ac1-2c24-412e-be36-e51b5d5a00fa
+
+	/// Proveedores distintos en el catálogo ABC, excluida la intercompañía.
+	measure 'Proveedores clasificados' = DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave])
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 92fe8308-6788-4092-8c18-9fe54a4404e8
+
+	/// Proveedores a los que se compró algún año anterior y nada en el año seleccionado. No es una pérdida como la de un cliente, pero un abastecimiento que se apaga suele venir con una concentración que crece en otro lado.
+	measure 'Proveedores inactivos' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[es_inactivo] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: bed1aa62-83f9-4a5c-a157-8a9ef0771238
+
+	/// Proveedores cuya PRIMERA compra cae en el año seleccionado.
+	measure 'Proveedores estrenados en el año' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[es_nuevo] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 2c16f228-8c8a-4713-9b7e-83365ee1d397
+
+	/// Riesgo de dependencia: si los A concentran el 90% de la compra, perder uno para la operación.
+	measure '% Compra en proveedores A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), SUM('DM_Clasificación ABC Proveedor'[compra]))
+		formatString: 0.0%
+		displayFolder: 02 Concentración
+		lineageTag: cf3e0074-4f84-4986-a78d-634fafbf5145
+
+	/// Compra a terceros del año según el catálogo ABC. Sin filtrar un año en 'Año de clasificación' suma TODOS los años cargados.
+	measure 'Compra del año clasificada' = SUM('DM_Clasificación ABC Proveedor'[compra])
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+		lineageTag: 8fdb7827-551b-4294-9b6d-b33ac78c8084
+
+	/// Volumen medio con un proveedor crítico.
+	measure 'Compra promedio proveedor A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), [Proveedores A])
+		formatString: "Q" #,0
+		displayFolder: 02 Concentración
+		lineageTag: 34e54acb-20c4-4bcc-aa4f-2386d8c25d97
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: bf3553e8-8a01-4d55-8115-fb494002902b
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column anio
 		dataType: int64
+		formatString: 0
+		lineageTag: 7a6f61f3-faad-49b4-bdd4-df97082480c4
 		summarizeBy: none
 		sourceColumn: anio
-		formatString: 0
 
 	column anio_clave
 		dataType: int64
 		isHidden
+		lineageTag: 2fb37156-15cc-4314-b90a-b0eb4afad96f
 		summarizeBy: none
 		sourceColumn: anio_clave
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
+		lineageTag: fc25472b-6583-45cb-8d19-3914e670c4ed
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column ranking
 		dataType: int64
+		formatString: #,0
+		lineageTag: be48bbb9-df57-49f4-a8ca-872650777321
 		summarizeBy: none
 		sourceColumn: ranking
-		formatString: #,0
 
 	column compra
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: compra
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 4cdb4dc5-92e3-4e26-9993-0a2d51d7c6e8
+		summarizeBy: sum
+		sourceColumn: compra
+
+		annotation SummarizationSetBy = Automatic
 
 	column lineas
 		dataType: int64
+		formatString: #,0
+		lineageTag: 7601172c-337d-4d20-a119-577f92da4cc2
 		summarizeBy: none
 		sourceColumn: lineas
-		formatString: #,0
 
 	column participacion
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: participacion
+		dataType: double
 		formatString: 0.0%
+		lineageTag: fb3a6db3-b9f0-47bf-b6c8-296eca046f63
+		summarizeBy: sum
+		sourceColumn: participacion
+
+		annotation SummarizationSetBy = Automatic
 
 	column participacion_acumulada
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: participacion_acumulada
+		dataType: double
 		formatString: 0.0%
+		lineageTag: 0845025b-e17b-41b6-bc70-9688ba92f8f0
+		summarizeBy: sum
+		sourceColumn: participacion_acumulada
+
+		annotation SummarizationSetBy = Automatic
 
 	column clase_abc
 		dataType: string
+		lineageTag: a535c15e-5996-4260-ae85-33993f09a27e
 		summarizeBy: none
 		sourceColumn: clase_abc
 
 	column clase_abc_nombre
 		dataType: string
+		lineageTag: 20df5e80-692a-4b66-a157-ab843b775242
 		summarizeBy: none
 		sourceColumn: clase_abc_nombre
 
 	column primer_anio_compra
 		dataType: int64
+		formatString: #,0
+		lineageTag: 30e5768d-8193-493e-af2a-36d9908ad7ec
 		summarizeBy: none
 		sourceColumn: primer_anio_compra
-		formatString: #,0
 
 	column ultimo_anio_compra
 		dataType: int64
+		formatString: #,0
+		lineageTag: 309edea5-cdd8-49a0-a8d2-484fdbfade33
 		summarizeBy: none
 		sourceColumn: ultimo_anio_compra
-		formatString: #,0
 
 	column es_inactivo
 		dataType: boolean
+		lineageTag: 9a455b73-9a56-45fa-bfa3-3a018eded299
 		summarizeBy: none
 		sourceColumn: es_inactivo
 
 	column es_nuevo
 		dataType: boolean
+		lineageTag: 650226e1-0685-4768-9d77-6417f1c98e13
 		summarizeBy: none
 		sourceColumn: es_nuevo
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 73d0500a-baa2-4b13-8a1f-6fb727be1210
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: 223453e2-f6fd-400b-9503-99613c7fd51b
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Cuántos proveedores concentran el 80% de la compra: dependencia de suministro. Cuenta proveedores DISTINTOS, porque la tabla tiene una fila por proveedor y año.
-	measure 'Proveedores A' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Proveedores del tramo intermedio de la compra.
-	measure 'Proveedores B' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "B"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Cola larga de proveedores: muchos, con poco volumen cada uno.
-	measure 'Proveedores C' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "C"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Proveedores del catálogo sin compra en el año.
-	measure 'Proveedores sin compra neta' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "S"))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Proveedores distintos en el catálogo ABC, excluida la intercompañía.
-	measure 'Proveedores clasificados' = DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave])
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Proveedores a los que se compró algún año anterior y nada en el año seleccionado. No es una pérdida como la de un cliente, pero un abastecimiento que se apaga suele venir con una concentración que crece en otro lado.
-	measure 'Proveedores inactivos' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[es_inactivo] = TRUE))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Proveedores cuya PRIMERA compra cae en el año seleccionado.
-	measure 'Proveedores estrenados en el año' = CALCULATE(DISTINCTCOUNT('DM_Clasificación ABC Proveedor'[proveedor_clave]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[es_nuevo] = TRUE))
-		formatString: #,0
-		displayFolder: 01 Conteos
-
-	/// Riesgo de dependencia: si los A concentran el 90% de la compra, perder uno para la operación.
-	measure '% Compra en proveedores A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), SUM('DM_Clasificación ABC Proveedor'[compra]))
-		formatString: 0.0%
-		displayFolder: 02 Concentración
-
-	/// Compra a terceros del año según el catálogo ABC. Sin filtrar un año en 'Año de clasificación' suma TODOS los años cargados.
-	measure 'Compra del año clasificada' = SUM('DM_Clasificación ABC Proveedor'[compra])
-		formatString: "Q" #,0
-		displayFolder: 02 Concentración
-
-	/// Volumen medio con un proveedor crítico.
-	measure 'Compra promedio proveedor A' = DIVIDE(CALCULATE(SUM('DM_Clasificación ABC Proveedor'[compra]), KEEPFILTERS('DM_Clasificación ABC Proveedor'[clase_abc] = "A")), [Proveedores A])
-		formatString: "Q" #,0
-		displayFolder: 02 Concentración
 
 	partition 'DM_Clasificación ABC Proveedor' = m
 		mode: import
@@ -156,3 +190,4 @@ table 'DM_Clasificación ABC Proveedor'
 				    Tabla = Origen{[Schema="oro",Item="clasificacion_abc_proveedor"]}[Data]
 				in
 				    Tabla
+

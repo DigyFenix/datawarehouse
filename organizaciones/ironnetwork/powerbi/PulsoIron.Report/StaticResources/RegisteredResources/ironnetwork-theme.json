@@ -86,7 +86,13 @@
         ],
         "visualHeader": [
           {
-            "show": false
+            "show": true,
+            "showFocusModeButton": true,
+            "showOptionsMenu": false,
+            "showPinButton": false,
+            "showFilterRestatementButton": false,
+            "showVisualInformationButton": false,
+            "showTooltipButton": false
           }
         ],
         "title": [
@@ -109,15 +115,7 @@
         ],
         "dropShadow": [
           {
-            "show": true,
-            "color": {
-              "solid": {
-                "color": "#1f2a2e"
-              }
-            },
-            "position": "Outer",
-            "preset": "BottomRight",
-            "transparency": 92
+            "show": false
           }
         ]
       }
@@ -169,6 +167,11 @@
             },
             "fontSize": 10
           }
+        ],
+        "visualHeader": [
+          {
+            "show": false
+          }
         ]
       }
     },
@@ -183,6 +186,11 @@
         "trendline": [
           {
             "show": true
+          }
+        ],
+        "visualHeader": [
+          {
+            "show": false
           }
         ]
       }
@@ -491,6 +499,11 @@
             },
             "transparency": 0
           }
+        ],
+        "visualHeader": [
+          {
+            "show": false
+          }
         ]
       }
     },
@@ -528,6 +541,11 @@
             "fontSize": 10,
             "fontFamily": "Segoe UI Semibold"
           }
+        ],
+        "visualHeader": [
+          {
+            "show": false
+          }
         ]
       }
     },
@@ -547,6 +565,11 @@
           {
             "show": false
           }
+        ],
+        "visualHeader": [
+          {
+            "show": false
+          }
         ]
       }
     },
@@ -558,6 +581,38 @@
           }
         ],
         "border": [
+          {
+            "show": false
+          }
+        ],
+        "visualHeader": [
+          {
+            "show": false
+          }
+        ]
+      }
+    },
+    "cardVisual": {
+      "*": {
+        "visualHeader": [
+          {
+            "show": false
+          }
+        ]
+      }
+    },
+    "image": {
+      "*": {
+        "visualHeader": [
+          {
+            "show": false
+          }
+        ]
+      }
+    },
+    "pageNavigator": {
+      "*": {
+        "visualHeader": [
           {
             "show": false
           }

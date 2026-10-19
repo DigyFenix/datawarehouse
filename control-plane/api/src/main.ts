@@ -20,6 +20,9 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api');
   // La validación de entradas se hace con Zod (ZodValidationPipe por endpoint),
   // no con el ValidationPipe de Nest (evita depender de class-validator).
+  // IP real del cliente para auditoría y freno de login: saltos de proxy delante del API
+  // (local: nginx = 1; producción: Caddy + nginx = 2). Caddy no confía en X-Forwarded-For entrante.
+  app.getHttpAdapter().getInstance().set('trust proxy', Number(process.env.SALTOS_PROXY ?? 1));
   app.useGlobalInterceptors(new RespuestaInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableShutdownHooks();

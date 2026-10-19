@@ -1,18 +1,23 @@
 table 'MD_Vista de inventario'
+	lineageTag: 5f26e3a3-3257-48e7-b176-6d28934a4534
 
 	column 'Vista de inventario'
 		dataType: string
+		lineageTag: fb28f229-0070-44ab-9cd5-b145fef4ab65
 		summarizeBy: none
 		sourceColumn: [Value1]
 		sortByColumn: 'Vista de inventario · orden'
+
 		relatedColumnDetails
 			groupByColumn: 'Vista de inventario · campo'
 
 	column 'Vista de inventario · campo'
 		dataType: string
 		isHidden
+		lineageTag: b3f6d46f-7844-4557-9145-411d00e55f32
 		summarizeBy: none
 		sourceColumn: [Value2]
+
 		extendedProperty ParameterMetadata =
 				{
 				  "version": 3,
@@ -22,6 +27,7 @@ table 'MD_Vista de inventario'
 	column 'Vista de inventario · orden'
 		dataType: int64
 		isHidden
+		lineageTag: 31284da7-c70f-40f0-83a7-9e57575ea487
 		summarizeBy: none
 		sourceColumn: [Value3]
 
@@ -38,3 +44,4 @@ table 'MD_Vista de inventario'
 				  ("Rotación de inventario 12M", NAMEOF(FC_Inventario[Rotación de inventario 12M]), 6),
 				  ("Cobertura promedio en días", NAMEOF('DM_Análisis de producto'[Cobertura promedio en días]), 7)
 				}
+

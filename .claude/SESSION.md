@@ -1,5 +1,170 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 31 (2026-10-18) — IRON EN PRODUCCIÓN: SERVIDOR PROPIO EN AWS, PORTAL PÚBLICO CON TLS, PRIMERA CARGA REAL — leer esto primero ══════
+
+Sesión larga que llevó el producto de local a **producción real para Iron Network**: se cerró el
+trato comercial, se diseñó la arquitectura de **un servidor por cliente**, se ensayó la
+instalación limpia hasta que pasó sin errores (aparecieron 8 bugs que local nunca mostró), se
+hizo una revisión de seguridad y de costos con subagente y se aplicó, y se desplegó en AWS
+Lightsail. Al cierre: portales en `https://ironnetwork.digyfenix.com` (Iron) y
+`https://admin-ironnetwork.digyfenix.com` (solo proveedor), primera carga desde Odoo con cuadre
+en cero, y Power BI Desktop ya apunta a la base de producción. **Falta el gateway** (lo hace Edwin).
+
+### Trato comercial con Iron (detalle en memoria `iron-trato-comercial`)
+
+Setup **US$2,000** + **US$200/mes** con hasta **3 h/mes** de soporte no acumulables (solo ajustes
+menores). Volumen incluido 1 GB de warehouse; escalones 1–5 GB +$50, 5–20 GB +$100. Iron es socio:
+valida datos y refiere clientes (comisión propuesta 15 % setup + 10 % mensualidad año 1, sin cerrar).
+El agente de IA se vende aparte (módulo Asistente). Costos **medidos** (no estimados): base Iron
+33 MB, modelo PBI 1.2 MB, RAM pico del stack 387 MiB, carga completa ≈ 1 min.
+Cresta **no sabe** del proyecto (memoria `cresta-no-sabe-del-proyecto`): pendiente de Edwin.
+
+### Arquitectura de producción (memoria `produccion-servidor-por-cliente`)
+
+- **Un servidor Lightsail por cliente** ($12, 2 GB, Ubuntu 24.04) con todo el stack. Iron:
+  `quilate-ironnetwork`, **región Ohio (us-east-2)**, IP estática 77.112.237.34.
+- **Subdominios:** `<cliente>.digyfenix.com` (usuarios) y `admin-<cliente>.digyfenix.com`
+  (proveedor). Un solo nivel a propósito (cert universal de Cloudflare). DNS en Cloudflare,
+  **nube gris**; Caddy emite el TLS.
+- **El servidor no tiene el repo:** `infra/produccion/empaquetar.sh` arma un paquete (~170 KB) +
+  imágenes (~275 MB) que se suben por SSH (`~/.ssh/quilate_deploy`, llave solo de despliegue;
+  el puerto 22 solo acepta la IP de Edwin).
+- Power BI: licencia **gratuita** publica a web desde Mi área de trabajo (verificado). Cuenta
+  `echacon@digyfenix.com` en tenant propio (Edwin es admin tras reclamarlo con TXT en Cloudflare).
+
+### TRAMPA AWS: la organización de Edwin bloquea us-east-1
+
+La cuenta "Produccion" (608744602600) está en la organización de Edwin (management 404824402663).
+La SCP **`AdvancedModeRegionRestrictionSecurityControlPolicy`** (Root + Produccion) **deniega en
+us-east-1 todo salvo servicios globales** — crear instancias, importar llaves e IPs en Virginia
+falla con 403 "service control policy explicitly denies". Regiones de trabajo permitidas:
+**us-east-2, us-west-2, ap-northeast-1**. Las `BudgetsSpendLimitDeny*` existen pero **sin
+destinos** (no aplican). Costó una hora de vueltas: la próxima vez, leer la SCP primero.
+
+### Bugs de instalación limpia corregidos (el ensayo los destapó; local nunca los mostró)
+
+1. `02_aplicar_catalogo.sh` aplicaba en **orden alfabético** (100 antes que 60) → orden numérico.
+2. CRLF en `.sh`/`.sql` al editarlos con Python en Windows → **siempre escribir con newline LF**.
+3. `122` (renombre cresta_dw) fallaba en limpio → guarda `\if`.
+4. `129` exigía "exactamente 2 roles" antes de los seeds → valida "ningún intruso".
+5. Seed `54_campo_ingesta` era pre-tenencia → movido a `seeds/historicos/`.
+6. Provisionar no filtraba metacomandos psql en el DDL (falla `125`) y **no incluía el seed 70**
+   (dimensiones comerciales de Odoo: un tenant nuevo quedaba sin categoría/vendedor/canal).
+7. nginx del portal admin apunta a `api:3001` → alias `api` en el compose de producción.
+8. Healthcheck de Postgres daba "sano" durante el init → `pg_isready -h 127.0.0.1`.
+
+### Seguridad y costos (revisión con subagente, aplicada y probada)
+
+Freno de login (5 por IP+email, 20 por IP / 15 min) + cupo de 3 argon2 simultáneos + hash ficticio
+(sin enumeración de emails) + `login_fallido` auditado + `trust proxy` (SALTOS_PROXY) en ambos
+APIs. Roles **`portal_app`** (API de usuario; init 04 + migración 133) y **`pbi_lector`** (gateway,
+solo Oro). `pg_hba` (init 05): desde fuera **solo `pbi_lector` → `dw_*` con `hostssl`**; lo que
+llega por el gateway de Docker (.1) se rechaza; socket local `trust` (solo lo alcanza quien ya
+tiene docker exec). Postgres con **TLS de Let's Encrypt** copiado de Caddy (`tls-postgres.sh` +
+`/etc/cron.d/quilate-tls-postgres` diario). Worker con `WORKER_TOKEN` y **candado** de carga
+(`candado.py`, advisory lock). `filtroOrigen` validado (sin `;`, comentarios ni subconsultas).
+Auditoría sin UPDATE/DELETE para `portal_app`. Contenedores sin root, logs rotados, `mem_limit`,
+swap 2 GB, CSP con hash del `onload` de Angular, HSTS. Lightsail cobra tarifa fija: los riesgos de
+costo eran disco lleno, memoria y martillar el ERP del cliente.
+
+### Portal (cambios funcionales)
+
+Interruptor **módulo Asistente** por organización (migración 132; API 403 si apagado; confirmación
+al encenderlo). Restablecer contraseña desde el portal admin. URL de Power BI **nunca en el
+navegador**: pase de un solo uso + 302 (`pases-visor.service.ts`). Barra de Power BI
+**configurable por tablero** (migración 134, `mostrar_barra`; Iron = visible porque es un solo
+tablero de 13 páginas). Visor a ancho completo, menús de acciones flotantes, logo horizontal
+legible, URL del portal de usuario como config de ejecución (`PORTAL_USUARIO_URL`).
+`agregar_logo.py` (logo en el encabezado de todas las páginas sin regenerarlas) y
+`generar_pbip.py` ahora **conserva el `Servidor` publicado** (forzable con `PBI_SERVIDOR`).
+
+### Estado de producción al cierre
+
+- 9 contenedores sin reinicios; init limpio; Iron provisionado (org id 1), logo, color `#E51B23`.
+- Tablero único **Pulso Iron** (vínculo Publish to Web existente, `mostrar_barra=true`).
+- Usuarios del portal de Iron: `echacon@digyfenix.com` (admin) y `carlos@iron.com` (sin perfil aún).
+- Primera carga real: 9,465 filas, 231/231 dbt, **cuadre 0**, ventas Oro = **Q 3,371,937**.
+- Programador: carga diaria a las **05:00** (Guatemala) — `HORAS_CARGA` en el `.env` del servidor.
+- PBIP de Iron: `Servidor = ironnetwork.digyfenix.com`, `BaseDatos = dw_ironnetwork` (guardado por Edwin).
+- Código en el servidor: `~/quilate-8b4ad65-local` (versión empaquetada sin commit).
+
+### PENDIENTE (en este orden)
+
+1. **Confirmar con Edwin** que Desktop actualizó desde producción (ventas 2026 = Q 3,371,937) y
+   que publicó con **Reemplazar**.
+2. **Gateway** (Edwin): on-premises data gateway estándar en una PC Windows siempre encendida →
+   agregar su IP a Lightsail 5432 → Servicio: conexión PostgreSQL `ironnetwork.digyfenix.com` /
+   `dw_ironnetwork` / `pbi_lector` (cifrado ON) → asignarla a PulsoIron → refresco 06:00
+   Guatemala. **Sin verificar:** si la licencia gratuita permite refresco con gateway (si pide
+   Pro: $14/mes).
+3. Asignar **Pulso Iron** al perfil Dirección y ese perfil a `carlos@iron.com` (el admin ve todo
+   sin perfil; los demás solo lo de sus perfiles).
+4. Edwin: guardar las contraseñas de `~/quilate-credenciales.txt` (en el servidor) y borrarlo;
+   cambiar la del portal de Iron desde la web (la temporal obliga).
+5. Inicio del portal: separar "actualizado hoy HH:MM" de "último movimiento" y ocultar tarjetas
+   sin valor para negocio (tipos de cambio, catálogos). Esperando si lo hace Claude o Edwin.
+6. Preguntar a Iron por qué **no registra compras en Odoo desde el 28/08/2026**.
+7. Borrar `infra/produccion/.env.produccion.example` (obsoleto; lo reemplaza `variables.env.ejemplo`).
+8. Mejoras anotadas: pantalla "cambiar mi contraseña" en el portal admin; mensaje de error de
+   login legible en el admin; cuotas del Asistente antes de venderlo; extracción por lotes
+   (`fetchmany`) para clientes grandes; restringir el admin por IP si la de Edwin es fija.
+9. **Nada commiteado en esta sesión** (ni la 30): preguntar a Edwin y commitear por temas; después
+   reempaquetar con la versión del commit (hoy el servidor corre `8b4ad65-local`).
+
+## ══════ SESIÓN 30 (2026-10-18) — PULSOIRON SIN SOMBRA NI NAVEGADOR, FILTROS CON ESTILO, LIENZO BLANCO — leer esto primero ══════
+
+Sesión corta de estilo sobre las 13 hojas de PulsoIron, a pedido de Edwin: no le gustó la sombra
+de las gráficas, los segmentadores se veían «muy básicos» y la barra de navegación de arriba
+desperdiciaba espacio. Todo vive en `consumo/powerbi/pbir.js` (se hereda en los cuatro
+generadores) y en el tema registrado. **Sin commit**: Edwin decide al retomar.
+
+### Qué se hizo (y por qué)
+
+- **Sombra fuera:** estaba en el tema registrado (`PulsoIron.Report/StaticResources/RegisteredResources/ironnetwork-theme.json`,
+  `visualStyles.*.*.dropShadow`, del commit `b845f32`). Quedó `show: false`. Ojo: el tema
+  de `organizaciones/ironnetwork/powerbi/theme/` está desfasado del registrado; el que manda es el registrado.
+- **Navegador de páginas eliminado** (`navegador()` borrado de `pbir.js`): se navega con las
+  pestañas de Power BI. Encabezado compacto: título y corte a la izquierda (`wCol(6)`), empresa
+  activa arriba a la derecha alineada a la derecha.
+- **Espacio liberado al análisis:** constantes nuevas `BANDA = [64, 128]` (franja de
+  filtros/KPIs, antes los literales 88/152 repartidos en los generadores), `FILA = [192, 448, 704]`,
+  `ALTO = 240` (antes 216/464/712 y 232). Todo lo demás deriva de esas constantes.
+  En Oportunidades los tres bloques Línea/Categoría/Producto ahora reparten la columna hasta el
+  pie (`altoBloque`); antes medían 144 px y dejaban vacío el último tercio.
+- **Segmentadores:** tarjeta blanca con borde `GRILLA` y radio 8, rótulo en MAYÚSCULAS Segoe UI
+  Semibold 8 pt color pizarra, desplegable relleno `FILA_ALT`; listas verticales sobre blanco;
+  «Seleccionar todo» en los de selección múltiple.
+- **Lienzo blanco (lo hizo Edwin en Desktop):** `page.json › objects.background` con
+  `ThemeDataColor 0`. Se replicó en `escribirPaginas` para que una regeneración no lo borre.
+  **No se regeneró después**: lo que está en disco es lo que Edwin guardó.
+
+### Trampas nuevas
+
+- `items.outlineStyle: 'BottomOnly'` + `general.outlineColor` **no dibujan** subrayado en el
+  desplegable del slicer (probado en render); se retiró para no dejar configuración muerta.
+- `powerbi-report-author validate` ahora da 89 **errores** (34 `PBIR_FORMATTING_PROP_NESTED` en
+  `labels.backgroundColor` + 55 `PBIR_SLICER_HEIGHT_BELOW_FLOOR`). Son idénticos en `HEAD`
+  (validado sobre un `git archive`): el CLI se volvió más estricto, no son regresiones. El gate
+  propio (`validar_reporte.py`) pasa: 13 páginas, 233 visuales (246 − 13 navegadores).
+- Las capturas de `powerbi-desktop screenshot-all` incluyen el banner «grupos de cálculo deben
+  actualizarse», que tapa el título de la hoja: es de Desktop, se quita con «Actualizar ahora».
+
+### PENDIENTE: inconsistencias del fondo que dejó Edwin
+
+1. **Oportunidades** quedó sin fondo blanco y **Nuevos** tiene además `outspace` (papel tapiz)
+   blanco. Preguntar a Edwin si Oportunidades se le pasó y si quiere papel tapiz blanco en todas.
+2. Según la respuesta, ajustar `escribirPaginas` (agregar `outspace` si aplica) y regenerar las
+   cuatro familias: `node consumo/powerbi/generar_paginas_<ventas|clientes|inventario|cartera>.js organizaciones/ironnetwork/powerbi/PulsoIron.Report`
+   con Desktop **cerrado** o seguido de `powerbi-desktop reload`.
+
+### PENDIENTE: commit
+
+Hay ~300 archivos re-guardados por Desktop **antes** de esta sesión (bump de esquema 2.11→2.14,
+`lineageTag`, `active: true`, `diagramLayout.json` nuevo): ruido sin contenido. Sugerencia: un
+commit para el ruido de Desktop y otro para `pbir.js` + generadores + tema + `page.json` de esta sesión.
+
+---
+
 ## ══════ SESIÓN 29 (2026-10-17) — PULSOIRON PULIDO HOJA POR HOJA, QA DE CIFRAS Y ESTADO DE LOS COBROS — leer esto primero ══════
 
 Sesión de **calidad sobre lo construido**: sin páginas nuevas. Se definió un patrón visual en

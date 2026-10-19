@@ -57,3 +57,6 @@ infra/produccion/caddy_data/
 .DS_Store
 Thumbs.db
 organizaciones/*/powerbi.zip
+
+# Capturas y logs del MCP de Playwright
+.playwright-mcp/

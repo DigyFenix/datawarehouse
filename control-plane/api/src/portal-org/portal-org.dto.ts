@@ -20,6 +20,17 @@ export const crearTableroSchema = z.object({
   urlPublica: z.string().url().max(2000).startsWith('https://', 'la URL debe ser https'),
   orden: z.number().int().min(0).default(0),
   activo: z.boolean().default(true),
+  // Barra inferior de Power BI (flechas de página + «compartir», que expone el vínculo). Oculta por defecto.
+  mostrarBarra: z.boolean().default(false),
+  // Familia en el portal (Ventas, Inventario…): los tableros del mismo grupo se navegan como pestañas. Vacío = sin grupo.
+  grupo: z
+    .string()
+    .trim()
+    .max(60)
+    .nullable()
+    .optional()
+    // undefined se conserva (en un PATCH significa «no tocar»); vacío pasa a null.
+    .transform((v) => (v === undefined ? undefined : v || null)),
 });
 
 export const actualizarTableroSchema = crearTableroSchema.partial().omit({ clave: true });

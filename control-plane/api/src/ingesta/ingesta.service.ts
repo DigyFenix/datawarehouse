@@ -341,7 +341,8 @@ export class IngestaService {
     try {
       const r = await fetch(`${base}/${ruta}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        // El worker solo acepta al API admin (token compartido; vacío en local).
+        headers: { 'Content-Type': 'application/json', 'X-Worker-Token': process.env.WORKER_TOKEN ?? '' },
         body: JSON.stringify(cuerpo),
         signal: AbortSignal.timeout(timeoutMs),
       });

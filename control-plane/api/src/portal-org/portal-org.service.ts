@@ -33,10 +33,12 @@ export interface TableroPortal {
   urlPublica: string;
   orden: number;
   activo: boolean;
+  mostrarBarra: boolean;
+  grupo: string | null;
 }
 
 const COLUMNAS_TABLERO = `id, clave, nombre, descripcion, modulo,
-  url_publica AS "urlPublica", orden, activo`;
+  url_publica AS "urlPublica", orden, activo, mostrar_barra AS "mostrarBarra", grupo`;
 
 @Injectable()
 export class PortalOrgService {
@@ -203,6 +205,47 @@ export class PortalOrgService {
     };
   }
 
+  /**
+   * Restablece la contraseña de un usuario del portal de la organización —incluido
+   * su admin, que no tiene a nadie arriba que lo haga—. Genera una temporal, fuerza
+   * el cambio en el siguiente ingreso y la devuelve UNA sola vez: no se guarda ni
+   * se audita en claro.
+   *
+   * @throws 404 si la organización o el usuario no existen
+   */
+  async restablecerPassword(orgId: number, usuarioId: number, actor: Actor) {
+    const { pool } = await this.poolDeOrganizacion(orgId);
+    const temporal = randomBytes(9).toString('base64url'); // 12 caracteres
+    const hash = await argon2.hash(temporal);
+    const actualizado = await pool.query(
+      `UPDATE portal.usuarios
+          SET hash_password = $1, debe_cambiar_password = true, actualizado_en = now()
+        WHERE id = $2
+        RETURNING id, email, nombre`,
+      [hash, usuarioId],
+    );
+    const usuario = actualizado.rows[0] as { id: number; email: string; nombre: string } | undefined;
+    if (!usuario) throw new NotFoundException(`Usuario ${usuarioId} no encontrado`);
+
+    await pool.query(
+      `INSERT INTO portal.auditoria (usuario_email, accion, entidad, entidad_id, despues, ip)
+       VALUES ($1, 'restablecer_password', 'usuarios', $2, $3, $4)`,
+      [actor.email, String(usuarioId), JSON.stringify({ email: usuario.email }), actor.ip ?? null],
+    );
+    await this.auditoria.registrar({
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      ip: actor.ip,
+      organizacionId: orgId,
+      accion: 'restablecer_password',
+      entidad: 'portal_usuarios',
+      entidadId: `${orgId}:${usuarioId}`,
+      antes: null,
+      despues: { email: usuario.email },
+    });
+    return { email: usuario.email, passwordTemporal: temporal };
+  }
+
   // --- Tableros (URLs de Publish to Web, alta del proveedor) ---
 
   async listarTableros(orgId: number): Promise<TableroPortal[]> {
@@ -216,10 +259,10 @@ export class PortalOrgService {
   async crearTablero(orgId: number, dto: CrearTableroDto, actor: Actor): Promise<TableroPortal> {
     const { pool } = await this.poolDeOrganizacion(orgId);
     const resultado = await pool.query(
-      `INSERT INTO portal.tableros (clave, nombre, descripcion, url_publica, orden, activo)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO portal.tableros (clave, nombre, descripcion, url_publica, orden, activo, mostrar_barra, grupo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING ${COLUMNAS_TABLERO}`,
-      [dto.clave, dto.nombre, dto.descripcion ?? null, dto.urlPublica, dto.orden, dto.activo],
+      [dto.clave, dto.nombre, dto.descripcion ?? null, dto.urlPublica, dto.orden, dto.activo, dto.mostrarBarra, dto.grupo ?? null],
     );
     const tablero = resultado.rows[0] as TableroPortal;
     await this.auditarTablero(pool, orgId, actor, 'crear', tablero.id, null, tablero);
@@ -241,6 +284,9 @@ export class PortalOrgService {
               url_publica  = COALESCE($4, url_publica),
               orden        = COALESCE($5, orden),
               activo       = COALESCE($6, activo),
+              mostrar_barra = COALESCE($7, mostrar_barra),
+              -- grupo admite volver a NULL: se aplica solo si vino en el body ($8).
+              grupo        = CASE WHEN $8 THEN $9 ELSE grupo END,
               actualizado_en = now()
         WHERE id = $1
         RETURNING ${COLUMNAS_TABLERO}`,
@@ -251,6 +297,9 @@ export class PortalOrgService {
         dto.urlPublica ?? null,
         dto.orden ?? null,
         dto.activo ?? null,
+        dto.mostrarBarra ?? null,
+        dto.grupo !== undefined,
+        dto.grupo ?? null,
       ],
     );
     const tablero = resultado.rows[0] as TableroPortal;

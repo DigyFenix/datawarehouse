@@ -15,4 +15,7 @@ RUN pip install --no-cache-dir .
 EXPOSE 3010
 
 # Arranca el worker HTTP.
+# Sin root. UID 1000 = usuario `ubuntu` del servidor, dueño de ./transformacion (dbt escribe target/).
+RUN useradd --uid 1000 --create-home quilate
+USER 1000
 CMD ["uvicorn", "quilate_extraccion.worker:app", "--host", "0.0.0.0", "--port", "3010"]

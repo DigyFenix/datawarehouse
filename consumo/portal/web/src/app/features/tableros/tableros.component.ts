@@ -1,8 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
 import { TableroResumen } from '../../core/modelos';
+import { agruparTableros } from '../../core/tableros';
 import { TenantService } from '../../core/tenant.service';
 import { ToastService } from '../../core/toast.service';
 import { EmptyComponent } from '../../ui/empty.component';
@@ -25,24 +26,31 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
         <app-skeleton variante="tarjeta" [alto]="118"></app-skeleton>
       </div>
     } @else {
-      <div class="grid">
-        @for (t of tableros(); track t.id) {
-          <a class="tarjeta tablero" [routerLink]="['/', tenant.hash(), 'tableros', t.clave]">
-            <app-icon name="grafico" [size]="24"></app-icon>
-            <h3>{{ t.nombre }}</h3>
-            @if (t.descripcion) { <p>{{ t.descripcion }}</p> }
-          </a>
-        } @empty {
-          <div class="tarjeta vacio-caja">
-            <app-empty titulo="Sin tableros asignados">
-              Tu perfil aún no tiene tableros. Pide acceso al administrador de tu organización.
-            </app-empty>
+      @for (g of grupos(); track g.grupo) {
+        <section class="grupo">
+          @if (g.grupo || grupos().length > 1) { <h3 class="grupo__titulo">{{ g.grupo ?? 'Otros tableros' }}</h3> }
+          <div class="grid">
+            @for (t of g.tableros; track t.id) {
+              <a class="tarjeta tablero" [routerLink]="['/', tenant.hash(), 'tableros', t.clave]">
+                <app-icon name="grafico" [size]="24"></app-icon>
+                <h3>{{ t.nombre }}</h3>
+                @if (t.descripcion) { <p>{{ t.descripcion }}</p> }
+              </a>
+            }
           </div>
-        }
-      </div>
+        </section>
+      } @empty {
+        <div class="tarjeta vacio-caja">
+          <app-empty titulo="Sin tableros asignados">
+            Tu perfil aún no tiene tableros. Pide acceso al administrador de tu organización.
+          </app-empty>
+        </div>
+      }
     }
   `,
   styles: [`
+    .grupo { margin-bottom: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
+    .grupo__titulo { margin: 0; font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); }
     .tablero { display: flex; flex-direction: column; gap: 6px; padding: var(--sp-5); text-decoration: none; color: var(--text); }
     .tablero:hover { border-color: var(--brand-400); box-shadow: var(--sh-2); }
@@ -58,6 +66,7 @@ export class TablerosComponent {
 
   readonly tableros = signal<TableroResumen[]>([]);
   readonly cargando = signal(true);
+  readonly grupos = computed(() => agruparTableros(this.tableros()));
 
   constructor() {
     this.api.get<TableroResumen[]>('/tableros').subscribe({

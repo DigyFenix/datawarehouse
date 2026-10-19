@@ -1,84 +1,107 @@
 table DM_Producto
+	lineageTag: 5836def3-145a-4816-8724-66767f636abf
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: fc4d91e0-4ea4-47ac-aceb-876a34126584
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 9b777250-ee77-4690-8a2e-1a42725449b1
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column producto_codigo
 		dataType: string
+		lineageTag: dacf8b98-2388-4502-9385-8769a5cc1b83
 		summarizeBy: none
 		sourceColumn: producto_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: f025f974-c4b4-4534-bf44-0c2788bf9ffa
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column grupo_codigo
 		dataType: string
+		lineageTag: 0388cf27-5278-49b8-925e-470d8eb60d83
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column grupo_nombre
 		dataType: string
+		lineageTag: dde3f96a-e6fa-4f38-902a-66d704f82c47
 		summarizeBy: none
 		sourceColumn: grupo_nombre
 
 	column precio_lista
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: precio_lista
+		dataType: double
 		formatString: #,0.00
+		lineageTag: f03c0499-08b7-4832-b0a3-50acf9b4b742
+		summarizeBy: sum
+		sourceColumn: precio_lista
+
+		annotation SummarizationSetBy = Automatic
 
 	column unidad_medida
 		dataType: string
+		lineageTag: f4546b04-d175-48f4-b1df-c168222204bc
 		summarizeBy: none
 		sourceColumn: unidad_medida
 
 	column tipo_producto
 		dataType: string
+		lineageTag: 3c5e59f0-bc75-451d-a9ce-4ce61acf1f5b
 		summarizeBy: none
 		sourceColumn: tipo_producto
 
 	column activo
 		dataType: boolean
+		lineageTag: d4b45711-84ee-4ce6-9e06-4d084771ed9d
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 16ef2b08-1f48-4850-a78b-fbbbc319b53d
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: fa75e5f9-43e1-4a3b-9f57-e485f51fd05b
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: ff3115da-96ab-418e-8f3f-3298762d01fe
 		summarizeBy: none
 		sourceColumn: es_vigente
 
 	/// Alias legibles para encabezados de matrices.
 	column Producto = DM_Producto[nombre]
 		dataType: string
+		lineageTag: 99ab9924-563b-4a44-bde4-7ca136b719c6
 		summarizeBy: none
+
 	column Línea = DM_Producto[grupo_nombre]
 		dataType: string
+		lineageTag: c6368fa4-5ebc-405b-aa74-acfc7c154576
 		summarizeBy: none
 
 	partition DM_Producto = m
@@ -89,3 +112,4 @@ table DM_Producto
 				    Tabla = Origen{[Schema="oro",Item="dim_producto"]}[Data]
 				in
 				    Tabla
+

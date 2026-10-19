@@ -13,6 +13,7 @@ import { CanonicoModule } from './canonico/canonico.module';
 import { ConexionesModule } from './conexiones/conexiones.module';
 import { DrizzleModule } from './db/drizzle.module';
 import { GlosarioModule } from './glosario/glosario.module';
+import { ConfigController } from './config/config.controller';
 import { HealthController } from './health/health.controller';
 import { IngestaModule } from './ingesta/ingesta.module';
 import { MetricasModule } from './metricas/metricas.module';
@@ -43,7 +44,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     SociedadesModule,
     CanonicoModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, ConfigController],
   providers: [
     // Guards globales EN ORDEN: (1) autenticación + sesión fresca de BD,
     // (2) autorización por rol, (3) membresía por organización (cierre del IDOR).

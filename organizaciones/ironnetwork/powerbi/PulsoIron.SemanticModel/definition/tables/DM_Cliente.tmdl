@@ -1,159 +1,195 @@
 table DM_Cliente
+	lineageTag: 169ea896-a9a7-44e0-8a94-327f491fa9a3
 
 	column cliente_clave
 		dataType: int64
 		isHidden
+		lineageTag: 46a605ce-3b96-4090-8278-37932c8d675b
 		summarizeBy: none
 		sourceColumn: cliente_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: c64b765c-1c05-4809-88fe-739128aca97e
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cliente_codigo
 		dataType: string
+		lineageTag: 950858ee-4d97-4fa9-b956-fe91945277eb
 		summarizeBy: none
 		sourceColumn: cliente_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: 1083e100-8f90-45ee-a7f3-1b0a07c441d5
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column nit
 		dataType: string
+		lineageTag: f0a21744-e876-45bf-9ecb-bc3744a2bef7
 		summarizeBy: none
 		sourceColumn: nit
 
 	column grupo_codigo
 		dataType: string
+		lineageTag: a0facd55-0f7e-415c-9c7a-ccde4c571166
 		summarizeBy: none
 		sourceColumn: grupo_codigo
 
 	column condicion_pago_codigo
 		dataType: string
+		lineageTag: 2b563d4d-12c0-4f3e-93da-402aaf7464f1
 		summarizeBy: none
 		sourceColumn: condicion_pago_codigo
 
 	column limite_credito
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: limite_credito
+		dataType: double
 		formatString: #,0.00
+		lineageTag: bdb516cd-2472-4c6b-93f5-854def1413c8
+		summarizeBy: sum
+		sourceColumn: limite_credito
+
+		annotation SummarizationSetBy = Automatic
 
 	column pais
 		dataType: string
+		lineageTag: 01e1792b-452c-411e-ac30-17b60a3879d2
 		summarizeBy: none
 		sourceColumn: pais
 
 	column region
 		dataType: string
+		lineageTag: cfe95435-84ed-4df3-9bae-ebfe41509154
 		summarizeBy: none
 		sourceColumn: region
 
 	column es_tambien_proveedor
 		dataType: boolean
+		lineageTag: 095c16ce-d2a0-4e00-b905-1cd82164d50d
 		summarizeBy: none
 		sourceColumn: es_tambien_proveedor
 
 	column es_intercompania
 		dataType: boolean
+		lineageTag: 4b0f8b12-707b-47b5-bcc7-859e0d616404
 		summarizeBy: none
 		sourceColumn: es_intercompania
 
 	column activo
 		dataType: boolean
+		lineageTag: f1199373-50cd-4e5c-93c6-49d670959f41
 		summarizeBy: none
 		sourceColumn: activo
 
 	column clase_abc_actual
 		dataType: string
+		lineageTag: 7003c72f-5b4d-4049-863a-0ad7faa41d63
 		summarizeBy: none
 		sourceColumn: clase_abc_actual
 
 	column clase_abc_actual_nombre
 		dataType: string
+		lineageTag: cc3e0aca-b703-4170-aa83-62ca0df86873
 		summarizeBy: none
 		sourceColumn: clase_abc_actual_nombre
 
 	column segmento_rfm_actual
 		dataType: string
+		lineageTag: a3fb3bfc-667a-49ed-a32c-ec8c2c3a8bbe
 		summarizeBy: none
 		sourceColumn: segmento_rfm_actual
 
 	column perfil_riesgo_actual
 		dataType: string
+		lineageTag: 991fd92f-0b45-4e4d-951c-8503bb0384d4
 		summarizeBy: none
 		sourceColumn: perfil_riesgo_actual
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 14c34cb5-9f0f-4fbd-b71b-ae2acf0bc1c7
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: dea6a789-7a98-4e1b-9e9a-735511805e5c
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: c836b2d7-f81a-4cbe-b15f-c4e6588fe827
 		summarizeBy: none
 		sourceColumn: es_vigente
 
 	/// Alias legibles para encabezados de matrices (las columnas físicas conservan su nombre).
 	column Cliente = DM_Cliente[nombre]
 		dataType: string
+		lineageTag: 63cf0425-d111-4b28-8f2a-22d2623f623b
 		summarizeBy: none
 
 	column Clase = DM_Cliente[clase_abc_actual_nombre]
 		dataType: string
+		lineageTag: 55e1dc36-fb78-409b-b465-fdcb5ad09fa0
 		summarizeBy: none
 
 	/// Meses distintos con compra en los últimos 12 meses al corte.
 	column 'Meses con compra 12m' = VAR fin = CALCULATE(MAX(FC_Ventas[fecha_documento]), REMOVEFILTERS()) VAR e = EDATE(fin, -11) VAR ini = DATE(YEAR(e), MONTH(e), 1) RETURN CALCULATE(DISTINCTCOUNT(FC_Ventas[mes_documento]), FC_Ventas[fecha_documento] >= ini && FC_Ventas[fecha_documento] <= fin)
 		dataType: int64
 		formatString: 0
+		lineageTag: 7dc15e02-817a-45be-a05e-095341e0ee42
 		summarizeBy: none
 
 	/// Rango de frecuencia (meses con compra en 12): 1-3 · 4-6 · 7-9 · 10-12.
 	column 'Rango de meses con compra' = VAR n = DM_Cliente[Meses con compra 12m] RETURN SWITCH(TRUE(), ISBLANK(n) || n = 0, "0", n <= 3, "1-3", n <= 6, "4-6", n <= 9, "7-9", "10-12")
 		dataType: string
+		lineageTag: f99a4f81-a593-49f7-ad28-325a9c31439a
 		summarizeBy: none
 		sortByColumn: 'Rango de meses con compra orden'
 
 	column 'Rango de meses con compra orden' = VAR n = DM_Cliente[Meses con compra 12m] RETURN SWITCH(TRUE(), ISBLANK(n) || n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 9, 3, 4)
 		dataType: int64
 		isHidden
+		lineageTag: 591b4ddf-8979-4a09-a729-df47b6f8446b
 		summarizeBy: none
 
 	/// Meses consecutivos sin compra al corte (desde la última compra).
 	column 'Meses sin compra' = VAR fin = CALCULATE(MAX(FC_Ventas[fecha_documento]), REMOVEFILTERS()) VAR u = CALCULATE(MAX(FC_Ventas[fecha_documento])) RETURN IF(ISBLANK(u), BLANK(), DATEDIFF(u, fin, MONTH))
 		dataType: int64
 		formatString: 0
+		lineageTag: a4f0c7ad-e952-4e9b-a9a0-e3ddea2c4d5d
 		summarizeBy: none
 
 	/// Rango de abandono (meses sin compra): 0 · 1-3 · 4-6 · 7-12 · +12.
 	column 'Rango de meses sin compra' = VAR n = DM_Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), "Sin compra", n = 0, "0 meses", n <= 3, "1-3 meses", n <= 6, "4-6 meses", n <= 12, "7-12 meses", "+12 meses")
 		dataType: string
+		lineageTag: 390183b7-217c-469a-8500-244d24cff9af
 		summarizeBy: none
 		sortByColumn: 'Rango de meses sin compra orden'
 
 	column 'Rango de meses sin compra orden' = VAR n = DM_Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), 9, n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 12, 3, 4)
 		dataType: int64
 		isHidden
+		lineageTag: 3b7df0a2-29b1-44ad-a599-c3be4d8906c5
 		summarizeBy: none
 
 	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días). Si la ficha no la trae (en Odoo casi nunca), se toma la de su última factura, para que cartera y utilidad digan lo mismo que ventas.
 	column Sector = VAR directo = LOOKUPVALUE('DM_Condición de pago'[nombre], 'DM_Condición de pago'[condicion_pago_codigo], DM_Cliente[condicion_pago_codigo], 'DM_Condición de pago'[empresa_id], DM_Cliente[empresa_id]) VAR ultima = MAXX(TOPN(1, CALCULATETABLE(FC_Ventas), FC_Ventas[fecha_documento], DESC), FC_Ventas[condicion_pago_clave]) VAR porFactura = LOOKUPVALUE('DM_Condición de pago'[nombre], 'DM_Condición de pago'[condicion_pago_clave], ultima) RETURN COALESCE(directo, porFactura, "Sin condición")
 		dataType: string
+		lineageTag: 987da73a-57ea-4163-bd4b-5a5ae75347f4
 		summarizeBy: none
 
 	partition DM_Cliente = m
@@ -164,3 +200,4 @@ table DM_Cliente
 				    Tabla = Origen{[Schema="oro",Item="dim_cliente"]}[Data]
 				in
 				    Tabla
+

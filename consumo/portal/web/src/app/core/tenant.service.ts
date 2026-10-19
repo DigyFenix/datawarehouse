@@ -18,10 +18,14 @@ export class TenantService {
 
   private readonly _hash = signal<string | null>(null);
   private readonly _branding = signal<Branding | null>(null);
+  private readonly _logoAncho = signal(false);
 
   readonly hash = this._hash.asReadonly();
   readonly branding = this._branding.asReadonly();
   readonly nombre = computed(() => this._branding()?.nombre ?? 'Portal');
+  /** Logo horizontal (wordmark): ya trae el nombre, se muestra grande y sin repetirlo. */
+  readonly logoAncho = this._logoAncho.asReadonly();
+  readonly moduloAsistente = computed(() => this._branding()?.moduloAsistente ?? false);
   readonly logoUrl = computed(() => {
     const hash = this._hash();
     return hash && this._branding()?.tieneLogo ? `${environment.apiUrl}/t/${hash}/logo` : null;
@@ -49,6 +53,12 @@ export class TenantService {
         document.title = `${b.nombre} — Portal`;
       }),
     );
+  }
+
+  /** Mide el logo al cargar: más de 1.6 de ancho por alto se trata como wordmark. */
+  medirLogo(evento: Event): void {
+    const img = evento.target as HTMLImageElement;
+    if (img.naturalHeight > 0) this._logoAncho.set(img.naturalWidth / img.naturalHeight > 1.6);
   }
 
   /** Hash actual para construir rutas de la API. @throws si no hay tenant activo. */

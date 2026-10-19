@@ -65,12 +65,16 @@ WHERE clave = 'admin_portal';
 DELETE FROM gobierno.roles
  WHERE clave IN ('data_owner','data_steward','data_engineer','bi_architect','usuario_negocio');
 
+-- Lo que importa es que no quede ningún rol fuera de los dos. En una instalación limpia
+-- esta migración corre ANTES que los seeds y admin_portal todavía no existe (lo siembra
+-- seeds/30_roles.sql), así que se valida «ningún intruso», no «exactamente dos».
 DO $$
-DECLARE quedan int;
+DECLARE intrusos int;
 BEGIN
-  SELECT count(*) INTO quedan FROM gobierno.roles;
-  IF quedan <> 2 THEN
-    RAISE EXCEPTION 'Se esperaban 2 roles en el plano de control, hay %', quedan;
+  SELECT count(*) INTO intrusos FROM gobierno.roles
+   WHERE clave NOT IN ('admin_portal', 'admin_organizacion');
+  IF intrusos > 0 THEN
+    RAISE EXCEPTION 'Quedan % roles fuera de admin_portal/admin_organizacion', intrusos;
   END IF;
   RAISE NOTICE 'Plano de control con dos roles: plataforma y organización';
 END $$;

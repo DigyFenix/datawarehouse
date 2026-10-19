@@ -2167,13 +2167,13 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += rf"""
 		formatString: "Q" #,0
 		displayFolder: 10 Seguimiento
 
-	/// Curva acumulada del mes día a día (eje = día del mes). Respeta el mes elegido en el segmentador y acumula hasta el día del eje. Con más de un mes seleccionado suma los días homólogos de todos: elegir UN mes.
+	/// Curva acumulada del mes día a día (eje = día del mes). Respeta los meses elegidos en el segmentador y acumula hasta el día del eje. Con varios meses seleccionados suma los días homólogos de todos (día 5 = la suma de los días 1 a 5 de cada mes).
 	measure 'Venta acumulada del mes al día' = VAR d = MAX(Calendario[dia]) RETURN CALCULATE([Ventas netas], FILTER(ALLSELECTED(Calendario[dia]), Calendario[dia] <= d))
 		formatString: "Q" #,0
 		displayFolder: 10 Seguimiento
 
-	/// La misma curva acumulada, del mismo mes del año anterior. Es la línea de referencia del "Venta del mes": si la curva de este año va por debajo a mitad de mes, se sabe antes del cierre.
-	measure 'Venta acumulada del mes al día año anterior' = VAR d = MAX(Calendario[dia]) VAR a = MAX(Calendario[anio]) VAR m = MAX(Calendario[mes]) RETURN CALCULATE([Ventas netas], FILTER(ALL(Calendario), Calendario[anio] = a - 1 && Calendario[mes] = m && Calendario[dia] <= d))
+	/// La misma curva acumulada, de los mismos meses del año anterior. Es la línea de referencia del "Venta del mes": si la curva de este año va por debajo a mitad de mes, se sabe antes del cierre. Con DATEADD funciona igual con uno o varios meses elegidos (antes tomaba solo el último mes).
+	measure 'Venta acumulada del mes al día año anterior' = VAR d = MAX(Calendario[dia]) RETURN CALCULATE([Ventas año anterior], FILTER(ALLSELECTED(Calendario[dia]), Calendario[dia] <= d))
 		formatString: "Q" #,0
 		displayFolder: 10 Seguimiento
 
@@ -2625,13 +2625,13 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 		formatString: #,0
 		displayFolder: 14 Inventario
 
-	/// Cuánto comprar: si la existencia está bajo el punto de pedido, lo que falta para el stock máximo.
-	measure 'Sugerencia de compra' = VAR e = COALESCE([Unidades en existencia], 0) VAR pp = [Punto de pedido] RETURN IF(NOT ISBLANK(pp) && pp > 0 && e < pp, [Stock máximo] - e, BLANK())
+	/// Cuánto comprar: si la existencia está bajo el punto de pedido, lo que falta para el stock máximo. Se decide producto por producto y se suma: en un total (línea, bodega, KPI) evaluar la regla sobre el agregado daba BLANK aunque hubiera cientos de productos bajo su punto de pedido.
+	measure 'Sugerencia de compra' = SUMX(VALUES(Producto[producto_clave]), VAR e = COALESCE([Unidades en existencia], 0) VAR pp = [Punto de pedido] RETURN IF(NOT ISBLANK(pp) && pp > 0 && e < pp, [Stock máximo] - e, BLANK()))
 		formatString: #,0
 		displayFolder: 14 Inventario
 
-	/// Monto de la sugerencia al costo unitario actual del producto.
-	measure 'Monto de sugerencia de compra' = [Sugerencia de compra] * COALESCE([Costo promedio ponderado], CALCULATE(MAX('Análisis de producto'[costo_unitario_actual])))
+	/// Monto de la sugerencia al costo unitario actual de CADA producto, sumado (mismo motivo que la sugerencia: el costo del agregado no es el de ningún producto).
+	measure 'Monto de sugerencia de compra' = SUMX(VALUES(Producto[producto_clave]), [Sugerencia de compra] * COALESCE([Costo promedio ponderado], CALCULATE(MAX('Análisis de producto'[costo_unitario_actual]))))
 		formatString: "Q" #,0
 		displayFolder: 14 Inventario
 
@@ -3439,8 +3439,18 @@ def main() -> int:
     (defi / "relationships.tmdl").write_text("\n".join(rels), encoding="utf-8")
 
     # ---------------- parámetros de conexión ----------------
+    # El servidor PUBLICADO (p. ej. ironnetwork.digyfenix.com) se conserva: el host de esta
+    # corrida es solo de dónde se lee el esquema (normalmente localhost). Pisarlo haría que el
+    # modelo republicado apunte a la PC de desarrollo y rompería el refresco del gateway.
+    servidor = host
+    previo = defi / "expressions.tmdl"
+    if previo.exists():
+        hallado = re.search(r'expression Servidor = "([^"]+)"', previo.read_text(encoding="utf-8"))
+        if hallado and os.environ.get("PBI_SERVIDOR") is None:
+            servidor = hallado.group(1)
+    servidor = os.environ.get("PBI_SERVIDOR", servidor)
     (defi / "expressions.tmdl").write_text(
-        'expression Servidor = "' + host + '" meta [IsParameterQuery=true, Type="Text", '
+        'expression Servidor = "' + servidor + '" meta [IsParameterQuery=true, Type="Text", '
         'IsParameterQueryRequired=true]\n'
         "\tlineageTag: par-servidor\n\n"
         'expression BaseDatos = "' + base + '" meta [IsParameterQuery=true, Type="Text", '

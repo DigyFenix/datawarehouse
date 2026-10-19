@@ -1,6 +1,7 @@
 {% macro aplicar_rls_oro() %}
 {#
-  RLS de Oro para el rol de consumo gobernado `portal_lector` (agente de IA).
+  RLS de Oro para el rol de consumo gobernado `portal_lector` (agente de IA), y GRANT de
+  lectura para los roles de aplicación de producción (pbi_lector, portal_app).
 
   Se aplica como POST-HOOK a nivel de carpeta oro (dbt_project.yml): cada `dbt build`
   recrea las tablas y sus policies con ellas — todo modelo oro futuro queda cubierto
@@ -26,6 +27,18 @@
   {% set sql %}
     do $rls$
     begin
+      -- Roles de aplicación (producción, init 04): dbt recrea la tabla en cada build y
+      -- con ella se pierden los GRANT, así que se re-otorgan aquí. pbi_lector (gateway de
+      -- Power BI) lee todo oro; portal_app solo las dos tablas que usa el portal.
+      if exists (select 1 from pg_roles where rolname = 'pbi_lector') then
+        execute 'grant select on {{ relacion }} to pbi_lector';
+      end if;
+      {% if relacion.identifier in ['estado_carga', 'dim_organizacion'] %}
+      if exists (select 1 from pg_roles where rolname = 'portal_app') then
+        execute 'grant select on {{ relacion }} to portal_app';
+      end if;
+      {% endif %}
+
       if not exists (select 1 from pg_roles where rolname = 'portal_lector') then
         return; -- entorno sin rol de consumo (p. ej. build local minimalista): no aplica RLS
       end if;

@@ -1,251 +1,327 @@
 table 'DM_Análisis de producto'
+	lineageTag: 8177854f-8a66-4c76-8a28-52c91956ea29
+
+	/// Dinero parado: productos que SÍ se vendieron alguna vez, tienen existencia, y llevan más de 90 días sin facturarse. Es la primera lista que debería recibir compras. Usa TREATAS porque la relación con Producto es unidireccional: el filtro de la ficha se aplica explícitamente y solo donde esta medida lo necesita, sin propagación global.
+	measure 'Valor de inventario ocioso' = CALCULATE([Valor de inventario], TREATAS(CALCULATETABLE(VALUES('DM_Análisis de producto'[producto_clave]), KEEPFILTERS('DM_Análisis de producto'[es_ocioso] = TRUE)), DM_Producto[producto_clave]))
+		formatString: "Q" #,0
+		displayFolder: 01 Inventario muerto
+		lineageTag: 38caaaea-130e-4006-915e-1aa0124bc7e9
+
+	/// Artículos con existencia que se vendieron alguna vez y llevan más de 90 días parados.
+	measure 'Productos ociosos' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[es_ocioso] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Inventario muerto
+		lineageTag: 60f8e244-065c-4a44-86cf-38c13c5e02af
+
+	/// Qué parte del valor en bodega está muerto y es accionable.
+	measure '% Inventario ocioso' = DIVIDE([Valor de inventario ocioso], [Valor de inventario])
+		formatString: 0.0%
+		displayFolder: 01 Inventario muerto
+		lineageTag: 2a0eb060-de70-49ee-9fac-60dfb39cd883
+
+	/// Existencia de artículos que NUNCA se han facturado. En una comercializadora es alarma; en una productora es insumo normal (alimento, medicina, empaque) que se consume sin pasar por una factura. Se separa del ocioso justamente para no confundir las dos cosas.
+	measure 'Valor sin rotación comercial' = CALCULATE([Valor de inventario], TREATAS(CALCULATETABLE(VALUES('DM_Análisis de producto'[producto_clave]), KEEPFILTERS('DM_Análisis de producto'[es_sin_rotacion_comercial] = TRUE)), DM_Producto[producto_clave]))
+		formatString: "Q" #,0
+		displayFolder: 01 Inventario muerto
+		lineageTag: cd7610d6-5a62-4cae-9a25-f1d93bf2d5eb
+
+	/// Artículos con existencia que NUNCA se facturaron. En una productora son insumos normales; en una comercializadora, alarma.
+	measure 'Productos sin rotación comercial' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[es_sin_rotacion_comercial] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Inventario muerto
+		lineageTag: 25d93f67-ed48-441a-9772-5f540a5f543c
+
+	/// Productos con demanda en los últimos 30 días y CERO existencia hoy: venta que se está perdiendo ahora mismo.
+	measure 'Productos en quiebre' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[es_quiebre] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Quiebre de stock
+		lineageTag: 40ff62f5-aa16-4c5c-ba39-0057cd1f492c
+
+	/// Cuánto facturaron en 12 meses los productos que hoy están agotados. Dimensiona lo que está en juego mientras no se reponga.
+	measure 'Venta anual en riesgo por quiebre' = CALCULATE(SUM('DM_Análisis de producto'[venta_12m]), KEEPFILTERS('DM_Análisis de producto'[es_quiebre] = TRUE))
+		formatString: "Q" #,0
+		displayFolder: 02 Quiebre de stock
+		lineageTag: e0675ddd-95e2-45e7-942d-a55a768d9ac2
+
+	/// Cuántos días de venta cubre la existencia al ritmo de los últimos 12 meses.
+	measure 'Cobertura promedio en días' = AVERAGE('DM_Análisis de producto'[dias_cobertura])
+		formatString: #,0
+		displayFolder: 03 Cobertura
+		lineageTag: 37c6cb69-0364-42f8-b7d0-c52a7452da86
+
+	/// Artículos del catálogo sin nada en bodega hoy.
+	measure 'Productos sin existencia' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[stock_cantidad] <= 0))
+		formatString: #,0
+		displayFolder: 03 Cobertura
+		lineageTag: 6de5ae6a-dce5-4096-8a0a-daf28f789e38
+
+	/// Cuántos artículos hacen el 80% de la venta. Sobre estos se cuida el nivel de servicio; el resto puede esperar.
+	measure 'Productos A' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "A"))
+		formatString: #,0
+		displayFolder: 04 Concentración
+		lineageTag: 55211d9c-b229-447d-bd9a-37323b62cb32
+
+	/// Artículos del tramo intermedio de la venta.
+	measure 'Productos B' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "B"))
+		formatString: #,0
+		displayFolder: 04 Concentración
+		lineageTag: 484a576e-5116-4e90-9aa2-a730f19f9228
+
+	/// Cola larga del catálogo: poca venta y, con frecuencia, mucha bodega.
+	measure 'Productos C' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "C"))
+		formatString: #,0
+		displayFolder: 04 Concentración
+		lineageTag: 5772de23-527a-45bc-8d4d-1eb0d4308fc2
+
+	/// Concentración de la venta en los artículos clave.
+	measure '% Venta en productos A' = DIVIDE(CALCULATE(SUM('DM_Análisis de producto'[venta_12m]), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "A")), SUM('DM_Análisis de producto'[venta_12m]))
+		formatString: 0.0%
+		displayFolder: 04 Concentración
+		lineageTag: 1f8039c7-407e-4bdb-9bb5-a276ced5b1ef
+
+	/// Inventario inmovilizado en artículos de cola larga: lo que menos vende ocupando bodega.
+	measure 'Inventario en productos C' = CALCULATE([Valor de inventario], TREATAS(CALCULATETABLE(VALUES('DM_Análisis de producto'[producto_clave]), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "C")), DM_Producto[producto_clave]))
+		formatString: "Q" #,0
+		displayFolder: 04 Concentración
+		lineageTag: 13fe8ee9-7774-4ce3-84a7-d610796ba49f
+
+	/// Texto del foco de quiebre (página 01). La venta anual que depende de productos hoy agotados: demanda de los últimos 12 meses concentrada en artículos sin existencia.
+	measure 'Alerta de quiebre' = VAR v = [Venta anual en riesgo por quiebre] VAR n = [Productos en quiebre] RETURN IF(ISBLANK(v) || v = 0, "Sin venta en riesgo por quiebre", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " de venta anual en riesgo · " & FORMAT(n, "#,0") & IF(n = 1, " producto agotado", " productos agotados"))
+		displayFolder: _Narrativa
+		lineageTag: 8fd4a160-cb55-4c79-a13c-de31cb0d9ad6
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 4a342013-ed51-435d-9292-38b4459f3497
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column producto_clave
 		dataType: int64
 		isHidden
+		lineageTag: 791d6f75-6a5b-4673-b58e-03a88e61f9da
 		summarizeBy: none
 		sourceColumn: producto_clave
 
 	column es_servicio
 		dataType: boolean
+		lineageTag: c513d944-24bb-42a4-a32f-bd436ff4ecfa
 		summarizeBy: none
 		sourceColumn: es_servicio
 
 	column ultima_venta
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 00354ca4-8dc7-4b1c-b24a-aac08925f7f7
 		summarizeBy: none
 		sourceColumn: ultima_venta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column primera_venta
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 9df2ae23-9c71-4400-8b0d-a056e0054a44
 		summarizeBy: none
 		sourceColumn: primera_venta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column dias_desde_ultima_venta
 		dataType: int64
+		formatString: #,0
+		lineageTag: f7b4fe73-572c-440e-a6c8-8a6450ac0e69
 		summarizeBy: none
 		sourceColumn: dias_desde_ultima_venta
-		formatString: #,0
 
 	column venta_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: venta_12m
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 59bc00be-ec5a-4941-bccf-780b7701b16e
+		summarizeBy: sum
+		sourceColumn: venta_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column venta_12m_terceros
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: venta_12m_terceros
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 5b751448-935b-4cbd-b7ba-d3cc02d8bf08
+		summarizeBy: sum
+		sourceColumn: venta_12m_terceros
+
+		annotation SummarizationSetBy = Automatic
 
 	column unidades_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: unidades_12m
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 3a98f331-a55f-49c6-b505-2b572d63f283
+		summarizeBy: sum
+		sourceColumn: unidades_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column costo_ventas_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: costo_ventas_12m
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 9db297fd-3b85-42a3-87ea-b034fed1f160
+		summarizeBy: sum
+		sourceColumn: costo_ventas_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column margen_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: margen_12m
+		dataType: double
 		formatString: #,0.00
+		lineageTag: a5fc1211-ae2e-4b78-9cc7-6d55d6fd98c0
+		summarizeBy: sum
+		sourceColumn: margen_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column lineas_12m
 		dataType: int64
+		formatString: #,0
+		lineageTag: 459a918d-660f-4a7d-bd1f-c8ac581ba83d
 		summarizeBy: none
 		sourceColumn: lineas_12m
-		formatString: #,0
 
 	column margen_pct_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: margen_pct_12m
+		dataType: double
 		formatString: #,0.00
+		lineageTag: ab68c948-8141-4260-b291-93bcc5a5a1c6
+		summarizeBy: sum
+		sourceColumn: margen_pct_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column stock_cantidad
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: stock_cantidad
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 853ce729-4486-40da-9352-0720b240e82d
+		summarizeBy: sum
+		sourceColumn: stock_cantidad
+
+		annotation SummarizationSetBy = Automatic
 
 	column stock_valor
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: stock_valor
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 46525678-e9b8-4b40-bf36-32b49f433d90
+		summarizeBy: sum
+		sourceColumn: stock_valor
+
+		annotation SummarizationSetBy = Automatic
 
 	column almacenes_con_existencia
 		dataType: int64
+		formatString: #,0
+		lineageTag: 83d43ebf-345b-400a-8333-2ddb5d63d846
 		summarizeBy: none
 		sourceColumn: almacenes_con_existencia
-		formatString: #,0
 
 	column costo_unitario_actual
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: costo_unitario_actual
+		dataType: double
 		formatString: #,0.00
+		lineageTag: bbb077ad-32f3-4971-af42-0606ceabef69
+		summarizeBy: sum
+		sourceColumn: costo_unitario_actual
+
+		annotation SummarizationSetBy = Automatic
 
 	column rotacion_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: rotacion_12m
+		dataType: double
 		formatString: #,0.00
+		lineageTag: ca03093b-50c4-42d4-bf81-d286f104f547
+		summarizeBy: sum
+		sourceColumn: rotacion_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column dias_cobertura
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: dias_cobertura
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 8661659b-3c85-49b5-9c03-915fafffb9ca
+		summarizeBy: sum
+		sourceColumn: dias_cobertura
+
+		annotation SummarizationSetBy = Automatic
 
 	column ranking_venta_12m
 		dataType: int64
+		formatString: #,0
+		lineageTag: 796d699d-bae9-4c0c-aab1-437a6ee44932
 		summarizeBy: none
 		sourceColumn: ranking_venta_12m
-		formatString: #,0
 
 	column participacion_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: participacion_12m
+		dataType: double
 		formatString: 0.0%
+		lineageTag: 76701b53-f2fd-4cd2-b7b5-392e77673ee3
+		summarizeBy: sum
+		sourceColumn: participacion_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column participacion_acumulada_12m
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: participacion_acumulada_12m
+		dataType: double
 		formatString: 0.0%
+		lineageTag: a53648a4-c5df-42bc-b6e8-63d65f57d76a
+		summarizeBy: sum
+		sourceColumn: participacion_acumulada_12m
+
+		annotation SummarizationSetBy = Automatic
 
 	column clase_abc_producto
 		dataType: string
+		lineageTag: 9ad5610b-5e18-499e-8388-2aadb9f8ccf1
 		summarizeBy: none
 		sourceColumn: clase_abc_producto
 
 	column clase_abc_producto_nombre
 		dataType: string
+		lineageTag: 16f433c9-1b6f-4069-aa92-b999a651efa8
 		summarizeBy: none
 		sourceColumn: clase_abc_producto_nombre
 
 	column es_ocioso
 		dataType: boolean
+		lineageTag: adacf41c-28c6-446b-aeec-c12b49759d77
 		summarizeBy: none
 		sourceColumn: es_ocioso
 
 	column es_sin_rotacion_comercial
 		dataType: boolean
+		lineageTag: 9fd1eadd-e051-48ea-aa6f-bb0ae8eac437
 		summarizeBy: none
 		sourceColumn: es_sin_rotacion_comercial
 
 	column es_quiebre
 		dataType: boolean
+		lineageTag: d13dc47b-0aab-4738-b99b-163987326d84
 		summarizeBy: none
 		sourceColumn: es_quiebre
 
 	column estado_producto
 		dataType: string
+		lineageTag: e9d7aad1-22c4-4a66-b0f5-06a1a8a49369
 		summarizeBy: none
 		sourceColumn: estado_producto
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: 4299b36d-017e-4a0c-92b2-3c2f8f011149
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: dd28cb8b-f47f-4369-934f-7702d90d15d5
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Dinero parado: productos que SÍ se vendieron alguna vez, tienen existencia, y llevan más de 90 días sin facturarse. Es la primera lista que debería recibir compras. Usa TREATAS porque la relación con Producto es unidireccional: el filtro de la ficha se aplica explícitamente y solo donde esta medida lo necesita, sin propagación global.
-	measure 'Valor de inventario ocioso' = CALCULATE([Valor de inventario], TREATAS(CALCULATETABLE(VALUES('DM_Análisis de producto'[producto_clave]), KEEPFILTERS('DM_Análisis de producto'[es_ocioso] = TRUE)), DM_Producto[producto_clave]))
-		formatString: "Q" #,0
-		displayFolder: 01 Inventario muerto
-
-	/// Artículos con existencia que se vendieron alguna vez y llevan más de 90 días parados.
-	measure 'Productos ociosos' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[es_ocioso] = TRUE))
-		formatString: #,0
-		displayFolder: 01 Inventario muerto
-
-	/// Qué parte del valor en bodega está muerto y es accionable.
-	measure '% Inventario ocioso' = DIVIDE([Valor de inventario ocioso], [Valor de inventario])
-		formatString: 0.0%
-		displayFolder: 01 Inventario muerto
-
-	/// Existencia de artículos que NUNCA se han facturado. En una comercializadora es alarma; en una productora es insumo normal (alimento, medicina, empaque) que se consume sin pasar por una factura. Se separa del ocioso justamente para no confundir las dos cosas.
-	measure 'Valor sin rotación comercial' = CALCULATE([Valor de inventario], TREATAS(CALCULATETABLE(VALUES('DM_Análisis de producto'[producto_clave]), KEEPFILTERS('DM_Análisis de producto'[es_sin_rotacion_comercial] = TRUE)), DM_Producto[producto_clave]))
-		formatString: "Q" #,0
-		displayFolder: 01 Inventario muerto
-
-	/// Artículos con existencia que NUNCA se facturaron. En una productora son insumos normales; en una comercializadora, alarma.
-	measure 'Productos sin rotación comercial' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[es_sin_rotacion_comercial] = TRUE))
-		formatString: #,0
-		displayFolder: 01 Inventario muerto
-
-	/// Productos con demanda en los últimos 30 días y CERO existencia hoy: venta que se está perdiendo ahora mismo.
-	measure 'Productos en quiebre' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[es_quiebre] = TRUE))
-		formatString: #,0
-		displayFolder: 02 Quiebre de stock
-
-	/// Cuánto facturaron en 12 meses los productos que hoy están agotados. Dimensiona lo que está en juego mientras no se reponga.
-	measure 'Venta anual en riesgo por quiebre' = CALCULATE(SUM('DM_Análisis de producto'[venta_12m]), KEEPFILTERS('DM_Análisis de producto'[es_quiebre] = TRUE))
-		formatString: "Q" #,0
-		displayFolder: 02 Quiebre de stock
-
-	/// Cuántos días de venta cubre la existencia al ritmo de los últimos 12 meses.
-	measure 'Cobertura promedio en días' = AVERAGE('DM_Análisis de producto'[dias_cobertura])
-		formatString: #,0
-		displayFolder: 03 Cobertura
-
-	/// Artículos del catálogo sin nada en bodega hoy.
-	measure 'Productos sin existencia' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[stock_cantidad] <= 0))
-		formatString: #,0
-		displayFolder: 03 Cobertura
-
-	/// Cuántos artículos hacen el 80% de la venta. Sobre estos se cuida el nivel de servicio; el resto puede esperar.
-	measure 'Productos A' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "A"))
-		formatString: #,0
-		displayFolder: 04 Concentración
-
-	/// Artículos del tramo intermedio de la venta.
-	measure 'Productos B' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "B"))
-		formatString: #,0
-		displayFolder: 04 Concentración
-
-	/// Cola larga del catálogo: poca venta y, con frecuencia, mucha bodega.
-	measure 'Productos C' = CALCULATE(COUNTROWS('DM_Análisis de producto'), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "C"))
-		formatString: #,0
-		displayFolder: 04 Concentración
-
-	/// Concentración de la venta en los artículos clave.
-	measure '% Venta en productos A' = DIVIDE(CALCULATE(SUM('DM_Análisis de producto'[venta_12m]), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "A")), SUM('DM_Análisis de producto'[venta_12m]))
-		formatString: 0.0%
-		displayFolder: 04 Concentración
-
-	/// Inventario inmovilizado en artículos de cola larga: lo que menos vende ocupando bodega.
-	measure 'Inventario en productos C' = CALCULATE([Valor de inventario], TREATAS(CALCULATETABLE(VALUES('DM_Análisis de producto'[producto_clave]), KEEPFILTERS('DM_Análisis de producto'[clase_abc_producto] = "C")), DM_Producto[producto_clave]))
-		formatString: "Q" #,0
-		displayFolder: 04 Concentración
-
-	/// Texto del foco de quiebre (página 01). La venta anual que depende de productos hoy agotados: demanda de los últimos 12 meses concentrada en artículos sin existencia.
-	measure 'Alerta de quiebre' = VAR v = [Venta anual en riesgo por quiebre] VAR n = [Productos en quiebre] RETURN IF(ISBLANK(v) || v = 0, "Sin venta en riesgo por quiebre", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))) & " de venta anual en riesgo · " & FORMAT(n, "#,0") & IF(n = 1, " producto agotado", " productos agotados"))
-		displayFolder: _Narrativa
 
 	partition 'DM_Análisis de producto' = m
 		mode: import
@@ -255,3 +331,4 @@ table 'DM_Análisis de producto'
 				    Tabla = Origen{[Schema="oro",Item="analisis_producto"]}[Data]
 				in
 				    Tabla
+

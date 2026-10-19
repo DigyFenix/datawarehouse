@@ -7,7 +7,7 @@
 // Solo reescribe sus propias páginas; las demás conservan su lugar en pages.json.
 'use strict';
 const P = require('./pbir');
-const { T, C, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, mapa, matriz, marcadoresFinos, ejeValores, ejeCategoria, bloqueMoneda, columnasMensuales, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, bool, color, meta, vcTitulo } = P;
+const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, mapa, matriz, marcadoresFinos, ejeValores, ejeCategoria, bloqueMoneda, columnasMensuales, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, bool, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
 const hoy = new Date();
@@ -22,8 +22,8 @@ function pagina01() {
   vs.push(...encabezado(slug, 'Título de Histórico de ventas', 'Subtítulo de corte anual'));
 
   // --- KPIs: empresa + año · resultado del año · moneda
-  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), 152, wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[1], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
   vs.push(kpis(slug, 'resultado-anio', [
     [T.VENTAS, 'Ventas acumuladas año', 'Ventas del año'],
     [T.VENTAS, 'Variación acumulada vs año anterior', 'vs. año anterior'],
@@ -31,7 +31,7 @@ function pagina01() {
     [T.VENTAS, 'Clientes con venta', 'Clientes'],
     [T.VENTAS, 'Productos vendidos', 'Productos'],
     [T.VENTAS, 'Ticket promedio'],
-  ], [xCol(3), 88, wCol(7), 112], 'Resultado del año'));
+  ], [xCol(3), BANDA[0], wCol(7), 112], 'Resultado del año'));
   vs.push(...bloqueMoneda(slug));
 
   // --- Fila 1: columnas mensuales · dona sucursal
@@ -65,7 +65,7 @@ function pagina02() {
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Seguimiento de ventas', 'Subtítulo de corte mensual'));
 
-  vs.push(kpis(slug, 'resultado-dia', [[T.VENTAS, 'Venta del día']], [xCol(1), 88, wCol(2), 112], 'Resultado del día', 'Sin IVA'));
+  vs.push(kpis(slug, 'resultado-dia', [[T.VENTAS, 'Venta del día']], [xCol(1), BANDA[0], wCol(2), 112], 'Resultado del día', 'Sin IVA'));
   vs.push(kpis(slug, 'resultado-mes', [
     [T.VENTAS, 'Ventas netas', 'Ventas del mes'],
     [T.VENTAS, 'Variación vs año anterior', 'vs. año anterior'],
@@ -73,11 +73,11 @@ function pagina02() {
     [T.VENTAS, 'Clientes con venta', 'Clientes'],
     [T.VENTAS, 'Productos vendidos', 'Productos'],
     [T.VENTAS, 'Ticket promedio'],
-  ], [xCol(3), 88, wCol(7), 112], 'Resultado'));
+  ], [xCol(3), BANDA[0], wCol(7), 112], 'Resultado'));
   vs.push(...bloqueMoneda(slug));
 
   // --- Fila 1: año-mes (lista) + empresa · vendedor · sector · cliente top · producto top
-  vs.push(segmentador(slug, 'anio-mes', T.CAL, 'anio_mes', [xCol(1), FILA[0], wCol(2), 148], { modo: 'VerticalList', seleccion: MES_ACTUAL, sync: 'periodo', titulo: 'Año y mes', unico: true, descendente: true }));
+  vs.push(segmentador(slug, 'anio-mes', T.CAL, 'anio_mes', [xCol(1), FILA[0], wCol(2), 148], { modo: 'VerticalList', seleccion: MES_ACTUAL, sync: 'periodo', titulo: 'Año y mes', descendente: true }));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), FILA[0] + 156, wCol(2), 76], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(ranking(slug, 'vendedor', [xCol(3), FILA[0], wCol(2), ALTO], T.VEND, 'nombre', 'Venta por vendedor', 'vendedor'));
   vs.push(ranking(slug, 'sector', [xCol(5), FILA[0], wCol(2), ALTO], T.CONDPAGO, 'nombre', 'Venta por sector', 'sector'));

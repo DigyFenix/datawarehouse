@@ -43,6 +43,11 @@ const DDL_TENANT = [
   '125_glosario_tenant.sql',
   '126_impersonacion.sql',
   '127_metricas_derivadas.sql',
+  // Roles de aplicación (portal_app, pbi_lector): sin ellos el portal y el gateway
+  // tendrían que usar el superusuario.
+  '133_roles_aplicacion_tenant.sql',
+  '134_tablero_barra_tenant.sql',
+  '135_tablero_grupo_tenant.sql',
   // Va al final: siembra perfiles y necesita las tablas de las anteriores.
   '131_perfiles_base_tenant.sql',
 ];
@@ -61,6 +66,9 @@ const PAQUETES: Record<string, string[]> = {
     '65_paquete_odoo_extension.sql',
     '67_paquete_odoo_pedidos_mayor.sql',
     '69_paquete_odoo_direcciones.sql',
+    // Dimensiones comerciales de los tableros (categoría, vendedor, canal, condición de
+    // pago, dirección de entrega). Faltaba: un tenant Odoo nuevo quedaba sin ellas.
+    '70_paquete_odoo_comercial.sql',
   ],
 };
 
@@ -245,7 +253,8 @@ export class ProvisionarService {
           continue;
         }
         try {
-          await cliente.query(sql);
+          // El driver no entiende metacomandos de psql (`\set ON_ERROR_STOP on`), igual que en los seeds.
+          await cliente.query(sinMetacomandos(sql));
           aplicados.push(archivo);
         } catch (error) {
           // El rol portal_lector puede no existir aún (119) — es una advertencia,

@@ -1,19 +1,48 @@
 # =====================================================================
-# Caddy — reverse proxy con TLS automático (Let's Encrypt, HTTP-01).
-# Reemplazar los dominios por los reales antes de levantar. El tenant del
-# portal de usuario va en el PATH (hash), así que dar de alta una organización
-# NO requiere tocar este archivo.
+# Caddy — TLS automático (Let's Encrypt) para el servidor de UN cliente.
+# Los dominios y el hash vienen del .env (vía environment del compose):
+#   DOMINIO_PORTAL  ironnetwork.digyfenix.com        → portal de usuario
+#   DOMINIO_ADMIN   admin-ironnetwork.digyfenix.com  → portal admin (proveedor)
+#   HASH_TENANT     se conoce al crear la organización (RUNBOOK §6)
 # =====================================================================
-
-# Portal ADMIN (plano de control) — solo para el proveedor.
-admin.example.com {
-  reverse_proxy web-admin:80
-  encode gzip
+{
+	email {$ACME_EMAIL}
 }
 
-# Portal de USUARIO (consumo) — un solo dominio para todos los tenants;
-# cada organización entra con su URL: https://portal.example.com/<hash>
-portal.example.com {
-  reverse_proxy web-usuario:80
-  encode gzip
+# CSP: solo recursos propios. Excepciones justificadas:
+#   · script 'unsafe-hashes' + hash: el ÚNICO inline es el onload="this.media='all'" que
+#     Angular inyecta para cargar el CSS crítico; se autoriza ese texto exacto, nada más.
+#   · style 'unsafe-inline': Angular escribe estilos de componentes inline.
+#   · img data:/blob: el logo y los íconos.
+(csp_base) {
+	header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-hashes' 'sha256-MhtPZXr7+LpJUY5qtMutB+qWfQtMaPccfe7QXtCcEYc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src {args[0]}; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+}
+
+(seguridad) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Nadie puede meter nuestro portal en un iframe ajeno (clickjacking).
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
+	encode gzip
+}
+
+# Portal de USUARIO: la raíz lleva directo al login del tenant.
+{$DOMINIO_PORTAL} {
+	import seguridad
+	# El visor embebe nuestra ruta /api/.../visor, que redirige a Power BI.
+	import csp_base "'self' https://app.powerbi.com"
+	# Sin HASH_TENANT (antes de crear la organización) cae en una ruta propia, nunca en «//login».
+	redir / /{$HASH_TENANT:sin-tenant}/login 302
+	reverse_proxy web-usuario:80
+}
+
+# Portal ADMIN: solo el proveedor (autenticación propia + auditoría).
+{$DOMINIO_ADMIN} {
+	import seguridad
+	import csp_base "'none'"
+	reverse_proxy web-admin:80
 }

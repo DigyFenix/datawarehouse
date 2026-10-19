@@ -14,6 +14,7 @@ interface FormOrg {
   erpTipo: string;
   estado: string;
   colorMarca: string;
+  moduloAsistente: boolean;
 }
 
 /** Lo que devuelve POST /organizaciones/:id/provisionar. */
@@ -105,6 +106,12 @@ interface ResultadoProvision {
               <button type="button" class="secundario pequeno" (click)="form.colorMarca=''">Default</button>
               <span [style.background]="form.colorMarca || '#2d5aa0'" style="width:26px;height:26px;border-radius:7px;border:1px solid var(--border-2);display:inline-block;"></span>
             </div>
+          </div>
+          <div class="campo">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" name="moduloAsistente" [(ngModel)]="form.moduloAsistente" />
+              Módulo Asistente (IA) <span style="font-weight:400;color:var(--faint);">· se vende aparte; apagado lo oculta del portal</span>
+            </label>
           </div>
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
@@ -237,7 +244,7 @@ export class OrganizacionesComponent implements OnInit {
   }
 
   private vacio(): FormOrg {
-    return { codigo: '', nombre: '', sector: '', erpTipo: 'sap_b1', estado: 'en_arranque', colorMarca: '' };
+    return { codigo: '', nombre: '', sector: '', erpTipo: 'sap_b1', estado: 'en_arranque', colorMarca: '', moduloAsistente: false };
   }
 
   cargar(): void {
@@ -255,7 +262,7 @@ export class OrganizacionesComponent implements OnInit {
   }
 
   editar(o: Organizacion): void {
-    this.form = { codigo: o.codigo, nombre: o.nombre, sector: o.sector ?? '', erpTipo: o.erpTipo, estado: o.estado, colorMarca: o.colorMarca ?? '' };
+    this.form = { codigo: o.codigo, nombre: o.nombre, sector: o.sector ?? '', erpTipo: o.erpTipo, estado: o.estado, colorMarca: o.colorMarca ?? '', moduloAsistente: o.moduloAsistente };
     this.edicionId.set(o.id);
     this.errorForm.set(null);
     this.abierto.set(true);
@@ -266,6 +273,13 @@ export class OrganizacionesComponent implements OnInit {
   }
 
   guardar(): void {
+    // El Asistente se vende aparte y consume la API de IA: encenderlo nunca debe ser un clic accidental.
+    const id0 = this.edicionId();
+    const antes = id0 ? this.orgs().find((o) => o.id === id0)?.moduloAsistente ?? false : false;
+    if (this.form.moduloAsistente && !antes &&
+        !confirm('¿Activar el módulo Asistente (IA) para esta organización? Se vende aparte y genera costo de API.')) {
+      return;
+    }
     this.errorForm.set(null);
     this.guardando.set(true);
     const id = this.edicionId();
@@ -274,6 +288,7 @@ export class OrganizacionesComponent implements OnInit {
       sector: this.form.sector || undefined,
       erpTipo: this.form.erpTipo,
       colorMarca: this.form.colorMarca || null,
+      moduloAsistente: this.form.moduloAsistente,
       ...(id ? { estado: this.form.estado } : { codigo: this.form.codigo }),
     };
     const accion = id

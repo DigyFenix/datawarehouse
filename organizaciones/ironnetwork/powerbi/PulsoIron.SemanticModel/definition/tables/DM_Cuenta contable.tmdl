@@ -1,153 +1,195 @@
 table 'DM_Cuenta contable'
+	lineageTag: 0b253c40-be99-4a3f-bf3e-4b81c47fb4b1
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
+		lineageTag: e0786bf8-f082-440f-a7ed-a8842add5a73
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 38b7e92c-28fa-4709-afbe-aaebac5c7884
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column cuenta_codigo
 		dataType: string
+		lineageTag: 6a5b242e-4573-4621-9076-add171a0c21e
 		summarizeBy: none
 		sourceColumn: cuenta_codigo
 
 	column cuenta_codigo_visible
 		dataType: string
+		lineageTag: 6d01e4a1-e03e-45f0-a206-6ad6681a052c
 		summarizeBy: none
 		sourceColumn: cuenta_codigo_visible
 
 	column nombre
 		dataType: string
+		lineageTag: b64ee73d-7844-4734-a2da-621b08d45b84
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column tipo_cuenta
 		dataType: string
+		lineageTag: 73d1f831-ae77-47a1-bf91-ec2ffc7584ef
 		summarizeBy: none
 		sourceColumn: tipo_cuenta
 
 	column es_cartera_cobrar
 		dataType: boolean
+		lineageTag: 5e625f9c-7ae1-4d72-8645-c0ce3a9e6496
 		summarizeBy: none
 		sourceColumn: es_cartera_cobrar
 
 	column es_cartera_pagar
 		dataType: boolean
+		lineageTag: 00d5f062-25c7-4b54-89a7-251040ac8d86
 		summarizeBy: none
 		sourceColumn: es_cartera_pagar
 
 	column es_titulo
 		dataType: boolean
+		lineageTag: 4f254673-ce7f-41dc-aaa5-fe937be16564
 		summarizeBy: none
 		sourceColumn: es_titulo
 
 	column activa
 		dataType: boolean
+		lineageTag: 0f8331df-5d36-45a7-848a-5e5696426bd2
 		summarizeBy: none
 		sourceColumn: activa
 
 	column cuenta_padre_codigo
 		dataType: string
+		lineageTag: c24ca6cd-1bcc-40a2-851f-bb0c26bfe54e
 		summarizeBy: none
 		sourceColumn: cuenta_padre_codigo
 
 	column nivel
 		dataType: int64
+		formatString: #,0
+		lineageTag: 3277b25f-de9d-4c6b-9e98-47981cd80127
 		summarizeBy: none
 		sourceColumn: nivel
-		formatString: #,0
 
 	column nivel_1_codigo
 		dataType: string
+		lineageTag: 04e212db-75d5-4d0d-b7ce-70c5a1e7e482
 		summarizeBy: none
 		sourceColumn: nivel_1_codigo
 
 	column nivel_1_nombre
 		dataType: string
+		lineageTag: d577f920-55b5-4224-a86d-79f1b8bfc798
 		summarizeBy: none
 		sourceColumn: nivel_1_nombre
 
 	column nivel_2_codigo
 		dataType: string
+		lineageTag: d816ca5c-44d9-4f8d-b146-9795d88baf5c
 		summarizeBy: none
 		sourceColumn: nivel_2_codigo
 
 	column nivel_2_nombre
 		dataType: string
+		lineageTag: 5fbf8f9f-53ac-42ec-8028-724ef7e0850e
 		summarizeBy: none
 		sourceColumn: nivel_2_nombre
 
 	column nivel_3_codigo
 		dataType: string
+		lineageTag: fcd68de3-189c-4170-a807-fec1431bca7c
 		summarizeBy: none
 		sourceColumn: nivel_3_codigo
 
 	column nivel_3_nombre
 		dataType: string
+		lineageTag: 3dfe2724-2a68-4f60-bae3-5f8af663b32b
 		summarizeBy: none
 		sourceColumn: nivel_3_nombre
 
 	column nivel_4_codigo
 		dataType: string
+		lineageTag: 62205a06-d1e1-4de9-af06-66b4f5b9c913
 		summarizeBy: none
 		sourceColumn: nivel_4_codigo
 
 	column nivel_4_nombre
 		dataType: string
+		lineageTag: 564a4672-b117-4d68-9cd0-fb8771b0665f
 		summarizeBy: none
 		sourceColumn: nivel_4_nombre
 
 	column nivel_5_codigo
 		dataType: string
+		lineageTag: a4bf4fd8-9f26-4cce-8e8d-6b8d78e7143b
 		summarizeBy: none
 		sourceColumn: nivel_5_codigo
 
 	column nivel_5_nombre
 		dataType: string
+		lineageTag: 56efb8b7-673f-4598-8e15-8169366ac180
 		summarizeBy: none
 		sourceColumn: nivel_5_nombre
 
 	column ruta_cuenta
 		dataType: string
+		lineageTag: f1ec7003-b77f-49c2-8cc6-32c0f8bdc1f8
 		summarizeBy: none
 		sourceColumn: ruta_cuenta
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 8335db08-4d13-43d9-93c6-e2a903ab79bf
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 02f02939-01ac-4153-9035-fee45a79cac5
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: 27b5f39a-f2d4-422a-b5f6-1293c3cbb816
 		summarizeBy: none
 		sourceColumn: es_vigente
 
 	hierarchy 'Jerarquía contable'
+		lineageTag: 2188cd4f-4cfc-4fda-a4e4-43a2dbfaa284
+
 		level 'Nivel 1'
+			lineageTag: 15ce3941-a3f3-4fa6-bc43-c3b55571142d
 			column: nivel_1_nombre
+
 		level 'Nivel 2'
+			lineageTag: 5b4adfea-8a7c-49d4-b706-527531efb281
 			column: nivel_2_nombre
+
 		level 'Nivel 3'
+			lineageTag: 16212ab6-871b-40b0-8933-59bb25a11460
 			column: nivel_3_nombre
+
 		level 'Nivel 4'
+			lineageTag: 6f759a1c-c622-4c58-98ad-bee15f1a3ccc
 			column: nivel_4_nombre
+
 		level 'Nivel 5'
+			lineageTag: 9961fb79-aa8a-4714-822a-22326c686c25
 			column: nivel_5_nombre
 
 	partition 'DM_Cuenta contable' = m
@@ -158,3 +200,4 @@ table 'DM_Cuenta contable'
 				    Tabla = Origen{[Schema="oro",Item="dim_cuenta"]}[Data]
 				in
 				    Tabla
+

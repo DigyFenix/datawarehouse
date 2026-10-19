@@ -14,4 +14,6 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
 EXPOSE 3001
+# Sin root: el proceso solo lee su código; si lo comprometen no es dueño del contenedor.
+USER node
 CMD ["node", "dist/main.js"]

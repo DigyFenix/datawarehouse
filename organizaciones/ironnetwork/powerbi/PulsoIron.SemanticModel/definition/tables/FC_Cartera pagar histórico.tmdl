@@ -1,126 +1,158 @@
 table 'FC_Cartera pagar histórico'
+	lineageTag: 1e191489-aa6c-4c05-95a4-7eff1f83f3b0
+
+	/// Saldo por pagar a la fecha de corte de la foto, en positivo. MONEDA DE PRESENTACIÓN.
+	measure 'Saldo histórico por pagar' = SUM('FC_Cartera pagar histórico'[saldo_pendiente_absoluto])
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+		lineageTag: 71461778-4258-46c5-b6d1-92693a1c609f
+
+	/// Deuda vencida en la fecha de corte de la foto.
+	measure 'Vencido histórico por pagar' = CALCULATE([Saldo histórico por pagar], KEEPFILTERS('FC_Cartera pagar histórico'[dias_vencido] > 0))
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+		lineageTag: 53ad1dc2-0405-436d-9a10-93cc153ff895
+
+	/// Posición neta a lo largo del tiempo: la serie que muestra si la liquidez estructural mejora o se deteriora.
+	measure 'Posición neta histórica' = [Saldo histórico por cobrar] - [Saldo histórico por pagar]
+		formatString: "Q" #,0
+		displayFolder: 01 Evolución
+		lineageTag: c1642609-af65-48c6-a07a-3e5de3119b33
 
 	column fecha_corte
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 41a82652-4505-4266-a8d1-e335ce21b9d3
 		summarizeBy: none
 		sourceColumn: fecha_corte
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column fecha_corte_clave
 		dataType: int64
 		isHidden
+		lineageTag: fdf62859-259d-4395-a4a5-e3b9f2df36b5
 		summarizeBy: none
 		sourceColumn: fecha_corte_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 7f596fa3-d6cf-4bc6-b1c1-ec5049ce0476
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column partida_id
 		dataType: string
+		lineageTag: 330ef995-a57e-48c8-834e-2f51a4d74154
 		summarizeBy: none
 		sourceColumn: partida_id
 
 	column proveedor_clave
 		dataType: int64
 		isHidden
+		lineageTag: 95f8f93a-2deb-4f2a-bf76-3bab7ba87b1f
 		summarizeBy: none
 		sourceColumn: proveedor_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: a4f25519-17f6-4631-973e-52c27afec101
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column moneda_clave
 		dataType: int64
 		isHidden
+		lineageTag: a7c36d8b-98a5-45be-a601-690521732c3a
 		summarizeBy: none
 		sourceColumn: moneda_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
+		lineageTag: 21e58ddb-8c65-46c3-ad1d-acf7e88f4d40
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column tiempo_vencimiento_clave
 		dataType: int64
 		isHidden
+		lineageTag: ab4f2b04-0709-47e2-b72d-b9a5445a7f2c
 		summarizeBy: none
 		sourceColumn: tiempo_vencimiento_clave
 
 	column fecha_vencimiento
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: bcb1bcde-4b49-4a8f-a950-a25b43a48c51
 		summarizeBy: none
 		sourceColumn: fecha_vencimiento
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column saldo_pendiente_local
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: saldo_pendiente_local
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 610f4a09-ee71-46cf-9120-d5639286a9c1
+		summarizeBy: sum
+		sourceColumn: saldo_pendiente_local
+
+		annotation SummarizationSetBy = Automatic
 
 	column saldo_pendiente_doc
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: saldo_pendiente_doc
+		dataType: double
 		formatString: #,0.00
+		lineageTag: b383ca78-db01-47bb-9596-4f3893c51e17
+		summarizeBy: sum
+		sourceColumn: saldo_pendiente_doc
+
+		annotation SummarizationSetBy = Automatic
 
 	column saldo_pendiente_absoluto
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: saldo_pendiente_absoluto
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 86ebfe59-db8a-47ed-8b1d-b0496b226c13
+		summarizeBy: sum
+		sourceColumn: saldo_pendiente_absoluto
+
+		annotation SummarizationSetBy = Automatic
 
 	column dias_vencido
 		dataType: int64
+		formatString: #,0
+		lineageTag: 209b204f-6b72-4a28-ba76-82597b6de5e8
 		summarizeBy: none
 		sourceColumn: dias_vencido
-		formatString: #,0
 
 	column rango_aging
 		dataType: string
 		isHidden
+		lineageTag: a6991ca4-4417-4f23-87a2-58cd5c99c2b5
 		summarizeBy: none
 		sourceColumn: rango_aging
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: e0f7b0ea-6898-495e-ba36-eeebce831a79
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: f988029c-44d5-49c3-b9c2-5154d2a557e0
 		summarizeBy: none
 		sourceColumn: version_proceso
 
 	column rango_aging_clave
 		dataType: int64
 		isHidden
+		lineageTag: 033da243-d12f-492b-9ace-ea46cb613175
 		summarizeBy: none
 		sourceColumn: rango_aging_clave
-
-	/// Saldo por pagar a la fecha de corte de la foto, en positivo. MONEDA DE PRESENTACIÓN.
-	measure 'Saldo histórico por pagar' = SUM('FC_Cartera pagar histórico'[saldo_pendiente_absoluto])
-		formatString: "Q" #,0
-		displayFolder: 01 Evolución
-
-	/// Deuda vencida en la fecha de corte de la foto.
-	measure 'Vencido histórico por pagar' = CALCULATE([Saldo histórico por pagar], KEEPFILTERS('FC_Cartera pagar histórico'[dias_vencido] > 0))
-		formatString: "Q" #,0
-		displayFolder: 01 Evolución
-
-	/// Posición neta a lo largo del tiempo: la serie que muestra si la liquidez estructural mejora o se deteriora.
-	measure 'Posición neta histórica' = [Saldo histórico por cobrar] - [Saldo histórico por pagar]
-		formatString: "Q" #,0
-		displayFolder: 01 Evolución
 
 	partition 'FC_Cartera pagar histórico' = m
 		mode: import
@@ -130,3 +162,4 @@ table 'FC_Cartera pagar histórico'
 				    Tabla = Origen{[Schema="oro",Item="hecho_cartera_pagar_diaria"]}[Data]
 				in
 				    Tabla
+

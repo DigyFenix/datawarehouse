@@ -1,49 +1,62 @@
 table 'DM_Condición de pago'
+	lineageTag: e4d39154-b5c6-44ea-a67c-423e28d80b27
 
 	column condicion_pago_clave
 		dataType: int64
 		isHidden
+		lineageTag: 1c7bb83b-eb8e-4be8-a4ad-75f7f71223da
 		summarizeBy: none
 		sourceColumn: condicion_pago_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: a52e066c-400c-41e2-a396-a5a2e1256769
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column condicion_pago_codigo
 		dataType: string
+		lineageTag: ab4d77d5-7852-4874-8c31-d4b1c9a9abbe
 		summarizeBy: none
 		sourceColumn: condicion_pago_codigo
 
 	column nombre
 		dataType: string
+		lineageTag: dc1e3a09-2655-47f2-853f-d72e44e4ff48
 		summarizeBy: none
 		sourceColumn: nombre
 
 	column activo
 		dataType: boolean
+		lineageTag: 1b721e03-acda-40b9-98d0-f16349d7c3da
 		summarizeBy: none
 		sourceColumn: activo
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 99f1323a-f3c7-4844-ad0f-d36ecb441e1a
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: e9602e7a-bf4e-4f4e-92f8-6cf9f25b0cbf
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: 6902f4a9-0e4a-4694-9d29-e3995057d6e3
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -55,3 +68,4 @@ table 'DM_Condición de pago'
 				    Tabla = Origen{[Schema="oro",Item="dim_condicion_pago"]}[Data]
 				in
 				    Tabla
+

@@ -18,6 +18,8 @@ export interface Organizacion {
   // Identificador opaco de la URL de ingreso del portal de usuario del tenant.
   hashTenant: string;
   logoMime: string | null;
+  // Módulo Asistente (agente de IA) contratado; se vende aparte.
+  moduloAsistente: boolean;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -32,6 +34,8 @@ export interface TableroPortal {
   urlPublica: string;
   orden: number;
   activo: boolean;
+  mostrarBarra: boolean;
+  grupo: string | null;
 }
 
 /** Estado del portal de usuario en la base del tenant. */

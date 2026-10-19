@@ -5,7 +5,7 @@
 // Uso:  node generar_paginas_cartera.js <ruta al .Report> [anio_actual]
 'use strict';
 const P = require('./pbir');
-const { T, C, FILA, ALTO, xCol, wCol, id, segmentador, kpis, barras, dona, matriz, marcadores, ejeValores, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, encabezado, pie, visual, pColumna, pMedida, ordenAsc, ordenDesc, str, num, int, bool, color, meta, vcTitulo } = P;
+const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, barras, dona, matriz, marcadores, ejeValores, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, encabezado, pie, visual, pColumna, pMedida, ordenAsc, ordenDesc, str, num, int, bool, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
 const ANIO_ACTUAL = Number(process.argv[3] || new Date().getFullYear());
@@ -38,14 +38,14 @@ function paginaCartera(cfg) {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, titulo, 'Subtítulo de corte mensual', F));
-  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(segmentador(slug, 'estado', F, 'Estado', [xCol(1), 152, wCol(2), 64], { sync: slug + '-estado', titulo: 'Estado de la partida', busqueda: false }));
-  vs.push(kpiSaldo(slug, 'saldo-total', [xCol(3), 88, wCol(2), 112], 'Saldo total', [[m.saldo, 'Saldo']], F, 'Partidas abiertas al corte'));
-  vs.push(kpiSaldo(slug, 'saldo-no-vencido', [xCol(5), 88, wCol(2), 112], 'Saldo no vencido', [[m.noVencido, 'No vencido'], [m.pctNoVencido, '% del saldo']], F, 'Aún no vence'));
-  vs.push(kpiSaldo(slug, 'saldo-vencido', [xCol(7), 88, wCol(2), 112], 'Saldo vencido', [[m.vencido, 'Vencido'], [m.pctVencido, '% del saldo']], F, 'Pasó su vencimiento'));
-  vs.push(segmentador(slug, 'buscar', DIM, dimCol, [xCol(9), 88, wCol(2), 64], { busqueda: true, titulo: `Buscar ${cfg.socio}` }));
-  vs.push(segmentador(slug, 'buscar-doc', F, 'documento_origen', [xCol(9), 152, wCol(2), 64], { busqueda: true, titulo: 'Buscar documento' }));
-  vs.push(segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(11), 88, wCol(2), 112], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }));
+  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
+  vs.push(segmentador(slug, 'estado', F, 'Estado', [xCol(1), BANDA[1], wCol(2), 64], { sync: slug + '-estado', titulo: 'Estado de la partida', busqueda: false }));
+  vs.push(kpiSaldo(slug, 'saldo-total', [xCol(3), BANDA[0], wCol(2), 112], 'Saldo total', [[m.saldo, 'Saldo']], F, 'Partidas abiertas al corte'));
+  vs.push(kpiSaldo(slug, 'saldo-no-vencido', [xCol(5), BANDA[0], wCol(2), 112], 'Saldo no vencido', [[m.noVencido, 'No vencido'], [m.pctNoVencido, '% del saldo']], F, 'Aún no vence'));
+  vs.push(kpiSaldo(slug, 'saldo-vencido', [xCol(7), BANDA[0], wCol(2), 112], 'Saldo vencido', [[m.vencido, 'Vencido'], [m.pctVencido, '% del saldo']], F, 'Pasó su vencimiento'));
+  vs.push(segmentador(slug, 'buscar', DIM, dimCol, [xCol(9), BANDA[0], wCol(2), 64], { busqueda: true, titulo: `Buscar ${cfg.socio}` }));
+  vs.push(segmentador(slug, 'buscar-doc', F, 'documento_origen', [xCol(9), BANDA[1], wCol(2), 64], { busqueda: true, titulo: 'Buscar documento' }));
+  vs.push(segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(11), BANDA[0], wCol(2), 112], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }));
 
   // Fila 1-2: matriz socio × rangos de vencimiento · saldo por socio (apilado)
   vs.push(matriz(slug, 'matriz-rangos', [xCol(1), FILA[0], wCol(9), ALTO * 2 + 16], 'Saldos por estado y rangos de antigüedad', {
@@ -87,13 +87,13 @@ function paginaUtilidad() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Utilidad', 'Subtítulo de corte mensual'));
-  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), 152, wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
-  vs.push(kpis(slug, 'resultado', [[V, 'Costo de lo vendido'], [V, 'Ganancia'], [V, 'Ventas netas'], [V, '% Margen']], [xCol(3), 88, wCol(5), 112], 'Resultado', 'Costo · ganancia · resultado (venta) · margen %'));
-  vs.push(segmentador(slug, 'f-linea', T.PROD, 'grupo_nombre', [xCol(8), 88, wCol(2), 64], { sync: 'linea', titulo: 'Línea' }));
-  vs.push(segmentador(slug, 'f-sector', T.CLI, 'Sector', [xCol(8), 152, wCol(2), 64], { sync: 'sector', titulo: 'Sector' }));
-  vs.push(segmentador(slug, 'f-buscar-cliente', T.CLI, 'nombre', [xCol(10), 88, wCol(3), 64], { busqueda: true, titulo: 'Buscar cliente' }));
-  vs.push(segmentador(slug, 'f-buscar-producto', T.PROD, 'nombre', [xCol(10), 152, wCol(3), 64], { busqueda: true, titulo: 'Buscar producto' }));
+  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[1], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(kpis(slug, 'resultado', [[V, 'Costo de lo vendido'], [V, 'Ganancia'], [V, 'Ventas netas'], [V, '% Margen']], [xCol(3), BANDA[0], wCol(5), 112], 'Resultado', 'Costo · ganancia · resultado (venta) · margen %'));
+  vs.push(segmentador(slug, 'f-linea', T.PROD, 'grupo_nombre', [xCol(8), BANDA[0], wCol(2), 64], { sync: 'linea', titulo: 'Línea' }));
+  vs.push(segmentador(slug, 'f-sector', T.CLI, 'Sector', [xCol(8), BANDA[1], wCol(2), 64], { sync: 'sector', titulo: 'Sector' }));
+  vs.push(segmentador(slug, 'f-buscar-cliente', T.CLI, 'nombre', [xCol(10), BANDA[0], wCol(3), 64], { busqueda: true, titulo: 'Buscar cliente' }));
+  vs.push(segmentador(slug, 'f-buscar-producto', T.PROD, 'nombre', [xCol(10), BANDA[1], wCol(3), 64], { busqueda: true, titulo: 'Buscar producto' }));
 
   const CG = ['Costo de lo vendido', 'Ganancia'];
   const colores = [C.GRIS_SERIE, C.PIZARRA];
@@ -138,15 +138,15 @@ function paginaCobros() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Cobros', 'Subtítulo de corte mensual', F));
-  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(segmentador(slug, 'buscar', T.CLI, 'nombre', [xCol(1), 152, wCol(2), 64], { busqueda: true, titulo: 'Buscar cliente' }));
-  vs.push(kpiSaldo(slug, 'dias-aut', [xCol(3), 88, wCol(2), 112], 'Días autorizados', ['Días autorizados'], F, 'Crédito pactado promedio'));
-  vs.push(kpiSaldo(slug, 'dias-prom', [xCol(5), 88, wCol(2), 112], 'Días promedio', ['Días promedio de cartera'], F, 'Antigüedad ponderada por saldo'));
-  vs.push(kpiSaldo(slug, 'sobregiro', [xCol(7), 88, wCol(2), 112], 'Sobregiro actual en días', ['Sobregiro en días'], F, 'Promedio − autorizado'));
-  vs.push(kpiSaldo(slug, 'saldo', [xCol(9), 88, wCol(2), 112], 'Saldo', ['Saldo por cobrar'], F, 'Partidas abiertas al corte'));
-  vs.push(segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(11), 88, wCol(2), 64], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }));
+  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
+  vs.push(segmentador(slug, 'buscar', T.CLI, 'nombre', [xCol(1), BANDA[1], wCol(2), 64], { busqueda: true, titulo: 'Buscar cliente' }));
+  vs.push(kpiSaldo(slug, 'dias-aut', [xCol(3), BANDA[0], wCol(2), 112], 'Días autorizados', ['Días autorizados'], F, 'Crédito pactado promedio'));
+  vs.push(kpiSaldo(slug, 'dias-prom', [xCol(5), BANDA[0], wCol(2), 112], 'Días promedio', ['Días promedio de cartera'], F, 'Antigüedad ponderada por saldo'));
+  vs.push(kpiSaldo(slug, 'sobregiro', [xCol(7), BANDA[0], wCol(2), 112], 'Sobregiro actual en días', ['Sobregiro en días'], F, 'Promedio − autorizado'));
+  vs.push(kpiSaldo(slug, 'saldo', [xCol(9), BANDA[0], wCol(2), 112], 'Saldo', ['Saldo por cobrar'], F, 'Partidas abiertas al corte'));
+  vs.push(segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(11), BANDA[0], wCol(2), 64], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }));
   // Estado del cobro (Odoo: conciliado / en proceso): el usuario decide qué abonos cuentan. Sin selección entran todos.
-  vs.push(segmentador(slug, 'estado-cobro', 'FC_Pagos recibidos', 'Estado del cobro', [xCol(11), 152, wCol(2), 64], { titulo: 'Estado del cobro', busqueda: false }));
+  vs.push(segmentador(slug, 'estado-cobro', 'FC_Pagos recibidos', 'Estado del cobro', [xCol(11), BANDA[1], wCol(2), 64], { titulo: 'Estado del cobro', busqueda: false }));
 
   // Columna 1-3: tabla cliente (sobregiro, saldo)
   vs.push(matriz(slug, 'clientes', [xCol(1), FILA[0], wCol(3), ALTO * 3 + 32], 'Sobregiro y saldo por cliente', {

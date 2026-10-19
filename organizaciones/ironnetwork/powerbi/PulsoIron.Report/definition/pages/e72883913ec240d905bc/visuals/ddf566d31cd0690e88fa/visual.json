@@ -3,11 +3,11 @@
   "name": "ddf566d31cd0690e88fa",
   "position": {
     "x": 24,
-    "y": 712,
-    "z": 1500,
-    "height": 232,
+    "y": 704,
+    "z": 1400,
+    "height": 240,
     "width": 192,
-    "tabOrder": 15
+    "tabOrder": 14
   },
   "visual": {
     "visualType": "barChart",

@@ -1,124 +1,191 @@
 # =====================================================================
-# Producción — VPS único con Docker Compose
-# Postgres (control + tenants) + portal admin + portal de usuario + worker
-# + Caddy (TLS automático, 2 dominios) + respaldos diarios.
+# Producción — UN SERVIDOR POR CLIENTE (decisión 2026-10-18).
+# Postgres (control + base del tenant) · portal admin · portal de usuario ·
+# worker · programador de cargas · Caddy (TLS, subdominio del cliente) ·
+# respaldos diarios.
 #
-# Valores sensibles en .env JUNTO A ESTE ARCHIVO (copiar de
-# .env.produccion.example). Ver RUNBOOK.md para aprovisionamiento,
-# firewall (5432) y migración de datos local → VPS.
+# El servidor NO tiene el repo ni compila nada: recibe un paquete (ver
+# empaquetar.sh) con este compose, el Caddyfile, los scripts, el init de
+# Postgres, el metadata-store y el proyecto dbt, más las imágenes ya
+# construidas (docker load). Valores sensibles en `.env` junto a este
+# archivo, a partir de `variables.env.ejemplo`. Ver RUNBOOK.md.
+#
+# ⚠ `name:` fija el prefijo de los volúmenes: cambiarlo crea un volumen
+# VACÍO y parece pérdida total de datos. No tocar.
 # =====================================================================
-name: pulso-prod
+name: quilate
+
+# Logs de Docker con rotación: sin esto nginx, dbt y el programador llenan el disco
+# (60 GB compartidos con Postgres y los respaldos) y Postgres se detiene.
+x-logs: &logs
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-postgres-cliente: &postgres-cliente
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: ${POSTGRES_DB}
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: prod-postgres
+    container_name: quilate-postgres
     restart: unless-stopped
+    # WAL acotado: el default (1 GB) es reserva fija que un tenant chico nunca necesita.
+    # TLS con el certificado de Let's Encrypt de Caddy (tls-postgres.sh lo copia a ./pg-tls).
+    command: ["postgres", "-c", "max_wal_size=256MB", "-c", "min_wal_size=64MB",
+              "-c", "ssl=on", "-c", "ssl_cert_file=/tls/server.crt", "-c", "ssl_key_file=/tls/server.key"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      # scram-sha-256 para todas las conexiones (RUNBOOK: pg_hba y contraseñas fuertes).
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
-    # 5432 expuesto SOLO para la ingesta on-prem de Cresta: el firewall del VPS
-    # (ufw) debe limitarlo a su IP pública. Ver RUNBOOK §4.
+      # Roles que crea el init (03 y 04). Sin ellos, el portal y el gateway usarían el superusuario.
+      PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD}
+      PORTAL_APP_PASSWORD: ${PORTAL_APP_PASSWORD}
+      PBI_LECTOR_PASSWORD: ${PBI_LECTOR_PASSWORD}
+      # pg_hba (init 05): desde fuera de esta subred solo entra pbi_lector a dw_*.
+      RED_INTERNA: 172.28.0.0/16
+    logging: *logs
+    mem_limit: 700m
+    # 5432 publicado SOLO para el gateway de Power BI. El firewall de Lightsail lo
+    # limita a la IP del gateway (RUNBOOK §4); el gateway entra con pbi_lector.
     ports:
-      - "5432:5432"
+      - "${PG_PUERTO_PUBLICO:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Sin scripts de init: en producción las bases llegan por pg_restore
-      # (RUNBOOK §6). El metadata-store queda montado para aplicar DDL nuevo.
-      - ../../metadata-store:/opt/metadata-store:ro
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - ./metadata-store:/opt/metadata-store:ro
+      - ./pg-tls:/tls:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      # Por TCP (-h 127.0.0.1): durante el init Postgres solo escucha por socket local,
+      # así que esto no da "sano" hasta que el init terminó y los servicios no arrancan antes.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 30
+      start_period: 120s
 
-  # --- Portal ADMIN (plano de control) ---
+  # --- Portal ADMIN (plano de control): solo el proveedor ---
   api-admin:
-    build:
-      context: ../../control-plane/api
-    container_name: prod-api-admin
+    image: quilate-api:${VERSION:-latest}
+    container_name: quilate-portal-api
     restart: unless-stopped
+    logging: *logs
+    mem_limit: 384m
     environment:
+      <<: *postgres-cliente
       NODE_ENV: production
       API_PORT: 3001
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRA_EN: ${JWT_EXPIRA_EN:-8h}
       PORTAL_ADMIN_EMAIL: ${PORTAL_ADMIN_EMAIL}
       PORTAL_ADMIN_PASSWORD: ${PORTAL_ADMIN_PASSWORD}
+      PORTAL_USUARIO_URL: https://${DOMINIO_PORTAL}
       WORKER_URL: http://worker:3010
+      WORKER_TOKEN: ${WORKER_TOKEN}
+      SALTOS_PROXY: 2  # Caddy + nginx
       WORKER_TIMEOUT_MS: ${WORKER_TIMEOUT_MS:-1800000}
+    volumes:
+      # Provisionar lee el DDL de tenant y los paquetes de ingesta de aquí.
+      - ./metadata-store:/opt/metadata-store:ro
+    networks:
+      default:
+        # El nginx de web-admin (imagen compartida con local) hace proxy a `api:3001`.
+        aliases: [api]
     depends_on:
       postgres:
         condition: service_healthy
 
   web-admin:
-    build:
-      context: ../../control-plane/portal
-    container_name: prod-web-admin
+    image: quilate-web:${VERSION:-latest}
+    container_name: quilate-portal-web
     restart: unless-stopped
+    logging: *logs
+    mem_limit: 64m
     depends_on:
       - api-admin
 
-  # --- Portal de USUARIO (consumo) ---
+  # --- Portal de USUARIO: lo que ve el cliente ---
   api-usuario:
-    build:
-      context: ../../consumo/portal/api
-    container_name: prod-api-usuario
+    image: quilate-api-usuario:${VERSION:-latest}
+    container_name: quilate-portal-usuario-api
     restart: unless-stopped
+    logging: *logs
+    mem_limit: 384m
     environment:
+      <<: *postgres-cliente
       NODE_ENV: production
       PORTAL_USUARIO_PORT: 3002
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB}
-      # Rol DEDICADO del portal de usuario (RUNBOOK §5): SELECT sobre
-      # gobierno.organizaciones + permisos sobre el esquema portal de cada tenant.
-      POSTGRES_USER: ${PORTAL_DB_USER}
-      POSTGRES_PASSWORD: ${PORTAL_DB_PASSWORD}
+      # Rol de aplicación (init 04 + migración 133), nunca el superusuario: es lo expuesto a internet.
+      POSTGRES_USER: portal_app
+      POSTGRES_PASSWORD: ${PORTAL_APP_PASSWORD}
       PORTAL_JWT_SECRET: ${PORTAL_JWT_SECRET}
       PORTAL_JWT_EXPIRA_EN: ${PORTAL_JWT_EXPIRA_EN:-8h}
+      # Módulo Asistente (se vende aparte): sin clave el chat responde 503; además el
+      # interruptor por organización lo oculta y bloquea.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD}
+      SALTOS_PROXY: 2  # Caddy + nginx
     depends_on:
       postgres:
         condition: service_healthy
 
   web-usuario:
-    build:
-      context: ../../consumo/portal/web
-    container_name: prod-web-usuario
+    image: quilate-web-usuario:${VERSION:-latest}
+    container_name: quilate-portal-usuario-web
     restart: unless-stopped
+    logging: *logs
+    mem_limit: 64m
     depends_on:
       - api-usuario
 
-  # --- Worker del plano de datos ---
-  # En el VPS solo extrae orígenes alcanzables por internet (Iron Network).
-  # La ingesta de Cresta corre ON-PREM en su red, apuntando al Postgres del VPS.
+  # --- Plano de datos ---
   worker:
-    build:
-      context: ../../data-plane/extraccion
-    container_name: prod-worker
+    image: quilate-worker:${VERSION:-latest}
+    container_name: quilate-worker
     restart: unless-stopped
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB}
+    logging: *logs
+    mem_limit: 512m
+    environment: &entorno-worker
+      <<: *postgres-cliente
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       HANA_USER: ${HANA_USER:-}
       HANA_PASSWORD: ${HANA_PASSWORD:-}
+      MSSQL_USER: ${MSSQL_USER:-}
+      MSSQL_PASSWORD: ${MSSQL_PASSWORD:-}
       ODOO_USER: ${ODOO_USER:-}
       ODOO_PASSWORD: ${ODOO_PASSWORD:-}
       DBT_PROJECT_DIR: /dbt
       DBT_PROFILES_DIR: /tmp/dbt
+      WORKER_TOKEN: ${WORKER_TOKEN}
     volumes:
-      - ../../data-plane/transformacion:/dbt
+      - ./transformacion:/dbt
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Carga diaria: extracción ERP → Bronce y build a Oro, antes del refresco de Power BI.
+  programador:
+    image: quilate-worker:${VERSION:-latest}
+    container_name: quilate-programador
+    restart: unless-stopped
+    logging: *logs
+    mem_limit: 768m
+    environment:
+      <<: *entorno-worker
+      TZ: America/Guatemala
+      ORGANIZACION: ${ORGANIZACION}
+      HORAS_CARGA: ${HORAS_CARGA:-05:00}
+    volumes:
+      - ./transformacion:/dbt
+      - ./programador.sh:/opt/programador.sh:ro
+    entrypoint: ["/bin/sh", "/opt/programador.sh"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,8 +193,15 @@ services:
   # --- Reverse proxy con TLS automático (Let's Encrypt) ---
   caddy:
     image: caddy:2-alpine
-    container_name: prod-caddy
+    container_name: quilate-caddy
     restart: unless-stopped
+    logging: *logs
+    mem_limit: 128m
+    environment:
+      DOMINIO_PORTAL: ${DOMINIO_PORTAL}
+      DOMINIO_ADMIN: ${DOMINIO_ADMIN}
+      HASH_TENANT: ${HASH_TENANT:-}
+      ACME_EMAIL: ${ACME_EMAIL}
     ports:
       - "80:80"
       - "443:443"
@@ -139,11 +213,13 @@ services:
       - web-admin
       - web-usuario
 
-  # --- Respaldos diarios (pg_dump -Fc de la base de control y cada dw_*) ---
+  # --- Respaldos diarios (pg_dump -Fc de control y de cada dw_*) ---
   respaldo:
     image: postgres:16-alpine
-    container_name: prod-respaldo
+    container_name: quilate-respaldo
     restart: unless-stopped
+    logging: *logs
+    mem_limit: 256m
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER}
@@ -153,11 +229,18 @@ services:
     volumes:
       - ./backups:/backups
       - ./respaldo.sh:/usr/local/bin/respaldo.sh:ro
-    # `sh <script>` en vez de ejecutarlo directo: el bind mount no garantiza el bit de ejecución.
     entrypoint: ["/bin/sh", "-c", "while true; do sh /usr/local/bin/respaldo.sh; sleep 86400; done"]
     depends_on:
       postgres:
         condition: service_healthy
+
+# Subred fija: el pg_hba (init 05) confía en ella; con una subred al azar podría
+# quedar fuera algún servicio o, peor, dentro alguien que no debe.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 volumes:
   pgdata:

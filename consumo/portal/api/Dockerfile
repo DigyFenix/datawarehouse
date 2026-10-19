@@ -36,4 +36,6 @@ COPY --from=build-api /repo/consumo/portal/api/node_modules ./node_modules
 COPY --from=build-api /repo/consumo/portal/api/dist ./dist
 COPY consumo/portal/api/package.json ./
 EXPOSE 3002
+# Sin root: el proceso solo lee su código; si lo comprometen no es dueño del contenedor.
+USER node
 CMD ["node", "dist/main.js"]

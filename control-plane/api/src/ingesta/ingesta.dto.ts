@@ -41,7 +41,22 @@ const politicaBase = z.object({
   // Condición extra aplicada EN EL ORIGEN sobre la tabla principal (se une con AND a la
   // ventana). Escotilla del paquete base para lo que no se expresa como campo/valor:
   // p. ej. `"DocDate" >= '2026-01-01'` o la apertura de cartera `"BalDueDeb" <> "BalDueCred"`.
-  filtroOrigen: z.string().max(500).nullable().optional(),
+  // Va LITERAL al WHERE de la consulta al ERP: solo una condición. Se rechazan separadores
+  // de sentencia, comentarios, subconsultas y verbos de escritura/DDL (pymssql acepta varias
+  // sentencias por llamada; una cuenta ERP mal configurada no debe poder escribir).
+  filtroOrigen: z
+    .string()
+    .max(500)
+    .refine((f) => !/;|--|\/\*|\*\//.test(f), 'Sin «;», ni comentarios SQL')
+    .refine(
+      (f) =>
+        !/\b(select|insert|update|delete|drop|alter|create|truncate|grant|revoke|exec|execute|union|into|copy|call|merge|pg_sleep|waitfor|dblink)\b/i.test(
+          f,
+        ),
+      'Solo una condición (comparaciones, IN, AND/OR); sin subconsultas ni sentencias',
+    )
+    .nullable()
+    .optional(),
   activo: z.boolean().default(true),
   owner: z.string().min(1).max(100),
 });

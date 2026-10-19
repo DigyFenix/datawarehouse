@@ -1,206 +1,255 @@
 table 'FC_Resultados contables'
+	lineageTag: 0d7de4fd-da17-405f-937a-6ee9eae9a06f
+
+	/// Gasto operativo del MAYOR (cuentas de gasto), con jerarquía de cuenta y centro de costo.
+	measure 'Gasto operativo' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "gasto"))
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+		lineageTag: 43b049f3-4b66-4b67-be16-a2ec89dc9ce0
+
+	/// Costo del período según el mayor. Es la cifra contable, no el costo de línea de la factura.
+	measure 'Costo (contable)' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "costo"))
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+		lineageTag: eb2dff46-1f10-48b4-9ed8-9a4825661bc4
+
+	/// Ingresos según el LIBRO MAYOR. Cuadra al centavo con Ventas Netas cuando todo ingreso pasa por factura.
+	measure 'Ingresos contables' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "ingreso"))
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+		lineageTag: 97368e52-b905-44da-8394-b819f3ce6d36
+
+	/// Ingresos − costos − gastos, todo desde el mayor: el resultado operativo contable.
+	measure 'Resultado contable' = [Ingresos contables] - [Costo (contable)] - [Gasto operativo]
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+		lineageTag: a9e1fc8a-2dd5-4695-8615-5af0b81fb1be
+
+	/// Número de partidas del mayor en el filtro vigente.
+	measure 'Partidas contables' = COUNTROWS('FC_Resultados contables')
+		formatString: #,0
+		displayFolder: 01 P&L
+		lineageTag: e3ecfde2-f95a-402e-a503-efb778ccec18
+
+	/// Margen operativo real, el del mayor contable — no el margen de línea de factura. Es el número que mira un banco.
+	measure '% Margen operativo' = DIVIDE([Resultado contable], [Ingresos contables])
+		formatString: 0.0%
+		displayFolder: 02 Estructura
+		lineageTag: 0f829bfa-b081-4464-8598-ae9e9662e1da
+
+	/// Cuánto del ingreso se come la estructura. Subir la venta con este porcentaje subiendo no mejora nada.
+	measure '% Gasto sobre ingreso' = DIVIDE([Gasto operativo], [Ingresos contables])
+		formatString: 0.0%
+		displayFolder: 02 Estructura
+		lineageTag: 311c5b51-40c1-469b-8bce-118495abe3c6
+
+	/// Qué parte del ingreso se va en costo directo.
+	measure '% Costo sobre ingreso' = DIVIDE([Costo (contable)], [Ingresos contables])
+		formatString: 0.0%
+		displayFolder: 02 Estructura
+		lineageTag: c035c65e-824d-483c-a5d4-66fab715d981
+
+	/// Peso del rubro de gasto más grande dentro del total. Filtrar por nivel de la jerarquía contable para leerlo.
+	measure '% Gasto en el mayor rubro' = DIVIDE(MAXX(ALLSELECTED('DM_Cuenta contable'), [Gasto operativo]), CALCULATE([Gasto operativo], ALLSELECTED('DM_Cuenta contable')))
+		formatString: 0.0%
+		displayFolder: 02 Estructura
+		lineageTag: 742d04c4-8b40-4f2b-aaf7-042fefefe61f
+
+	/// Estructura media mensual: el piso que hay que cubrir cada mes.
+	measure 'Gasto promedio mensual' = DIVIDE([Gasto operativo], DISTINCTCOUNT(DM_Calendario[anio_mes]))
+		formatString: "Q" #,0
+		displayFolder: 02 Estructura
+		lineageTag: de7ac4b8-d751-4b99-9785-43c9ed76b7b1
+
+	/// Gasto del mes previo.
+	measure 'Gasto mes anterior' = CALCULATE([Gasto operativo], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+		lineageTag: aad7b9fc-fa0f-46c1-b87e-61033e70940a
+
+	/// Gasto del mismo período del año pasado.
+	measure 'Gasto año anterior' = CALCULATE([Gasto operativo], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+		lineageTag: 28664bb6-b171-45fa-bfa0-4a88bdf6b5e5
+
+	/// Gasto acumulado del ejercicio.
+	measure 'Gasto acumulado año' = TOTALYTD([Gasto operativo], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+		lineageTag: 2cd4b671-0611-40d0-b9b5-466f74f26a08
+
+	/// Cómo crece la estructura. Que crezca más rápido que el ingreso es la señal más temprana de deterioro.
+	measure 'Variación de gasto vs año anterior' = DIVIDE([Gasto operativo] - [Gasto año anterior], [Gasto año anterior])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 03 Comparativos
+		lineageTag: 70389770-da86-4433-ba72-c7b2a9edc51d
+
+	/// Ingreso contable acumulado del ejercicio.
+	measure 'Ingresos acumulados año' = TOTALYTD([Ingresos contables], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+		lineageTag: edaf8811-ea23-4a1e-a228-07531fe14ced
+
+	/// Resultado del ejercicio a la fecha, antes de ajustes de cierre.
+	measure 'Resultado acumulado año' = TOTALYTD([Resultado contable], DM_Calendario[fecha])
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+		lineageTag: b703be8b-7a05-4766-ac1b-a69b47d6ec09
+
+	/// Resultado del mes previo.
+	measure 'Resultado mes anterior' = CALCULATE([Resultado contable], DATEADD(DM_Calendario[fecha], -1, MONTH))
+		formatString: "Q" #,0
+		displayFolder: 03 Comparativos
+		lineageTag: 9bffb296-953b-4fed-a6bd-939831c53aa9
+
+	/// Diferencia entre lo que dice contabilidad y lo que dice facturación. Debería ser cerca de cero; si no, hay anticipos, ajustes o cuentas de ingreso mal clasificadas. Es un control, no un KPI: cuando se despega, hay que ir a buscar por qué.
+	measure 'Brecha contable vs facturado' = [Ingresos contables] - [Ventas netas]
+		formatString: "Q" #,0
+		displayFolder: 04 Control
+		lineageTag: 1b4e966a-1c46-467b-af64-2aceb4ff8d8f
+
+	/// La brecha contra facturación en porcentaje. Debería rondar cero; cuando se despega hay que buscar anticipos, ajustes o cuentas mal clasificadas.
+	measure '% Brecha contable' = DIVIDE([Brecha contable vs facturado], [Ventas netas])
+		formatString: +0.0%;-0.0%;0.0%
+		displayFolder: 04 Control
+		lineageTag: 4078f3e1-8145-40d3-a02b-268a78717aaf
 
 	column tiempo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 6b3fe35e-a1f8-4e94-9f6d-67d9ce903470
 		summarizeBy: none
 		sourceColumn: tiempo_clave
 
 	column cuenta_clave
 		dataType: int64
 		isHidden
+		lineageTag: 34883cdc-ce9f-45fe-a205-3c8cd87452b7
 		summarizeBy: none
 		sourceColumn: cuenta_clave
 
 	column centro_costo_clave
 		dataType: int64
 		isHidden
+		lineageTag: 754ef82d-894d-4073-829e-a857607f98ba
 		summarizeBy: none
 		sourceColumn: centro_costo_clave
 
 	column organizacion_clave
 		dataType: int64
 		isHidden
+		lineageTag: 78952336-7b15-4027-b632-0e8dc732e6df
 		summarizeBy: none
 		sourceColumn: organizacion_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: e213fc11-e258-40e0-91dd-15088c9d1c3b
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column partida_id
 		dataType: string
+		lineageTag: 473fdaeb-eba5-4ff6-b7ed-dbc68265334d
 		summarizeBy: none
 		sourceColumn: partida_id
 
 	column asiento_id
 		dataType: string
+		lineageTag: fc888f5b-e0ed-4d59-bc54-16494a60b5d3
 		summarizeBy: none
 		sourceColumn: asiento_id
 
 	column fecha
 		dataType: dateTime
+		formatString: dd/MM/yyyy
+		lineageTag: 6ff13f70-30d1-43c2-bcaa-0988a7d48cf7
 		summarizeBy: none
 		sourceColumn: fecha
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column naturaleza
 		dataType: string
+		lineageTag: a10cea6e-ee1d-4f50-b69a-248bb1f838ad
 		summarizeBy: none
 		sourceColumn: naturaleza
 
 	column documento_origen
 		dataType: string
+		lineageTag: e59edad9-efd8-40fb-9dcd-91e355347874
 		summarizeBy: none
 		sourceColumn: documento_origen
 
 	column tipo_documento_origen
 		dataType: string
+		lineageTag: 7e142d60-0619-4d28-9ab5-e731763f0a65
 		summarizeBy: none
 		sourceColumn: tipo_documento_origen
 
 	column origen_partida
 		dataType: string
+		lineageTag: a4592ca7-36a0-45ce-b0f3-8d48425b6cf6
 		summarizeBy: none
 		sourceColumn: origen_partida
 
 	column descripcion_partida
 		dataType: string
+		lineageTag: 21ff8fd7-ff20-47db-87cf-bef0ac515339
 		summarizeBy: none
 		sourceColumn: descripcion_partida
 
 	column debe
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: debe
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 363e2125-8778-4763-b0e1-ee21754461e6
+		summarizeBy: sum
+		sourceColumn: debe
+
+		annotation SummarizationSetBy = Automatic
 
 	column haber
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: haber
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 6a747ec8-e243-4a93-a21f-228cdb6a5241
+		summarizeBy: sum
+		sourceColumn: haber
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 50d96695-a12f-495d-8b98-c502384821e6
+		summarizeBy: sum
+		sourceColumn: monto
+
+		annotation SummarizationSetBy = Automatic
 
 	column monto_resultado
-		dataType: decimal
-		summarizeBy: none
-		sourceColumn: monto_resultado
+		dataType: double
 		formatString: #,0.00
+		lineageTag: 65d9e246-42d0-40b3-8af2-35b666fd5645
+		summarizeBy: sum
+		sourceColumn: monto_resultado
+
+		annotation SummarizationSetBy = Automatic
 
 	column proceso_transformacion
 		dataType: string
 		isHidden
+		lineageTag: ae079f36-6e6f-41c7-9f90-857f4abe6165
 		summarizeBy: none
 		sourceColumn: proceso_transformacion
 
 	column version_proceso
 		dataType: string
 		isHidden
+		lineageTag: 79f43e92-0a09-4bc2-a90c-88534f7b4efb
 		summarizeBy: none
 		sourceColumn: version_proceso
-
-	/// Gasto operativo del MAYOR (cuentas de gasto), con jerarquía de cuenta y centro de costo.
-	measure 'Gasto operativo' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "gasto"))
-		formatString: "Q" #,0
-		displayFolder: 01 P&L
-
-	/// Costo del período según el mayor. Es la cifra contable, no el costo de línea de la factura.
-	measure 'Costo (contable)' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "costo"))
-		formatString: "Q" #,0
-		displayFolder: 01 P&L
-
-	/// Ingresos según el LIBRO MAYOR. Cuadra al centavo con Ventas Netas cuando todo ingreso pasa por factura.
-	measure 'Ingresos contables' = CALCULATE(SUM('FC_Resultados contables'[monto_resultado]), KEEPFILTERS('FC_Resultados contables'[naturaleza] = "ingreso"))
-		formatString: "Q" #,0
-		displayFolder: 01 P&L
-
-	/// Ingresos − costos − gastos, todo desde el mayor: el resultado operativo contable.
-	measure 'Resultado contable' = [Ingresos contables] - [Costo (contable)] - [Gasto operativo]
-		formatString: "Q" #,0
-		displayFolder: 01 P&L
-
-	/// Número de partidas del mayor en el filtro vigente.
-	measure 'Partidas contables' = COUNTROWS('FC_Resultados contables')
-		formatString: #,0
-		displayFolder: 01 P&L
-
-	/// Margen operativo real, el del mayor contable — no el margen de línea de factura. Es el número que mira un banco.
-	measure '% Margen operativo' = DIVIDE([Resultado contable], [Ingresos contables])
-		formatString: 0.0%
-		displayFolder: 02 Estructura
-
-	/// Cuánto del ingreso se come la estructura. Subir la venta con este porcentaje subiendo no mejora nada.
-	measure '% Gasto sobre ingreso' = DIVIDE([Gasto operativo], [Ingresos contables])
-		formatString: 0.0%
-		displayFolder: 02 Estructura
-
-	/// Qué parte del ingreso se va en costo directo.
-	measure '% Costo sobre ingreso' = DIVIDE([Costo (contable)], [Ingresos contables])
-		formatString: 0.0%
-		displayFolder: 02 Estructura
-
-	/// Peso del rubro de gasto más grande dentro del total. Filtrar por nivel de la jerarquía contable para leerlo.
-	measure '% Gasto en el mayor rubro' = DIVIDE(MAXX(ALLSELECTED('DM_Cuenta contable'), [Gasto operativo]), CALCULATE([Gasto operativo], ALLSELECTED('DM_Cuenta contable')))
-		formatString: 0.0%
-		displayFolder: 02 Estructura
-
-	/// Estructura media mensual: el piso que hay que cubrir cada mes.
-	measure 'Gasto promedio mensual' = DIVIDE([Gasto operativo], DISTINCTCOUNT(DM_Calendario[anio_mes]))
-		formatString: "Q" #,0
-		displayFolder: 02 Estructura
-
-	/// Gasto del mes previo.
-	measure 'Gasto mes anterior' = CALCULATE([Gasto operativo], DATEADD(DM_Calendario[fecha], -1, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 03 Comparativos
-
-	/// Gasto del mismo período del año pasado.
-	measure 'Gasto año anterior' = CALCULATE([Gasto operativo], SAMEPERIODLASTYEAR(DM_Calendario[fecha]))
-		formatString: "Q" #,0
-		displayFolder: 03 Comparativos
-
-	/// Gasto acumulado del ejercicio.
-	measure 'Gasto acumulado año' = TOTALYTD([Gasto operativo], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 03 Comparativos
-
-	/// Cómo crece la estructura. Que crezca más rápido que el ingreso es la señal más temprana de deterioro.
-	measure 'Variación de gasto vs año anterior' = DIVIDE([Gasto operativo] - [Gasto año anterior], [Gasto año anterior])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 03 Comparativos
-
-	/// Ingreso contable acumulado del ejercicio.
-	measure 'Ingresos acumulados año' = TOTALYTD([Ingresos contables], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 03 Comparativos
-
-	/// Resultado del ejercicio a la fecha, antes de ajustes de cierre.
-	measure 'Resultado acumulado año' = TOTALYTD([Resultado contable], DM_Calendario[fecha])
-		formatString: "Q" #,0
-		displayFolder: 03 Comparativos
-
-	/// Resultado del mes previo.
-	measure 'Resultado mes anterior' = CALCULATE([Resultado contable], DATEADD(DM_Calendario[fecha], -1, MONTH))
-		formatString: "Q" #,0
-		displayFolder: 03 Comparativos
-
-	/// Diferencia entre lo que dice contabilidad y lo que dice facturación. Debería ser cerca de cero; si no, hay anticipos, ajustes o cuentas de ingreso mal clasificadas. Es un control, no un KPI: cuando se despega, hay que ir a buscar por qué.
-	measure 'Brecha contable vs facturado' = [Ingresos contables] - [Ventas netas]
-		formatString: "Q" #,0
-		displayFolder: 04 Control
-
-	/// La brecha contra facturación en porcentaje. Debería rondar cero; cuando se despega hay que buscar anticipos, ajustes o cuentas mal clasificadas.
-	measure '% Brecha contable' = DIVIDE([Brecha contable vs facturado], [Ventas netas])
-		formatString: +0.0%;-0.0%;0.0%
-		displayFolder: 04 Control
 
 	partition 'FC_Resultados contables' = m
 		mode: import
@@ -210,3 +259,4 @@ table 'FC_Resultados contables'
 				    Tabla = Origen{[Schema="oro",Item="hecho_movimiento_contable"]}[Data]
 				in
 				    Tabla
+

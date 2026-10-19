@@ -36,6 +36,11 @@
 
 \set ON_ERROR_STOP on
 
+-- Instalación LIMPIA (base de control creada ya como quilate_control): no hay nada que
+-- renombrar y la migración no hace nada. Solo aplica a entornos que nacieron como cresta_dw.
+SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'cresta_dw') AS hay_base_vieja \gset
+\if :hay_base_vieja
+
 -- Corta las conexiones vivas a la base de control: el renombre las rechaza.
 SELECT pg_terminate_backend(pid)
   FROM pg_stat_activity
@@ -70,3 +75,6 @@ BEGIN
   END IF;
   RAISE NOTICE 'Renombre aplicado: cresta_dw→quilate_control, cresta_admin→quilate_admin';
 END $$;
+\else
+\echo '122: instalación limpia, nada que renombrar'
+\endif

@@ -1,55 +1,69 @@
 table 'DM_Año de clasificación'
+	lineageTag: 0914c91d-5094-41af-80e5-32e00e4cc7fe
 
 	column anio_clave
 		dataType: int64
 		isHidden
+		lineageTag: 54206e7b-7fc7-4bac-8cce-21468599059c
 		summarizeBy: none
 		sourceColumn: anio_clave
 
 	column anio
 		dataType: int64
+		formatString: 0
+		lineageTag: b88d21ec-8143-470c-98b3-2f6cf18d2e83
 		summarizeBy: none
 		sourceColumn: anio
-		formatString: 0
 
 	column anio_nombre
 		dataType: string
+		lineageTag: 7145973c-0631-4b4d-862c-03a87516ace9
 		summarizeBy: none
 		sourceColumn: anio_nombre
 
 	column es_anio_actual
 		dataType: boolean
+		lineageTag: 130d0f7e-c2c4-406e-9cc8-ae97b040a4e0
 		summarizeBy: none
 		sourceColumn: es_anio_actual
 
 	column es_anio_anterior
 		dataType: boolean
+		lineageTag: 3e26205e-2ba4-4057-b872-e5d23da9f229
 		summarizeBy: none
 		sourceColumn: es_anio_anterior
 
 	column anios_desde_hoy
 		dataType: int64
+		formatString: #,0
+		lineageTag: c83b000b-2022-4093-b0de-86714378eb0b
 		summarizeBy: none
 		sourceColumn: anios_desde_hoy
-		formatString: #,0
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 077280c0-317a-406c-bddb-9e169fc074ff
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: be2076ca-927e-4215-9c93-0925271f3f3e
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: a378f26e-fc41-4314-992e-32c470e424c5
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -61,3 +75,4 @@ table 'DM_Año de clasificación'
 				    Tabla = Origen{[Schema="oro",Item="dim_anio"]}[Data]
 				in
 				    Tabla
+

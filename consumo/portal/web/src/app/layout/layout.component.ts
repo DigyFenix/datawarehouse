@@ -1,5 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { AuthService } from '../core/auth.service';
 import { TenantService } from '../core/tenant.service';
@@ -13,6 +15,7 @@ interface ItemNav {
   etiqueta: string;
   icono: string; // nombre en el mapa de <app-icon>
   soloAdmin?: boolean;
+  soloAsistente?: boolean; // módulo que se vende aparte
 }
 
 @Component({
@@ -25,9 +28,9 @@ interface ItemNav {
     }
     <div class="shell">
       <aside class="sidebar" [class.abierta]="menuAbierto()">
-        <div class="marca">
+        <div class="marca" [class.marca--ancha]="tenant.logoAncho()">
           @if (tenant.logoUrl(); as logo) {
-            <img [src]="logo" alt="" class="marca__img" />
+            <img [src]="logo" [alt]="tenant.nombre()" class="marca__img" (load)="tenant.medirLogo($event)" />
           } @else {
             <div class="marca__logo">{{ iniciales() }}</div>
           }
@@ -112,7 +115,7 @@ interface ItemNav {
             <button class="secundario pequeno" (click)="salir()">Salir</button>
           </div>
         </header>
-        <main class="contenido">
+        <main class="contenido" [class.contenido--ancho]="enVisor()">
           <router-outlet></router-outlet>
         </main>
       </div>
@@ -130,6 +133,10 @@ interface ItemNav {
     }
     .marca { display: flex; align-items: center; gap: 11px; padding: 4px var(--sp-5) var(--sp-5); position: relative; }
     .marca__img { max-width: 40px; max-height: 40px; border-radius: 9px; background: #fff; padding: 2px; }
+    /* Wordmark: el logo ya dice el nombre; ocupa el ancho del menú y el nombre no se repite. */
+    .marca--ancha { flex-direction: column; align-items: stretch; gap: 8px; }
+    .marca--ancha .marca__img { max-width: 100%; max-height: 52px; object-fit: contain; padding: 8px 12px; border-radius: 10px; }
+    .marca--ancha .marca__txt strong { display: none; }
     .marca__logo {
       width: 38px; height: 38px; border-radius: 9px;
       background: var(--amber-500); color: #14251a;
@@ -209,6 +216,8 @@ interface ItemNav {
       display: grid; place-items: center; font-size: 13px; font-weight: 600;
     }
     .contenido { padding: var(--sp-6); flex: 1; max-width: 1280px; width: 100%; }
+    /* El visor de un tablero usa todo el ancho: el reporte es lo único en pantalla. */
+    .contenido--ancho { max-width: none; padding: var(--sp-4) var(--sp-5); }
 
     .overlay--sidebar { z-index: 940; }
 
@@ -249,19 +258,28 @@ export class LayoutComponent {
   readonly tenant = inject(TenantService);
   readonly tema = inject(ThemeService);
   private readonly router = inject(Router);
+  /** True en /<hash>/tableros/<clave>: el visor ocupa todo el ancho disponible. */
+  readonly enVisor = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => /\/tableros\/[^/]+/.test(e.urlAfterRedirects)),
+    ),
+    { initialValue: /\/tableros\/[^/]+/.test(this.router.url) },
+  );
 
   readonly menuAbierto = signal(false);
 
   private readonly items: ItemNav[] = [
     { ruta: 'inicio', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: 'tableros', etiqueta: 'Tableros', icono: 'grafico' },
-    { ruta: 'chatbot', etiqueta: 'Asistente', icono: 'chatbot' },
+    { ruta: 'chatbot', etiqueta: 'Asistente', icono: 'chatbot', soloAsistente: true },
     { ruta: 'admin', etiqueta: 'Administración', icono: 'admin', soloAdmin: true },
   ];
 
   visibles(): ItemNav[] {
     const esAdmin = this.auth.usuario()?.esAdmin ?? false;
-    return this.items.filter((i) => !i.soloAdmin || esAdmin);
+    const asistente = this.tenant.moduloAsistente();
+    return this.items.filter((i) => (!i.soloAdmin || esAdmin) && (!i.soloAsistente || asistente));
   }
 
   iniciales(): string {

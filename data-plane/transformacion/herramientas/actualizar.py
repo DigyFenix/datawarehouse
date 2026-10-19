@@ -37,6 +37,7 @@ import time
 
 import psycopg
 
+from quilate_extraccion.candado import CargaEnCurso, candado_carga
 from quilate_extraccion.config import cargar_postgres
 from quilate_extraccion.extraccion import extraer_objeto
 from quilate_extraccion.transformacion import (
@@ -159,6 +160,16 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     cfg = cargar_postgres()
+    # Una sola carga a la vez por servidor (programador vs. botón del portal).
+    try:
+        with candado_carga(cfg):
+            return _correr(cfg, args)
+    except CargaEnCurso as e:
+        print(f"OMITIDO: {e}", file=sys.stderr)
+        return 3
+
+
+def _correr(cfg, args: argparse.Namespace) -> int:
     fallos: list[tuple[str, str, str]] = []
 
     if not args.solo_build:

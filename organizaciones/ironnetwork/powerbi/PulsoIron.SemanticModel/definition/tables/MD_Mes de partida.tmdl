@@ -1,11 +1,14 @@
 table 'MD_Mes de partida'
+	lineageTag: 9241ba9b-f77b-4890-ad39-6a83d82d2bbe
 
 	column 'Mes de partida'
 		dataType: int64
 		formatString: 0
+		lineageTag: 2029b5d5-f05a-4834-bbcc-4bbe92e2b97d
 		summarizeBy: none
 		sourceColumn: [Value]
 
 	partition 'MD_Mes de partida' = calculated
 		mode: import
 		source = GENERATESERIES(-24, 0, 1)
+

@@ -1,91 +1,112 @@
 table 'DM_Dirección de entrega'
+	lineageTag: bb9a369a-1295-4da5-9c2d-c91c355726cb
 
 	column direccion_clave
 		dataType: int64
 		isHidden
+		lineageTag: 3adca403-7b35-43cd-b2ec-e8616338ea2c
 		summarizeBy: none
 		sourceColumn: direccion_clave
 
 	column empresa_id
 		dataType: string
 		isHidden
+		lineageTag: 44746346-1a2e-41e2-8cab-6df015d06a83
 		summarizeBy: none
 		sourceColumn: empresa_id
 
 	column socio_codigo
 		dataType: string
+		lineageTag: 10bcfe8d-5938-4db6-86c5-ad6c31c3d9f3
 		summarizeBy: none
 		sourceColumn: socio_codigo
 
 	column direccion_codigo
 		dataType: string
+		lineageTag: 554cdb0f-7384-45a0-9f33-fd38284d13dc
 		summarizeBy: none
 		sourceColumn: direccion_codigo
 
 	column tipo
 		dataType: string
+		lineageTag: 2d698ef6-4f70-4901-8690-62dd2ff4282d
 		summarizeBy: none
 		sourceColumn: tipo
 
 	column calle
 		dataType: string
+		lineageTag: 5f094036-ff8b-43d1-adf9-fb20c9d886bc
 		summarizeBy: none
 		sourceColumn: calle
 
 	column ciudad
 		dataType: string
+		lineageTag: be1ad44c-f590-4fdc-900a-2a083d272055
 		summarizeBy: none
 		sourceColumn: ciudad
 
 	column municipio
 		dataType: string
+		lineageTag: 2883d17a-3de7-4541-95f2-ec73602c6748
 		summarizeBy: none
 		sourceColumn: municipio
 
 	column departamento
 		dataType: string
+		lineageTag: d61729f9-afc6-4ef3-aa0f-9cf4f74e7f21
 		summarizeBy: none
 		sourceColumn: departamento
 
 	column pais
 		dataType: string
+		lineageTag: b703ea8a-e377-4f22-bf47-ab4caa907967
 		summarizeBy: none
 		sourceColumn: pais
 
 	column codigo_postal
 		dataType: string
+		lineageTag: ea1fc04d-e1f6-407a-91b7-4a5fecf88581
 		summarizeBy: none
 		sourceColumn: codigo_postal
 
 	column latitud
-		dataType: decimal
+		dataType: double
+		formatString: #,0.00
+		lineageTag: e2ac9f9a-cce5-4565-8b4b-fee8873dae0b
 		summarizeBy: none
 		sourceColumn: latitud
-		formatString: #,0.00
 
 	column longitud
-		dataType: decimal
+		dataType: double
+		formatString: #,0.00
+		lineageTag: 1faf6dc4-670e-41ec-98c5-b09141b9b9b6
 		summarizeBy: none
 		sourceColumn: longitud
-		formatString: #,0.00
 
 	column valido_desde
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 578b52bf-d482-474b-a4d5-ede3cff27a67
 		summarizeBy: none
 		sourceColumn: valido_desde
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column valido_hasta
 		dataType: dateTime
 		isHidden
+		formatString: dd/MM/yyyy
+		lineageTag: 34fefcb0-56bb-46c6-999e-4684fca6698b
 		summarizeBy: none
 		sourceColumn: valido_hasta
-		formatString: dd/MM/yyyy
+
+		annotation UnderlyingDateTimeDataType = Date
 
 	column es_vigente
 		dataType: boolean
 		isHidden
+		lineageTag: 060063ca-79a7-47a2-8ad5-4dd27e7ce281
 		summarizeBy: none
 		sourceColumn: es_vigente
 
@@ -97,3 +118,4 @@ table 'DM_Dirección de entrega'
 				    Tabla = Origen{[Schema="oro",Item="dim_direccion"]}[Data]
 				in
 				    Tabla
+

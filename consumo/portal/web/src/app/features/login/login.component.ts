@@ -13,9 +13,9 @@ import { TenantService } from '../../core/tenant.service';
   template: `
     <div class="acceso">
       <section class="hero">
-        <div class="hero__top">
+        <div class="hero__top" [class.hero__top--ancha]="tenant.logoAncho()">
           @if (tenant.logoUrl(); as logo) {
-            <img [src]="logo" alt="" class="logo-img" />
+            <img [src]="logo" [alt]="tenant.nombre()" class="logo-img" (load)="tenant.medirLogo($event)" />
           } @else {
             <div class="logo">{{ iniciales() }}</div>
           }
@@ -77,6 +77,9 @@ import { TenantService } from '../../core/tenant.service';
       font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: -.03em;
     }
     .logo-img { max-width: 46px; max-height: 46px; border-radius: 11px; background: #fff; padding: 3px; }
+    /* Wordmark: tarjeta blanca legible en vez de una miniatura de 46 px. */
+    .hero__top--ancha { flex-direction: column; align-items: flex-start; gap: 14px; }
+    .hero__top--ancha .logo-img { max-width: 280px; max-height: 72px; object-fit: contain; padding: 10px 16px; border-radius: 12px; }
     .hero__msg { margin-top: auto; margin-bottom: 24px; }
     .hero__msg h1 { color: #fff; font-size: 52px; line-height: .98; letter-spacing: -.04em; }
     .hero__msg p { color: #a7bcae; font-size: 15.5px; max-width: 34ch; margin: 18px 0 0; line-height: 1.5; }

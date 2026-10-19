@@ -16,6 +16,8 @@ interface FormTablero {
   urlPublica: string;
   orden: number;
   activo: boolean;
+  mostrarBarra: boolean;
+  grupo: string;
 }
 
 interface FormAdmin {
@@ -105,7 +107,17 @@ interface UsuarioPortalOrg {
             <button class="secundario pequeno" (click)="verComo()" [disabled]="emitiendo()">
               {{ emitiendo() ? 'Abriendo…' : 'Ver portal' }}
             </button>
+            <button class="secundario pequeno" (click)="restablecerPassword()" [disabled]="emitiendo()">
+              Restablecer contraseña
+            </button>
           </div>
+          @if (temporal(); as t) {
+            <div class="fila-url">
+              <span class="sutil">Temporal de <strong>{{ t.email }}</strong> (se muestra una sola vez):</span>
+              <code class="url">{{ t.passwordTemporal }}</code>
+              <button class="secundario pequeno" (click)="copiarTemporal()">Copiar</button>
+            </div>
+          }
         } @else {
           <p class="sutil">La organización todavía no tiene usuarios en su portal.</p>
         }
@@ -137,11 +149,12 @@ interface UsuarioPortalOrg {
     <div class="tarjeta" style="padding:0; margin-top:16px;">
       <div class="tabla-wrap">
         <table>
-          <thead><tr><th>Tablero</th><th>Clave</th><th>URL pública</th><th>Orden</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Tablero</th><th>Grupo</th><th>Clave</th><th>URL pública</th><th>Orden</th><th>Estado</th><th></th></tr></thead>
           <tbody>
             @for (t of tableros(); track t.id) {
               <tr>
                 <td><strong>{{ t.nombre }}</strong>@if (t.descripcion) { <br /><span class="sutil">{{ t.descripcion }}</span> }</td>
+                <td>{{ t.grupo ?? '—' }}</td>
                 <td><code>{{ t.clave }}</code></td>
                 <td class="celda-url"><code>{{ t.urlPublica }}</code></td>
                 <td>{{ t.orden }}</td>
@@ -152,7 +165,7 @@ interface UsuarioPortalOrg {
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="6"><div class="vacio"><strong>Sin tableros</strong>Publica el dashboard en Power BI (Publish to Web) y registra aquí su URL.</div></td></tr>
+              <tr><td colspan="7"><div class="vacio"><strong>Sin tableros</strong>Publica el dashboard en Power BI (Publish to Web) y registra aquí su URL.</div></td></tr>
             }
           </tbody>
         </table>
@@ -172,11 +185,18 @@ interface UsuarioPortalOrg {
           <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="formTablero.nombre" required placeholder="Resumen de ventas" /></div>
           <div class="campo"><label>Descripción</label><input name="descripcion" [(ngModel)]="formTablero.descripcion" /></div>
           <div class="campo">
+            <label>Grupo</label>
+            <input name="grupo" [(ngModel)]="formTablero.grupo" placeholder="Ventas, Clientes, Inventario, Finanzas…" />
+            <span class="sutil">Los tableros del mismo grupo se muestran juntos en el inicio y se navegan como pestañas. Para un tablero por hoja, agrega <code>&amp;pageName=&lt;id de la hoja&gt;</code> a la URL.</span>
+          </div>
+          <div class="campo">
             <label>URL pública (Publish to Web)</label>
             <input name="urlPublica" [(ngModel)]="formTablero.urlPublica" required placeholder="https://app.powerbi.com/view?r=…" />
             <span class="sutil">La URL es pública por naturaleza (riesgo aceptado): el portal solo la muestra a usuarios con perfil autorizado y audita cada apertura.</span>
           </div>
           <label class="check"><input type="checkbox" name="activo" [(ngModel)]="formTablero.activo" /> Activo</label>
+          <label class="check"><input type="checkbox" name="mostrarBarra" [(ngModel)]="formTablero.mostrarBarra" /> Mostrar la barra de Power BI</label>
+          <span class="sutil">Necesaria si el tablero es un reporte de varias páginas (flechas para navegar). Trae el botón «compartir», que muestra el vínculo público.</span>
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="drawerTablero.set(false)">Cancelar</button>
@@ -234,6 +254,9 @@ export class PortalUsuarioComponent {
   readonly estado = signal<EstadoPortalOrg | null>(null);
   readonly usuariosPortal = signal<UsuarioPortalOrg[]>([]);
   readonly emitiendo = signal(false);
+  /** Base del portal de usuario: viene del API (configuración del servidor, no del build). */
+  readonly portalUsuarioUrl = signal(environment.portalUsuarioUrl);
+  readonly temporal = signal<{ email: string; passwordTemporal: string } | null>(null);
   usuarioAVer: number | null = null;
   readonly tableros = signal<TableroPortal[]>([]);
   readonly logoUrl = signal<string | null>(null);
@@ -247,6 +270,10 @@ export class PortalUsuarioComponent {
   formAdmin: FormAdmin = { email: '', nombre: '', password: '' };
 
   constructor() {
+    this.api.get<{ portalUsuarioUrl: string }>('/config').subscribe({
+      next: (c) => this.portalUsuarioUrl.set(c.portalUsuarioUrl),
+      error: (e: Error) => this.toast.error('No se pudo leer la configuración del servidor', e.message),
+    });
     // cargar() escribe signals de forma síncrona (resetea estado/tableros/logo);
     // sin allowSignalWrites, Angular corta el effect con NG0600 y la pantalla
     // se queda en "Cargando estado…".
@@ -260,12 +287,12 @@ export class PortalUsuarioComponent {
   }
 
   private tableroVacio(): FormTablero {
-    return { clave: '', nombre: '', descripcion: '', urlPublica: '', orden: 0, activo: true };
+    return { clave: '', nombre: '', descripcion: '', urlPublica: '', orden: 0, activo: true, mostrarBarra: false, grupo: '' };
   }
 
   urlIngreso(): string {
     const hash = this.orgs.activa()?.hashTenant ?? '';
-    return `${environment.portalUsuarioUrl}/${hash}`;
+    return `${this.portalUsuarioUrl()}/${hash}`;
   }
 
   private cargarUsuariosPortal(organizacionId: number): void {
@@ -295,7 +322,7 @@ export class PortalUsuarioComponent {
       .subscribe({
         next: (r) => {
           this.emitiendo.set(false);
-          const url = `${environment.portalUsuarioUrl}/${r.hashTenant}/entrar-como?pase=${r.ticket}`;
+          const url = `${this.portalUsuarioUrl()}/${r.hashTenant}/entrar-como?pase=${r.ticket}`;
           window.open(url, '_blank', 'noopener');
           this.toast.info('Portal abierto', `Viendo como ${r.usuario.email}`);
         },
@@ -304,6 +331,38 @@ export class PortalUsuarioComponent {
           this.toast.error('No se pudo abrir el portal', e.message);
         },
       });
+  }
+
+  /** Restablece la contraseña del usuario elegido y muestra la temporal una sola vez. */
+  restablecerPassword(): void {
+    const organizacionId = this.orgs.activaId();
+    if (organizacionId === null || this.usuarioAVer === null) return;
+    const usuario = this.usuariosPortal().find((u) => u.id === this.usuarioAVer);
+    if (!confirm(`¿Restablecer la contraseña de ${usuario?.email ?? 'este usuario'}? Deberá cambiarla al entrar.`)) return;
+    this.emitiendo.set(true);
+    this.api
+      .post<{ email: string; passwordTemporal: string }>(
+        `/organizaciones/${organizacionId}/portal/usuarios/${this.usuarioAVer}/restablecer-password`,
+        {},
+      )
+      .subscribe({
+        next: (r) => {
+          this.emitiendo.set(false);
+          this.temporal.set(r);
+          this.toast.exito('Contraseña restablecida', `Entrégale la temporal a ${r.email}`);
+        },
+        error: (e: Error) => {
+          this.emitiendo.set(false);
+          this.toast.error('No se pudo restablecer', e.message);
+        },
+      });
+  }
+
+  copiarTemporal(): void {
+    const t = this.temporal();
+    if (!t) return;
+    void navigator.clipboard.writeText(t.passwordTemporal);
+    this.toast.exito('Contraseña copiada', t.email);
   }
 
   copiarUrl(): void {
@@ -317,6 +376,7 @@ export class PortalUsuarioComponent {
     this.tableros.set([]);
     this.logoUrl.set(null);
     this.usuariosPortal.set([]);
+    this.temporal.set(null);
     this.usuarioAVer = null;
     if (organizacionId === null) return;
     this.api.get<EstadoPortalOrg>(`/organizaciones/${organizacionId}/portal/estado`).subscribe({
@@ -432,6 +492,8 @@ export class PortalUsuarioComponent {
       urlPublica: t.urlPublica,
       orden: t.orden,
       activo: t.activo,
+      mostrarBarra: t.mostrarBarra,
+      grupo: t.grupo ?? '',
     };
     this.edicionId.set(t.id);
     this.errorForm.set(null);
@@ -449,6 +511,8 @@ export class PortalUsuarioComponent {
       urlPublica: this.formTablero.urlPublica,
       orden: this.formTablero.orden,
       activo: this.formTablero.activo,
+      mostrarBarra: this.formTablero.mostrarBarra,
+      grupo: this.formTablero.grupo.trim() || null,
       ...(id ? {} : { clave: this.formTablero.clave }),
     };
     const accion = id

@@ -10,6 +10,8 @@ export interface Branding {
   nombre: string;
   colorMarca: string | null;
   tieneLogo: boolean;
+  /** Módulo Asistente (IA) contratado; se vende aparte. */
+  moduloAsistente: boolean;
 }
 
 export interface SesionUsuario {
@@ -32,10 +34,15 @@ export interface TableroResumen {
   descripcion: string | null;
   modulo: string;
   orden: number;
+  /** Familia (Ventas, Inventario…): agrupa en el inicio y da las pestañas del visor. */
+  grupo: string | null;
 }
 
+/** Detalle al abrir: la URL de Power BI se queda en el servidor; `visor` es nuestra ruta con pase de un solo uso. */
 export interface TableroDetalle extends TableroResumen {
-  urlPublica: string;
+  visor: string;
+  /** Mostrar la barra de Power BI (navegación entre páginas; trae el botón «compartir»). */
+  mostrarBarra: boolean;
 }
 
 export interface UsuarioOrg {

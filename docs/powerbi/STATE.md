@@ -1,7 +1,7 @@
 # STATE — Quilate Analytics · Power BI Product
 
 FASE_ACTUAL: F5 (construcción POR CÓDIGO confirmada por Edwin — decisión 21; tenant de trabajo Iron Network; 13 páginas replicadas de Kraken 360, pulidas hoja por hoja con el patrón visual de la sesión 29 y con cifras cotejadas contra oro.*)
-ULTIMA_ACTUALIZACION: 2026-10-17 (sesión 29 — patrón visual en pbir.js, QA de cifras, estado del cobro como filtro; detalle en .claude/SESSION.md)
+ULTIMA_ACTUALIZACION: 2026-10-18 (sesión 30 — sin sombra ni navegador de páginas, segmentadores con estilo, filas de 240 px, lienzo blanco; detalle en .claude/SESSION.md)
 GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
 
 > **CAMBIO DE RUMBO (2026-08-08, decisión de Edwin):** la ola 1 se generó completa por código

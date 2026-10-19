@@ -1,0 +1,598 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 240.93229599999995
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 349.81590952316071,
+            "y": 1593.8585215383496
+          },
+          "nodeIndex": "DM_Análisis de producto",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1924.3803714562875,
+            "y": 2555.8465769364257
+          },
+          "nodeIndex": "DM_Año de clasificación",
+          "size": {
+            "height": 296,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2729.632185055867,
+            "y": 3026.9071217653996
+          },
+          "nodeIndex": "DM_Antigüedad",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 626.658518076316,
+            "y": 893.76554159726311
+          },
+          "nodeIndex": "DM_Bodega",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2417.9282662723763,
+            "y": 1314.04403810562
+          },
+          "nodeIndex": "DM_Calendario",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 379.38936004555558,
+            "y": -2.0725128912890796
+          },
+          "nodeIndex": "DM_Canal",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 931.423747930073,
+            "y": 541.24060845530767
+          },
+          "nodeIndex": "DM_Centro de costo",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1628.634380702885,
+            "y": 2844.9199237324005
+          },
+          "nodeIndex": "DM_Clasificación ABC",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2439.1303069050828,
+            "y": 2732.7507392313273
+          },
+          "nodeIndex": "DM_Clasificación ABC Proveedor",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1079.0826160705935,
+            "y": 2683.1722370419393
+          },
+          "nodeIndex": "DM_Clasificación RFM",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1121.4055535738655,
+            "y": 2319.6620092184635
+          },
+          "nodeIndex": "DM_Cliente",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 740.48724954523834,
+            "y": 2320.8514275318385
+          },
+          "nodeIndex": "DM_Comportamiento de pago",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 50,
+            "y": 219.28695273365747
+          },
+          "nodeIndex": "DM_Condición de pago",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2159.160860147018,
+            "y": 928.051098651445
+          },
+          "nodeIndex": "DM_Cuenta contable",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 670.43631064896431,
+            "y": -50
+          },
+          "nodeIndex": "DM_Dirección de entrega",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1438.6206556359737,
+            "y": 938.16518296087588
+          },
+          "nodeIndex": "DM_Empresa",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1537.0462628390774,
+            "y": 1272.634657139097
+          },
+          "nodeIndex": "DM_Moneda",
+          "size": {
+            "height": 272,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 507.37812579572835,
+            "y": 1229.6304371110184
+          },
+          "nodeIndex": "DM_Producto",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1878.8086153774882,
+            "y": 2019.3926116898178
+          },
+          "nodeIndex": "DM_Proveedor",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1660.5037028740774,
+            "y": 1605.2826989000328
+          },
+          "nodeIndex": "DM_Socio de negocio",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 339.37188316474203,
+            "y": 535.05520667239352
+          },
+          "nodeIndex": "DM_Tipo de documento",
+          "size": {
+            "height": 296,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 141.17396389958895,
+            "y": 895.27162368383051
+          },
+          "nodeIndex": "DM_Vendedor",
+          "size": {
+            "height": 296,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 904.190193143598,
+            "y": 1956.3050079411105
+          },
+          "nodeIndex": "FC_Campos de usuario",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2123.4563536657688,
+            "y": 1655.0303191282983
+          },
+          "nodeIndex": "FC_Cartera cobrar histórico",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2408.3262306596362,
+            "y": 2011.7608233918932
+          },
+          "nodeIndex": "FC_Cartera pagar histórico",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2215.2583645989107,
+            "y": 2372.9185974672509
+          },
+          "nodeIndex": "FC_Cartera por cobrar",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3008.8220385891273,
+            "y": 2173.17047422989
+          },
+          "nodeIndex": "FC_Cartera por pagar",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1144.052694464626,
+            "y": 876.27492792400017
+          },
+          "nodeIndex": "FC_Compras",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1982.1845929932781,
+            "y": 238.06127397237697
+          },
+          "nodeIndex": "FC_Estado de carga",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1225.9204342053056,
+            "y": 409.82390801537395
+          },
+          "nodeIndex": "FC_Inventario",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1951.9002243791267,
+            "y": 1291.7120061055552
+          },
+          "nodeIndex": "FC_Pagos efectuados",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1417.0960288506569,
+            "y": 1968.8846319288434
+          },
+          "nodeIndex": "FC_Pagos recibidos",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 895.32729251926958,
+            "y": 1229.6258500126139
+          },
+          "nodeIndex": "FC_Pedidos",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2466.5857362768866,
+            "y": 954.446178552766
+          },
+          "nodeIndex": "FC_Proyección de caja",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1391.0262018326166,
+            "y": 46.276879586029736
+          },
+          "nodeIndex": "FC_Resultados contables",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 1686.4448226861543,
+            "y": 574.39002690100051
+          },
+          "nodeIndex": "FC_Tipo de cambio",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 2700.6022161810952,
+            "y": 1708.153278207971
+          },
+          "nodeIndex": "FC_Venta diaria",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 631.57731699522822,
+            "y": 331.601455205418
+          },
+          "nodeIndex": "FC_Ventas",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3242.8220385891273,
+            "y": 1588.4535608826998
+          },
+          "nodeIndex": "MD_Lead time",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3526.8220385891273,
+            "y": 1588.4535608826998
+          },
+          "nodeIndex": "MD_Mes de partida",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 3810.8220385891273,
+            "y": 1624.4535608826998
+          },
+          "nodeIndex": "MD_Moneda de análisis",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4094.8220385891273,
+            "y": 1612.4535608826998
+          },
+          "nodeIndex": "MD_Vista de cartera",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4378.8220385891273,
+            "y": 1612.4535608826998
+          },
+          "nodeIndex": "MD_Vista de compras",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4662.8220385891273,
+            "y": 1612.4535608826998
+          },
+          "nodeIndex": "MD_Vista de inventario",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 4946.8220385891273,
+            "y": 1612.4535608826998
+          },
+          "nodeIndex": "MD_Vista de liquidez",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 5230.8220385891273,
+            "y": 1624.4535608826998
+          },
+          "nodeIndex": "MD_Vista de oportunidad",
+          "size": {
+            "height": 128,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 5514.8220385891273,
+            "y": 1612.4535608826998
+          },
+          "nodeIndex": "MD_Vista de rentabilidad",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        },
+        {
+          "location": {
+            "x": 5798.8220385891273,
+            "y": 1612.4535608826998
+          },
+          "nodeIndex": "MD_Vista de ventas",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 0
+        }
+      ],
+      "name": "Todas las tablas",
+      "zoomValue": 56.447393005377755,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "Todas las tablas",
+  "defaultDiagram": "Todas las tablas"
+}

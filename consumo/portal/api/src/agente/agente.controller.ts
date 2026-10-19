@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Post,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 
 import { RequestPortal } from '../auth/jwt-auth.guard';
@@ -17,8 +18,10 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AgenteService } from './agente.service';
 import { enviarMensajeSchema, EnviarMensajeDto } from './agente.dto';
 import { ConversacionesService } from './conversaciones.service';
+import { ModuloAsistenteGuard } from './modulo-asistente.guard';
 
 @Controller('t/:hash/agente')
+@UseGuards(ModuloAsistenteGuard)
 export class AgenteController {
   constructor(
     private readonly conversaciones: ConversacionesService,

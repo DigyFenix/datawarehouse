@@ -4,18 +4,18 @@
 // Uso:  node generar_paginas_inventario.js <ruta al .Report>
 'use strict';
 const P = require('./pbir');
-const { T, C, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, matriz, comboMensual, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, bool, color, meta, vcTitulo } = P;
+const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, matriz, comboMensual, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, bool, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
 const V = T.VENTAS, INV = 'FC_Inventario', LEAD = 'MD_Lead time';
 
-// Filtros Kraken del dashboard: línea, bodega, buscar producto, moneda.
+// Filtros Kraken del dashboard: línea, bodega, buscar producto. Sin «Moneda» (sesión 32): el inventario solo
+// se valora en moneda local y «Moneda original» dejaba en blanco el valor, el costo y la sugerencia de compra.
 function filtrosInventario(slug, col = 7) {
   return [
-    segmentador(slug, 'f-linea', T.PROD, 'grupo_nombre', [xCol(col), 88, wCol(2), 64], { sync: 'linea', titulo: 'Línea' }),
-    segmentador(slug, 'f-bodega', T.BOD, 'nombre', [xCol(col), 152, wCol(2), 64], { sync: 'bodega', titulo: 'Bodega' }),
-    segmentador(slug, 'f-buscar', T.PROD, 'nombre', [xCol(col + 2), 88, wCol(2), 64], { busqueda: true, titulo: 'Buscar producto' }),
-    segmentador(slug, 'moneda', T.MONEDA, 'Moneda de análisis', [xCol(col + 4), 88, wCol(2), 112], { unico: true, seleccion: 'Quetzales (local)', sync: 'moneda', titulo: 'Moneda' }),
+    segmentador(slug, 'f-linea', T.PROD, 'grupo_nombre', [xCol(col), BANDA[0], wCol(2), 64], { sync: 'linea', titulo: 'Línea' }),
+    segmentador(slug, 'f-bodega', T.BOD, 'nombre', [xCol(col), BANDA[1], wCol(2), 64], { sync: 'bodega', titulo: 'Bodega' }),
+    segmentador(slug, 'f-buscar', T.PROD, 'nombre', [xCol(col + 2), BANDA[0], wCol(2), 64], { busqueda: true, titulo: 'Buscar producto' }),
   ];
 }
 // Ranking por bodega / línea con fantasma, sobre una medida de inventario.
@@ -34,8 +34,8 @@ function paginaExistencias() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Existencias de inventario', 'Subtítulo de corte mensual'));
-  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(kpis(slug, 'existencias', [[INV, 'Unidades en existencia']], [xCol(3), 88, wCol(4), 112], 'Existencias', 'Unidades al último corte del inventario'));
+  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
+  vs.push(kpis(slug, 'existencias', [[INV, 'Unidades en existencia']], [xCol(3), BANDA[0], wCol(4), 112], 'Existencias', 'Unidades al último corte del inventario'));
   vs.push(...filtrosInventario(slug));
   vs.push(matrizProductos(slug, [xCol(1), FILA[0], wCol(5), ALTO * 3 + 32], 'Existencias y precio por línea y producto',
     [[INV, 'Unidades en existencia'], [V, 'Precio de lista'], [V, 'Precio promedio de venta 12 meses']]));
@@ -53,8 +53,8 @@ function paginaCosto() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Costo del inventario', 'Subtítulo de corte mensual'));
-  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(kpis(slug, 'costo', [[INV, 'Valor de inventario'], [V, 'Costo desplazado promedio mensual', 'Costo desplazado / mes'], [V, 'Meses de inventario al costo', 'Meses de inventario']], [xCol(3), 88, wCol(4), 112], 'Costo del inventario', 'Valor al corte · desplazado promedio mensual · cobertura'));
+  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
+  vs.push(kpis(slug, 'costo', [[INV, 'Valor de inventario'], [V, 'Costo desplazado promedio mensual', 'Costo desplazado / mes'], [V, 'Meses de inventario al costo', 'Meses de inventario']], [xCol(3), BANDA[0], wCol(4), 112], 'Costo del inventario', 'Valor al corte · desplazado promedio mensual · cobertura'));
   vs.push(...filtrosInventario(slug));
   vs.push(matrizProductos(slug, [xCol(1), FILA[0], wCol(5), ALTO * 3 + 32], 'Costo por producto',
     [[INV, 'Unidades en existencia'], [INV, 'Costo promedio ponderado'], [INV, 'Valor de inventario'], [V, 'Costo desplazado 12 meses'], [V, 'Meses de inventario al costo']]));
@@ -72,9 +72,9 @@ function paginaAnalisis() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Análisis de inventario', 'Subtítulo de corte mensual'));
-  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), 88, wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(segmentador(slug, 'lead-time', LEAD, 'Lead time', [xCol(1), 152, wCol(2), 64], { seleccion: 15, unico: true, sync: 'leadtime', titulo: 'Lead time (días)' }));
-  vs.push(kpis(slug, 'kpis', [[INV, 'Unidades en existencia', 'Unidades'], [V, 'Productos con sugerencia de compra', 'Productos a comprar'], [V, 'Lead time (días)']], [xCol(3), 88, wCol(4), 112], 'Reposición', 'Existencias · productos con sugerencia · lead time elegido'));
+  vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
+  vs.push(segmentador(slug, 'lead-time', LEAD, 'Lead time', [xCol(1), BANDA[1], wCol(2), 64], { seleccion: 15, unico: true, sync: 'leadtime', titulo: 'Lead time (días)' }));
+  vs.push(kpis(slug, 'kpis', [[INV, 'Unidades en existencia', 'Unidades'], [V, 'Productos con sugerencia de compra', 'Productos a comprar'], [V, 'Lead time (días)']], [xCol(3), BANDA[0], wCol(4), 112], 'Reposición', 'Existencias · productos con sugerencia · lead time elegido'));
   vs.push(...filtrosInventario(slug));
   vs.push(rkInv(slug, 'linea', [xCol(1), FILA[0], wCol(3), ALTO], T.PROD, 'grupo_nombre', 'Existencias por línea', 'Unidades en existencia', 'Resto a máximo línea existencias'));
   vs.push(rkInv(slug, 'bodega', [xCol(1), FILA[1], wCol(3), ALTO], T.BOD, 'nombre', 'Existencias por bodega', 'Unidades en existencia', 'Resto a máximo bodega existencias'));

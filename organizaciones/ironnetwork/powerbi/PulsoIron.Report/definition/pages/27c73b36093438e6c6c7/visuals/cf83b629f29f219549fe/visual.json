@@ -3,11 +3,11 @@
   "name": "cf83b629f29f219549fe",
   "position": {
     "x": 960,
-    "y": 216,
-    "z": 1500,
+    "y": 192,
+    "z": 1300,
     "height": 64,
     "width": 296,
-    "tabOrder": 15
+    "tabOrder": 13
   },
   "visual": {
     "visualType": "slicer",
@@ -108,7 +108,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Vista de oportunidad'"
+                  "Value": "'VISTA DE OPORTUNIDAD'"
                 }
               }
             },
@@ -116,6 +116,13 @@
               "expr": {
                 "Literal": {
                   "Value": "false"
+                }
+              }
+            },
+            "fontFamily": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Segoe UI Semibold'"
                 }
               }
             },
@@ -131,7 +138,18 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#4f6d78'"
+                    }
+                  }
+                }
+              }
+            },
+            "background": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#ffffff'"
                     }
                   }
                 }
@@ -163,6 +181,17 @@
                   "expr": {
                     "Literal": {
                       "Value": "'#1f2a2e'"
+                    }
+                  }
+                }
+              }
+            },
+            "background": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#f4f7f8'"
                     }
                   }
                 }
@@ -213,14 +242,76 @@
             "left": {
               "expr": {
                 "Literal": {
-                  "Value": "6D"
+                  "Value": "8D"
                 }
               }
             },
             "right": {
               "expr": {
                 "Literal": {
-                  "Value": "6D"
+                  "Value": "8D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#ffffff'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#e6ebee'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
                 }
               }
             }

@@ -27,6 +27,10 @@ const esquemaEnv = z.object({
 
   // Worker del plano de datos (introspección/extracción).
   WORKER_URL: z.string().url().default('http://worker:3010'),
+
+  // Base pública del portal de USUARIO (en producción, https://<cliente>.digyfenix.com).
+  // Es configuración de ejecución: la misma imagen sirve en cualquier servidor.
+  PORTAL_USUARIO_URL: z.string().url().default('http://localhost:8081'),
 });
 
 export type Env = z.infer<typeof esquemaEnv>;
