@@ -22,6 +22,8 @@ import {
   ActualizarTableroDto,
   crearTableroSchema,
   CrearTableroDto,
+  rotarEnlaceSchema,
+  RotarEnlaceDto,
   sembrarAdminSchema,
   SembrarAdminDto,
 } from './portal-org.dto';
@@ -95,6 +97,27 @@ export class PortalOrgController {
   @Get('tableros')
   listarTableros(@Param('id', ParseIntPipe) id: number) {
     return this.servicio.listarTableros(id);
+  }
+
+  /** Códigos de Publish to Web en uso y su antigüedad. @returns EnlacePublico[] */
+  @Get('tableros/enlaces')
+  listarEnlaces(@Param('id', ParseIntPipe) id: number) {
+    return this.servicio.listarEnlaces(id);
+  }
+
+  /**
+   * Rota el vínculo público en todos los tableros que lo usan.
+   * @param dto.urlNueva URL de Publish to Web recién generada
+   * @returns ResultadoRotacion · 400 si la URL no sirve, es el mismo código o la huella es ambigua
+   */
+  @Post('tableros/rotar-enlace')
+  @HttpCode(200)
+  rotarEnlace(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(rotarEnlaceSchema)) dto: RotarEnlaceDto,
+    @Req() req: Request,
+  ) {
+    return this.servicio.rotarEnlace(id, dto, this.actor(req));
   }
 
   @Post('tableros')

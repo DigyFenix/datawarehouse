@@ -1,5 +1,97 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 32 (2026-10-19) — UN TABLERO POR HOJA SIN BARRA DE POWER BI, FILTROS MUERTOS FUERA, PORTAL DESPLEGADO — leer esto primero ══════
+
+Edwin vio que Publish to Web trae un ícono «abrir en otra ventana» que destapa el vínculo
+público, justo lo que el visor intentaba ocultar. Se pasó de UN tablero (reporte completo con la
+barra visible para navegar) a **un tablero por hoja** (`&pageName=<id>`), agrupados como Kraken
+(Ventas · Clientes · Inventario · Finanzas) y navegados con pestañas del portal: la barra se
+recorta siempre. Además: selección múltiple en filtros, modo enfoque, filtros que no hacían nada
+fuera. Commit `533d330` (incluye lo sin commitear de las sesiones 30-31), en GitHub y **portal
+desplegado en producción**. Power BI: guardado en el repo; **Edwin actualiza y publica**.
+
+### Portal (usuario + admin)
+
+- Migración `135_tablero_grupo_tenant.sql` (+ rollback): `portal.tableros.grupo`. `modulo` no
+  servía: tiene CHECK `powerbi|chatbot`. Registrada en `provisionar.service.ts`.
+- Admin: campo «Grupo» en el formulario (el PATCH distingue `undefined` = no tocar de vacío = NULL).
+- Usuario: `core/tableros.ts` (`agruparTableros`), Inicio con las hojas por grupo, visor con
+  `app-tabs` de las hojas del mismo grupo (escucha `paramMap`: Angular reutiliza el componente
+  al cambiar de pestaña) y la frescura como línea de texto al pie («Datos al …»), no tarjetas.
+  Se quitaron los chips «Vistos recientemente» del Inicio (redundantes con las 13 tarjetas).
+- Seed `organizaciones/ironnetwork/seeds/57_tableros_por_hoja_ironnetwork.sql`: toma la URL del
+  único tablero con barra, crea 13 hojas, copia `perfil_tableros` y desactiva el original (no
+  borra). Rollback al final del archivo. **Aplicado en producción** (4 grupos, ninguna con barra).
+- Ids de hoja = carpetas PBIR, estables (sha1 por slug en el generador): Histórico
+  e72883913ec240d905bc, Seguimiento 6138f48678b1ab3a1a2a, … (lista completa en el seed 57).
+
+### Power BI (PulsoIron)
+
+- Filtros probados con DAX contra la caché de producción (valores distintos por valor del filtro):
+  - **Sucursal** fuera de `filtrosComerciales` (Oportunidades, Cartera 12 meses): 100 % de la
+    venta en «No definido» (gap G3); elegir la sucursal real vaciaba la hoja.
+  - **Moneda** fuera de las 3 hojas de inventario: el inventario solo es moneda local y
+    «Moneda original» dejaba en blanco valor y sugerencia.
+  - **Sugerencia / Monto de sugerencia de compra** ahora `SUMX` por producto: el total salía
+    BLANK con lead time ≤ 15 aunque había 1,528 unidades por sugerir.
+  - **Utilidad sigue en cero con cualquier filtro**: costo = 0 en las 761 líneas (gap G9). No es
+    filtro roto. Empresa: una sola real en Iron (se dejó).
+- `pbir.js`: segmentadores no únicos con `singleSelect: false` (varios con clic, sin Ctrl);
+  «Año y mes» de Seguimiento multimes; `Venta acumulada del mes al día año anterior` con
+  `[Ventas año anterior]` (DATEADD) — validada desplazando un mes: coincide día a día con agosto.
+- Modo enfoque: el tema ocultaba `visualHeader` en `*`. Ahora visible solo con
+  `showFocusModeButton` y oculto en slicer/cardVisual/image/textbox/shape. Se editó la copia viva
+  `PulsoIron.Report/StaticResources/RegisteredResources/ironnetwork-theme.json` (la de `theme/`
+  estaba desfasada; se le aplicó lo mismo).
+- Medidas cambiadas en `generar_pbip.py` **y** aplicadas a mano al TMDL con el mismo texto
+  (regenerar exige Postgres y borra `cache.abf`). Validado: `validar_reporte.py` 13 páginas /
+  228 visuales, y Desktop abre con datos.
+
+### Trampas
+
+1. **Captura de pantalla completa capturó el WhatsApp de Edwin** (SetForegroundWindow no trajo
+   Desktop). Borrada. Usar `PrintWindow` sobre la ventana (memoria `captura-solo-ventana`).
+2. `lead` es palabra reservada en DAX (VAR lead → error de sintaxis).
+3. El TMDL es CRLF: los reemplazos multilínea fallan si no se normaliza.
+4. Desktop no trae `AdomdClient.dll`; consultas DAX grandes → MCP, por partes.
+5. El auto mode bloqueó scp/ssh de despliegue y `git push` hasta que Edwin lo confirmó;
+   el script `dist/desplegar-20261019.sh` (fuera del repo) quedó como receta repetible.
+
+### Producción (2026-10-19)
+
+- Imágenes previas con tag `respaldo-20261019` (rollback: `docker tag <img>:respaldo-20261019
+  <img>:8b4ad65-local && docker compose up -d`). El paquete sigue llamándose `8b4ad65-local`
+  porque se armó antes del commit; el próximo empaquetado ya sale `533d330`.
+- Carga diaria de hoy OK (05:00 GT, dbt 231/231). Última venta 2026-10-16 (viernes). Compras al
+  2026-08-28 y CxP al 2026-08-31: **preguntar a Iron si registran compras en Odoo**.
+
+### Rotación del enlace público (desplegada en producción)
+
+Edwin confirmó en DevTools que el link de Power BI se ve en `#document` del iframe: es
+inevitable con Publish to Web (el navegador tiene que cargarlo). Mitigación: **rotar el código**.
+Portal admin → Portal de usuario → tarjeta «Enlace público de Power BI»: muestra cada código
+`r=` en uso por su huella (SHA-256 abreviado: los códigos son JSON en base64 y todos empiezan
+`eyJrIjoi…`, recortarlos no los distingue), cuántas hojas lo usan y hace cuántos días; aviso a
+los 30 días. Pegar la URL nueva → reemplaza el `r=` en todas las hojas (conservan su
+`&pageName=`) en una transacción, con auditoría solo de huellas. Endpoints
+`GET/POST organizaciones/:id/portal/tableros/{enlaces,rotar-enlace}`. Orden sin corte: crear
+código nuevo en Power BI → rotar en el portal → eliminar el viejo en Power BI. Solución de fondo
+(no hecha): Power BI Embedded con token por usuario. Imágenes previas del admin:
+`respaldo-20261019b`. Probado: extracción/reemplazo del `r=` con URLs reales; no se probó una
+rotación real (Edwin la hace al generar el código nuevo).
+
+### PENDIENTE: siguiente sesión
+
+1. Edwin: abrir `PulsoIron.pbip` → Actualizar → Publicar sobre el mismo reporte (la URL de
+   Publish to Web se conserva). Después: `git status` y
+   `python consumo/powerbi/validar_reporte.py organizaciones/ironnetwork/powerbi PulsoIron`
+   para confirmar que el guardado de Desktop no borró visuales; commitear el reformateo.
+2. Probar el portal con usuario real: Inicio agrupado, pestañas por grupo, que ninguna hoja
+   muestre la barra, multiselección y botón de enfoque en la web.
+3. Gateway de Power BI (Edwin) para refresco automático desde producción.
+4. Gaps que dejan visuales vacíos: G9 costo (Utilidad, Costo desplazado), G3 sucursal (dona
+   «Venta por sucursal» 100 % No definido en Histórico).
+
 ## ══════ SESIÓN 31 (2026-10-18) — IRON EN PRODUCCIÓN: SERVIDOR PROPIO EN AWS, PORTAL PÚBLICO CON TLS, PRIMERA CARGA REAL — leer esto primero ══════
 
 Sesión larga que llevó el producto de local a **producción real para Iron Network**: se cerró el

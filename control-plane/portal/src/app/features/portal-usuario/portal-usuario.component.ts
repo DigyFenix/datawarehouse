@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
-import { EstadoPortalOrg, TableroPortal } from '../../core/modelos';
+import { EnlacePublico, EstadoPortalOrg, ResultadoRotacion, TableroPortal } from '../../core/modelos';
 import { OrganizacionService } from '../../core/organizacion.service';
 import { ToastService } from '../../core/toast.service';
 
@@ -146,6 +146,40 @@ interface UsuarioPortalOrg {
       </div>
     </div>
 
+    <div class="tarjeta enlace" style="margin-top:16px;">
+      <span class="eyebrow">Enlace público de Power BI</span>
+      <p class="sutil">
+        El vínculo de Publish to Web es público: quien lo copie del navegador entra sin usuario. Rotarlo deja
+        inservible cualquier copia. Recomendado cada {{ diasRotacion }} días o en cuanto se sospeche una filtración.
+      </p>
+      @for (e of enlaces(); track e.huella) {
+        <div class="enlace__fila" [class.enlace__fila--vencido]="e.diasVigente >= diasRotacion">
+          <code>{{ e.huella }}</code>
+          <span>{{ e.activos }} {{ e.activos === 1 ? 'hoja activa' : 'hojas activas' }}@if (e.tableros > e.activos) { · {{ e.tableros - e.activos }} inactivas }</span>
+          <span>vigente hace <strong>{{ e.diasVigente }}</strong> {{ e.diasVigente === 1 ? 'día' : 'días' }}</span>
+          @if (e.diasVigente >= diasRotacion) { <span class="enlace__aviso">toca rotar</span> }
+        </div>
+      } @empty {
+        <p class="sutil">Ningún tablero tiene todavía un enlace de Publish to Web.</p>
+      }
+      @if (enlaces().length) {
+        <ol class="enlace__pasos">
+          <li>En Power BI: <em>Archivo → Insertar informe → Publicar en web</em> y crea un código nuevo.</li>
+          <li>Pega aquí la URL nueva y pulsa <strong>Rotar</strong>: se cambia en todas las hojas (cada una conserva su página).</li>
+          <li>Recién después, en Power BI: <em>Configuración → Administrar códigos para insertar</em> y elimina el código anterior.</li>
+        </ol>
+        <form class="enlace__form" (ngSubmit)="rotarEnlace()">
+          @if (enlaces().length > 1) {
+            <select name="huellaRotar" [(ngModel)]="huellaRotar">
+              @for (e of enlaces(); track e.huella) { <option [value]="e.huella">{{ e.huella }}</option> }
+            </select>
+          }
+          <input name="urlNueva" [(ngModel)]="urlNueva" placeholder="https://app.powerbi.com/view?r=…" autocomplete="off" />
+          <button type="submit" [disabled]="rotando() || !urlNueva.trim()">{{ rotando() ? 'Rotando…' : 'Rotar' }}</button>
+        </form>
+      }
+    </div>
+
     <div class="tarjeta" style="padding:0; margin-top:16px;">
       <div class="tabla-wrap">
         <table>
@@ -229,6 +263,13 @@ interface UsuarioPortalOrg {
   styles: [`
     .ayuda { margin:-4px 0 16px; font-size:12.5px; color:var(--muted); max-width:720px; }
     .sutil { font-size:11.5px; color:var(--faint); }
+    .enlace { display:flex; flex-direction:column; gap:10px; }
+    .enlace__fila { display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; font-size:13px; padding:8px 10px; border-radius:8px; background:var(--surface-2, rgba(0,0,0,.03)); }
+    .enlace__fila--vencido { outline:1px solid var(--warn, #c98a00); }
+    .enlace__aviso { font-size:11px; font-weight:600; color:var(--warn, #c98a00); text-transform:uppercase; letter-spacing:.04em; }
+    .enlace__pasos { margin:0; padding-left:18px; font-size:12.5px; color:var(--muted); display:flex; flex-direction:column; gap:2px; }
+    .enlace__form { display:flex; gap:8px; flex-wrap:wrap; }
+    .enlace__form input { flex:1; min-width:280px; }
     .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
     .check { display:flex; align-items:center; gap:8px; font-size:13.5px; margin:8px 0; color:var(--muted); }
     .fila-url { display:flex; align-items:center; gap:8px; margin:10px 0; }
@@ -259,6 +300,12 @@ export class PortalUsuarioComponent {
   readonly temporal = signal<{ email: string; passwordTemporal: string } | null>(null);
   usuarioAVer: number | null = null;
   readonly tableros = signal<TableroPortal[]>([]);
+  /** Días tras los que se sugiere rotar el enlace público (aviso visual, no bloquea). */
+  readonly diasRotacion = 30;
+  readonly enlaces = signal<EnlacePublico[]>([]);
+  readonly rotando = signal(false);
+  urlNueva = '';
+  huellaRotar = '';
   readonly logoUrl = signal<string | null>(null);
   readonly drawerTablero = signal(false);
   readonly drawerAdmin = signal(false);
@@ -397,6 +444,43 @@ export class PortalUsuarioComponent {
       next: (d) => this.tableros.set(d),
       error: (e: Error) => this.toast.error('No se pudieron cargar los tableros', e.message),
     });
+    this.api.get<EnlacePublico[]>(`/organizaciones/${organizacionId}/portal/tableros/enlaces`).subscribe({
+      next: (d) => {
+        this.enlaces.set(d);
+        this.huellaRotar = d[0]?.huella ?? '';
+      },
+      error: (e: Error) => this.toast.error('No se pudo leer el enlace público', e.message),
+    });
+  }
+
+  /** Reemplaza el código r= en todas las hojas que usan el enlace elegido. */
+  rotarEnlace(): void {
+    const urlNueva = this.urlNueva.trim();
+    if (!urlNueva) return;
+    const varios = this.enlaces().length > 1;
+    if (!confirm('¿Rotar el enlace público? Las hojas pasan a usar el código nuevo; elimina después el anterior en Power BI.')) return;
+    this.rotando.set(true);
+    const organizacionId = this.orgs.exigirId();
+    this.api
+      .post<ResultadoRotacion>(`/organizaciones/${organizacionId}/portal/tableros/rotar-enlace`, {
+        urlNueva,
+        ...(varios ? { huellaActual: this.huellaRotar } : {}),
+      })
+      .subscribe({
+        next: (r) => {
+          this.toast.exito(
+            'Enlace rotado',
+            `${r.tablerosActualizados} hojas usan ahora ${r.huellaNueva}. Elimina el código ${r.huellaAnterior} en Power BI.`,
+          );
+          this.urlNueva = '';
+          this.rotando.set(false);
+          this.cargarTableros(organizacionId);
+        },
+        error: (e: Error) => {
+          this.toast.error('No se pudo rotar el enlace', e.message);
+          this.rotando.set(false);
+        },
+      });
   }
 
   // --- Logo (binario autenticado → object URL) ---

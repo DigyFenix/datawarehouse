@@ -33,8 +33,25 @@ export const crearTableroSchema = z.object({
     .transform((v) => (v === undefined ? undefined : v || null)),
 });
 
+/**
+ * Rotación del vínculo de Publish to Web: la URL NUEVA que generó Power BI. Solo se toma su
+ * código `r=`; el resto de cada URL guardada (p. ej. `&pageName=` de cada hoja) se conserva.
+ * `huellaActual` elige qué código reemplazar cuando la organización usa más de uno.
+ */
+export const rotarEnlaceSchema = z.object({
+  urlNueva: z
+    .string()
+    .trim()
+    .url()
+    .max(2000)
+    .refine((u) => /^https:\/\/app\.powerbi\.com\//i.test(u), 'debe ser una URL https://app.powerbi.com/…')
+    .refine((u) => /[?&]r=[^&#]+/.test(u), 'la URL no trae el código r= de Publish to Web'),
+  huellaActual: z.string().trim().max(40).optional(),
+});
+
 export const actualizarTableroSchema = crearTableroSchema.partial().omit({ clave: true });
 
 export type SembrarAdminDto = z.infer<typeof sembrarAdminSchema>;
 export type CrearTableroDto = z.infer<typeof crearTableroSchema>;
 export type ActualizarTableroDto = z.infer<typeof actualizarTableroSchema>;
+export type RotarEnlaceDto = z.infer<typeof rotarEnlaceSchema>;

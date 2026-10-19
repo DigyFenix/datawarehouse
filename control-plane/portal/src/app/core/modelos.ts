@@ -38,6 +38,21 @@ export interface TableroPortal {
   grupo: string | null;
 }
 
+/** Código de Publish to Web en uso (solo su huella) y su antigüedad. */
+export interface EnlacePublico {
+  huella: string;
+  tableros: number;
+  activos: number;
+  vigenteDesde: string;
+  diasVigente: number;
+}
+
+export interface ResultadoRotacion {
+  huellaAnterior: string;
+  huellaNueva: string;
+  tablerosActualizados: number;
+}
+
 /** Estado del portal de usuario en la base del tenant. */
 export interface EstadoPortalOrg {
   baseDatos: string;

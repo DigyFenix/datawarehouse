@@ -8,8 +8,10 @@
 > Lightsail (Ohio): `https://ironnetwork.digyfenix.com` para Iron y
 > `https://admin-ironnetwork.digyfenix.com` para el proveedor, con TLS, carga diaria 05:00 y
 > cuadre en cero. **Cuello de botella vigente: el gateway de Power BI** (lo instala Edwin) para
-> que el tablero publicado se refresque solo desde la base de producción; después, commitear la
-> sesión 30–31 y reempaquetar con versión de commit. El producto Power BI sigue su propio
+> que el tablero publicado se refresque solo desde la base de producción. Al 2026-10-19
+> (sesión 32) el trabajo está commiteado (`533d330`) y el portal desplegado con **un tablero por
+> hoja agrupado, sin la barra de Power BI**; falta que Edwin publique el reporte actualizado.
+> El producto Power BI sigue su propio
 > contrato; su progreso vive en `docs/powerbi/STATE.md`.
 
 Tablero maestro de avance. Fuente de verdad del progreso. Se actualiza al cerrar cada fase.
@@ -101,6 +103,16 @@ sola vez** para los dos.
 | 5 | Portal Etapa A | 🔨 en curso — aislamiento por organización cerrado; **onboarding validado con ensayo real** (alta→oro→PBIP con org de prueba); el API asigna `base_datos_dw` y bloquea UDFs sin datos; **NITs afiliados en el portal** (migración 112). **2026-08-08**: baja de organización reparada (chocaba con las FK y devolvía 500), quitar rol ya respeta el alcance (borraba el rol en TODAS las organizaciones), Usuarios filtra por la organización activa y **nueva pantalla de Autorizaciones** — el API de grants existía desde la fase 3 pero ninguna pantalla lo consumía. Falta la UI del canónico v2 y el filtro por campo | — |
 | 6 | Consumo (Power BI) | ✅ **modelo vigente (2026-08-08): 36 tablas de datos / 98 relaciones / 294 medidas** — 43 archivos `.tmdl` contando el grupo de cálculo y los 6 parámetros de campo. Las cifras «25/67/140» de este renglón eran de una versión anterior y se corrigieron al regenerar contra el Oro nuevo (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
 | 7 | Validación (4 criterios) | ✅ **completada 2026-08-08** — consistencia (cuadres al centavo), **seguridad/RLS** (IDOR 8/8, RLS fail-closed, certificación 7/7, guardas del agente 12/12), trazabilidad (auditoría por organización, cada consulta del agente auditada) y explicabilidad (toda respuesta lleva métrica, período y estado de certificación). **Onboarding de tenant nuevo validado E2E**: alta → provisionar → extraer 12 objetos → build 195/195 → cuadre 0 desvíos, sin un solo paso a mano | 2026-08-08 |
+
+## Avance 2026-10-19 (sesión 32) — un tablero por hoja, sin barra de Power BI
+
+- Portal: `portal.tableros.grupo` (migración 135), Inicio agrupado como Kraken (Ventas ·
+  Clientes · Inventario · Finanzas), pestañas entre hojas del mismo grupo; la barra de Publish
+  to Web (que exponía el vínculo con «abrir en otra ventana») se recorta siempre. Desplegado en
+  producción con el seed 57 (13 hojas). Commit `533d330`.
+- Power BI: selección múltiple sin Ctrl, modo enfoque, fuera Sucursal (G3) y Moneda en
+  inventario, sugerencia de compra sumada por producto. Pendiente: publicación de Edwin.
+- Carga diaria de Iron OK el 2026-10-19 (dbt 231/231).
 
 ## Avance 2026-10-18 (sesión 31) — Iron en producción: servidor propio, portal público, primera carga real
 
