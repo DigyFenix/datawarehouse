@@ -16,6 +16,7 @@ src/
 ├── catalogo.ts           fichas de métrica y glosario (BD de control)
 ├── prompt.ts             system prompt construido por request desde el catálogo autorizado
 ├── agente.ts             loop de tool-use contra el SDK de Anthropic
+├── guardada.ts           reejecución de consultas guardadas (sin modelo) + validación de la especificación
 └── guardas.spec.ts       las restricciones de CLAUDE.md §11, con ejecutor falso
 ```
 
@@ -32,6 +33,22 @@ src/
 El **RLS de Postgres es el piso** debajo de la guarda 3: el host ejecuta cada consulta con el
 rol `portal_lector` (NOBYPASSRLS) dentro de una transacción que fija `app.empresas`. Si un bug
 de este paquete dejara pasar una empresa no autorizada, la base igual no la devuelve.
+
+## Tools (5)
+
+| Tool | Devuelve | Lee |
+|---|---|---|
+| `listar_metricas_disponibles` | catálogo autorizado | alcance |
+| `consultar_metrica` | serie mensual (+ empresa) | `oro.metrica_valor` |
+| `consultar_metrica_por_dimension` | ranking por cliente/producto/línea/vendedor/canal/sector/proveedor | `oro.metrica_valor_dimension` (solo métricas «desglosables»: `oro.metrica_dimension_catalogo`) |
+| `consultar_aging` | antigüedad por rango o por socio | `oro.metrica_aging` |
+| `explicar_metrica` | ficha de gobierno | catálogo de control |
+
+Toda respuesta con dato trae, además del texto y las tarjetas, `conjuntos` (tabla tipada:
+serie / ranking / aging) y `consultas` (tool + parámetros YA validados). Eso último es lo que el
+portal guarda como **consulta guardada**: nunca el resultado. Al abrirla, `ejecutarGuardada`
+vuelve a pasar por Zod, catálogo, alcance de QUIEN la abre y RLS; si la métrica dejó de ser
+consumible, no se ejecuta y dice por qué.
 
 ## Cómo lo usa el host
 

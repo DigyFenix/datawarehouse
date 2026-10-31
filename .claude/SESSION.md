@@ -1,5 +1,183 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 34 (2026-10-31) — 6 HOJAS DE GESTIÓN EN POWER BI, CHATBOT CON DESGLOSES, TABLAS/GRÁFICAS Y CONSULTAS GUARDADAS — leer esto primero ══════
+
+Sesión autónoma (Edwin fuera varias horas). Pedido: levantar stack, actualizar Iron, Power BI más
+profesional y con hojas nuevas que «vendan solas», chatbot funcional con guardado de consultas
+reutilizables con datos frescos, revisión de seguridad e integridad del portal, publicar a
+producción. Commits `c5f51a4` (Power BI) y `afdfa4d` (agente + portal). **No se pudo desplegar:
+el SSH a producción lo bloquea el clasificador de auto mode**; quedó el guion listo (abajo).
+
+### Stack y datos
+- Stack arriba; `actualizar.py ironnetwork`: extracción 9,665 filas / 0 fallos. El build dbt
+  falló por permisos de `/dbt/logs` y `/dbt/target` (root) → `chown 1000:1000` dentro del worker
+  y `correr.py`: **243/243 PASS**, cuadre en cero. Desktop apunta a producción
+  (`ironnetwork.digyfenix.com`); refrescado por MCP (`RefreshWithXMLA Full`).
+- La base local estaba atrasada: se aplicaron 134, 135 y la nueva 136 a `dw_ironnetwork`.
+
+### Power BI — 6 hojas de gestión (19 páginas / 323 visuales, validador en cero)
+`consumo/powerbi/generar_paginas_gestion.js` (determinista; reordena `pages.json`: Resumen
+primero, Segmentación y Concentración tras Recuperados, Tesorería tras Cobros, Pedidos y
+Resultados al final). Capturas en `docs/powerbi/kraken360/capturas/gestion/`.
+1. **Resumen ejecutivo** (`832047263182449dc14c`): KPIs ventas/cartera/caja/operación, venta
+   mensual vs AA, ritmo del mes, focos de atención (5 alertas narrativas en color), aging hoy,
+   top clientes/productos, caja pactada por semana, segmentos RFM, confianza del dato, DSO/DPO/CCC.
+2. **Segmentación** (`9a897af3275adade9982`): RFM (campeones/leales/en riesgo/valiosos/dormidos,
+   venta en riesgo), matriz «a quién llamar esta semana», perfil de pago, críticos, ABC.
+3. **Concentración 80/20** (`7a9154dedc86f43a4fdf`): Pareto de clientes y productos con línea
+   de referencia 80 % (medida `Referencia 80 %`: el combo no tiene línea de referencia en Y2),
+   «clientes = 80 % de la venta» (Iron: 15 de 74 = 20 %), rankings.
+4. **Tesorería** (`e684596211fc2365bec1`): cobros/pagos/flujo neto por mes, caja pactada por
+   semana, evolución diaria de la cartera (histórico), cobros por cliente, estado del cobro.
+5. **Pedidos** (`cdbb8becf907e43b36d2`): pedido vs facturado, backlog por cliente/producto,
+   pedidos abiertos (matriz de una fila con `Cliente del pedido` como columna).
+6. **Resultados** (`8dde20768346e93d33df`): puente ingresos−costo−gastos (waterfall sobre la
+   columna `Naturaleza contable`), por mes, gasto por cuenta, contabilidad vs facturación, detalle.
+- 41 medidas y 3 columnas nuevas en `generar_pbip.py` (bloque «Hojas de gestión (sesión 34)»)
+  aplicadas al TMDL con el mismo texto y creadas en vivo por MCP. Trampa nueva: **los nombres de
+  columna no distinguen mayúsculas** — `Naturaleza` chocaba con `naturaleza` → `Naturaleza contable`.
+- Seed `organizaciones/ironnetwork/seeds/58_hojas_gestion_ironnetwork.sql` (grupo Gerencia +
+  Clientes + Finanzas). **Aplicar solo después de que Edwin publique el reporte** con las hojas.
+- Pendiente de Edwin: abrir Desktop, refrescar, **guardar y publicar** PulsoIron (19 hojas).
+
+### Chatbot — qué cambió (CLAUDE.md §11 intacto: sin SQL libre, alcance, RLS, estados)
+- **Capa semántica:** `oro.metrica_valor_dimension` (ventas por cliente/producto/línea/vendedor/
+  canal/sector, compras por proveedor/producto/línea, cobros por cliente, pagos por proveedor;
+  misma fórmula que `metrica_valor`, test `metrica_dimension_cuadra` al centavo) y
+  `oro.metrica_dimension_catalogo` (lo que lee el agente por mensaje).
+- **Paquete `@quilate/agente`:** tool `consultar_metrica_por_dimension` (enum de dimensiones,
+  límite 1-50, orden mayor/menor, SQL constante, mismas guardas + «desglosable»); toda respuesta
+  trae `conjuntos` (serie/ranking/aging) y `consultas` (tool + params validados);
+  `ejecutarGuardada` reejecuta sin modelo bajo el alcance de quien abre; `validarEspecificacion`
+  rechaza al guardar lo que la tool rechazaría. **Bug corregido:** `empresa_id` estaba como
+  `number` en la definición de tools y Zod exige texto. 26/26 tests.
+- **API:** migración **136** (`portal.consultas_guardadas` + `chat_mensajes.datos`),
+  endpoints `GET/POST /agente/consultas`, `GET /consultas/:id/ejecutar`, `PATCH`, `DELETE`;
+  `LimiteAgenteGuard` (12 mensajes/min, 90 lecturas/min por usuario, en memoria); zona horaria
+  `ZONA_HORARIA` (default America/Guatemala) para «hoy» y fechas de corte; sesiones suplantadas
+  auditadas y sin marcar ejecución.
+- **Web:** `datos-visual.component.ts` (tabla / barras / líneas en SVG propio + CSV con
+  protección contra fórmulas), botón «Guardar esta consulta» por conjunto, pestaña **Guardadas**
+  (reejecutar, renombrar, «preguntar en el chat», aviso si la métrica cambió de versión).
+- **Catálogo:** 21 métricas pasaron de `borrador` a `exploratoria` (operación con rollback en
+  `metadata-store/operaciones/`). El asistente las responde MARCADAS; certificar sigue siendo del
+  portal admin. Local: `modulo_asistente = true` para Iron; admin local con contraseña de prueba
+  `Prueba.2026` (solo local).
+- **Probado:** E2E por API (ranking, serie, aging, inventario, guardar/ejecutar/renombrar/borrar,
+  inyección rechazada 400) y en navegador con Playwright (claro y oscuro). Revisión de seguridad
+  con subagente: sin inyección/IDOR/XSS; sus hallazgos (signo de devoluciones, CSV injection,
+  rate limit, zona horaria, suplantación, agrupar por empresa, desempate) quedaron aplicados.
+- **Proyecto de graduación:** la otra sesión confirmó que la tesis es diseño conceptual sin
+  código; se adoptó su modelo de controles (especificación guardada + versión de métrica + aviso
+  de recertificación + bloqueo si deja de ser consumible).
+
+### PENDIENTE: Edwin, en este orden
+1. **Desplegar:** `bash dist/desplegar-20261031.sh` (sube paquete, migra 136, catálogo a
+   exploratoria, activa Asistente para Iron, build dbt, reinicia). Verifica antes que el `.env`
+   del servidor tenga `ANTHROPIC_API_KEY` (el guion aborta si falta).
+2. Power BI: abrir `PulsoIron.pbip`, refrescar, revisar las 6 hojas, guardar y **publicar**;
+   luego en el servidor `psql ... < 58_hojas_gestion_ironnetwork.sql` y revisar perfiles.
+3. `git push` (bloqueado en auto mode).
+4. Probar el asistente en producción con un usuario de Iron y decidir si el módulo Asistente
+   va incluido o aparte en el trato.
+5. Deuda menor: `generar_pbip.py` no se corrió (las medidas se sincronizaron a mano al TMDL);
+   la próxima regeneración debe dejar el TMDL idéntico — verificar con `git diff`.
+6. Riesgo conocido (lo señaló también la revisión automática del commit): las 6 hojas nuevas
+   comparten el código Publish to Web del reporte; **Tesorería y Resultados** quedan al alcance
+   de cualquiera que tenga el vínculo, igual que las 13 anteriores. El seed 58 solo las asigna
+   a los perfiles que ya ven «Histórico». Si esas dos hojas deben ser solo de dirección,
+   publicarlas como reporte aparte (otro código) o esperar a Power BI Embedded (pendiente 6 de
+   la sesión 32).
+
+## ══════ SESIÓN 33 (2026-10-23) — CONTRAPROPUESTA DE IRON, S.A. CONJUNTA Y PROPIEDAD INTELECTUAL EN GUATEMALA — leer esto primero ══════
+
+Sesión comercial y legal, sin cambios de código. Edwin habló con Iron sobre la propuesta de
+$2,000 + $200/mes, e Iron contrapropuso un modelo de reventa y una S.A. conjunta. Se analizó y se
+investigó la ley guatemalteca de derecho de autor. **No se decidió nada: queda para retomar.**
+Detalle en memoria: `iron-trato-comercial.md` e `ip-ley-guatemala.md`.
+
+### Contrapropuesta de Iron
+
+- Iron revende a sus clientes paquetes de 5 tableros a **US$350/mes** (ancla: Kraken cobra unos
+  $100 por tablero, $500 los 5), reparto **50/50**, sin cobro de implementación al cliente.
+- Iron pone la infraestructura en **su** AWS y vende; Edwin instala.
+- Por lo suyo, Iron pagaría **$150/mes** sin setup, en lugar de $2,000 + $200/mes.
+- Iron tiene clientes potenciales, no asegurados.
+
+Análisis dado:
+- **Año 1 con Iron:** de unos $3,460 netos a unos $1,800.
+- **Por cliente:** $175/mes, con 20–50 h de onboarding sin cobrar.
+- **Techo:** a capacidad (6–7 clientes por las horas de Edwin) son unos $1,225/mes, menos de la
+  mitad que con la lista de precios propia.
+
+Riesgos:
+- Código (modelos dbt en texto plano) dentro de los servidores de Iron.
+- El cliente queda siendo de Iron.
+- Power BI privado para terceros sin resolver: Publish to Web es público, y Embedded cuesta
+  cientos de dólares al mes.
+- Soporte sin definir.
+- Exposición frente a Cresta.
+
+**Contrapropuesta sugerida:**
+- $350/mes al cliente + implementación de $1,000–1,500 para Edwin + contrato mínimo de 12 meses.
+- 50/50 solo si Iron hace el soporte de primer nivel; si no, 60/40.
+- AWS pagada por Iron pero administrada por Edwin.
+- Los $150/mes de Iron quedan con el setup de $2,000 en suspenso: se perdona si cierra 2
+  clientes en 6 meses.
+- Contrato no exclusivo, con la IP de Edwin y alcance fijo.
+
+### S.A. conjunta
+
+Iron propuso una S.A. que venda y reparta ganancias. **Recomendación dada: todavía no.**
+- Tiene costos fijos sin clientes.
+- Agrava la exposición frente a Cresta.
+- "Ganancias" diluye las horas de Edwin.
+
+Orden propuesto:
+1. Contrato de alianza de 6–12 meses.
+2. Si se cierran unos 3 clientes, recién ahí constituir la S.A.
+
+Condiciones de la S.A.:
+- El código **no se aporta** a la sociedad; se licencia.
+- Las horas de Edwin y la infra se le cobran a la S.A. antes de repartir.
+- No ir a 50/50 sin mecanismo de desempate.
+- Pacto de socios: salida, no competencia y qué pasa con los clientes.
+- No exclusiva.
+
+### Propiedad intelectual en Guatemala (Decreto 33-98, leído del texto vigente)
+
+- **Art. 11:** el software se presume cedido al "productor" salvo pacto.
+- **Art. 10 y 75:** la obra hecha por relación laboral se presume del patrono salvo pacto escrito.
+- **Art. 11 bis:** si el trabajador no está contratado para programar pero usa datos o medios del
+  empleo, debe avisar por escrito y el patrono tiene 1 mes de derecho preferente.
+
+→ El acuerdo escrito con Cresta no es opcional: es lo que exige la ley.
+
+Para la S.A., la figura es **licencia (art. 81), no cesión (art. 72-77)**. Debe ser:
+- escrita y no exclusiva;
+- con modalidades enumeradas, plazo y territorio explícitos (sin ellos, la ley fija 5 años y
+  solo el país);
+- con prohibición de retransferir (art. 77);
+- con regalía (art. 79) y causas de terminación;
+- sin "todas las obras futuras", que es nulo (art. 74).
+
+Además: ponerse como productor en el sistema (©), registrar el software y el contrato en el RPI
+(art. 104–105; el registro es declarativo pero presume ciertos los hechos), y usar un solo
+titular (Edwin o DigyFenix).
+
+### PENDIENTE: retomar la decisión con Iron
+
+1. Edwin responde si **DigyFenix está constituida legalmente**: define quién es el titular que
+   licencia.
+2. Leer el contrato laboral con Cresta (exclusividad y propiedad de desarrollos).
+3. Consulta con un abogado de PI y laboral guatemalteco, llevando el resumen de
+   `ip-ley-guatemala.md`.
+4. Acuerdo escrito con Cresta. La fecha autoimpuesta es el **2026-10-31**.
+5. Recién entonces: responderle a Iron con la contrapropuesta (alianza por contrato) y registrar
+   el software en el RPI.
+6. Bloqueante técnico antes de venderle a clientes de Iron: resolver Power BI privado para
+   terceros.
+
 ## ══════ SESIÓN 32 (2026-10-19) — UN TABLERO POR HOJA SIN BARRA DE POWER BI, FILTROS MUERTOS FUERA, PORTAL DESPLEGADO — leer esto primero ══════
 
 Edwin vio que Publish to Web trae un ícono «abrir en otra ventana» que destapa el vínculo

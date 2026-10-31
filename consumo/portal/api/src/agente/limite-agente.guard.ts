@@ -28,7 +28,9 @@ export class LimiteAgenteGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest<RequestPortal>();
     const usuario = req.usuarioPortal;
     if (!usuario) return true; // el guard global de JWT ya rechazó o es ruta pública
-    const esMensaje = req.method === 'POST' && /\/conversaciones\/\d+\/mensajes$/.test(req.path);
+    // El cubo se decide por el HANDLER resuelto por Nest, no por el texto de la ruta: un path con
+    // mayúsculas o barra final distinta no puede colarse al cubo barato.
+    const esMensaje = ctx.getHandler().name === 'enviarMensaje';
     const clave = `${usuario.hash}:${usuario.id}:${esMensaje ? 'mensaje' : 'lectura'}`;
     const tope = esMensaje ? MAX_MENSAJES : MAX_LECTURAS;
     const ahora = Date.now();
