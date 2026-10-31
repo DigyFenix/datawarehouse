@@ -193,26 +193,29 @@ function segmentador(slug, clave, tabla, columna, pos, { modo = 'Dropdown', sele
   });
 }
 
-// Panel de KPIs estilo Kraken: fondo gris-azul, título centrado, etiqueta arriba del valor.
+// Panel de KPIs (rediseño sesión 37, pedido de Edwin: «más profesional, más elegante»): tarjeta blanca
+// del tema, SIN la caja blanca que la tarjeta nueva dibuja por defecto alrededor de cada valor (fillCustom
+// apagado) — era eso lo que se veía «básico» —, rótulo gris de 8 pt arriba, cifra de 14 pt en semibold,
+// todo alineado a la izquierda como una ficha editorial.
 // medidas: [tabla, medida, rótulo?] — el rótulo corto evita que el nombre de la medida se corte a 8 pt.
 function kpis(slug, clave, medidas, pos, titulo, subtitulo = 'Moneda de presentación · sin IVA') {
   return visual(id(slug, clave), 'cardVisual', pos, {
     roles: { Data: medidas.map(([t, m]) => pMedida(t, m)) },
     objects: {
-      // 12 pt y relleno de 2: con 13 pt "Q 571,070" se truncaba en los paneles de dos valores.
-      value: [{ properties: { fontSize: num(12), fontFamily: str('Segoe UI Semibold'), fontColor: color(C.TINTA), horizontalAlignment: str('center'), labelDisplayUnits: str('1'), labelPrecision: int(0) }, selector: sel('default') }],
+      value: [{ properties: { fontSize: num(14), fontFamily: str('Segoe UI Semibold'), fontColor: color(C.TINTA), horizontalAlignment: str('left'), labelDisplayUnits: str('1'), labelPrecision: int(0) }, selector: sel('default') }],
       label: [
-        { properties: { show: bool(true), fontSize: num(8), position: str('aboveValue'), fontColor: color(C.TINTA_SUAVE), horizontalAlignment: str('center'), textWrap: bool(true) }, selector: sel('default') },
+        { properties: { show: bool(true), fontSize: num(8), fontFamily: str('Segoe UI'), position: str('aboveValue'), fontColor: color(C.TINTA_SUAVE), horizontalAlignment: str('left'), textWrap: bool(true) }, selector: sel('default') },
         ...medidas.filter(([, , r]) => r).map(([t, m, r]) => ({ properties: { text: str(r) }, selector: meta(t, m) })),
       ],
       outline: [{ properties: { show: bool(false) }, selector: sel('default') }],
-      padding: [{ properties: { paddingUniform: int(2) }, selector: sel('default') }],
-      layout: [{ properties: { paddingUniform: int(2), style: str('Table'), backgroundShow: bool(false) }, selector: sel('default') }],
-      spacing: [{ properties: { verticalSpacing: num(2) }, selector: sel('default') }],
+      fillCustom: [{ properties: { show: bool(false) } }, { properties: { show: bool(false) }, selector: sel('default') }],
+      padding: [{ properties: { paddingUniform: int(4) }, selector: sel('default') }],
+      layout: [{ properties: { paddingUniform: int(4), style: str('Table'), backgroundShow: bool(false) }, selector: sel('default') }],
+      spacing: [{ properties: { verticalSpacing: num(4) }, selector: sel('default') }],
     },
     vc: {
       ...vcTitulo(titulo, subtitulo),
-      background: [{ properties: { show: bool(true), color: color(C.PANEL), transparency: num(0) } }],
+      background: [{ properties: { show: bool(true), color: color(C.BLANCO), transparency: num(0) } }],
     },
   });
 }
@@ -552,6 +555,40 @@ function panelAlertas(slug, clave, pos, titulo, subtitulo, alertas) {
   return vs;
 }
 
+// Panel de focos de atención (rediseño sesión 37): un panel gris suave y, dentro, una fila blanca por foco
+// con barra de color a la izquierda, la CIFRA grande (16 pt, del color del foco) y el DETALLE en gris de 9 pt.
+// Cada foco son dos medidas de texto (…· cifra / …· detalle) para que el número se lea de un vistazo y la
+// explicación no compita con él. Las filas y la barra son textboxes con fondo (patrón ya verificado en render).
+// focos: [[tabla, medidaCifra, medidaDetalle, hex]]
+function panelFocos(slug, clave, pos, titulo, subtitulo, focos) {
+  const [x, y, w, h] = pos;
+  const fondo = (hex) => ({
+    background: [{ properties: { show: bool(true), color: color(hex), transparency: num(0) } }],
+    border: [{ properties: { show: bool(false) } }],
+    dropShadow: [{ properties: { show: bool(false) } }],
+    visualHeader: [{ properties: { show: bool(false) } }],
+    padding: [{ properties: { top: num(0), bottom: num(0), left: num(0), right: num(0) } }],
+  });
+  const caja = (clv, hex, posicion) => visual(id(slug, clv), 'textbox', posicion, {
+    objects: { general: [{ properties: { paragraphs: [{ textRuns: [{ value: '' }] }] } }] },
+    vc: fondo(hex),
+  });
+  const vs = [visual(id(slug, clave), 'textbox', pos, {
+    objects: { general: [{ properties: { paragraphs: [{ textRuns: [{ value: titulo, textStyle: { fontFamily: 'Segoe UI Semibold', fontSize: '11pt', color: C.TINTA } }] }, { textRuns: [{ value: subtitulo, textStyle: { fontFamily: 'Segoe UI', fontSize: '9pt', color: C.TINTA_SUAVE } }] }] } }] },
+    vc: { ...fondo(C.PANEL), padding: [{ properties: { top: num(10), bottom: num(8), left: num(14), right: num(14) } }] },
+  })];
+  const margen = 12, cabecera = 54, sep = 8;
+  const altoFila = Math.floor((h - cabecera - margen - sep * (focos.length - 1)) / focos.length);
+  focos.forEach(([tabla, cifra, detalle, hex], i) => {
+    const fy = y + cabecera + i * (altoFila + sep);
+    vs.push(caja(`${clave}-fila-${i}`, C.BLANCO, [x + margen, fy, w - margen * 2, altoFila]));
+    vs.push(caja(`${clave}-barra-${i}`, hex, [x + margen, fy, 5, altoFila]));
+    vs.push(texto(slug, `${clave}-cifra-${i}`, tabla, cifra, [x + margen + 16, fy + 8, w - margen * 2 - 24, Math.floor(altoFila * 0.5)], { size: 16, bold: true, colorHex: hex, align: 'left' }));
+    vs.push(texto(slug, `${clave}-detalle-${i}`, tabla, detalle, [x + margen + 16, fy + Math.floor(altoFila * 0.5) + 6, w - margen * 2 - 24, altoFila - Math.floor(altoFila * 0.5) - 10], { size: 9, colorHex: C.TINTA_SUAVE, align: 'left' }));
+  });
+  return vs;
+}
+
 // Filtro a nivel de visual: columna = literal (p. ej. es_pasado = true). `valor` ya formateado como literal DAX/PBIR ('true', 2026L, "'texto'").
 function filtroVisual(tabla, columna, valor) {
   return {
@@ -607,5 +644,5 @@ module.exports = {
   pMedida, pColumna, fx, ordenDesc, ordenAsc, visual, reiniciar, vcTitulo, vcDesnudo, texto, textoEstatico,
   encabezado, pie, segmentador, kpis, ranking, barras, dona, mapa, semaforo, subtotalesMatriz, matriz, marcadores, marcadoresFinos, ejeValores, ejeCategoria, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, bloqueMoneda,
   columnasMensuales, comboMensual, columnasApiladas, escribirPaginas, reporteDeArgs,
-  calor, linea, columnas, combo, barrasH, pareto, cascada, panelAlertas, filtroVisual,
+  calor, linea, columnas, combo, barrasH, pareto, cascada, panelAlertas, panelFocos, filtroVisual,
 };

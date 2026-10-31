@@ -114,6 +114,16 @@ table FC_Pedidos
 		displayFolder: _Narrativa
 		lineageTag: ddbeafa7-d1cc-45ce-9394-bbb44c02f351
 
+	/// Cifra del foco de backlog (Resumen): comprometido con fecha de entrega ya pasada.
+	measure 'Foco de backlog · cifra' = VAR v = [Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Al día", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))))
+		displayFolder: _Narrativa
+		lineageTag: 2cd5ebca-c662-4393-8780-549cba51d492
+
+	/// Detalle del foco de backlog (Resumen).
+	measure 'Foco de backlog · detalle' = VAR v = [Backlog vencido] VAR p = [% Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Sin entregas comprometidas vencidas", "Comprometido y no entregado · " & FORMAT(p, "0.0%") & " del backlog")
+		displayFolder: _Narrativa
+		lineageTag: 78f8dd27-48b7-44dc-a884-44cd4672707f
+
 	/// Fecha del pedido en contexto (ficha para matrices).
 	measure 'Fecha del pedido' = MAX(FC_Pedidos[fecha_pedido])
 		formatString: dd/MM/yyyy
@@ -153,11 +163,6 @@ table FC_Pedidos
 	measure 'Cliente del pedido' = IF([Backlog] > 0 && HASONEVALUE(FC_Pedidos[pedido_numero]), MAXX(FC_Pedidos, RELATED(DM_Cliente[Cliente])))
 		displayFolder: 05 Ficha
 		lineageTag: 80a82fb2-4452-4c92-9fff-401ef7fa2c72
-
-	column Pedido = FC_Pedidos[pedido_numero]
-		dataType: string
-		lineageTag: 7e674417-e9a1-4a5c-802d-2815c130f0df
-		summarizeBy: none
 
 	column tiempo_clave
 		dataType: int64
@@ -381,6 +386,11 @@ table FC_Pedidos
 		lineageTag: 450ea335-4dc7-4f08-bdd1-f0bf36926c49
 		summarizeBy: none
 		sourceColumn: version_proceso
+
+	column Pedido = FC_Pedidos[pedido_numero]
+		dataType: string
+		lineageTag: 7e674417-e9a1-4a5c-802d-2815c130f0df
+		summarizeBy: none
 
 	partition FC_Pedidos = m
 		mode: import

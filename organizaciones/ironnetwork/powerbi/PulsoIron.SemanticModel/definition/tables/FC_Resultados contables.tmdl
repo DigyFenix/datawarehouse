@@ -121,11 +121,6 @@ table 'FC_Resultados contables'
 		displayFolder: 01 P&L
 		lineageTag: c783bd4b-8ef9-42a0-b500-52cd4e74c531
 
-	column 'Naturaleza contable' = SWITCH('FC_Resultados contables'[naturaleza], "ingreso", "Ingresos", "costo", "Costo", "gasto", "Gastos", "Otros")
-		dataType: string
-		lineageTag: edea7701-3a22-42bc-adb8-b058c0334f57
-		summarizeBy: none
-
 	column tiempo_clave
 		dataType: int64
 		isHidden
@@ -261,6 +256,11 @@ table 'FC_Resultados contables'
 		lineageTag: 79f43e92-0a09-4bc2-a90c-88534f7b4efb
 		summarizeBy: none
 		sourceColumn: version_proceso
+
+	column 'Naturaleza contable' = SWITCH('FC_Resultados contables'[naturaleza], "ingreso", "Ingresos", "costo", "Costo", "gasto", "Gastos", "Otros")
+		dataType: string
+		lineageTag: edea7701-3a22-42bc-adb8-b058c0334f57
+		summarizeBy: none
 
 	partition 'FC_Resultados contables' = m
 		mode: import

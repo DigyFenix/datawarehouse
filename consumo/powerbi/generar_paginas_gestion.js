@@ -20,7 +20,7 @@ const V = T.VENTAS, CXC = 'FC_Cartera por cobrar', CXP = 'FC_Cartera por pagar',
 const MORADO = '#8e5ea2';
 
 // Helpers genéricos (línea, columnas, combo, barrasH, pareto, cascada, panelAlertas) viven en pbir.js desde la sesión 35.
-const { linea, columnas, combo, barrasH, pareto, cascada, panelAlertas } = P;
+const { linea, columnas, combo, barrasH, pareto, cascada, panelFocos } = P;
 const kpi = (slug, clave, pos, titulo, medidas, sub) => kpis(slug, clave, medidas, pos, titulo, sub);
 
 // ============================================================ 14 · RESUMEN EJECUTIVO
@@ -51,8 +51,9 @@ function paginaResumen() {
     },
     vc: vcTitulo('Ritmo del mes', 'Acumulado por día · sólida: mes en curso al corte · punteada: mes anterior completo'),
   }));
-  vs.push(...panelAlertas(slug, 'alertas', [xCol(9), FILA[0], wCol(4), ALTO * 2 + 16], 'Focos de atención', 'Calculados sobre datos gobernados · hoy', [
-    [CXC, 'Alerta de vencido', C.ROJO], [PROY, 'Alerta de caja', MORADO], [PED, 'Alerta de backlog', C.PIZARRA], [AP, 'Alerta de quiebre', '#8a6d1f'], [V, 'Alerta de venta bajo costo', C.TINTA_SUAVE],
+  vs.push(...panelFocos(slug, 'alertas', [xCol(9), FILA[0], wCol(4), ALTO * 2 + 16], 'Focos de atención', 'Calculados sobre datos gobernados · hoy', [
+    [CXC, 'Foco de vencido · cifra', 'Foco de vencido · detalle', C.ROJO], [PROY, 'Foco de caja · cifra', 'Foco de caja · detalle', MORADO], [PED, 'Foco de backlog · cifra', 'Foco de backlog · detalle', C.PIZARRA],
+    [AP, 'Foco de quiebre · cifra', 'Foco de quiebre · detalle', C.ACENTO], [V, 'Foco de venta bajo costo · cifra', 'Foco de venta bajo costo · detalle', C.TINTA_SUAVE],
   ]));
   // Fila 2: aging de terceros · top clientes · top productos
   vs.push(barrasH(slug, 'aging', [xCol(1), FILA[1], wCol(3), ALTO], 'Antigüedad de la cartera · hoy', [AGING, 'rango_aging_nombre'], [[CXC, 'Por cobrar terceros hoy', C.PIZARRA]], { ordenPorColumna: true, subtitulo: 'Terceros · saldo por rango de vencimiento' }));

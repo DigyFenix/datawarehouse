@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "3be7b5e865e6c208ef6b",
   "position": {
     "x": 24,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Cliente.clase_abc_actual_nombre",
-              "nativeQueryRef": "clase_abc_actual_nombre"
+              "nativeQueryRef": "clase_abc_actual_nombre",
+              "active": true
             }
           ]
         },

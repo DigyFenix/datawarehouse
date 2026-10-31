@@ -1,13 +1,13 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
-  "name": "1e5bcbc99372a1f75503",
+  "name": "215134405433dbb3283f",
   "position": {
-    "x": 868,
-    "y": 508,
-    "z": 1500,
-    "height": 88,
-    "width": 376,
-    "tabOrder": 15
+    "x": 884,
+    "y": 602,
+    "z": 3000,
+    "height": 39,
+    "width": 352,
+    "tabOrder": 30
   },
   "visual": {
     "visualType": "cardVisual",
@@ -20,14 +20,14 @@
                 "Measure": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DM_Análisis de producto"
+                      "Entity": "FC_Ventas"
                     }
                   },
-                  "Property": "Alerta de quiebre"
+                  "Property": "Foco de venta bajo costo · cifra"
                 }
               },
-              "queryRef": "DM_Análisis de producto.Alerta de quiebre",
-              "nativeQueryRef": "Alerta de quiebre"
+              "queryRef": "FC_Ventas.Foco de venta bajo costo · cifra",
+              "nativeQueryRef": "Foco de venta bajo costo · cifra"
             }
           ]
         }
@@ -40,14 +40,14 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "9D"
+                  "Value": "16D"
                 }
               }
             },
             "fontFamily": {
               "expr": {
                 "Literal": {
-                  "Value": "'Segoe UI'"
+                  "Value": "'Segoe UI Semibold'"
                 }
               }
             },
@@ -56,7 +56,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#8a6d1f'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }

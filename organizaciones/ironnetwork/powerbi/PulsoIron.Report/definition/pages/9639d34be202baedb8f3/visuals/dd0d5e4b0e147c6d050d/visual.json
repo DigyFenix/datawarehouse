@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "dd0d5e4b0e147c6d050d",
   "position": {
     "x": 648,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Calendario.Mes corto",
-              "nativeQueryRef": "Mes corto"
+              "nativeQueryRef": "Mes corto",
+              "active": true
             }
           ]
         },

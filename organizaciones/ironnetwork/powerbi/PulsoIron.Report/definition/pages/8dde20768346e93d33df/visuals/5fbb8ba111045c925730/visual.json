@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "5fbb8ba111045c925730",
   "position": {
     "x": 24,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "FC_Resultados contables.Naturaleza contable",
-              "nativeQueryRef": "Naturaleza contable"
+              "nativeQueryRef": "Naturaleza contable",
+              "active": true
             }
           ]
         },

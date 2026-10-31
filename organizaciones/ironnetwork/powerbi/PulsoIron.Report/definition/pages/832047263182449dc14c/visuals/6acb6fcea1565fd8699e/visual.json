@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "6acb6fcea1565fd8699e",
   "position": {
     "x": 648,
     "y": 448,
-    "z": 1900,
+    "z": 3400,
     "height": 240,
     "width": 192,
-    "tabOrder": 19
+    "tabOrder": 34
   },
   "visual": {
     "visualType": "barChart",
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Producto.nombre",
-              "nativeQueryRef": "nombre"
+              "nativeQueryRef": "nombre",
+              "active": true
             }
           ]
         },

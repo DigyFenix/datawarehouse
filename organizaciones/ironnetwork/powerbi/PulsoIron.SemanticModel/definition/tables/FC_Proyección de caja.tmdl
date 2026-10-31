@@ -60,6 +60,16 @@ table 'FC_Proyección de caja'
 		displayFolder: _Narrativa
 		lineageTag: afff3fe6-8800-44ba-9669-b380563b2b40
 
+	/// Cifra del foco de caja (Resumen): flujo pactado de las próximas 4 semanas, con signo.
+	measure 'Foco de caja · cifra' = VAR f = [Flujo neto próximas 4 semanas] RETURN IF(ISBLANK(f), "Sin datos", (IF(f < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(f) >= 1000000, FORMAT(ABS(f) / 1000000, "#,##0.0") & "M", ABS(f) >= 10000, FORMAT(ABS(f) / 1000, "#,##0") & "K", FORMAT(ABS(f), "#,##0"))))
+		displayFolder: _Narrativa
+		lineageTag: 26d0323c-8da8-441c-ad0a-efee97e8b7df
+
+	/// Detalle del foco de caja (Resumen).
+	measure 'Foco de caja · detalle' = VAR f = [Flujo neto próximas 4 semanas] RETURN SWITCH(TRUE(), ISBLANK(f), "Sin proyección de caja disponible", f < 0, "Flujo pactado próximas 4 semanas · sale más de lo que entra", "Flujo pactado próximas 4 semanas · entra más de lo que sale")
+		displayFolder: _Narrativa
+		lineageTag: 487fadce-189c-48f5-a16a-dc46118e4add
+
 	column empresa_id
 		dataType: string
 		isHidden

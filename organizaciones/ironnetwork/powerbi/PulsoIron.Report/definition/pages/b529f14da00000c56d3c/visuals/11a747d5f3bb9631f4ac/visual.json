@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "11a747d5f3bb9631f4ac",
   "position": {
     "x": 232,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Calendario.mes_anio_etiqueta",
-              "nativeQueryRef": "mes_anio_etiqueta"
+              "nativeQueryRef": "mes_anio_etiqueta",
+              "active": true
             }
           ]
         },

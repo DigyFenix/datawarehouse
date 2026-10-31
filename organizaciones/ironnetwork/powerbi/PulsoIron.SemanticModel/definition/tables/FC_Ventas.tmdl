@@ -995,6 +995,16 @@ table FC_Ventas
 		displayFolder: 16 Cobros
 		lineageTag: 581f03a5-b7e6-4d0a-bb85-adc8720966e2
 
+	/// Cifra del foco de venta bajo costo (Resumen): margen perdido en el período filtrado.
+	measure 'Foco de venta bajo costo · cifra' = VAR m = [Margen perdido bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Sin pérdida", (IF(m < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(m) >= 1000000, FORMAT(ABS(m) / 1000000, "#,##0.0") & "M", ABS(m) >= 10000, FORMAT(ABS(m) / 1000, "#,##0") & "K", FORMAT(ABS(m), "#,##0"))))
+		displayFolder: _Narrativa
+		lineageTag: 76a4e717-e05b-481f-b5b2-4e70f4f62c59
+
+	/// Detalle del foco de venta bajo costo (Resumen).
+	measure 'Foco de venta bajo costo · detalle' = VAR m = [Margen perdido bajo costo] VAR p = [% Ventas bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Ninguna línea facturada por debajo del costo", "Margen perdido vendiendo bajo costo · " & FORMAT(p, "0.0%") & " de la venta")
+		displayFolder: _Narrativa
+		lineageTag: 07054cb5-68b9-4fa0-b130-6980552b1169
+
 	/// Cuántos clientes (de mayor a menor) hacen falta para llegar al 80 % de la venta a terceros del período. El 80/20 en una cifra.
 	measure 'Clientes para el 80% de la venta' = VAR base = ADDCOLUMNS(FILTER(ALLSELECTED(DM_Cliente), [Ventas a terceros] > 0), "@v", [Ventas a terceros]) VAR total = SUMX(base, [@v]) VAR acum = ADDCOLUMNS(base, "@antes", VAR v = [@v] RETURN SUMX(FILTER(base, [@v] > v), [@v])) RETURN COUNTROWS(FILTER(acum, [@antes] < 0.8 * total))
 		formatString: #,0

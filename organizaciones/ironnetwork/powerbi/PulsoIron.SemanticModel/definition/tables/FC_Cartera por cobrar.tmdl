@@ -264,6 +264,16 @@ table 'FC_Cartera por cobrar'
 		displayFolder: _Narrativa
 		lineageTag: 15b1bab6-9e7d-4b0b-ae58-771891c45c9b
 
+	/// Cifra del foco de cartera vencida (Resumen). Foto de hoy: ignora el período a propósito.
+	measure 'Foco de vencido · cifra' = VAR v = [Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Al día", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))))
+		displayFolder: _Narrativa
+		lineageTag: 7e9013e0-8f2d-475c-84ac-aff7a5e6ab1a
+
+	/// Detalle del foco de cartera vencida (Resumen).
+	measure 'Foco de vencido · detalle' = VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Sin cartera vencida de terceros", "Vencido de terceros hoy · " & FORMAT(p, "0.0%") & " de la cartera")
+		displayFolder: _Narrativa
+		lineageTag: 95a68f31-446f-449a-8efc-53a0a29baab0
+
 	column tiempo_clave
 		dataType: int64
 		isHidden

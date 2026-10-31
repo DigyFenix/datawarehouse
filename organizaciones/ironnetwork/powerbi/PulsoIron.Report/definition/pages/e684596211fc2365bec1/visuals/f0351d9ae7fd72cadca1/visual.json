@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "f0351d9ae7fd72cadca1",
   "position": {
     "x": 752,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "FC_Proyección de caja.semana_etiqueta",
-              "nativeQueryRef": "semana_etiqueta"
+              "nativeQueryRef": "semana_etiqueta",
+              "active": true
             }
           ]
         },

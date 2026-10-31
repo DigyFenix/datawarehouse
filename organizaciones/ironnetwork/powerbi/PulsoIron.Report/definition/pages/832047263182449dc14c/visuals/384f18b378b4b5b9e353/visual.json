@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "384f18b378b4b5b9e353",
   "position": {
     "x": 336,
     "y": 448,
-    "z": 1800,
+    "z": 3300,
     "height": 240,
     "width": 296,
-    "tabOrder": 18
+    "tabOrder": 33
   },
   "visual": {
     "visualType": "barChart",
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Cliente.nombre",
-              "nativeQueryRef": "nombre"
+              "nativeQueryRef": "nombre",
+              "active": true
             }
           ]
         },

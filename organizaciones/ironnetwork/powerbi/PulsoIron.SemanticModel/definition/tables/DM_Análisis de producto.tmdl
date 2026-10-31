@@ -90,6 +90,16 @@ table 'DM_Análisis de producto'
 		displayFolder: _Narrativa
 		lineageTag: 8fd4a160-cb55-4c79-a13c-de31cb0d9ad6
 
+	/// Cifra del foco de quiebre (Resumen): venta anual que depende de productos hoy agotados. Vacío o cero = "Sin riesgo".
+	measure 'Foco de quiebre · cifra' = VAR v = [Venta anual en riesgo por quiebre] RETURN IF(ISBLANK(v) || v = 0, "Sin riesgo", (IF(v < 0, "-", "") & "Q" & SWITCH(TRUE(), ABS(v) >= 1000000, FORMAT(ABS(v) / 1000000, "#,##0.0") & "M", ABS(v) >= 10000, FORMAT(ABS(v) / 1000, "#,##0") & "K", FORMAT(ABS(v), "#,##0"))))
+		displayFolder: _Narrativa
+		lineageTag: 35177320-d44f-4bc7-b398-581f09cb2198
+
+	/// Detalle del foco de quiebre (Resumen): qué es la cifra y cuántos productos la explican.
+	measure 'Foco de quiebre · detalle' = VAR v = [Venta anual en riesgo por quiebre] VAR n = [Productos en quiebre] RETURN IF(ISBLANK(v) || v = 0, "Ningún producto con demanda está agotado", "Venta anual en riesgo · " & FORMAT(n, "#,0") & IF(n = 1, " producto agotado", " productos agotados"))
+		displayFolder: _Narrativa
+		lineageTag: 240edd10-3524-4a21-a817-b7113fdbdf5a
+
 	/// Productos con ficha de análisis (venta 12 m o existencia).
 	measure 'Productos analizados' = COUNTROWS('DM_Análisis de producto')
 		formatString: #,0

@@ -2096,11 +2096,25 @@ MEDIDAS_POR_TABLA["analisis_producto"] += rf"""
 	/// Texto del foco de quiebre (página 01). La venta anual que depende de productos hoy agotados: demanda de los últimos 12 meses concentrada en artículos sin existencia.
 	measure 'Alerta de quiebre' = VAR v = [Venta anual en riesgo por quiebre] VAR n = [Productos en quiebre] RETURN IF(ISBLANK(v) || v = 0, "Sin venta en riesgo por quiebre", {_ABR('v')} & " de venta anual en riesgo · " & FORMAT(n, "#,0") & IF(n = 1, " producto agotado", " productos agotados"))
 		displayFolder: _Narrativa
+	/// Cifra del foco de quiebre (Resumen): venta anual que depende de productos hoy agotados. Vacío o cero = "Sin riesgo".
+	measure 'Foco de quiebre · cifra' = VAR v = [Venta anual en riesgo por quiebre] RETURN IF(ISBLANK(v) || v = 0, "Sin riesgo", {_ABR('v')})
+		displayFolder: _Narrativa
+
+	/// Detalle del foco de quiebre (Resumen): qué es la cifra y cuántos productos la explican.
+	measure 'Foco de quiebre · detalle' = VAR v = [Venta anual en riesgo por quiebre] VAR n = [Productos en quiebre] RETURN IF(ISBLANK(v) || v = 0, "Ningún producto con demanda está agotado", "Venta anual en riesgo · " & FORMAT(n, "#,0") & IF(n = 1, " producto agotado", " productos agotados"))
+		displayFolder: _Narrativa
 """
 
 MEDIDAS_POR_TABLA["hecho_venta_linea"] += rf"""
 	/// Texto del foco de venta bajo costo (página 01). Margen regalado en el período filtrado: líneas facturadas por debajo del costo del artículo.
 	measure 'Alerta de venta bajo costo' = VAR m = [Margen perdido bajo costo] VAR p = [% Ventas bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Sin venta bajo costo en el período", {_ABR('m')} & " de margen perdido vendiendo bajo costo · " & FORMAT(p, "0.0%") & " de la venta")
+		displayFolder: _Narrativa
+	/// Cifra del foco de venta bajo costo (Resumen): margen perdido en el período filtrado.
+	measure 'Foco de venta bajo costo · cifra' = VAR m = [Margen perdido bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Sin pérdida", {_ABR('m')})
+		displayFolder: _Narrativa
+
+	/// Detalle del foco de venta bajo costo (Resumen).
+	measure 'Foco de venta bajo costo · detalle' = VAR m = [Margen perdido bajo costo] VAR p = [% Ventas bajo costo] RETURN IF(ISBLANK(m) || m = 0, "Ninguna línea facturada por debajo del costo", "Margen perdido vendiendo bajo costo · " & FORMAT(p, "0.0%") & " de la venta")
 		displayFolder: _Narrativa
 """
 
@@ -2108,17 +2122,38 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += rf"""
 	/// Texto del foco de cartera vencida (página 01). Foto de hoy: ignora el período a propósito.
 	measure 'Alerta de vencido' = VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Sin cartera vencida de terceros", {_ABR('v')} & " vencido de terceros hoy · " & FORMAT(p, "0.0%") & " de la cartera")
 		displayFolder: _Narrativa
+	/// Cifra del foco de cartera vencida (Resumen). Foto de hoy: ignora el período a propósito.
+	measure 'Foco de vencido · cifra' = VAR v = [Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Al día", {_ABR('v')})
+		displayFolder: _Narrativa
+
+	/// Detalle del foco de cartera vencida (Resumen).
+	measure 'Foco de vencido · detalle' = VAR v = [Vencido terceros hoy] VAR p = [% Vencido terceros hoy] RETURN IF(ISBLANK(v) || v = 0, "Sin cartera vencida de terceros", "Vencido de terceros hoy · " & FORMAT(p, "0.0%") & " de la cartera")
+		displayFolder: _Narrativa
 """
 
 MEDIDAS_POR_TABLA["hecho_pedido_linea"] += rf"""
 	/// Texto del foco de backlog (página 01). Lo comprometido con fecha de entrega ya pasada: cada quetzal aquí es una promesa incumplida hoy.
 	measure 'Alerta de backlog' = VAR v = [Backlog vencido] VAR p = [% Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Sin entregas comprometidas vencidas", {_ABR('v')} & " comprometido y no entregado · " & FORMAT(p, "0.0%") & " del backlog")
 		displayFolder: _Narrativa
+	/// Cifra del foco de backlog (Resumen): comprometido con fecha de entrega ya pasada.
+	measure 'Foco de backlog · cifra' = VAR v = [Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Al día", {_ABR('v')})
+		displayFolder: _Narrativa
+
+	/// Detalle del foco de backlog (Resumen).
+	measure 'Foco de backlog · detalle' = VAR v = [Backlog vencido] VAR p = [% Backlog vencido] RETURN IF(ISBLANK(v) || v = 0, "Sin entregas comprometidas vencidas", "Comprometido y no entregado · " & FORMAT(p, "0.0%") & " del backlog")
+		displayFolder: _Narrativa
 """
 
 MEDIDAS_POR_TABLA["proyeccion_caja_semanal"] += rf"""
 	/// Texto del foco de caja (página 01). El flujo pactado de las próximas 4 semanas: si es negativo, la presión de caja se ve antes de que ocurra.
 	measure 'Alerta de caja' = VAR f = [Flujo neto próximas 4 semanas] RETURN SWITCH(TRUE(), ISBLANK(f), "Sin proyección de caja disponible", f < 0, {_ABR('f')} & " de flujo pactado en las próximas 4 semanas · sale más de lo que entra", {_ABR('f')} & " de flujo pactado en las próximas 4 semanas")
+		displayFolder: _Narrativa
+	/// Cifra del foco de caja (Resumen): flujo pactado de las próximas 4 semanas, con signo.
+	measure 'Foco de caja · cifra' = VAR f = [Flujo neto próximas 4 semanas] RETURN IF(ISBLANK(f), "Sin datos", {_ABR('f')})
+		displayFolder: _Narrativa
+
+	/// Detalle del foco de caja (Resumen).
+	measure 'Foco de caja · detalle' = VAR f = [Flujo neto próximas 4 semanas] RETURN SWITCH(TRUE(), ISBLANK(f), "Sin proyección de caja disponible", f < 0, "Flujo pactado próximas 4 semanas · sale más de lo que entra", "Flujo pactado próximas 4 semanas · entra más de lo que sale")
 		displayFolder: _Narrativa
 """
 

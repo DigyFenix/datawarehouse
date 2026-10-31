@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "2e271656141ceb6be6a5",
   "position": {
     "x": 960,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "FC_Cartera por cobrar.Rango de vencimiento",
-              "nativeQueryRef": "Rango de vencimiento"
+              "nativeQueryRef": "Rango de vencimiento",
+              "active": true
             }
           ]
         },

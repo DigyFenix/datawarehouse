@@ -406,15 +406,15 @@ table DM_Calendario
 	column 'Mes corto' = DM_Calendario[mes_nombre_corto]
 		dataType: string
 		lineageTag: 79201a02-c791-4492-bc5a-89fcf3a4f4c4
-		sortByColumn: mes_orden
 		summarizeBy: none
+		sortByColumn: mes_orden
 
 	/// Alias legible del día de la semana para encabezados de matrices (ordenado lunes a domingo).
 	column Día = DM_Calendario[dia_semana_corto]
 		dataType: string
 		lineageTag: 6734782d-2336-49ba-8208-efda994a3ac4
-		sortByColumn: dia_semana_orden
 		summarizeBy: none
+		sortByColumn: dia_semana_orden
 
 	hierarchy 'Jerarquía natural'
 		lineageTag: 2625ca81-3e12-45c7-b819-6c032b8cadd9

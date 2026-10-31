@@ -90,6 +90,19 @@
           }
         }
       ],
+      "dropShadow": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
       "visualHeader": [
         {
           "properties": {
@@ -109,7 +122,7 @@
             "top": {
               "expr": {
                 "Literal": {
-                  "Value": "8D"
+                  "Value": "10D"
                 }
               }
             },
@@ -123,14 +136,14 @@
             "left": {
               "expr": {
                 "Literal": {
-                  "Value": "12D"
+                  "Value": "14D"
                 }
               }
             },
             "right": {
               "expr": {
                 "Literal": {
-                  "Value": "12D"
+                  "Value": "14D"
                 }
               }
             }

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "cb2fc07e268ef824d5de",
   "position": {
     "x": 24,
@@ -13,6 +13,25 @@
     "visualType": "pivotTable",
     "query": {
       "queryState": {
+        "Columns": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Cartera por cobrar"
+                    }
+                  },
+                  "Property": "Rango de vencimiento"
+                }
+              },
+              "queryRef": "FC_Cartera por cobrar.Rango de vencimiento",
+              "nativeQueryRef": "Rango de vencimiento",
+              "active": true
+            }
+          ]
+        },
         "Rows": {
           "projections": [
             {
@@ -27,7 +46,8 @@
                 }
               },
               "queryRef": "DM_Cliente.Cliente",
-              "nativeQueryRef": "Cliente"
+              "nativeQueryRef": "Cliente",
+              "active": true
             }
           ]
         },
@@ -46,24 +66,6 @@
               },
               "queryRef": "FC_Cartera por cobrar.Saldo por cobrar",
               "nativeQueryRef": "Saldo por cobrar"
-            }
-          ]
-        },
-        "Columns": {
-          "projections": [
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "FC_Cartera por cobrar"
-                    }
-                  },
-                  "Property": "Rango de vencimiento"
-                }
-              },
-              "queryRef": "FC_Cartera por cobrar.Rango de vencimiento",
-              "nativeQueryRef": "Rango de vencimiento"
             }
           ]
         }

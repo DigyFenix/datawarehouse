@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "2203ed280cd8e3e1738b",
   "position": {
     "x": 856,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Análisis de producto.estado_producto",
-              "nativeQueryRef": "estado_producto"
+              "nativeQueryRef": "estado_producto",
+              "active": true
             }
           ]
         },
