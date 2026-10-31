@@ -110,12 +110,12 @@ import { ChatService, ConsultaGuardada, EjecucionGuardada, VistaConsulta } from 
     .widget__titulos strong { font-size: var(--fs-base); }
     .sutil { font-size: var(--fs-xs); color: var(--muted); }
     .widget__acciones { display: inline-flex; gap: 2px; }
-    .icono { background: none; border: 1px solid transparent; color: var(--muted); padding: 2px 7px; border-radius: var(--r-sm); font-size: 15px; line-height: 1.2; cursor: pointer; }
+    .icono { background: none; border: 1px solid transparent; color: var(--muted); min-height: 0; padding: 2px 7px; border-radius: var(--r-sm); font-size: 15px; line-height: 1.2; cursor: pointer; }
     .icono:hover:not(:disabled) { background: var(--surface-2); color: var(--text); border-color: var(--border-2); }
     .icono:disabled { opacity: .35; cursor: default; }
     .widget__error { display: flex; gap: 8px; align-items: flex-start; color: var(--warn); background: var(--warn-bg); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); font-size: var(--fs-sm); }
     .aviso { margin: 0; color: var(--warn); font-size: var(--fs-xs); }
-    .widget__pie { font-family: var(--mono); font-size: var(--fs-2xs); color: var(--faint); }
+    .widget__pie { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); color: var(--faint); }
     @media (max-width: 880px) { .grilla { grid-template-columns: 1fr; } .widget--ancho { grid-column: auto; } }
   `],
 })

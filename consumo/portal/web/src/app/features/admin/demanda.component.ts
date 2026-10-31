@@ -156,9 +156,9 @@ const NOMBRE_ESTADO: Record<EstadoSolicitud, string> = {
     .chip--desglose_no_admitido { background: var(--info-bg); color: var(--info); }
     .filtros { display: flex; gap: var(--sp-3); margin-bottom: var(--sp-3); }
     .filtros label { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--muted); }
-    .mono { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .mono { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
     .sutil { font-size: var(--fs-xs); color: var(--faint); }
-    .pedido { max-width: 460px; }
+    .pedido { min-width: 300px; max-width: 520px; }
     .pedido details summary { cursor: pointer; font-size: 11px; color: var(--muted); }
     .pregunta { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--muted); white-space: pre-wrap; }
     .nota { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--brand-700); }

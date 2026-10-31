@@ -116,10 +116,10 @@ import { ConjuntoDatos, VistaConsulta } from './chat.service';
       .dv--exploratoria { border-left-color: var(--warn); }
       .dv__cab { display: flex; justify-content: space-between; gap: var(--sp-3); align-items: flex-start; flex-wrap: wrap; }
       .dv__titulos { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-      .dv__meta { font-family: var(--mono); font-size: var(--fs-2xs); color: var(--muted); }
+      .dv__meta { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); color: var(--muted); }
       .dv__acciones { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
       .dv__vistas { display: inline-flex; border: 1px solid var(--border-2); border-radius: var(--r-sm); overflow: hidden; }
-      .dv__vista { background: none; border: none; padding: 4px 10px; font-size: var(--fs-xs); color: var(--muted); cursor: pointer; }
+      .dv__vista { background: none; border: none; min-height: 0; padding: 5px 10px; font-size: var(--fs-xs); color: var(--muted); cursor: pointer; }
       .dv__vista--activa { background: var(--surface-2); color: var(--text); font-weight: 600; }
       .dv__csv { display: inline-flex; align-items: center; gap: 4px; }
       .dv__tabla { overflow: auto; max-height: 360px; }
@@ -132,7 +132,7 @@ import { ConjuntoDatos, VistaConsulta } from './chat.service';
       .dv__svg { width: 100%; height: 220px; display: block; }
       .dv__grilla { stroke: var(--border); stroke-width: 1; }
       .dv__base { stroke: var(--border-2); stroke-width: 1; }
-      .dv__eje { font-size: 10px; fill: var(--muted); font-family: var(--mono); }
+      .dv__eje { font-size: 10px; fill: var(--muted); font-family: var(--sans); font-variant-numeric: tabular-nums; }
       .dv__cat { font-size: 10px; fill: var(--muted); }
       .dv__barra { fill: var(--brand-600); }
       .dv__barra--neg { fill: var(--danger); }
@@ -141,7 +141,7 @@ import { ConjuntoDatos, VistaConsulta } from './chat.service';
       .dv__leyenda { margin: 0; padding: 0 0 0 var(--sp-2); font-size: var(--fs-xs); color: var(--muted); columns: 2; column-gap: var(--sp-4); list-style: none; }
       .dv__leyenda li { display: flex; gap: 6px; align-items: baseline; break-inside: avoid; padding: 2px 0; }
       .dv__leyenda strong { margin-left: auto; color: var(--text); font-variant-numeric: tabular-nums; }
-      .dv__n { font-family: var(--mono); font-size: var(--fs-2xs); color: var(--faint); min-width: 16px; }
+      .dv__n { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); color: var(--faint); min-width: 16px; }
       @media (max-width: 640px) { .dv__leyenda { columns: 1; } }
     `,
   ],

@@ -257,28 +257,28 @@ import { DatosVisualComponent } from './datos-visual.component';
       .chat { display: grid; grid-template-columns: 260px 1fr; gap: var(--sp-4); height: calc(100vh - 170px); min-height: 460px; }
       .hilos { display: flex; flex-direction: column; gap: var(--sp-2); border-right: 1px solid var(--border); padding-right: var(--sp-3); overflow: hidden; }
       .hilos__pestanas { display: flex; border-bottom: 1px solid var(--border); margin-bottom: var(--sp-1); }
-      .hilos__pestana { flex: 1; background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 4px; color: var(--muted); font-size: var(--fs-sm); cursor: pointer; display: inline-flex; justify-content: center; gap: 6px; align-items: center; }
+      .hilos__pestana { flex: 1; min-height: 0; background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 4px; color: var(--muted); font-size: var(--fs-sm); cursor: pointer; display: inline-flex; justify-content: center; gap: 6px; align-items: center; }
       .hilos__pestana--activa { color: var(--text); border-bottom-color: var(--brand-600); font-weight: 600; }
-      .hilos__conteo { font-family: var(--mono); font-size: var(--fs-2xs); background: var(--surface-2); border-radius: 999px; padding: 1px 7px; }
+      .hilos__conteo { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); background: var(--surface-2); border-radius: 999px; padding: 1px 7px; }
       .hilos__top { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
       .hilos__lista { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
       .hilos__lista li { display: flex; align-items: center; gap: 2px; min-width: 0; }
       .hilos__vacio { color: var(--muted); font-size: var(--fs-xs); padding: var(--sp-2) 0; line-height: 1.5; }
-      .hilo { flex: 1; text-align: left; background: none; border: none; color: var(--text); padding: var(--sp-2); border-radius: var(--r-sm); display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-width: 0; overflow: hidden; }
+      .hilo { flex: 1; min-height: 0; text-align: left; background: none; border: none; color: var(--text); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-width: 0; overflow: hidden; }
       .hilo:hover { background: var(--surface-2); }
       .hilo--activo { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--marca); }
       .hilo__titulo { font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; max-width: 100%; }
       .hilo__titulo app-icon { vertical-align: -2px; margin-right: 4px; }
-      .hilo__fecha { font-family: var(--mono); font-size: var(--fs-2xs); color: var(--muted); }
-      .hilo__borrar { background: none; border: none; color: var(--faint); cursor: pointer; padding: 4px; border-radius: var(--r-sm); }
+      .hilo__fecha { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); color: var(--muted); }
+      .hilo__borrar { background: none; border: none; color: var(--faint); cursor: pointer; padding: 4px; min-height: 0; border-radius: var(--r-sm); }
       .hilo__borrar:hover { color: var(--danger); background: var(--danger-bg); }
 
       .hilo-activo { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
       .alternar-panel { display: none; align-self: flex-start; }
       .mensajes { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-3); padding-right: var(--sp-2); }
 
-      .burbuja { max-width: 76%; padding: var(--sp-3); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border); }
-      .burbuja--usuario { align-self: flex-end; background: var(--surface-2); border-color: var(--brand-400); }
+      .burbuja { max-width: 76%; padding: var(--sp-3) var(--sp-4); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border); }
+      .burbuja--usuario { align-self: flex-end; background: var(--brand-100); color: var(--text); border-color: transparent; border-bottom-right-radius: 6px; }
       .burbuja--datos { max-width: 96%; width: 100%; }
       .burbuja__texto { margin: 0; white-space: pre-wrap; line-height: 1.55; }
       .burbuja--pensando { display: flex; align-items: center; gap: var(--sp-2); }
@@ -297,24 +297,27 @@ import { DatosVisualComponent } from './datos-visual.component';
       .dato--exploratoria { border-left-color: var(--warn); }
       .dato__valor { font-family: var(--display); font-size: 23px; letter-spacing: -.02em; }
       .dato__metrica { font-size: var(--fs-sm); }
-      .dato__meta { font-family: var(--mono); font-size: var(--fs-2xs); color: var(--muted); }
+      .dato__meta { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); color: var(--muted); }
       .dato .badge { align-self: flex-start; margin-top: 4px; }
 
       .guardada { display: flex; flex-direction: column; gap: var(--sp-3); overflow-y: auto; }
       .guardada__cab { display: flex; justify-content: space-between; gap: var(--sp-3); align-items: flex-start; flex-wrap: wrap; }
       .guardada__titulo { margin: 2px 0 0; display: flex; align-items: center; gap: 8px; }
-      .guardada__editar { background: none; border: none; color: var(--faint); cursor: pointer; padding: 2px; }
+      .guardada__editar { background: none; border: none; color: var(--faint); cursor: pointer; padding: 2px; min-height: 0; }
       .guardada__editar:hover { color: var(--text); }
       .guardada__titulo-form { display: flex; gap: var(--sp-2); align-items: center; margin-top: 4px; }
       .guardada__acciones { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
       .guardada__acciones button { display: inline-flex; align-items: center; gap: 6px; }
       .guardada__frescura { margin: 0; color: var(--muted); font-size: var(--fs-xs); }
-      .guardada__pie { font-family: var(--mono); font-size: var(--fs-2xs); }
+      .guardada__pie { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); }
       .aviso { margin: 0; display: flex; gap: 8px; align-items: flex-start; color: var(--warn); background: var(--warn-bg); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); font-size: var(--fs-sm); }
 
       .sugerencias { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); justify-content: center; }
-      .redactar { display: flex; gap: var(--sp-2); align-items: flex-end; }
-      .redactar textarea { flex: 1; resize: vertical; min-height: 46px; }
+      .redactar { display: flex; gap: var(--sp-2); align-items: flex-end; padding: var(--sp-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--sh-1); }
+      .redactar:focus-within { border-color: var(--brand-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--marca) 14%, transparent); }
+      .redactar textarea { flex: 1; resize: none; min-height: 44px; border: 0; box-shadow: none; background: transparent; padding: 10px 8px; }
+      .redactar textarea:focus { box-shadow: none; border: 0; }
+      .redactar button { border-radius: 10px; }
 
       .puntos { display: inline-flex; gap: 4px; }
       .puntos i { width: 6px; height: 6px; border-radius: 50%; background: var(--brand-400); animation: latir 1.2s infinite ease-in-out; }

@@ -5,45 +5,42 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { TenantService } from '../../core/tenant.service';
 
-/** Login white-label del tenant: el branding (nombre, color, logo) se carga por el hash de la URL. */
+/**
+ * Login white-label del tenant: el branding (nombre, color, logo) se carga por el hash de la
+ * URL. Una sola tarjeta centrada sobre el lienzo neutro, con un halo suave del color de la
+ * organización: el formulario es lo único en pantalla.
+ */
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [FormsModule],
   template: `
     <div class="acceso">
-      <section class="hero">
-        <div class="hero__top" [class.hero__top--ancha]="tenant.logoAncho()">
+      <div class="halo" aria-hidden="true"></div>
+      <section class="tarjeta-acceso">
+        <div class="marca" [class.marca--ancha]="tenant.logoAncho()">
           @if (tenant.logoUrl(); as logo) {
             <img [src]="logo" [alt]="tenant.nombre()" class="logo-img" (load)="tenant.medirLogo($event)" />
           } @else {
             <div class="logo">{{ iniciales() }}</div>
           }
-          <span class="eyebrow">{{ tenant.nombre() }} · Portal de datos</span>
+          <div class="marca__txt">
+            <strong>{{ tenant.nombre() }}</strong>
+            <span>Portal de datos</span>
+          </div>
         </div>
 
-        <!-- Versión compacta (<820px): logo + nombre + una línea, en vez de perder todo el branding. -->
-        <p class="hero__compacta">Tableros y métricas certificadas de tu organización, en un solo lugar.</p>
+        <h1>Inicia sesión</h1>
+        <p class="sub">Tableros y métricas certificadas de tu organización, en un solo lugar.</p>
 
-        <div class="hero__msg">
-          <h1>Tus datos,<br />gobernados</h1>
-          <p>Tableros y métricas certificadas de tu organización, en un solo lugar.</p>
-        </div>
-      </section>
-
-      <section class="form-panel">
         <form class="acceso-form" (ngSubmit)="entrar()">
-          <span class="eyebrow">Iniciar sesión</span>
-          <h2>{{ tenant.nombre() }}</h2>
-          <p class="sub">Ingresa con tu cuenta.</p>
-
           <div class="campo">
-            <label for="email">Email</label>
-            <input id="email" type="email" name="email" [(ngModel)]="email" required autocomplete="username" />
+            <label for="email">Correo</label>
+            <input id="email" type="email" name="email" [(ngModel)]="email" required autocomplete="username" placeholder="nombre@empresa.com" />
           </div>
           <div class="campo">
             <label for="password">Contraseña</label>
-            <input id="password" type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" />
+            <input id="password" type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" placeholder="••••••••" />
           </div>
           @if (error()) { <p class="error" aria-live="polite">{{ error() }}</p> }
           <button type="submit" class="entrar" [disabled]="cargando()">
@@ -51,62 +48,40 @@ import { TenantService } from '../../core/tenant.service';
             {{ cargando() ? 'Verificando…' : 'Entrar' }}
           </button>
         </form>
+        <p class="pie">Quilate Analytics</p>
       </section>
     </div>
   `,
   styles: [`
-    .acceso { display: grid; grid-template-columns: 1.1fr 1fr; min-height: 100vh; }
-
-    .hero {
-      position: relative; overflow: hidden;
-      background: var(--brand-900); color: #dbe6de;
-      padding: 48px 52px; display: flex; flex-direction: column; gap: 40px;
+    .acceso { position: relative; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); overflow: hidden; }
+    .halo {
+      position: absolute; inset: auto; width: 720px; height: 720px; border-radius: 50%; pointer-events: none;
+      top: -280px; right: -200px;
+      background: radial-gradient(circle, color-mix(in srgb, var(--marca) 22%, transparent), transparent 62%);
     }
-    .hero::after {
-      content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
-      background:
-        radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--marca) 24%, transparent), transparent 60%),
-        linear-gradient(180deg, transparent, color-mix(in srgb, #000 22%, transparent));
+    .tarjeta-acceso {
+      position: relative; width: 100%; max-width: 400px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 32px; box-shadow: var(--sh-2);
+      display: flex; flex-direction: column; gap: 8px;
     }
-    .hero > * { position: relative; z-index: 1; }
-    .hero__top { display: flex; align-items: center; gap: 13px; }
-    .hero .eyebrow { color: color-mix(in srgb, var(--marca) 30%, #cfe0d4); }
+    .marca { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .marca--ancha { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .marca--ancha .marca__txt strong { display: none; }
     .logo {
-      width: 42px; height: 42px; border-radius: 11px; background: var(--amber-500);
-      color: #14251a; display: grid; place-items: center;
-      font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: -.03em;
+      width: 44px; height: 44px; border-radius: 12px; background: var(--brand-600); color: #fff;
+      display: grid; place-items: center; font-weight: 700; font-size: 16px; letter-spacing: -.02em;
     }
-    .logo-img { max-width: 46px; max-height: 46px; border-radius: 11px; background: #fff; padding: 3px; }
-    /* Wordmark: tarjeta blanca legible en vez de una miniatura de 46 px. */
-    .hero__top--ancha { flex-direction: column; align-items: flex-start; gap: 14px; }
-    .hero__top--ancha .logo-img { max-width: 280px; max-height: 72px; object-fit: contain; padding: 10px 16px; border-radius: 12px; }
-    .hero__msg { margin-top: auto; margin-bottom: 24px; }
-    .hero__msg h1 { color: #fff; font-size: 52px; line-height: .98; letter-spacing: -.04em; }
-    .hero__msg p { color: #a7bcae; font-size: 15.5px; max-width: 34ch; margin: 18px 0 0; line-height: 1.5; }
-    .hero__compacta { display: none; margin: 0; color: #a7bcae; font-size: var(--fs-sm); }
-
-    .form-panel { display: grid; place-items: center; padding: 32px; background: var(--bg); }
-    .acceso-form { width: 100%; max-width: 348px; }
-    .acceso-form h2 { margin: 8px 0 4px; font-size: 26px; }
-    .acceso-form .sub { color: var(--muted); font-size: var(--fs-base); margin: 0 0 24px; }
-    .entrar { width: 100%; margin-top: 8px; padding: 11px; }
-
-    @media (max-width: 820px) {
-      /* align-content: start evita que el grid reparta el min-height:100vh entre
-         las dos filas (hero + formulario) al apilarlas — si no, "stretch" (el
-         valor por defecto) separa ambos bloques con un hueco enorme. */
-      .acceso { grid-template-columns: 1fr; align-content: start; }
-      .hero {
-        flex-direction: row; align-items: center; gap: var(--sp-4);
-        padding: var(--sp-4) var(--sp-5);
-      }
-      .hero__msg { display: none; }
-      .hero__compacta { display: block; }
-    }
-    @media (max-width: 460px) {
-      .hero { flex-wrap: wrap; }
-      .hero__compacta { flex-basis: 100%; }
-    }
+    .logo-img { width: 44px; height: 44px; object-fit: contain; border-radius: 12px; background: #fff; padding: 3px; border: 1px solid var(--border); }
+    .marca--ancha .logo-img { width: auto; max-width: 240px; height: 56px; padding: 8px 14px; }
+    .marca__txt { display: flex; flex-direction: column; line-height: 1.25; }
+    .marca__txt strong { font-weight: 600; font-size: 15px; }
+    .marca__txt span { font-size: 12.5px; color: var(--muted); }
+    h1 { font-size: 24px; }
+    .sub { color: var(--muted); font-size: var(--fs-base); margin: 0 0 20px; line-height: 1.5; }
+    .acceso-form .campo { margin-bottom: 14px; }
+    .entrar { width: 100%; margin-top: 6px; height: 42px; font-size: 15px; }
+    .pie { margin: 18px 0 0; text-align: center; font-size: 11.5px; color: var(--faint); }
   `],
 })
 export class LoginComponent {
@@ -150,8 +125,8 @@ export class LoginComponent {
           d.usuario.debeCambiarPassword ? ['/', hash, 'cambiar-password'] : ['/', hash, 'inicio'],
         ),
       error: (e: Error) => {
-        this.error.set(e.message);
         this.cargando.set(false);
+        this.error.set(e.message);
       },
     });
   }

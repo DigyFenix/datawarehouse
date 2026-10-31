@@ -184,12 +184,12 @@ const NOMBRE_DIMENSION: Record<string, string> = {
     .paso h3 { margin: 0; display: flex; align-items: center; gap: 10px; font-size: var(--fs-base); }
     .num { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--brand-600); color: #fff; font-size: 12px; font-weight: 700; }
     .sutil { font-size: var(--fs-xs); color: var(--muted); font-weight: 400; }
-    .mono { font-family: var(--mono); }
+    .mono { font-family: var(--sans); font-variant-numeric: tabular-nums; }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
     .chip { display: inline-flex; align-items: center; gap: 8px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border-2); border-radius: 999px; padding: 6px 14px; font-size: var(--fs-sm); }
     .chip:hover { background: var(--surface-2); border-color: var(--brand-500); }
     .chip--activo { background: var(--brand-600); color: #fff; border-color: var(--brand-600); }
-    .chip__n { font-family: var(--mono); font-size: var(--fs-2xs); opacity: .8; }
+    .chip__n { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); opacity: .8; }
     .metricas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-2); }
     .metrica { display: flex; gap: 10px; align-items: flex-start; padding: var(--sp-3); border: 1px solid var(--border); border-radius: var(--r); cursor: pointer; }
     .metrica:hover { border-color: var(--brand-400); }

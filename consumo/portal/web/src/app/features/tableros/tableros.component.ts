@@ -50,7 +50,7 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
   `,
   styles: [`
     .grupo { margin-bottom: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
-    .grupo__titulo { margin: 0; font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    .grupo__titulo { margin: 0; font-size: var(--fs-base); font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--muted); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); }
     .tablero { display: flex; flex-direction: column; gap: 6px; padding: var(--sp-5); text-decoration: none; color: var(--text); }
     .tablero:hover { border-color: var(--brand-400); box-shadow: var(--sh-2); }

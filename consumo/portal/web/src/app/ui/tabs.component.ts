@@ -29,10 +29,10 @@ export interface PestanaTab {
     </nav>
   `,
   styles: [`
-    .tabs { display: flex; gap: 4px; margin: 0 0 var(--sp-4); border-bottom: 1px solid var(--border); overflow-x: auto; }
-    .tab { padding: 8px 14px; text-decoration: none; color: var(--muted); font-size: var(--fs-base); border-bottom: 2px solid transparent; white-space: nowrap; }
-    .tab:hover { color: var(--text); }
-    .tab.activo { color: var(--text); border-bottom-color: var(--brand-600); font-weight: 600; }
+    .tabs { display: inline-flex; gap: 2px; margin: 0 0 var(--sp-5); padding: 3px; border-radius: 10px; background: var(--surface-2); overflow-x: auto; max-width: 100%; }
+    .tab { height: 32px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 8px; text-decoration: none; color: var(--muted); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; transition: background .12s, color .12s; }
+    .tab:hover { color: var(--text); text-decoration: none; }
+    .tab.activo { color: var(--text); background: var(--surface); box-shadow: var(--sh-1); font-weight: 600; }
   `],
 })
 export class TabsComponent {

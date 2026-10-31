@@ -110,8 +110,8 @@ interface ResumenInicio {
       .grupo { margin-top: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
       .grupo:first-of-type { margin-top: var(--sp-3); }
       .grupo__titulo {
-        margin: 0; font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase;
-        letter-spacing: 0.04em; color: var(--muted);
+        margin: 0; font-size: var(--fs-base); font-weight: 600; text-transform: none;
+        letter-spacing: 0; color: var(--muted);
       }
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }
       .tablero {
@@ -130,7 +130,7 @@ interface ResumenInicio {
       }
       .frescura__rotulo { font-weight: 600; }
       .frescura__item { display: inline-flex; align-items: center; gap: 5px; }
-      .frescura__fecha { font-family: var(--mono); color: var(--text); }
+      .frescura__fecha { font-family: var(--sans); font-variant-numeric: tabular-nums; color: var(--text); }
       .frescura__sep { opacity: 0.5; }
       .punto { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
       .frescura__item[data-estado='Atrasado'] .punto { background: var(--warn); }

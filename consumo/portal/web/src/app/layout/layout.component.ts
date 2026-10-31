@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -14,10 +14,16 @@ interface ItemNav {
   ruta: string;
   etiqueta: string;
   icono: string; // nombre en el mapa de <app-icon>
+  grupo: 'Explorar' | 'Autoservicio' | 'Organización';
   soloAdmin?: boolean;
   soloAsistente?: boolean; // módulo que se vende aparte
 }
 
+/**
+ * Cascarón del portal: barra lateral clara con el logo del cliente y el menú por grupos,
+ * franja superior fina con el contexto y el contenido centrado. El color de marca del
+ * tenant aparece solo en la selección, el avatar y las acciones.
+ */
 @Component({
   selector: 'app-layout',
   standalone: true,
@@ -44,28 +50,40 @@ interface ItemNav {
         </div>
 
         <nav class="nav">
-          <span class="eyebrow nav__grupo">Módulos</span>
-          @for (i of visibles(); track i.ruta) {
-            <a
-              class="nav__item"
-              [routerLink]="['/', tenant.hash(), i.ruta]"
-              routerLinkActive="activo"
-              (click)="menuAbierto.set(false)"
-            >
-              <app-icon [name]="i.icono" [size]="18"></app-icon>
-              <span>{{ i.etiqueta }}</span>
-            </a>
+          @for (g of grupos(); track g.nombre) {
+            <div class="nav__grupo">
+              <span class="nav__rotulo">{{ g.nombre }}</span>
+              @for (i of g.items; track i.ruta) {
+                <a
+                  class="nav__item"
+                  [routerLink]="['/', tenant.hash(), i.ruta]"
+                  routerLinkActive="activo"
+                  (click)="menuAbierto.set(false)"
+                >
+                  <app-icon [name]="i.icono" [size]="18"></app-icon>
+                  <span>{{ i.etiqueta }}</span>
+                </a>
+              }
+            </div>
           }
         </nav>
 
-        <!-- El portal es white-label: manda la marca del cliente. La del producto va
-             al pie, discreta, para que el usuario sepa sobre qué está trabajando. -->
-        <div class="sidebar__pie">Quilate Analytics</div>
+        <div class="sidebar__pie">
+          <div class="cuenta">
+            <span class="cuenta__avatar">{{ inicial() }}</span>
+            <div class="cuenta__txt">
+              <strong>{{ auth.usuario()?.nombre }}</strong>
+              <span>{{ auth.usuario()?.esAdmin ? 'Administrador' : 'Usuario' }}</span>
+            </div>
+            <button class="cuenta__salir" (click)="salir()" title="Cerrar sesión" aria-label="Cerrar sesión">
+              <app-icon name="salir" [size]="16"></app-icon>
+            </button>
+          </div>
+          <span class="producto">Quilate Analytics</span>
+        </div>
       </aside>
 
       <div class="area">
-        <!-- Ver la cuenta de otra persona nunca puede pasar inadvertido: la banda
-             ocupa el ancho completo y no se puede cerrar mientras dure la sesión. -->
         @if (auth.impersonadoPor(); as operador) {
           <div class="banda-suplantacion" role="status">
             <span>
@@ -81,38 +99,18 @@ interface ItemNav {
             <button class="topbar__hamburguesa" (click)="menuAbierto.set(true)" aria-label="Abrir menú">
               <app-icon name="menu" [size]="20"></app-icon>
             </button>
-            <span class="eyebrow">{{ tenant.nombre() }}</span>
+            <span class="contexto__org">{{ tenant.nombre() }}</span>
+            @if (seccionActual(); as s) {
+              <span class="contexto__sep" aria-hidden="true">/</span>
+              <span class="contexto__seccion">{{ s }}</span>
+            }
           </div>
-          <div class="usuario">
+          <div class="herramientas">
             <div class="tema-toggle" role="group" aria-label="Tema del portal">
-              <button
-                type="button"
-                [class.activo]="tema.tema() === 'claro'"
-                [attr.aria-pressed]="tema.tema() === 'claro'"
-                aria-label="Tema claro"
-                title="Claro"
-                (click)="cambiarTema('claro')"
-              ><app-icon name="sol" [size]="15"></app-icon></button>
-              <button
-                type="button"
-                [class.activo]="tema.tema() === 'sistema'"
-                [attr.aria-pressed]="tema.tema() === 'sistema'"
-                aria-label="Tema según el sistema"
-                title="Según el sistema"
-                (click)="cambiarTema('sistema')"
-              ><app-icon name="sistema" [size]="15"></app-icon></button>
-              <button
-                type="button"
-                [class.activo]="tema.tema() === 'oscuro'"
-                [attr.aria-pressed]="tema.tema() === 'oscuro'"
-                aria-label="Tema oscuro"
-                title="Oscuro"
-                (click)="cambiarTema('oscuro')"
-              ><app-icon name="luna" [size]="15"></app-icon></button>
+              <button type="button" [class.activo]="tema.tema() === 'claro'" [attr.aria-pressed]="tema.tema() === 'claro'" aria-label="Tema claro" title="Claro" (click)="cambiarTema('claro')"><app-icon name="sol" [size]="15"></app-icon></button>
+              <button type="button" [class.activo]="tema.tema() === 'sistema'" [attr.aria-pressed]="tema.tema() === 'sistema'" aria-label="Tema según el sistema" title="Según el sistema" (click)="cambiarTema('sistema')"><app-icon name="sistema" [size]="15"></app-icon></button>
+              <button type="button" [class.activo]="tema.tema() === 'oscuro'" [attr.aria-pressed]="tema.tema() === 'oscuro'" aria-label="Tema oscuro" title="Oscuro" (click)="cambiarTema('oscuro')"><app-icon name="luna" [size]="15"></app-icon></button>
             </div>
-            <span class="usuario__nombre">{{ auth.usuario()?.nombre }}</span>
-            <span class="usuario__avatar">{{ inicial() }}</span>
-            <button class="secundario pequeno" (click)="salir()">Salir</button>
           </div>
         </header>
         <main class="contenido" [class.contenido--ancho]="enVisor()">
@@ -126,97 +124,92 @@ interface ItemNav {
   styles: [`
     .shell { display: flex; min-height: 100vh; }
     .sidebar {
-      width: 240px; flex-shrink: 0;
-      background: var(--brand-900); color: #dfe8e0;
+      width: 256px; flex-shrink: 0;
+      background: var(--surface); border-right: 1px solid var(--border);
       display: flex; flex-direction: column;
-      padding: var(--sp-5) 0;
+      position: sticky; top: 0; height: 100vh;
     }
-    .marca { display: flex; align-items: center; gap: 11px; padding: 4px var(--sp-5) var(--sp-5); position: relative; }
-    .marca__img { max-width: 40px; max-height: 40px; border-radius: 9px; background: #fff; padding: 2px; }
-    /* Wordmark: el logo ya dice el nombre; ocupa el ancho del menú y el nombre no se repite. */
-    .marca--ancha { flex-direction: column; align-items: stretch; gap: 8px; }
-    .marca--ancha .marca__img { max-width: 100%; max-height: 52px; object-fit: contain; padding: 8px 12px; border-radius: 10px; }
+    .marca { display: flex; align-items: center; gap: 11px; padding: 18px 16px 14px; position: relative; }
+    .marca__img { width: 36px; height: 36px; object-fit: contain; border-radius: 9px; background: #fff; padding: 2px; border: 1px solid var(--border); }
+    .marca--ancha { flex-direction: column; align-items: stretch; gap: 10px; }
+    .marca--ancha .marca__img { width: 100%; height: 48px; padding: 8px 12px; border-radius: 10px; }
     .marca--ancha .marca__txt strong { display: none; }
     .marca__logo {
-      width: 38px; height: 38px; border-radius: 9px;
-      background: var(--amber-500); color: #14251a;
-      display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 15px;
-      letter-spacing: -.03em;
+      width: 36px; height: 36px; border-radius: 9px;
+      background: var(--brand-600); color: #fff;
+      display: grid; place-items: center; font-weight: 700; font-size: 14px; letter-spacing: -.02em;
     }
-    .marca__txt { display: flex; flex-direction: column; line-height: 1.25; }
-    .marca__txt strong { color: #fff; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: -.02em; }
-    .marca__txt span { font-size: 11px; color: #9db3a4; font-family: var(--mono); letter-spacing: .04em; }
-    .sidebar__cerrar {
-      display: none; margin-left: auto; background: transparent; color: #c4d3c8; border: 0; padding: 4px;
-      align-self: flex-start;
-    }
-    .sidebar__cerrar:hover { color: #fff; }
+    .marca__txt { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+    .marca__txt strong { color: var(--text); font-weight: 600; font-size: 14px; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .marca__txt span { font-size: 12px; color: var(--muted); }
+    .sidebar__cerrar { display: none; margin-left: auto; background: transparent; color: var(--muted); border: 0; padding: 4px; height: auto; align-self: flex-start; }
+    .sidebar__cerrar:hover { color: var(--text); background: transparent; }
 
-    .nav { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; flex: 1; }
-    .nav__grupo { color: #7f9686; padding: 6px 8px; }
-    .sidebar__pie {
-      margin-top: auto; padding: 14px 16px;
-      font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase;
-      color: color-mix(in srgb, #7f9686 70%, transparent);
-    }
+    .nav { display: flex; flex-direction: column; gap: 18px; padding: 8px 12px; flex: 1; overflow-y: auto; }
+    .nav__grupo { display: flex; flex-direction: column; gap: 2px; }
+    .nav__rotulo { font-size: 11px; font-weight: 500; color: var(--faint); padding: 0 10px 6px; }
     .nav__item {
-      display: flex; align-items: center; gap: 11px;
-      padding: 9px 12px; border-radius: 8px;
-      color: #c4d3c8; text-decoration: none; font-size: 14px; font-weight: 500;
-      border-left: 3px solid transparent;
+      display: flex; align-items: center; gap: 10px;
+      height: 36px; padding: 0 10px; border-radius: 8px;
+      color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500;
+      transition: background .12s, color .12s;
     }
-    .nav__item:hover { background: rgba(255,255,255,.06); color: #fff; }
-    .nav__item.activo {
-      background: rgba(224,165,38,.14); color: #fff;
-      border-left-color: var(--amber-500);
-    }
+    .nav__item app-icon { color: var(--faint); transition: color .12s; }
+    .nav__item:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+    .nav__item:hover app-icon { color: var(--text); }
+    .nav__item.activo { background: var(--brand-100); color: var(--brand-700); font-weight: 600; }
+    .nav__item.activo app-icon { color: var(--brand-600); }
 
-    .area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-    .banda-suplantacion {
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
-      flex-wrap: wrap;
-      padding: 9px var(--sp-5);
-      background: var(--aviso, #8a5a00); color: #fff;
-      font-size: 13px; line-height: 1.45;
-    }
-    .banda-suplantacion strong { font-weight: 700; }
-    .banda-suplantacion__salir {
-      padding: 4px 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 6px;
-      background: transparent; color: #fff; font-size: 12.5px; cursor: pointer;
-    }
-    .banda-suplantacion__salir:hover { background: rgba(255,255,255,.14); }
-    .topbar {
-      display: flex; align-items: center; justify-content: space-between;
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 13px var(--sp-6); gap: var(--sp-3);
-    }
-    .contexto { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
-    .topbar__hamburguesa {
-      display: none; background: transparent; color: var(--muted); border: 1px solid var(--border-2);
-      padding: 7px;
-    }
-    .topbar__hamburguesa:hover { background: var(--surface-2); color: var(--text); }
-
-    .tema-toggle {
-      display: flex; border: 1px solid var(--border-2); border-radius: var(--r-sm); overflow: hidden;
-    }
-    .tema-toggle button {
-      background: var(--surface); color: var(--muted); border: 0; border-radius: 0;
-      padding: 6px 9px;
-    }
-    .tema-toggle button + button { border-left: 1px solid var(--border-2); }
-    .tema-toggle button:hover { background: var(--surface-2); color: var(--text); }
-    .tema-toggle button.activo { background: var(--brand-100); color: var(--brand-700); }
-
-    .usuario { display: flex; align-items: center; gap: 12px; }
-    .usuario__nombre { font-size: var(--fs-base); color: var(--muted); }
-    .usuario__avatar {
-      width: 30px; height: 30px; border-radius: 50%;
+    .sidebar__pie { padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+    .cuenta { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 8px; border-radius: 10px; }
+    .cuenta:hover { background: var(--surface-2); }
+    .cuenta__avatar {
+      width: 32px; height: 32px; border-radius: 50%; flex: none;
       background: var(--brand-600); color: #fff;
       display: grid; place-items: center; font-size: 13px; font-weight: 600;
     }
-    .contenido { padding: var(--sp-6); flex: 1; max-width: 1280px; width: 100%; }
-    /* El visor de un tablero usa todo el ancho: el reporte es lo único en pantalla. */
+    .cuenta__txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; flex: 1; }
+    .cuenta__txt strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cuenta__txt span { font-size: 11.5px; color: var(--muted); }
+    .cuenta__salir { background: transparent; color: var(--faint); border: 0; width: 30px; height: 30px; padding: 0; border-radius: 8px; }
+    .cuenta__salir:hover { background: var(--surface); color: var(--text); }
+    .producto { font-size: 11px; color: var(--faint); padding: 0 8px; }
+
+    .area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .banda-suplantacion {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      padding: 9px var(--sp-6);
+      background: var(--warn-bg); color: var(--warn); border-bottom: 1px solid color-mix(in srgb, var(--warn) 25%, transparent);
+      font-size: 13px; line-height: 1.45;
+    }
+    .banda-suplantacion strong { font-weight: 600; }
+    .banda-suplantacion__salir {
+      height: 30px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); border-radius: 8px;
+      background: transparent; color: var(--warn); font-size: 12.5px; cursor: pointer;
+    }
+    .banda-suplantacion__salir:hover { background: color-mix(in srgb, var(--warn) 12%, transparent); }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px; padding: 0 var(--sp-6); gap: var(--sp-3);
+      background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(8px);
+      position: sticky; top: 0; z-index: 20;
+      border-bottom: 1px solid var(--border);
+    }
+    .contexto { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13.5px; }
+    .contexto__org { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .contexto__sep { color: var(--border-2); }
+    .contexto__seccion { color: var(--text); font-weight: 500; white-space: nowrap; }
+    .topbar__hamburguesa { display: none; background: transparent; color: var(--muted); border: 1px solid var(--border-2); width: 36px; height: 36px; padding: 0; }
+    .topbar__hamburguesa:hover { background: var(--surface); color: var(--text); }
+
+    .herramientas { display: flex; align-items: center; gap: 12px; }
+    .tema-toggle { display: flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--surface); padding: 2px; gap: 2px; }
+    .tema-toggle button { background: transparent; color: var(--muted); border: 0; border-radius: 7px; width: 30px; height: 28px; padding: 0; }
+    .tema-toggle button:hover { background: var(--surface-2); color: var(--text); }
+    .tema-toggle button.activo { background: var(--surface-2); color: var(--text); box-shadow: var(--sh-1); }
+
+    .contenido { padding: var(--sp-6); flex: 1; max-width: 1320px; width: 100%; }
     .contenido--ancho { max-width: none; padding: var(--sp-4) var(--sp-5); }
 
     .overlay--sidebar { z-index: 940; }
@@ -229,27 +222,9 @@ interface ItemNav {
       }
       .sidebar.abierta { transform: translateX(0); box-shadow: var(--sh-pop); }
       .sidebar__cerrar { display: inline-flex; }
-      .nav { flex-direction: column; }
       .topbar__hamburguesa { display: inline-flex; }
-      .usuario__nombre { display: none; }
+      .topbar { padding: 0 var(--sp-4); }
       .contenido { padding: var(--sp-4); }
-      .banda-suplantacion {
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
-      flex-wrap: wrap;
-      padding: 9px var(--sp-5);
-      background: var(--aviso, #8a5a00); color: #fff;
-      font-size: 13px; line-height: 1.45;
-    }
-    .banda-suplantacion strong { font-weight: 700; }
-    .banda-suplantacion__salir {
-      padding: 4px 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 6px;
-      background: transparent; color: #fff; font-size: 12.5px; cursor: pointer;
-    }
-    .banda-suplantacion__salir:hover { background: rgba(255,255,255,.14); }
-    .topbar { padding: 12px var(--sp-4); }
-    }
-    @media (max-width: 520px) {
-      .tema-toggle { order: 3; }
     }
   `],
 })
@@ -258,31 +233,44 @@ export class LayoutComponent {
   readonly tenant = inject(TenantService);
   readonly tema = inject(ThemeService);
   private readonly router = inject(Router);
-  /** True en /<hash>/tableros/<clave>: el visor ocupa todo el ancho disponible. */
-  readonly enVisor = toSignal(
+
+  private readonly url = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map((e) => /\/tableros\/[^/]+/.test(e.urlAfterRedirects)),
+      map((e) => e.urlAfterRedirects),
     ),
-    { initialValue: /\/tableros\/[^/]+/.test(this.router.url) },
+    { initialValue: this.router.url },
   );
+  /** True en /<hash>/tableros/<clave>: el visor ocupa todo el ancho disponible. */
+  readonly enVisor = computed(() => /\/tableros\/[^/]+/.test(this.url()));
 
   readonly menuAbierto = signal(false);
 
   private readonly items: ItemNav[] = [
-    { ruta: 'inicio', etiqueta: 'Inicio', icono: 'inicio' },
-    { ruta: 'tableros', etiqueta: 'Tableros', icono: 'grafico' },
-    { ruta: 'chatbot', etiqueta: 'Asistente', icono: 'chatbot', soloAsistente: true },
-    { ruta: 'mi-tablero', etiqueta: 'Mi tablero', icono: 'tablero', soloAsistente: true },
-    { ruta: 'descargas', etiqueta: 'Descargas', icono: 'descargar' },
-    { ruta: 'admin', etiqueta: 'Administración', icono: 'admin', soloAdmin: true },
+    { ruta: 'inicio', etiqueta: 'Inicio', icono: 'inicio', grupo: 'Explorar' },
+    { ruta: 'tableros', etiqueta: 'Tableros', icono: 'grafico', grupo: 'Explorar' },
+    { ruta: 'chatbot', etiqueta: 'Asistente', icono: 'chatbot', grupo: 'Autoservicio', soloAsistente: true },
+    { ruta: 'mi-tablero', etiqueta: 'Mi tablero', icono: 'tablero', grupo: 'Autoservicio', soloAsistente: true },
+    { ruta: 'descargas', etiqueta: 'Descargas', icono: 'descargar', grupo: 'Autoservicio' },
+    { ruta: 'admin', etiqueta: 'Administración', icono: 'admin', grupo: 'Organización', soloAdmin: true },
   ];
 
-  visibles(): ItemNav[] {
+  readonly grupos = computed(() => {
     const esAdmin = this.auth.usuario()?.esAdmin ?? false;
     const asistente = this.tenant.moduloAsistente();
-    return this.items.filter((i) => (!i.soloAdmin || esAdmin) && (!i.soloAsistente || asistente));
-  }
+    const visibles = this.items.filter((i) => (!i.soloAdmin || esAdmin) && (!i.soloAsistente || asistente));
+    const orden: ItemNav['grupo'][] = ['Explorar', 'Autoservicio', 'Organización'];
+    return orden
+      .map((nombre) => ({ nombre, items: visibles.filter((i) => i.grupo === nombre) }))
+      .filter((g) => g.items.length > 0);
+  });
+
+  /** Nombre de la sección activa para la franja superior. */
+  readonly seccionActual = computed(() => {
+    const u = this.url();
+    const item = this.items.find((i) => u.includes(`/${i.ruta}`));
+    return item?.etiqueta ?? null;
+  });
 
   iniciales(): string {
     const nombre = this.tenant.nombre();

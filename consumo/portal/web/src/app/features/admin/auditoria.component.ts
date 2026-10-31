@@ -65,9 +65,9 @@ import { PESTANAS_ADMIN } from './pestanas';
   `,
   styles: [`
     .sutil { font-size: var(--fs-xs); color: var(--faint); }
-    .mono { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .mono { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
     .chip { display: inline-block; background: var(--brand-100); color: var(--brand-700); border-radius: 999px; padding: 2px 9px; font-size: var(--fs-xs); }
-    .detalle summary { cursor: pointer; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    .detalle summary { cursor: pointer; font-size: 11px; color: var(--muted); font-family: var(--sans); font-variant-numeric: tabular-nums; }
     .detalle summary:hover { color: var(--text); }
     .detalle .json {
       margin: 8px 0 0; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border);
