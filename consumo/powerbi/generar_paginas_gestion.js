@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const P = require('./pbir');
-const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, matriz, marcadores, ejeValores, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, encabezado, pie, visual, texto, textoEstatico, pColumna, pMedida, ordenAsc, ordenDesc, str, num, int, bool, color, meta, vcTitulo } = P;
+const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, matriz, ejeValores, leyenda, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
 const ANIO_ACTUAL = Number(process.argv[3] || new Date().getFullYear());
@@ -19,114 +19,8 @@ const V = T.VENTAS, CXC = 'FC_Cartera por cobrar', CXP = 'FC_Cartera por pagar',
   HIST = 'FC_Cartera cobrar histórico', CP = 'DM_Comportamiento de pago', RFM = T.RFM, AP = 'DM_Análisis de producto', AGING = 'DM_Antigüedad';
 const MORADO = '#8e5ea2';
 
-// ============================================================ helpers propios de estas hojas
-// Línea genérica: series = [[tabla, medida, hex, punteada?]]; categoría = [tabla, columna].
-function linea(slug, clave, pos, titulo, subtitulo, [tCat, cCat], series, { etiquetas = false, finos = false, tituloEje } = {}) {
-  return visual(id(slug, clave), 'lineChart', pos, {
-    roles: { Category: [pColumna(tCat, cCat)], Y: series.map(([t, m]) => pMedida(t, m)) },
-    sort: ordenAsc(tCat, cCat),
-    objects: {
-      categoryAxis: tituloEje ? P.ejeCategoria(tituloEje) : ejeCat(),
-      valueAxis: ejeValores({ start: num(0) }),
-      labels: [{ properties: { show: bool(etiquetas), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), color: color(C.TINTA_SUAVE) } }],
-      legend: leyenda(series.length > 1),
-      lineStyles: [finos ? P.marcadoresFinos : marcadores, ...series.filter(([, , , p]) => p).map(([t, m]) => ({ properties: { lineStyle: str('dotted'), strokeWidth: num(2) }, selector: meta(t, m) }))],
-      dataPoint: series.map(([t, m, hex]) => ({ properties: { fill: color(hex) }, selector: meta(t, m) })),
-    },
-    vc: vcTitulo(titulo, subtitulo),
-  });
-}
-// Columnas agrupadas genéricas (tablas explícitas): series = [[tabla, medida, hex]].
-function columnas(slug, clave, pos, titulo, subtitulo, [tCat, cCat], series, { apilado = false, etiquetas = true } = {}) {
-  return visual(id(slug, clave), apilado ? 'columnChart' : 'clusteredColumnChart', pos, {
-    roles: { Category: [pColumna(tCat, cCat)], Y: series.map(([t, m]) => pMedida(t, m)) },
-    sort: ordenAsc(tCat, cCat),
-    objects: {
-      categoryAxis: ejeCat({ innerPadding: int(35) }),
-      valueAxis: ejeValGrilla(),
-      labels: etiquetas && !apilado ? etiquetasBarra(series, { labelPosition: str('OutsideEnd'), labelOverflow: bool(true) }) : [{ properties: { show: bool(false) } }],
-      legend: leyenda(series.length > 1),
-      dataPoint: series.map(([t, m, hex]) => ({ properties: { fill: color(hex) }, selector: meta(t, m) })),
-    },
-    vc: vcTitulo(titulo, subtitulo),
-  });
-}
-// Columnas + línea en eje secundario, tablas explícitas.
-function combo(slug, clave, pos, titulo, subtitulo, [tCat, cCat], columnasSeries, [tL, mL, hexL], { etiquetaLinea = false } = {}) {
-  return visual(id(slug, clave), 'lineClusteredColumnComboChart', pos, {
-    roles: { Category: [pColumna(tCat, cCat)], Y: columnasSeries.map(([t, m]) => pMedida(t, m)), Y2: [pMedida(tL, mL)] },
-    sort: ordenAsc(tCat, cCat),
-    objects: {
-      categoryAxis: ejeCat({ innerPadding: int(35) }),
-      valueAxis: ejeValGrilla({ secShow: bool(false) }),
-      labels: [...etiquetasBarra(columnasSeries), { properties: { show: bool(etiquetaLinea), showSeries: bool(etiquetaLinea) }, selector: meta(tL, mL) }],
-      legend: leyenda(true),
-      dataPoint: [...columnasSeries.map(([t, m, hex]) => ({ properties: { fill: color(hex) }, selector: meta(t, m) })), { properties: { fill: color(hexL) }, selector: meta(tL, mL) }],
-      lineStyles: [marcadores],
-    },
-    vc: vcTitulo(titulo, subtitulo),
-  });
-}
-// Barras horizontales con tablas explícitas (apiladas por defecto), orden por la primera serie.
-function barrasH(slug, clave, pos, titulo, [tCat, cCat], series, { apilado = true, ordenPorColumna = false, subtitulo, margen = 45 } = {}) {
-  return visual(id(slug, clave), apilado ? 'barChart' : 'clusteredBarChart', pos, {
-    roles: { Category: [pColumna(tCat, cCat)], Y: series.map(([t, m]) => pMedida(t, m)) },
-    sort: ordenPorColumna ? ordenAsc(tCat, cCat) : ordenDesc(series[0][0], series[0][1]),
-    objects: {
-      categoryAxis: ejeCat({ fontSize: num(8), maxMarginFactor: num(margen) }),
-      valueAxis: ejeValOculto,
-      labels: etiquetasBarra(series, apilado && series.length > 1 ? {} : { labelPosition: str('OutsideEnd'), labelOverflow: bool(false) }, { fondo: !(apilado && series.length > 1) }),
-      dataPoint: [{ properties: { fill: color(series[0][2]) } }, ...series.map(([t, m, hex]) => ({ properties: { fill: color(hex) }, selector: meta(t, m) }))],
-      legend: leyenda(series.length > 1),
-    },
-    vc: vcTitulo(titulo, subtitulo),
-  });
-}
-// Pareto: barras del monto por categoría + línea del % acumulado en eje secundario, orden descendente por monto.
-function pareto(slug, clave, pos, titulo, subtitulo, [tCat, cCat], [tM, monto], [tP, pct]) {
-  return visual(id(slug, clave), 'lineClusteredColumnComboChart', pos, {
-    roles: { Category: [pColumna(tCat, cCat)], Y: [pMedida(tM, monto)], Y2: [pMedida(tP, pct), pMedida(V, 'Referencia 80 %')] },
-    sort: ordenDesc(tM, monto),
-    objects: {
-      categoryAxis: ejeCat({ innerPadding: int(20), fontSize: num(7), preferredCategoryWidth: num(14) }),
-      valueAxis: ejeValGrilla({ secShow: bool(true), secStart: num(0), secEnd: num(1), secFontSize: num(8), secLabelColor: color(C.TINTA_SUAVE), secShowAxisTitle: bool(false) }),
-      labels: [{ properties: { show: bool(false) } }],
-      legend: leyenda(true),
-      dataPoint: [{ properties: { fill: color(C.PIZARRA) }, selector: meta(tM, monto) }, { properties: { fill: color(C.ROJO) }, selector: meta(tP, pct) }, { properties: { fill: color(C.TINTA_SUAVE) }, selector: meta(V, 'Referencia 80 %') }],
-      lineStyles: [{ properties: { showMarker: bool(true), markerShape: str('circle'), markerSize: num(3), strokeWidth: num(2) } }, { properties: { showMarker: bool(false), lineStyle: str('dashed'), strokeWidth: num(1) }, selector: meta(V, 'Referencia 80 %') }],
-    },
-    vc: vcTitulo(titulo, subtitulo),
-  });
-}
-// Cascada (puente): categoría → aporte; el total lo dibuja Power BI.
-function cascada(slug, clave, pos, titulo, subtitulo, [tCat, cCat], [tM, m]) {
-  return visual(id(slug, clave), 'waterfallChart', pos, {
-    roles: { Category: [pColumna(tCat, cCat)], Y: [pMedida(tM, m)] },
-    sort: ordenDesc(tM, m),
-    objects: {
-      categoryAxis: ejeCat(),
-      valueAxis: ejeValGrilla(),
-      labels: [{ properties: { show: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), color: color(C.TINTA) } }],
-      legend: leyenda(false),
-      sentimentColors: [{ properties: { increaseFill: color(C.VERDE), decreaseFill: color(C.ROJO), totalFill: color(C.PIZARRA) } }],
-    },
-    vc: vcTitulo(titulo, subtitulo),
-  });
-}
-// Panel de alertas narrativas: tarjeta gris-azul con título y una línea por medida (texto completo).
-function panelAlertas(slug, clave, pos, titulo, subtitulo, alertas) {
-  const [x, y, w, h] = pos;
-  const vs = [visual(id(slug, clave), 'textbox', pos, {
-    objects: { general: [{ properties: { paragraphs: [{ textRuns: [{ value: titulo, textStyle: { fontFamily: 'Segoe UI Semibold', fontSize: '11pt', color: C.TINTA } }] }, { textRuns: [{ value: subtitulo, textStyle: { fontFamily: 'Segoe UI', fontSize: '9pt', color: C.TINTA_SUAVE } }] }] } }] },
-    vc: { background: [{ properties: { show: bool(true), color: color(C.PANEL), transparency: num(0) } }], border: [{ properties: { show: bool(false) } }], visualHeader: [{ properties: { show: bool(false) } }], padding: [{ properties: { top: num(8), bottom: num(8), left: num(12), right: num(12) } }] },
-  })];
-  const alto = Math.floor((h - 56) / alertas.length);
-  alertas.forEach(([tabla, medida, hex], i) => {
-    // Cada alerta en el color de su severidad (una tarjeta de texto no envuelve: el ancho manda).
-    vs.push(texto(slug, `${clave}-texto-${i}`, tabla, medida, [x + 12, y + 52 + i * alto, w - 24, alto], { size: 9, colorHex: hex || C.TINTA, align: 'left' }));
-  });
-  return vs;
-}
+// Helpers genéricos (línea, columnas, combo, barrasH, pareto, cascada, panelAlertas) viven en pbir.js desde la sesión 35.
+const { linea, columnas, combo, barrasH, pareto, cascada, panelAlertas } = P;
 const kpi = (slug, clave, pos, titulo, medidas, sub) => kpis(slug, clave, medidas, pos, titulo, sub);
 
 // ============================================================ 14 · RESUMEN EJECUTIVO
@@ -148,14 +42,14 @@ function paginaResumen() {
   // Fila 1: venta mensual (actual vs año anterior) · acumulado del mes al día · alertas (2 filas)
   vs.push(P.columnasMensuales(slug, 'mensual', [xCol(1), FILA[0], wCol(5), ALTO], 'Venta por mes · año actual vs anterior'));
   vs.push(visual(id(slug, 'mes-al-dia'), 'lineChart', [xCol(6), FILA[0], wCol(3), ALTO], {
-    roles: { Category: [pColumna(T.CAL, 'dia')], Y: [pMedida(V, 'Venta acumulada del mes al día'), pMedida(V, 'Venta acumulada del mes al día año anterior')] },
+    roles: { Category: [pColumna(T.CAL, 'dia')], Y: [pMedida(V, 'Ritmo del mes en curso'), pMedida(V, 'Ritmo del mes anterior')] },
     sort: ordenAsc(T.CAL, 'dia'),
     objects: {
       categoryAxis: P.ejeCategoria('Día del mes'), valueAxis: ejeValores({ start: num(0) }), legend: leyenda(false),
-      lineStyles: [P.marcadoresFinos, { properties: { strokeWidth: num(2) }, selector: meta(V, 'Venta acumulada del mes al día') }, { properties: { lineStyle: str('dotted'), strokeWidth: num(2) }, selector: meta(V, 'Venta acumulada del mes al día año anterior') }],
-      dataPoint: [{ properties: { fill: color(C.PIZARRA) }, selector: meta(V, 'Venta acumulada del mes al día') }, { properties: { fill: color(C.PIZARRA_CLARA) }, selector: meta(V, 'Venta acumulada del mes al día año anterior') }],
+      lineStyles: [P.marcadoresFinos, { properties: { strokeWidth: num(2) }, selector: meta(V, 'Ritmo del mes en curso') }, { properties: { lineStyle: str('dotted'), strokeWidth: num(2) }, selector: meta(V, 'Ritmo del mes anterior') }],
+      dataPoint: [{ properties: { fill: color(C.PIZARRA) }, selector: meta(V, 'Ritmo del mes en curso') }, { properties: { fill: color(C.ACENTO) }, selector: meta(V, 'Ritmo del mes anterior') }],
     },
-    vc: vcTitulo('Ritmo del mes', 'Acumulado por día · sólida: este mes · punteada: mismo mes del año anterior'),
+    vc: vcTitulo('Ritmo del mes', 'Acumulado por día · sólida: mes en curso al corte · punteada: mes anterior completo'),
   }));
   vs.push(...panelAlertas(slug, 'alertas', [xCol(9), FILA[0], wCol(4), ALTO * 2 + 16], 'Focos de atención', 'Calculados sobre datos gobernados · hoy', [
     [CXC, 'Alerta de vencido', C.ROJO], [PROY, 'Alerta de caja', MORADO], [PED, 'Alerta de backlog', C.PIZARRA], [AP, 'Alerta de quiebre', '#8a6d1f'], [V, 'Alerta de venta bajo costo', C.TINTA_SUAVE],
@@ -251,7 +145,8 @@ function paginaTesoreria() {
     [PROY, 'Entradas vencidas (exigible)', 'Cobrable hoy (vencido)'], [PROY, 'Entradas próximas 4 semanas', 'Entra en 4 semanas'], [PROY, 'Flujo neto próximas 4 semanas', 'Flujo neto 4 semanas'],
   ], 'Según el vencimiento pactado de cada partida'));
   // Fila 1: cobros vs pagos por mes + flujo neto · proyección semanal
-  vs.push(combo(slug, 'cobros-pagos', [xCol(1), FILA[0], wCol(7), ALTO], 'Cobros, pagos y flujo neto por mes', 'Columnas: cobros (verde) y pagos (rojo) · línea: flujo neto', [T.CAL, 'mes_nombre_corto'], [[PAG, 'Cobros de clientes', C.VERDE], [PAGE, 'Pagos a proveedores', C.ROJO]], [PAGE, 'Flujo neto de caja', C.TINTA]));
+  // La línea va en eje secundario y es el ACUMULADO del año: una línea «flujo neto del mes» sobre columnas «cobros» caía a la misma altura (pagos ≈ 0) y parecía un error.
+  vs.push(combo(slug, 'cobros-pagos', [xCol(1), FILA[0], wCol(7), ALTO], 'Cobros, pagos y flujo neto acumulado', 'Columnas: cobros (verde) y pagos (rojo) del mes · línea ámbar: flujo neto acumulado del año (eje derecho)', [T.CAL, 'mes_nombre_corto'], [[PAG, 'Cobros de clientes', C.VERDE], [PAGE, 'Pagos a proveedores', C.ROJO]], [PAGE, 'Flujo neto acumulado año', C.ACENTO], { ejeSecundario: true }));
   vs.push(columnas(slug, 'proyeccion', [xCol(8), FILA[0], wCol(5), ALTO], 'Caja pactada por semana', 'Entradas y salidas según vencimiento · «Vencido» = exigible hoy', [PROY, 'semana_etiqueta'], [[PROY, 'Entradas proyectadas', C.VERDE], [PROY, 'Salidas proyectadas', C.ROJO]]));
   // Fila 2: tendencia de la cartera · top cobros por cliente
   vs.push(linea(slug, 'cartera-hist', [xCol(1), FILA[1], wCol(7), ALTO], 'Evolución de la cartera por cobrar', 'Saldo total y vencido en cada corte diario · ¿mejora o empeora?', [HIST, 'fecha_corte'], [[HIST, 'Saldo histórico por cobrar', C.PIZARRA], [HIST, 'Vencido histórico por cobrar', C.ROJO]]));
@@ -308,7 +203,7 @@ function paginaResultados() {
   ], 'Cuentas de resultado del libro mayor · período filtrado'));
   vs.push(kpi(slug, 'control', [xCol(10), BANDA[0], wCol(3), 112], 'Control: contabilidad vs facturación', [[CONT, 'Brecha contable vs facturado', 'Brecha'], [CONT, '% Brecha contable', '% brecha']], 'Debe rondar cero: el tablero y el mayor dicen lo mismo'));
   vs.push(cascada(slug, 'puente', [xCol(1), FILA[0], wCol(5), ALTO], 'Puente del resultado', 'Ingresos − costo − gastos = resultado', [CONT, 'Naturaleza contable'], [CONT, 'Aporte al resultado']));
-  vs.push(combo(slug, 'por-mes', [xCol(6), FILA[0], wCol(7), ALTO], 'Ingresos, gasto y resultado por mes', 'Columnas: ingresos y gasto · línea: resultado', [T.CAL, 'mes_nombre_corto'], [[CONT, 'Ingresos contables', C.PIZARRA], [CONT, 'Gasto operativo', C.ROJO]], [CONT, 'Resultado contable', C.TINTA]));
+  vs.push(combo(slug, 'por-mes', [xCol(6), FILA[0], wCol(7), ALTO], 'Ingresos, gasto y margen operativo por mes', 'Columnas: ingresos y gasto · línea ámbar: margen operativo % (eje derecho)', [T.CAL, 'mes_nombre_corto'], [[CONT, 'Ingresos contables', C.PIZARRA], [CONT, 'Gasto operativo', C.ROJO]], [CONT, '% Margen operativo', C.ACENTO], { ejeSecundario: true }));
   vs.push(ranking(slug, 'gasto-rubro', [xCol(1), FILA[1], wCol(5), ALTO], CTA, 'Cuenta', 'Gasto por cuenta', 'cuenta', 'Gasto operativo', undefined, CONT, { margen: 40 }));
   vs.push(columnas(slug, 'contable-vs-ventas', [xCol(6), FILA[1], wCol(7), ALTO], 'Ingresos contables vs ventas netas por mes', 'Si las dos columnas coinciden, contabilidad y facturación cuadran', [T.CAL, 'mes_nombre_corto'], [[CONT, 'Ingresos contables', C.PIZARRA], [V, 'Ventas netas', C.PIZARRA_CLARA]]));
   vs.push(matriz(slug, 'cuentas', [xCol(1), FILA[2], wCol(12), ALTO], 'Detalle por cuenta contable', {

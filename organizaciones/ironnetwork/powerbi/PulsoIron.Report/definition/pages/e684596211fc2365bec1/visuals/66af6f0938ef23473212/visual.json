@@ -73,11 +73,11 @@
                       "Entity": "FC_Pagos efectuados"
                     }
                   },
-                  "Property": "Flujo neto de caja"
+                  "Property": "Flujo neto acumulado año"
                 }
               },
-              "queryRef": "FC_Pagos efectuados.Flujo neto de caja",
-              "nativeQueryRef": "Flujo neto de caja"
+              "queryRef": "FC_Pagos efectuados.Flujo neto acumulado año",
+              "nativeQueryRef": "Flujo neto acumulado año"
             }
           ]
         }
@@ -124,7 +124,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -169,7 +169,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -201,7 +201,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e6ebee'"
+                      "Value": "'#e2e8f0'"
                     }
                   }
                 }
@@ -222,6 +222,59 @@
               }
             },
             "secShow": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "secStart": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "secFontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            },
+            "secLabelColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#64748b'"
+                    }
+                  }
+                }
+              }
+            },
+            "secShowAxisTitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "secLabelDisplayUnits": {
+              "expr": {
+                "Literal": {
+                  "Value": "'1'"
+                }
+              }
+            },
+            "secLabelPrecision": {
+              "expr": {
+                "Literal": {
+                  "Value": "0L"
+                }
+              }
+            },
+            "secGridlineShow": {
               "expr": {
                 "Literal": {
                   "Value": "false"
@@ -310,7 +363,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#2f9e44'"
+                      "Value": "'#2a9d6a'"
                     }
                   }
                 }
@@ -335,7 +388,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#d9534f'"
+                      "Value": "'#d3455b'"
                     }
                   }
                 }
@@ -364,7 +417,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Pagos efectuados.Flujo neto de caja"
+            "metadata": "FC_Pagos efectuados.Flujo neto acumulado año"
           }
         }
       ],
@@ -397,7 +450,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -421,7 +474,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#2f9e44'"
+                      "Value": "'#2a9d6a'"
                     }
                   }
                 }
@@ -439,7 +492,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#d9534f'"
+                      "Value": "'#d3455b'"
                     }
                   }
                 }
@@ -457,7 +510,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#e0a526'"
                     }
                   }
                 }
@@ -465,7 +518,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Pagos efectuados.Flujo neto de caja"
+            "metadata": "FC_Pagos efectuados.Flujo neto acumulado año"
           }
         }
       ],
@@ -518,7 +571,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Cobros, pagos y flujo neto por mes'"
+                  "Value": "'Cobros, pagos y flujo neto acumulado'"
                 }
               }
             },
@@ -541,7 +594,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -563,7 +616,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Columnas: cobros (verde) y pagos (rojo) · línea: flujo neto'"
+                  "Value": "'Columnas: cobros (verde) y pagos (rojo) del mes · línea ámbar: flujo neto acumulado del año (eje derecho)'"
                 }
               }
             },
@@ -586,7 +639,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }

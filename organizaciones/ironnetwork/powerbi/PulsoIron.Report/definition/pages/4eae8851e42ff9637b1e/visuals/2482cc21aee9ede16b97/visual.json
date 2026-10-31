@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "2482cc21aee9ede16b97",
   "position": {
     "x": 856,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Cliente.Cliente",
-              "nativeQueryRef": "Cliente",
-              "active": true
+              "nativeQueryRef": "Cliente"
             }
           ]
         },
@@ -114,7 +113,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -143,7 +142,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#9fb4bb'"
+                      "Value": "'#8fa9c4'"
                     }
                   }
                 }
@@ -195,7 +194,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -237,7 +236,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -248,7 +247,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -270,7 +269,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#f4f7f8'"
+                      "Value": "'#f5f8fb'"
                     }
                   }
                 }
@@ -368,7 +367,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -379,7 +378,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#eef2f4'"
+                      "Value": "'#e9eff5'"
                     }
                   }
                 }
@@ -424,7 +423,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e6ebee'"
+                      "Value": "'#e2e8f0'"
                     }
                   }
                 }
@@ -442,7 +441,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e6ebee'"
+                      "Value": "'#e2e8f0'"
                     }
                   }
                 }
@@ -519,7 +518,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "217d0f76840953920fa1",
   "position": {
     "x": 544,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Bodega.nombre",
-              "nativeQueryRef": "nombre",
-              "active": true
+              "nativeQueryRef": "nombre"
             }
           ]
         },
@@ -93,7 +92,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -218,7 +217,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -235,7 +234,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -250,7 +249,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -291,7 +290,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -345,7 +344,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }

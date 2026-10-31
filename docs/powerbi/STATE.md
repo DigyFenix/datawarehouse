@@ -1,7 +1,7 @@
 # STATE — Quilate Analytics · Power BI Product
 
 FASE_ACTUAL: F5 (construcción POR CÓDIGO — decisión 21; tenant de trabajo Iron Network; 13 páginas replicadas de Kraken 360 + 6 hojas de gestión propias (sesión 34): Resumen ejecutivo, Segmentación, Concentración 80/20, Tesorería, Pedidos, Resultados — 19 páginas / 323 visuales)
-ULTIMA_ACTUALIZACION: 2026-10-31 (sesión 34 — hojas de gestión por código con `generar_paginas_gestion.js`, 41 medidas nuevas; pendiente publicar y seed 58; detalle en .claude/SESSION.md)
+ULTIMA_ACTUALIZACION: 2026-10-31 (sesión 35 — tema «Quilate · Azul profundo», combos con eje secundario, ritmo del mes corregido, 4 hojas de análisis con `generar_paginas_analisis.js` (23 páginas); pendiente publicar, seed 58 y mapa de calor; detalle en .claude/SESSION.md)
 GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
 
 > **CAMBIO DE RUMBO (2026-08-08, decisión de Edwin):** la ola 1 se generó completa por código
@@ -96,7 +96,7 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 
 ## Presupuesto consumido
 
-- Páginas construidas en PulsoIron (Iron): **19** — 13 réplicas de Kraken 360 + 6 hojas de gestión (sesión 34, `generar_paginas_gestion.js`, capturas en `docs/powerbi/kraken360/capturas/gestion/`).
+- Páginas construidas en PulsoIron (Iron): **23** — 13 réplicas de Kraken 360 + 6 hojas de gestión (sesión 34, `generar_paginas_gestion.js`, capturas en `docs/powerbi/kraken360/capturas/gestion/`) + 4 hojas de análisis (sesión 35, `generar_paginas_analisis.js`, capturas en `docs/powerbi/kraken360/capturas/analisis/`). Tema «Quilate · Azul profundo» (sesión 35).
 - Páginas construidas en PulsoCresta: **1 / 12** — la 00 · Inicio (piloto por código, sesión 25; pendiente el
   veredicto visual de Edwin). Las 12 tienen contrato en `report-architecture.md`
 - Medidas nuevas creadas: **22 / 40** — GAP-01 (3) + `_Fecha ancla móvil` (auxiliar) +

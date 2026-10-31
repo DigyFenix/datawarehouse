@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "190e1156a6431a01d12a",
   "position": {
     "x": 752,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Calendario.mes_nombre_corto",
-              "nativeQueryRef": "mes_nombre_corto",
-              "active": true
+              "nativeQueryRef": "mes_nombre_corto"
             }
           ]
         },
@@ -125,7 +124,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -170,7 +169,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -202,7 +201,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e6ebee'"
+                      "Value": "'#e2e8f0'"
                     }
                   }
                 }
@@ -304,7 +303,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -329,7 +328,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -391,7 +390,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -415,7 +414,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e1e4e6'"
+                      "Value": "'#dfe5ec'"
                     }
                   }
                 }
@@ -433,7 +432,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -451,7 +450,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -556,7 +555,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }

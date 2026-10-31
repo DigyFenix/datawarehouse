@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "571be93fc7841a682451",
   "position": {
     "x": 336,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Calendario.mes_anio_etiqueta",
-              "nativeQueryRef": "mes_anio_etiqueta",
-              "active": true
+              "nativeQueryRef": "mes_anio_etiqueta"
             }
           ]
         },
@@ -125,7 +124,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -170,7 +169,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -202,7 +201,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e6ebee'"
+                      "Value": "'#e2e8f0'"
                     }
                   }
                 }
@@ -311,7 +310,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#d9534f'"
+                      "Value": "'#d3455b'"
                     }
                   }
                 }
@@ -336,7 +335,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#2f9e44'"
+                      "Value": "'#2a9d6a'"
                     }
                   }
                 }
@@ -402,7 +401,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -426,7 +425,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#d9534f'"
+                      "Value": "'#d3455b'"
                     }
                   }
                 }
@@ -444,7 +443,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#2f9e44'"
+                      "Value": "'#2a9d6a'"
                     }
                   }
                 }
@@ -512,7 +511,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -557,7 +556,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "e3e5170593d61ce3a0fb",
   "position": {
     "x": 24,
@@ -74,7 +74,7 @@
                 "Version": 2,
                 "From": [
                   {
-                    "Name": "d",
+                    "Name": "t",
                     "Entity": "DM_Calendario",
                     "Type": 0
                   }
@@ -88,7 +88,7 @@
                             "Column": {
                               "Expression": {
                                 "SourceRef": {
-                                  "Source": "d"
+                                  "Source": "t"
                                 }
                               },
                               "Property": "anio_mes"
@@ -156,7 +156,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -198,7 +198,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -320,7 +320,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e6ebee'"
+                      "Value": "'#e2e8f0'"
                     }
                   }
                 }
@@ -337,29 +337,11 @@
         }
       ]
     },
+    "drillFilterOtherVisuals": true,
     "syncGroup": {
       "groupName": "periodo",
       "fieldChanges": true,
       "filterChanges": true
-    },
-    "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "3e00985a109ef5357ef9",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DM_Calendario"
-              }
-            },
-            "Property": "anio_mes"
-          }
-        },
-        "type": "Categorical"
-      }
-    ]
+    }
   }
 }

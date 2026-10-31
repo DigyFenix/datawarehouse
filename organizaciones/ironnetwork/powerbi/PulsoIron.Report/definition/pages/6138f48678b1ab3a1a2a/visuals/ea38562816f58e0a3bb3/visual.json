@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "ea38562816f58e0a3bb3",
   "position": {
     "x": 648,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Dirección de entrega.ciudad",
-              "nativeQueryRef": "ciudad",
-              "active": true
+              "nativeQueryRef": "ciudad"
             }
           ]
         },
@@ -74,7 +73,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -111,27 +110,6 @@
               "expr": {
                 "Literal": {
                   "Value": "true"
-                }
-              }
-            },
-            "zoom": {
-              "expr": {
-                "Literal": {
-                  "Value": "9.62D"
-                }
-              }
-            },
-            "centerLatitude": {
-              "expr": {
-                "Literal": {
-                  "Value": "14.58518236456716D"
-                }
-              }
-            },
-            "centerLongitude": {
-              "expr": {
-                "Literal": {
-                  "Value": "-90.55038833618164D"
                 }
               }
             }
@@ -176,7 +154,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }

@@ -1066,6 +1066,44 @@ table FC_Ventas
 		displayFolder: 07 Pareto
 		lineageTag: 6b4032ff-9912-4a07-bea2-8b690c1d13ab
 
+	/// Acumulado del mes del corte hasta el día del eje (en blanco después del corte). Ignora el segmentador de fecha: siempre es el mes en curso.
+	measure 'Ritmo del mes en curso' = VAR d = MAX(DM_Calendario[dia]) VAR f = [Corte de ventas] RETURN IF(d > DAY(f), BLANK(), CALCULATE([Ventas netas], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], DATE(YEAR(f), MONTH(f), 1), DATE(YEAR(f), MONTH(f), d))))
+		formatString: "Q" #,0
+		displayFolder: 17 Resumen
+		lineageTag: a81d1835-ae6d-4870-a3cd-06898d2c2713
+
+	/// Acumulado por día del mes ANTERIOR completo, para comparar el ritmo. En tenants sin historia de un año es la única comparación posible.
+	measure 'Ritmo del mes anterior' = VAR d = MAX(DM_Calendario[dia]) VAR fin = EOMONTH([Corte de ventas], -1) RETURN IF(d > DAY(fin), BLANK(), CALCULATE([Ventas netas], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], DATE(YEAR(fin), MONTH(fin), 1), DATE(YEAR(fin), MONTH(fin), d))))
+		formatString: "Q" #,0
+		displayFolder: 17 Resumen
+		lineageTag: fd973a2a-beb5-46e1-8365-2aad25a36035
+
+	/// Peso del vendedor en la venta neta del período (sobre todos los vendedores).
+	measure 'Participación del vendedor' = DIVIDE([Ventas netas], CALCULATE([Ventas netas], REMOVEFILTERS(DM_Vendedor)))
+		formatString: 0.0%
+		displayFolder: 18 Vendedores
+		lineageTag: 659bee35-2c02-40e5-af51-d029d9268923
+
+	/// Título de la hoja Vendedores.
+	measure 'Título de Vendedores' = "Desempeño comercial por vendedor"
+		displayFolder: _Narrativa
+		lineageTag: 6475c9fd-e9e6-4093-912a-7d10ab62bb57
+
+	/// Título de la hoja Pulso.
+	measure 'Título de Pulso' = "Pulso diario de la venta"
+		displayFolder: _Narrativa
+		lineageTag: 0271ee8c-19ea-4d00-8e95-a095844ecdcf
+
+	/// Título de la hoja Salud.
+	measure 'Título de Salud de inventario' = "Salud del inventario"
+		displayFolder: _Narrativa
+		lineageTag: 1615e713-4592-4080-bd6d-e65858eb488f
+
+	/// Título de la hoja Compras.
+	measure 'Título de Compras' = "Compras y proveedores"
+		displayFolder: _Narrativa
+		lineageTag: f367b336-6c92-4597-a176-1136d8aeee62
+
 	column tiempo_clave
 		dataType: int64
 		isHidden

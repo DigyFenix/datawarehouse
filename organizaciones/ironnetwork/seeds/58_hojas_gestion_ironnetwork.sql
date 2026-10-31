@@ -1,5 +1,7 @@
 -- =====================================================================
--- Propósito : Iron Network — dar de alta en el portal las 6 HOJAS DE GESTIÓN
+-- Propósito : Iron Network — dar de alta en el portal las 6 HOJAS DE GESTIÓN (sesión 34)
+--             y las 4 HOJAS DE ANÁLISIS (sesión 35: Vendedores, Pulso diario, Salud del
+--             inventario, Compras). Las 6 primeras:
 --             nuevas de PulsoIron (sesión 34): Resumen ejecutivo, Segmentación
 --             y riesgo de clientes, Concentración 80/20, Tesorería y flujo de
 --             caja, Pedidos y entregas, Resultados contables. Misma mecánica que
@@ -9,7 +11,7 @@
 --             DESPUÉS de que Edwin publique el reporte con las hojas nuevas en Power
 --             BI (si no, la URL abre la hoja pero Power BI muestra «página no
 --             encontrada» hasta que se publique).
--- Tablas    : portal.tableros (6 altas), portal.perfil_tableros (los perfiles que
+-- Tablas    : portal.tableros (10 altas), portal.perfil_tableros (los perfiles que
 --             ven «Histórico» ven las nuevas; la dirección ve todas).
 -- Impacto   : bajo. Idempotente por clave (no duplica si ya existen).
 -- Supuesto  : existe al menos un tablero activo con &pageName= (hojas del seed 57)
@@ -35,7 +37,12 @@ INSERT INTO hojas VALUES
   ('clientes_concentracion',  'Concentración 80/20', 'Qué clientes y productos hacen el 80 % de la venta',                       'Clientes',  '7a9154dedc86f43a4fdf',  66),
   ('finanzas_tesoreria',      'Tesorería',           'Cobros, pagos, flujo neto, caja pactada y evolución de la cartera',        'Finanzas',  'e684596211fc2365bec1', 115),
   ('finanzas_pedidos',        'Pedidos',             'Pedido vs facturado, backlog y entregas pendientes',                       'Finanzas',  'cdbb8becf907e43b36d2', 125),
-  ('finanzas_resultados',     'Resultados',          'Resultado según el mayor y control contra facturación',                    'Finanzas',  '8dde20768346e93d33df', 135);
+  ('finanzas_resultados',     'Resultados',          'Resultado según el mayor y control contra facturación',                    'Finanzas',  '8dde20768346e93d33df', 135),
+  -- Hojas de análisis (sesión 35)
+  ('ventas_vendedores',       'Vendedores',          'Desempeño comercial: facturado, pedido, clientes y ticket por vendedor',    'Ventas',    '9639d34be202baedb8f3',  25),
+  ('ventas_pulso',            'Pulso diario',        'Venta por día, medias móviles, día de la semana y estacionalidad',          'Ventas',    '99b3e639c10160cddcf6',  26),
+  ('inventario_salud',        'Salud del inventario','Inventario ocioso, quiebres de stock, ABC y cobertura por línea',          'Inventario','b54cc37f19ed5ac4c272',  95),
+  ('finanzas_compras',        'Compras',             'Compras por mes, Pareto de proveedores, por pagar y pagos',                'Finanzas',  '3066aefb928d56b50338', 120);
 
 -- URL base: la de cualquier hoja activa, sin su pageName.
 CREATE TEMP TABLE base ON COMMIT DROP AS

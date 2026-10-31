@@ -205,6 +205,12 @@ table FC_Compras
 		displayFolder: 07 Inflación de insumos
 		lineageTag: 3b42d3c4-bb69-427a-b627-165294bcb643
 
+	/// Peso del proveedor en la compra neta del período.
+	measure 'Participación del proveedor' = DIVIDE([Compras netas], CALCULATE([Compras netas], REMOVEFILTERS(DM_Proveedor)))
+		formatString: 0.0%
+		displayFolder: 06 Pareto
+		lineageTag: 1d82ce7b-cfcf-4447-a3ee-6c4dd96c096f
+
 	column tiempo_clave
 		dataType: int64
 		isHidden

@@ -26,12 +26,15 @@ const T = {
   ABC: 'DM_Clasificación ABC', RFM: 'DM_Clasificación RFM', PARTIDA: 'MD_Mes de partida', OPORT: 'MD_Vista de oportunidad',
 };
 
-// Colores de Kraken (capturas): pizarra, gris de referencia, panel gris-azul, rojo/verde de estado.
+// Paleta del tema «Quilate · Azul profundo» (sesión 35): azul petróleo como color de marca, acento ámbar
+// para la serie secundaria (líneas en eje derecho, referencias), verde/rojo de estado más sobrios que los de
+// Kraken, y neutros fríos para paneles, grilla y encabezados. Las claves se conservan (PIZARRA sigue siendo
+// «el color principal») para que los generadores no cambien; solo cambian los valores.
 const C = {
-  PIZARRA: '#4f6d78', GRIS_SERIE: '#e1e4e6', PANEL: '#e9eef0', TINTA: '#1f2a2e', TINTA_SUAVE: '#6b7680',
-  VERDE_CELDA: '#c6e5c9', ROJO_CELDA: '#f4c7c3', ROJO: '#d9534f', VERDE: '#2f9e44', PIZARRA_CLARA: '#9fb4bb', BLANCO: '#ffffff',
-  // Patrón visual (sesión 29): bandas de tabla, líneas de grilla y encabezados discretos.
-  FILA_ALT: '#f4f7f8', GRILLA: '#e6ebee', ENCABEZADO: '#eef2f4',
+  PIZARRA: '#2b4c6f', GRIS_SERIE: '#dfe5ec', PANEL: '#edf2f7', TINTA: '#172532', TINTA_SUAVE: '#64748b',
+  VERDE_CELDA: '#cdeedd', ROJO_CELDA: '#f8d0d6', ROJO: '#d3455b', VERDE: '#2a9d6a', PIZARRA_CLARA: '#8fa9c4', BLANCO: '#ffffff',
+  ACENTO: '#e0a526', ACENTO_SUAVE: '#f3d58a',
+  FILA_ALT: '#f5f8fb', GRILLA: '#e2e8f0', ENCABEZADO: '#e9eff5',
 };
 
 // ---- grilla ----
@@ -86,6 +89,8 @@ const vcTitulo = (texto, subtitulo) => {
 const vcDesnudo = {
   background: [{ properties: { show: bool(false) } }],
   border: [{ properties: { show: bool(false) } }],
+  // El tema (sesión 35) pone sombra a todo visual; un texto suelto con sombra parece una tarjeta flotante.
+  dropShadow: [{ properties: { show: bool(false) } }],
   visualHeader: [{ properties: { show: bool(false) } }],
   padding: [{ properties: { top: num(0), bottom: num(0), left: num(0), right: num(0) } }],
 };
@@ -286,6 +291,18 @@ const semaforo = (medida, tabla = T.VENTAS) => [{
   } } } } } },
   selector: meta(tabla, medida),
 }];
+// Mapa de calor de celdas (gradiente sobre la medida indicada). PENDIENTE (sesión 35): Desktop no pinta el FillRule
+// escrito desde PBIR (probado linearGradient2 y 3, con y sin fondos fijos); la matriz queda sin color hasta aclararlo.
+const calor = (medida, tabla = T.VENTAS) => [{
+  properties: { backColor: { solid: { color: { expr: { FillRule: {
+    Input: campoMedida(tabla, medida),
+    FillRule: { linearGradient2: {
+      min: { color: { Literal: { Value: `'${C.BLANCO.toUpperCase()}'` } } },
+      max: { color: { Literal: { Value: `'${C.ACENTO.toUpperCase()}'` } } },
+    } },
+  } } } } } },
+  selector: meta(tabla, medida),
+}];
 const subtotalesMatriz = ({ filaTotal = false, columnaTotal = true } = {}) => [
   { properties: { rowSubtotals: bool(filaTotal), columnSubtotals: bool(columnaTotal), columnSubtotalsLabel: str('Total'), rowSubtotalsLabel: str('Total'), bold: bool(true) } },
   { properties: { rowSubtotals: bool(filaTotal) }, selector: sel('Row') },
@@ -293,7 +310,7 @@ const subtotalesMatriz = ({ filaTotal = false, columnaTotal = true } = {}) => [
 ];
 // Matriz genérica: filas (columna), columnas (opcional), valores (medidas [tabla, medida]).
 // anchoColumnas: { 'medida': px } fija el ancho de columnas de valores concretas (p. ej. una medida de nombre largo en una matriz angosta).
-function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn, filaTotal = false, columnaTotal = true, ordenPor, anchoFilas, anchoColumnas, expandir }) {
+function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn, calorEn, filaTotal = false, columnaTotal = true, ordenPor, anchoFilas, anchoColumnas, expandir }) {
   const roles = { Rows: filas.map(([t, c]) => pColumna(t, c)), Values: valores.map(([t, m]) => pMedida(t, m)) };
   if (columnas) roles.Columns = columnas.map(([t, c]) => pColumna(t, c));
   const v = visual(id(slug, clave), 'pivotTable', pos, {
@@ -306,8 +323,10 @@ function matriz(slug, clave, pos, titulo, { filas, columnas, valores, semaforoEn
       columnHeaders: [{ properties: { columnAdjustment: str('growToFit'), autoSizeColumnWidth: bool(!anchoFilas), autoExpand: bool(true), fontSize: num(8), bold: bool(false), fontColor: color(C.TINTA_SUAVE), backColor: color(C.BLANCO), outlineStyle: str('BottomOnly'), outlineColor: color(C.PIZARRA_CLARA), outlineWeight: num(1), wordWrap: bool(true) } }],
       rowHeaders: [{ properties: { fontSize: num(9), bold: bool(false), wordWrap: bool(false), fontColor: color(C.TINTA), backColor: color(C.BLANCO), outlineStyle: str('None') } }],
       values: [
-        { properties: { fontSize: num(9), fontColorPrimary: color(C.TINTA), fontColorSecondary: color(C.TINTA), backColorPrimary: color(C.BLANCO), backColorSecondary: color(C.FILA_ALT), outlineStyle: str('None') } },
+        // Con formato condicional (semáforo / calor) no se fijan fondos: un fondo estático pisa la regla de color.
+        { properties: { fontSize: num(9), fontColorPrimary: color(C.TINTA), fontColorSecondary: color(C.TINTA), ...((semaforoEn || calorEn) ? {} : { backColorPrimary: color(C.BLANCO), backColorSecondary: color(C.FILA_ALT) }), outlineStyle: str('None') } },
         ...(semaforoEn ? semaforo(semaforoEn[1], semaforoEn[0]) : []),
+        ...(calorEn ? calor(calorEn[1], calorEn[0]) : []),
       ],
       subTotals: [
         ...subtotalesMatriz({ filaTotal, columnaTotal }),
@@ -421,6 +440,128 @@ function columnasApiladas(slug, clave, pos, titulo, medidas, colores = [C.PIZARR
   });
 }
 
+
+// ---- helpers genéricos con tablas explícitas (sesión 34, movidos aquí en la 35 para compartirlos) ----
+// Línea: series = [[tabla, medida, hex, punteada?]]; categoría = [tabla, columna].
+function linea(slug, clave, pos, titulo, subtitulo, [tCat, cCat], series, { etiquetas = false, finos = false, tituloEje, filtros } = {}) {
+  return visual(id(slug, clave), 'lineChart', pos, {
+    filtros,
+    roles: { Category: [pColumna(tCat, cCat)], Y: series.map(([t, m]) => pMedida(t, m)) },
+    sort: ordenAsc(tCat, cCat),
+    objects: {
+      categoryAxis: tituloEje ? ejeCategoria(tituloEje) : ejeCat(),
+      valueAxis: ejeValores({ start: num(0) }),
+      labels: [{ properties: { show: bool(etiquetas), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), color: color(C.TINTA_SUAVE) } }],
+      legend: leyenda(series.length > 1),
+      lineStyles: [finos ? marcadoresFinos : marcadores, ...series.filter(([, , , p]) => p).map(([t, m]) => ({ properties: { lineStyle: str('dotted'), strokeWidth: num(2) }, selector: meta(t, m) }))],
+      dataPoint: series.map(([t, m, hex]) => ({ properties: { fill: color(hex) }, selector: meta(t, m) })),
+    },
+    vc: vcTitulo(titulo, subtitulo),
+  });
+}
+// Columnas agrupadas (o apiladas) con tablas explícitas: series = [[tabla, medida, hex]].
+function columnas(slug, clave, pos, titulo, subtitulo, [tCat, cCat], series, { apilado = false, etiquetas = true } = {}) {
+  return visual(id(slug, clave), apilado ? 'columnChart' : 'clusteredColumnChart', pos, {
+    roles: { Category: [pColumna(tCat, cCat)], Y: series.map(([t, m]) => pMedida(t, m)) },
+    sort: ordenAsc(tCat, cCat),
+    objects: {
+      categoryAxis: ejeCat({ innerPadding: int(35) }),
+      valueAxis: ejeValGrilla(),
+      labels: etiquetas && !apilado ? etiquetasBarra(series, { labelPosition: str('OutsideEnd'), labelOverflow: bool(true) }) : [{ properties: { show: bool(false) } }],
+      legend: leyenda(series.length > 1),
+      dataPoint: series.map(([t, m, hex]) => ({ properties: { fill: color(hex) }, selector: meta(t, m) })),
+    },
+    vc: vcTitulo(titulo, subtitulo),
+  });
+}
+// Columnas + línea en eje secundario. `ejeSecundario: true` muestra el eje derecho con su propia escala:
+// obligatorio cuando la línea no es de la misma magnitud que las columnas (acumulados, porcentajes). Sin él,
+// una línea «flujo neto» sobre columnas «cobros» cae exactamente a la altura de las columnas y parece un error.
+function combo(slug, clave, pos, titulo, subtitulo, [tCat, cCat], columnasSeries, [tL, mL, hexL], { etiquetaLinea = false, ejeSecundario = false } = {}) {
+  return visual(id(slug, clave), 'lineClusteredColumnComboChart', pos, {
+    roles: { Category: [pColumna(tCat, cCat)], Y: columnasSeries.map(([t, m]) => pMedida(t, m)), Y2: [pMedida(tL, mL)] },
+    sort: ordenAsc(tCat, cCat),
+    objects: {
+      categoryAxis: ejeCat({ innerPadding: int(35) }),
+      valueAxis: ejeValGrilla({ secShow: bool(ejeSecundario), secStart: num(0), secFontSize: num(8), secLabelColor: color(C.TINTA_SUAVE), secShowAxisTitle: bool(false), secLabelDisplayUnits: str('1'), secLabelPrecision: int(0), secGridlineShow: bool(false) }),
+      labels: [...etiquetasBarra(columnasSeries), { properties: { show: bool(etiquetaLinea), showSeries: bool(etiquetaLinea) }, selector: meta(tL, mL) }],
+      legend: leyenda(true),
+      dataPoint: [...columnasSeries.map(([t, m, hex]) => ({ properties: { fill: color(hex) }, selector: meta(t, m) })), { properties: { fill: color(hexL) }, selector: meta(tL, mL) }],
+      lineStyles: [marcadores],
+    },
+    vc: vcTitulo(titulo, subtitulo),
+  });
+}
+// Barras horizontales con tablas explícitas (apiladas por defecto), orden por la primera serie.
+function barrasH(slug, clave, pos, titulo, [tCat, cCat], series, { apilado = true, ordenPorColumna = false, subtitulo, margen = 45 } = {}) {
+  return visual(id(slug, clave), apilado ? 'barChart' : 'clusteredBarChart', pos, {
+    roles: { Category: [pColumna(tCat, cCat)], Y: series.map(([t, m]) => pMedida(t, m)) },
+    sort: ordenPorColumna ? ordenAsc(tCat, cCat) : ordenDesc(series[0][0], series[0][1]),
+    objects: {
+      categoryAxis: ejeCat({ fontSize: num(8), maxMarginFactor: num(margen) }),
+      valueAxis: ejeValOculto,
+      labels: etiquetasBarra(series, apilado && series.length > 1 ? {} : { labelPosition: str('OutsideEnd'), labelOverflow: bool(false) }, { fondo: !(apilado && series.length > 1) }),
+      dataPoint: [{ properties: { fill: color(series[0][2]) } }, ...series.map(([t, m, hex]) => ({ properties: { fill: color(hex) }, selector: meta(t, m) }))],
+      legend: leyenda(series.length > 1),
+    },
+    vc: vcTitulo(titulo, subtitulo),
+  });
+}
+// Pareto: barras del monto por categoría + línea del % acumulado en eje secundario (0-100 %) + referencia 80 %.
+function pareto(slug, clave, pos, titulo, subtitulo, [tCat, cCat], [tM, monto], [tP, pct]) {
+  return visual(id(slug, clave), 'lineClusteredColumnComboChart', pos, {
+    roles: { Category: [pColumna(tCat, cCat)], Y: [pMedida(tM, monto)], Y2: [pMedida(tP, pct), pMedida(T.VENTAS, 'Referencia 80 %')] },
+    sort: ordenDesc(tM, monto),
+    objects: {
+      categoryAxis: ejeCat({ innerPadding: int(20), fontSize: num(7), preferredCategoryWidth: num(14) }),
+      valueAxis: ejeValGrilla({ secShow: bool(true), secStart: num(0), secEnd: num(1), secFontSize: num(8), secLabelColor: color(C.TINTA_SUAVE), secShowAxisTitle: bool(false) }),
+      labels: [{ properties: { show: bool(false) } }],
+      legend: leyenda(true),
+      dataPoint: [{ properties: { fill: color(C.PIZARRA) }, selector: meta(tM, monto) }, { properties: { fill: color(C.ACENTO) }, selector: meta(tP, pct) }, { properties: { fill: color(C.TINTA_SUAVE) }, selector: meta(T.VENTAS, 'Referencia 80 %') }],
+      lineStyles: [{ properties: { showMarker: bool(true), markerShape: str('circle'), markerSize: num(3), strokeWidth: num(2) } }, { properties: { showMarker: bool(false), lineStyle: str('dashed'), strokeWidth: num(1) }, selector: meta(T.VENTAS, 'Referencia 80 %') }],
+    },
+    vc: vcTitulo(titulo, subtitulo),
+  });
+}
+// Cascada (puente): categoría → aporte; el total lo dibuja Power BI.
+function cascada(slug, clave, pos, titulo, subtitulo, [tCat, cCat], [tM, m]) {
+  return visual(id(slug, clave), 'waterfallChart', pos, {
+    roles: { Category: [pColumna(tCat, cCat)], Y: [pMedida(tM, m)] },
+    sort: ordenDesc(tM, m),
+    objects: {
+      categoryAxis: ejeCat(),
+      valueAxis: ejeValGrilla(),
+      labels: [{ properties: { show: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), color: color(C.TINTA) } }],
+      legend: leyenda(false),
+      sentimentColors: [{ properties: { increaseFill: color(C.VERDE), decreaseFill: color(C.ROJO), totalFill: color(C.PIZARRA) } }],
+    },
+    vc: vcTitulo(titulo, subtitulo),
+  });
+}
+// Panel de alertas narrativas: tarjeta gris-azul con título y una línea por medida (texto completo).
+function panelAlertas(slug, clave, pos, titulo, subtitulo, alertas) {
+  const [x, y, w, h] = pos;
+  const vs = [visual(id(slug, clave), 'textbox', pos, {
+    objects: { general: [{ properties: { paragraphs: [{ textRuns: [{ value: titulo, textStyle: { fontFamily: 'Segoe UI Semibold', fontSize: '11pt', color: C.TINTA } }] }, { textRuns: [{ value: subtitulo, textStyle: { fontFamily: 'Segoe UI', fontSize: '9pt', color: C.TINTA_SUAVE } }] }] } }] },
+    vc: { background: [{ properties: { show: bool(true), color: color(C.PANEL), transparency: num(0) } }], border: [{ properties: { show: bool(false) } }], visualHeader: [{ properties: { show: bool(false) } }], padding: [{ properties: { top: num(8), bottom: num(8), left: num(12), right: num(12) } }] },
+  })];
+  const alto = Math.floor((h - 56) / alertas.length);
+  alertas.forEach(([tabla, medida, hex], i) => {
+    vs.push(texto(slug, `${clave}-texto-${i}`, tabla, medida, [x + 12, y + 52 + i * alto, w - 24, alto], { size: 9, colorHex: hex || C.TINTA, align: 'left' }));
+  });
+  return vs;
+}
+
+// Filtro a nivel de visual: columna = literal (p. ej. es_pasado = true). `valor` ya formateado como literal DAX/PBIR ('true', 2026L, "'texto'").
+function filtroVisual(tabla, columna, valor) {
+  return {
+    name: id('filtro', tabla, columna, String(valor)),
+    field: campoColumna(tabla, columna),
+    type: 'Categorical',
+    filter: { Version: 2, From: [{ Name: 'f', Entity: tabla, Type: 0 }], Where: [{ Condition: { In: { Expressions: [{ Column: { Expression: { SourceRef: { Source: 'f' } }, Property: columna } }], Values: [[{ Literal: { Value: String(valor) } }]] } } }] },
+  };
+}
+
 // ---- escritura de páginas ----
 function escribirPaginas(REPORT, paginas) {
   const pagesDir = path.join(REPORT, 'definition', 'pages');
@@ -466,4 +607,5 @@ module.exports = {
   pMedida, pColumna, fx, ordenDesc, ordenAsc, visual, reiniciar, vcTitulo, vcDesnudo, texto, textoEstatico,
   encabezado, pie, segmentador, kpis, ranking, barras, dona, mapa, semaforo, subtotalesMatriz, matriz, marcadores, marcadoresFinos, ejeValores, ejeCategoria, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, bloqueMoneda,
   columnasMensuales, comboMensual, columnasApiladas, escribirPaginas, reporteDeArgs,
+  calor, linea, columnas, combo, barrasH, pareto, cascada, panelAlertas, filtroVisual,
 };

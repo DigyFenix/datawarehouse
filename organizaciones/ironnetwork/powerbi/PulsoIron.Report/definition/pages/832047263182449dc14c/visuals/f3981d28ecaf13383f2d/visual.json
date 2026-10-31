@@ -41,11 +41,11 @@
                       "Entity": "FC_Ventas"
                     }
                   },
-                  "Property": "Venta acumulada del mes al día"
+                  "Property": "Ritmo del mes en curso"
                 }
               },
-              "queryRef": "FC_Ventas.Venta acumulada del mes al día",
-              "nativeQueryRef": "Venta acumulada del mes al día"
+              "queryRef": "FC_Ventas.Ritmo del mes en curso",
+              "nativeQueryRef": "Ritmo del mes en curso"
             },
             {
               "field": {
@@ -55,11 +55,11 @@
                       "Entity": "FC_Ventas"
                     }
                   },
-                  "Property": "Venta acumulada del mes al día año anterior"
+                  "Property": "Ritmo del mes anterior"
                 }
               },
-              "queryRef": "FC_Ventas.Venta acumulada del mes al día año anterior",
-              "nativeQueryRef": "Venta acumulada del mes al día año anterior"
+              "queryRef": "FC_Ventas.Ritmo del mes anterior",
+              "nativeQueryRef": "Ritmo del mes anterior"
             }
           ]
         }
@@ -113,7 +113,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -131,7 +131,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -162,7 +162,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -187,7 +187,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e6ebee'"
+                      "Value": "'#e2e8f0'"
                     }
                   }
                 }
@@ -239,7 +239,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -299,7 +299,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Venta acumulada del mes al día"
+            "metadata": "FC_Ventas.Ritmo del mes en curso"
           }
         },
         {
@@ -320,7 +320,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Venta acumulada del mes al día año anterior"
+            "metadata": "FC_Ventas.Ritmo del mes anterior"
           }
         }
       ],
@@ -332,7 +332,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -340,7 +340,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Venta acumulada del mes al día"
+            "metadata": "FC_Ventas.Ritmo del mes en curso"
           }
         },
         {
@@ -350,7 +350,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#9fb4bb'"
+                      "Value": "'#e0a526'"
                     }
                   }
                 }
@@ -358,7 +358,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Venta acumulada del mes al día año anterior"
+            "metadata": "FC_Ventas.Ritmo del mes anterior"
           }
         }
       ]
@@ -400,7 +400,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -422,7 +422,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Acumulado por día · sólida: este mes · punteada: mismo mes del año anterior'"
+                  "Value": "'Acumulado por día · sólida: mes en curso al corte · punteada: mes anterior completo'"
                 }
               }
             },
@@ -445,7 +445,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }

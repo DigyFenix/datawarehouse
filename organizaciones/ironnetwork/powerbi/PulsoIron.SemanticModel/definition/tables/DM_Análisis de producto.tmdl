@@ -90,6 +90,54 @@ table 'DM_Análisis de producto'
 		displayFolder: _Narrativa
 		lineageTag: 8fd4a160-cb55-4c79-a13c-de31cb0d9ad6
 
+	/// Productos con ficha de análisis (venta 12 m o existencia).
+	measure 'Productos analizados' = COUNTROWS('DM_Análisis de producto')
+		formatString: #,0
+		displayFolder: 05 Estado
+		lineageTag: 7315ac55-bb11-476e-9308-2de329206265
+
+	/// Venta neta de 12 meses de los productos en contexto (por estado, clase ABC o línea).
+	measure 'Venta 12 meses analizada' = SUM('DM_Análisis de producto'[venta_12m])
+		formatString: "Q" #,0
+		displayFolder: 05 Estado
+		lineageTag: e679e22e-aece-4388-9e78-76deac8fb147
+
+	/// Valor de inventario de los productos en contexto del análisis (el filtro viaja por TREATAS porque el análisis está del lado «muchos»).
+	measure 'Inventario analizado' = CALCULATE([Valor de inventario], TREATAS(VALUES('DM_Análisis de producto'[producto_clave]), DM_Producto[producto_clave]))
+		formatString: "Q" #,0
+		displayFolder: 05 Estado
+		lineageTag: b1dd7a06-b81d-49af-9667-e9ebac013c97
+
+	/// Unidades vendidas en 12 meses de los productos en quiebre.
+	measure 'Unidades 12 meses (quiebre)' = CALCULATE(SUM('DM_Análisis de producto'[unidades_12m]), KEEPFILTERS('DM_Análisis de producto'[es_quiebre] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Quiebre de stock
+		lineageTag: 8c6ff318-2c5f-402f-84d9-7399cfb981fc
+
+	/// Margen de 12 meses que generaban los productos hoy agotados.
+	measure 'Margen 12 meses (quiebre)' = CALCULATE(SUM('DM_Análisis de producto'[margen_12m]), KEEPFILTERS('DM_Análisis de producto'[es_quiebre] = TRUE))
+		formatString: "Q" #,0
+		displayFolder: 02 Quiebre de stock
+		lineageTag: 3897d984-e3d1-4ad3-b63b-c546e8a2d792
+
+	/// Días desde la última venta del producto en quiebre.
+	measure 'Días sin venta (quiebre)' = CALCULATE(MAX('DM_Análisis de producto'[dias_desde_ultima_venta]), KEEPFILTERS('DM_Análisis de producto'[es_quiebre] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Quiebre de stock
+		lineageTag: 5127a2c5-c538-444f-8cf5-aa184f1d0ee7
+
+	/// Existencia de los productos ociosos.
+	measure 'Unidades ociosas' = CALCULATE(SUM('DM_Análisis de producto'[stock_cantidad]), KEEPFILTERS('DM_Análisis de producto'[es_ocioso] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Inventario muerto
+		lineageTag: 203dff3a-e4b9-43ca-9d8e-f220e79dac40
+
+	/// Días desde la última venta del producto ocioso.
+	measure 'Días sin venta (ocioso)' = CALCULATE(MAX('DM_Análisis de producto'[dias_desde_ultima_venta]), KEEPFILTERS('DM_Análisis de producto'[es_ocioso] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Inventario muerto
+		lineageTag: 3ad36994-5e98-48a3-826e-34262148f6ba
+
 	column empresa_id
 		dataType: string
 		isHidden

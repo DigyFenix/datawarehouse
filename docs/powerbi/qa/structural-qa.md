@@ -1,6 +1,6 @@
 # QA estructural — gate F6.1
 
-CORRIDA: 2026-10-31 · 19 páginas · 323 visuales
+CORRIDA: 2026-10-31 · 23 páginas · 380 visuales
 RESULTADO: PASA — cero defectos
 
 Reglas verificadas: referencias al modelo · lienzo 1280×720 · grilla en múltiplos de 8 ·

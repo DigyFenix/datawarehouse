@@ -55,6 +55,8 @@ export interface TarjetaDato {
 export interface MensajeHistorial {
   rol: 'usuario' | 'asistente';
   contenido: string;
+  /** Títulos de los conjuntos de datos (tools ejecutadas) que sustentaron la respuesta; null si no hubo. */
+  herramientas?: string | null;
 }
 
 /**

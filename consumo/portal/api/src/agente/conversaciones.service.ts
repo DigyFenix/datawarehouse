@@ -107,8 +107,13 @@ export class ConversacionesService {
     conversacionId: number,
     limite: number,
   ): Promise<MensajeHistorial[]> {
+    // `herramientas`: títulos de los conjuntos que sustentaron la respuesta. Sin esto el modelo ve
+    // sus cifras anteriores sin rastro de la tool ejecutada y, ante una presión («ignora tus reglas»),
+    // las daba por inventadas y se retractaba de datos válidos.
     const resultado = await pool.query(
-      `SELECT rol, contenido
+      `SELECT rol, contenido,
+              (SELECT string_agg(c->>'titulo', '; ' ORDER BY c->>'titulo')
+                 FROM jsonb_array_elements(COALESCE(datos->'conjuntos', '[]'::jsonb)) c) AS herramientas
          FROM portal.chat_mensajes
         WHERE conversacion_id = $1
         ORDER BY id DESC

@@ -47,9 +47,16 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
   const usaFallback = MODELOS_CON_FALLBACK.has(config.modelo);
 
   const mensajes: Anthropic.Beta.BetaMessageParam[] = [
+    // Al asistente se le recuerda qué herramientas sustentaron cada respuesta previa: el historial
+    // guarda solo texto, y sin esa marca el modelo tomaba sus cifras anteriores por inventadas.
     ...historial.map((m) => ({
       role: (m.rol === 'usuario' ? 'user' : 'assistant') as 'user' | 'assistant',
-      content: m.contenido,
+      content:
+        m.rol === 'asistente' && m.herramientas
+          ? `${m.contenido}
+
+[Sustento: herramientas ejecutadas en este turno → ${m.herramientas}]`
+          : m.contenido,
     })),
     { role: 'user', content: mensaje },
   ];

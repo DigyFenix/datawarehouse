@@ -2018,6 +2018,18 @@ MEDIDAS_POR_TABLA["dim_tiempo"] = rf"""
 		formatString: 0
 		summarizeBy: none
 
+	/// Alias legible del mes corto para encabezados de matrices (ordenado por mes).
+	column 'Mes corto' = Calendario[mes_nombre_corto]
+		dataType: string
+		sortByColumn: mes_orden
+		summarizeBy: none
+
+	/// Alias legible del día de la semana para encabezados de matrices (ordenado lunes a domingo).
+	column Día = Calendario[dia_semana_corto]
+		dataType: string
+		sortByColumn: dia_semana_orden
+		summarizeBy: none
+
 	/// El período que el usuario tiene seleccionado, dicho como lo diría una persona: "agosto 2026", "2026" o "todo el histórico". Todos los títulos de página lo usan, así que nadie tiene que mirar el segmentador para saber qué está viendo.
 	measure 'Período activo' = VAR ini = MIN(Calendario[fecha]) VAR fin = MAX(Calendario[fecha]) VAR tini = CALCULATE(MIN(Calendario[fecha]), ALL(Calendario)) VAR tfin = CALCULATE(MAX(Calendario[fecha]), ALL(Calendario)) RETURN SWITCH(TRUE(), ini = tini && fin = tfin, "todo el histórico", YEAR(ini) = YEAR(fin) && ini = DATE(YEAR(ini), 1, 1) && fin = DATE(YEAR(fin), 12, 31), FORMAT(ini, "yyyy"), ini = DATE(YEAR(ini), MONTH(ini), 1) && fin = EOMONTH(ini, 0), FORMAT(ini, "mmmm") & " " & FORMAT(ini, "yyyy"), FORMAT(ini, "dd/MM/yyyy") & " – " & FORMAT(fin, "dd/MM/yyyy"))
 		displayFolder: _Narrativa
@@ -2906,6 +2918,90 @@ MEDIDAS_POR_TABLA["dim_proveedor"] += r"""
 	column Proveedor = Proveedor[nombre]
 		dataType: string
 		summarizeBy: none
+"""
+
+# Hojas de análisis (sesión 35): vendedores, pulso diario, salud del inventario, compras; y el ritmo del mes corregido (mes en curso vs mes anterior).
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
+	/// Acumulado del mes del corte hasta el día del eje (en blanco después del corte). Ignora el segmentador de fecha: siempre es el mes en curso.
+	measure 'Ritmo del mes en curso' = VAR d = MAX(Calendario[dia]) VAR f = [Corte de ventas] RETURN IF(d > DAY(f), BLANK(), CALCULATE([Ventas netas], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], DATE(YEAR(f), MONTH(f), 1), DATE(YEAR(f), MONTH(f), d))))
+		formatString: "Q" #,0
+		displayFolder: 17 Resumen
+
+	/// Acumulado por día del mes ANTERIOR completo, para comparar el ritmo. En tenants sin historia de un año es la única comparación posible.
+	measure 'Ritmo del mes anterior' = VAR d = MAX(Calendario[dia]) VAR fin = EOMONTH([Corte de ventas], -1) RETURN IF(d > DAY(fin), BLANK(), CALCULATE([Ventas netas], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], DATE(YEAR(fin), MONTH(fin), 1), DATE(YEAR(fin), MONTH(fin), d))))
+		formatString: "Q" #,0
+		displayFolder: 17 Resumen
+
+	/// Peso del vendedor en la venta neta del período (sobre todos los vendedores).
+	measure 'Participación del vendedor' = DIVIDE([Ventas netas], CALCULATE([Ventas netas], REMOVEFILTERS(Vendedor)))
+		formatString: 0.0%
+		displayFolder: 18 Vendedores
+
+	/// Título de la hoja Vendedores.
+	measure 'Título de Vendedores' = "Desempeño comercial por vendedor"
+		displayFolder: _Narrativa
+
+	/// Título de la hoja Pulso.
+	measure 'Título de Pulso' = "Pulso diario de la venta"
+		displayFolder: _Narrativa
+
+	/// Título de la hoja Salud.
+	measure 'Título de Salud de inventario' = "Salud del inventario"
+		displayFolder: _Narrativa
+
+	/// Título de la hoja Compras.
+	measure 'Título de Compras' = "Compras y proveedores"
+		displayFolder: _Narrativa
+
+"""
+MEDIDAS_POR_TABLA["hecho_compra_linea"] += r"""
+	/// Peso del proveedor en la compra neta del período.
+	measure 'Participación del proveedor' = DIVIDE([Compras netas], CALCULATE([Compras netas], REMOVEFILTERS(Proveedor)))
+		formatString: 0.0%
+		displayFolder: 06 Pareto
+
+"""
+MEDIDAS_POR_TABLA["analisis_producto"] += r"""
+	/// Productos con ficha de análisis (venta 12 m o existencia).
+	measure 'Productos analizados' = COUNTROWS('Análisis de producto')
+		formatString: #,0
+		displayFolder: 05 Estado
+
+	/// Venta neta de 12 meses de los productos en contexto (por estado, clase ABC o línea).
+	measure 'Venta 12 meses analizada' = SUM('Análisis de producto'[venta_12m])
+		formatString: "Q" #,0
+		displayFolder: 05 Estado
+
+	/// Valor de inventario de los productos en contexto del análisis (el filtro viaja por TREATAS porque el análisis está del lado «muchos»).
+	measure 'Inventario analizado' = CALCULATE([Valor de inventario], TREATAS(VALUES('Análisis de producto'[producto_clave]), Producto[producto_clave]))
+		formatString: "Q" #,0
+		displayFolder: 05 Estado
+
+	/// Unidades vendidas en 12 meses de los productos en quiebre.
+	measure 'Unidades 12 meses (quiebre)' = CALCULATE(SUM('Análisis de producto'[unidades_12m]), KEEPFILTERS('Análisis de producto'[es_quiebre] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Quiebre de stock
+
+	/// Margen de 12 meses que generaban los productos hoy agotados.
+	measure 'Margen 12 meses (quiebre)' = CALCULATE(SUM('Análisis de producto'[margen_12m]), KEEPFILTERS('Análisis de producto'[es_quiebre] = TRUE))
+		formatString: "Q" #,0
+		displayFolder: 02 Quiebre de stock
+
+	/// Días desde la última venta del producto en quiebre.
+	measure 'Días sin venta (quiebre)' = CALCULATE(MAX('Análisis de producto'[dias_desde_ultima_venta]), KEEPFILTERS('Análisis de producto'[es_quiebre] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Quiebre de stock
+
+	/// Existencia de los productos ociosos.
+	measure 'Unidades ociosas' = CALCULATE(SUM('Análisis de producto'[stock_cantidad]), KEEPFILTERS('Análisis de producto'[es_ocioso] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Inventario muerto
+
+	/// Días desde la última venta del producto ocioso.
+	measure 'Días sin venta (ocioso)' = CALCULATE(MAX('Análisis de producto'[dias_desde_ultima_venta]), KEEPFILTERS('Análisis de producto'[es_ocioso] = TRUE))
+		formatString: #,0
+		displayFolder: 01 Inventario muerto
+
 """
 
 # Hojas de gestión (sesión 34): resumen ejecutivo, segmentación y riesgo, concentración 80/20, tesorería, pedidos y resultados.

@@ -73,11 +73,11 @@
                       "Entity": "FC_Resultados contables"
                     }
                   },
-                  "Property": "Resultado contable"
+                  "Property": "% Margen operativo"
                 }
               },
-              "queryRef": "FC_Resultados contables.Resultado contable",
-              "nativeQueryRef": "Resultado contable"
+              "queryRef": "FC_Resultados contables.% Margen operativo",
+              "nativeQueryRef": "% Margen operativo"
             }
           ]
         }
@@ -124,7 +124,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -169,7 +169,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -201,7 +201,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e6ebee'"
+                      "Value": "'#e2e8f0'"
                     }
                   }
                 }
@@ -222,6 +222,59 @@
               }
             },
             "secShow": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "secStart": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "secFontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            },
+            "secLabelColor": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#64748b'"
+                    }
+                  }
+                }
+              }
+            },
+            "secShowAxisTitle": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "secLabelDisplayUnits": {
+              "expr": {
+                "Literal": {
+                  "Value": "'1'"
+                }
+              }
+            },
+            "secLabelPrecision": {
+              "expr": {
+                "Literal": {
+                  "Value": "0L"
+                }
+              }
+            },
+            "secGridlineShow": {
               "expr": {
                 "Literal": {
                   "Value": "false"
@@ -310,7 +363,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -335,7 +388,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#d9534f'"
+                      "Value": "'#d3455b'"
                     }
                   }
                 }
@@ -364,7 +417,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Resultados contables.Resultado contable"
+            "metadata": "FC_Resultados contables.% Margen operativo"
           }
         }
       ],
@@ -397,7 +450,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
@@ -421,7 +474,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#4f6d78'"
+                      "Value": "'#2b4c6f'"
                     }
                   }
                 }
@@ -439,7 +492,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#d9534f'"
+                      "Value": "'#d3455b'"
                     }
                   }
                 }
@@ -457,7 +510,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#e0a526'"
                     }
                   }
                 }
@@ -465,7 +518,7 @@
             }
           },
           "selector": {
-            "metadata": "FC_Resultados contables.Resultado contable"
+            "metadata": "FC_Resultados contables.% Margen operativo"
           }
         }
       ],
@@ -518,7 +571,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Ingresos, gasto y resultado por mes'"
+                  "Value": "'Ingresos, gasto y margen operativo por mes'"
                 }
               }
             },
@@ -541,7 +594,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#1f2a2e'"
+                      "Value": "'#172532'"
                     }
                   }
                 }
@@ -563,7 +616,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Columnas: ingresos y gasto · línea: resultado'"
+                  "Value": "'Columnas: ingresos y gasto · línea ámbar: margen operativo % (eje derecho)'"
                 }
               }
             },
@@ -586,7 +639,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#6b7680'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }
