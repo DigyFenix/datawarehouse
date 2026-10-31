@@ -2908,6 +2908,210 @@ MEDIDAS_POR_TABLA["dim_proveedor"] += r"""
 		summarizeBy: none
 """
 
+# Hojas de gestión (sesión 34): resumen ejecutivo, segmentación y riesgo, concentración 80/20, tesorería, pedidos y resultados.
+MEDIDAS_POR_TABLA["clasificacion_rfm_cliente"] += r"""
+	/// Segmento RFM vigente del cliente en contexto (ficha para matrices).
+	measure 'Segmento RFM del cliente' = MAX('Clasificación RFM'[segmento_rfm_nombre])
+		displayFolder: 03 Ficha
+
+	/// Días desde la última compra del cliente al corte del RFM.
+	measure 'Recencia del cliente (días)' = MAX('Clasificación RFM'[recencia_dias])
+		formatString: #,0
+		displayFolder: 03 Ficha
+
+	/// Documentos de venta del cliente en los últimos 12 meses.
+	measure 'Compras del cliente 12m' = SUM('Clasificación RFM'[frecuencia_12m])
+		formatString: #,0
+		displayFolder: 03 Ficha
+
+	/// Venta neta del cliente en los últimos 12 meses según el RFM.
+	measure 'Venta del cliente 12m' = SUM('Clasificación RFM'[monto_neto_12m])
+		formatString: "Q" #,0
+		displayFolder: 03 Ficha
+
+	/// Fecha de la última compra del cliente.
+	measure 'Última compra del cliente' = MAX('Clasificación RFM'[ultima_compra])
+		formatString: dd/MM/yyyy
+		displayFolder: 03 Ficha
+
+	/// Ficha SOLO de los clientes en riesgo: en blanco para el resto, así la matriz muestra únicamente a quién hay que llamar.
+	measure 'Segmento en riesgo' = IF([Venta 12m en riesgo] > 0, [Segmento RFM del cliente])
+		displayFolder: 04 En riesgo
+
+	/// Recencia solo de clientes en riesgo (ver Segmento en riesgo).
+	measure 'Recencia en riesgo (días)' = IF([Venta 12m en riesgo] > 0, [Recencia del cliente (días)])
+		formatString: #,0
+		displayFolder: 04 En riesgo
+
+	/// Compras 12m solo de clientes en riesgo.
+	measure 'Compras en riesgo 12m' = IF([Venta 12m en riesgo] > 0, [Compras del cliente 12m])
+		formatString: #,0
+		displayFolder: 04 En riesgo
+
+	/// Última compra solo de clientes en riesgo.
+	measure 'Última compra en riesgo' = IF([Venta 12m en riesgo] > 0, [Última compra del cliente])
+		formatString: dd/MM/yyyy
+		displayFolder: 04 En riesgo
+
+"""
+MEDIDAS_POR_TABLA["comportamiento_pago_cliente"] += r"""
+	/// Saldo no vencido de la ficha de comportamiento de pago (foto al corte), agrupable por perfil de riesgo.
+	measure 'Saldo corriente por perfil' = SUM('Comportamiento de pago'[saldo_corriente])
+		formatString: "Q" #,0
+		displayFolder: 02 Saldos
+
+	/// Saldo vencido de la ficha de comportamiento de pago (foto al corte), agrupable por perfil de riesgo.
+	measure 'Saldo vencido por perfil' = SUM('Comportamiento de pago'[saldo_vencido])
+		formatString: "Q" #,0
+		displayFolder: 02 Saldos
+
+	/// Clientes con saldo abierto, agrupables por perfil de riesgo.
+	measure 'Clientes por perfil de pago' = CALCULATE(COUNTROWS('Comportamiento de pago'), KEEPFILTERS('Comportamiento de pago'[saldo_total] > 0))
+		formatString: #,0
+		displayFolder: 01 Conteos
+
+	/// Saldo vencido SOLO de clientes en vencido crítico: en blanco para el resto, la matriz muestra solo a los críticos.
+	measure 'Saldo vencido crítico' = CALCULATE(SUM('Comportamiento de pago'[saldo_vencido]), KEEPFILTERS('Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: "Q" #,0
+		displayFolder: 03 Críticos
+
+	/// Partida más vieja del cliente crítico, en días vencidos.
+	measure 'Días de mora máximos (críticos)' = CALCULATE(MAX('Comportamiento de pago'[max_dias_vencido]), KEEPFILTERS('Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: #,0
+		displayFolder: 03 Críticos
+
+	/// Días sin recibir un pago del cliente crítico.
+	measure 'Días desde el último pago (críticos)' = CALCULATE(MAX('Comportamiento de pago'[dias_desde_ultimo_pago]), KEEPFILTERS('Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: #,0
+		displayFolder: 03 Críticos
+
+	/// Proporción vencida del saldo del cliente crítico.
+	measure '% Vencido del cliente (críticos)' = CALCULATE(MAX('Comportamiento de pago'[pct_saldo_vencido]), KEEPFILTERS('Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: 0.0%
+		displayFolder: 03 Críticos
+
+"""
+MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
+	/// Cuántos clientes (de mayor a menor) hacen falta para llegar al 80 % de la venta a terceros del período. El 80/20 en una cifra.
+	measure 'Clientes para el 80% de la venta' = VAR base = ADDCOLUMNS(FILTER(ALLSELECTED(Cliente), [Ventas a terceros] > 0), "@v", [Ventas a terceros]) VAR total = SUMX(base, [@v]) VAR acum = ADDCOLUMNS(base, "@antes", VAR v = [@v] RETURN SUMX(FILTER(base, [@v] > v), [@v])) RETURN COUNTROWS(FILTER(acum, [@antes] < 0.8 * total))
+		formatString: #,0
+		displayFolder: 07 Pareto
+
+	/// Proporción de los clientes con venta que explica el 80 % de la venta.
+	measure '% Clientes para el 80%' = DIVIDE([Clientes para el 80% de la venta], COUNTROWS(FILTER(ALLSELECTED(Cliente), [Ventas a terceros] > 0)))
+		formatString: 0%
+		displayFolder: 07 Pareto
+
+	/// Cuántos productos hacen falta para llegar al 80 % de la venta neta del período.
+	measure 'Productos para el 80% de la venta' = VAR base = ADDCOLUMNS(FILTER(ALLSELECTED(Producto), [Ventas netas] > 0), "@v", [Ventas netas]) VAR total = SUMX(base, [@v]) VAR acum = ADDCOLUMNS(base, "@antes", VAR v = [@v] RETURN SUMX(FILTER(base, [@v] > v), [@v])) RETURN COUNTROWS(FILTER(acum, [@antes] < 0.8 * total))
+		formatString: #,0
+		displayFolder: 07 Pareto
+
+	/// Proporción de los productos vendidos que explica el 80 % de la venta.
+	measure '% Productos para el 80%' = DIVIDE([Productos para el 80% de la venta], COUNTROWS(FILTER(ALLSELECTED(Producto), [Ventas netas] > 0)))
+		formatString: 0%
+		displayFolder: 07 Pareto
+
+	/// Venta del mes anterior hasta el mismo día del corte: comparable con la venta del mes en curso aunque el mes no haya cerrado.
+	measure 'Venta del mes anterior al día' = VAR f = [Corte de ventas] VAR fin = EDATE(f, -1) RETURN CALCULATE([Ventas netas], DATESBETWEEN(Calendario[fecha], DATE(YEAR(fin), MONTH(fin), 1), fin))
+		formatString: "Q" #,0
+		displayFolder: 17 Resumen
+
+	/// Mes en curso contra el mes anterior al mismo día. En tenants sin historia de un año es la única comparación posible.
+	measure 'Variación del mes en curso vs mes anterior' = DIVIDE([Venta del mes en curso] - [Venta del mes anterior al día], [Venta del mes anterior al día])
+		formatString: 0.0%
+		displayFolder: 17 Resumen
+
+	/// Título de la hoja Resumen.
+	/// Línea de referencia del Pareto (eje secundario): constante 80 %.
+	measure 'Referencia 80 %' = 0.8
+		formatString: 0%
+		displayFolder: 07 Pareto
+
+	measure 'Título de Resumen' = "Resumen ejecutivo"
+		displayFolder: _Narrativa
+
+	/// Título de la hoja Segmentación.
+	measure 'Título de Segmentación' = "Segmentación y riesgo de clientes"
+		displayFolder: _Narrativa
+
+	/// Título de la hoja Concentración.
+	measure 'Título de Concentración' = "Concentración de la venta · 80/20"
+		displayFolder: _Narrativa
+
+	/// Título de la hoja Tesorería.
+	measure 'Título de Tesorería' = "Tesorería y flujo de caja"
+		displayFolder: _Narrativa
+
+	/// Título de la hoja Pedidos.
+	measure 'Título de Pedidos' = "Pedidos y entregas"
+		displayFolder: _Narrativa
+
+	/// Título de la hoja Resultados.
+	measure 'Título de Resultados' = "Resultados contables"
+		displayFolder: _Narrativa
+
+"""
+MEDIDAS_POR_TABLA["hecho_pedido_linea"] += r"""
+	/// Fecha del pedido en contexto (ficha para matrices).
+	measure 'Fecha del pedido' = MAX(Pedidos[fecha_pedido])
+		formatString: dd/MM/yyyy
+		displayFolder: 05 Ficha
+
+	/// Fecha de entrega prometida del pedido en contexto.
+	measure 'Fecha de entrega comprometida' = MAX(Pedidos[fecha_entrega])
+		formatString: dd/MM/yyyy
+		displayFolder: 05 Ficha
+
+	/// Días que lleva vencida la entrega de un pedido con backlog; en blanco si no está atrasado.
+	measure 'Días de atraso de entrega' = VAR f = [Fecha de entrega comprometida] RETURN IF([Backlog] > 0 && NOT ISBLANK(f) && f < TODAY(), INT(TODAY() - f))
+		formatString: #,0
+		displayFolder: 05 Ficha
+
+	/// Pedidos con al menos una línea pendiente de entregar.
+	measure 'Pedidos abiertos' = CALCULATE(DISTINCTCOUNT(Pedidos[pedido_id]), KEEPFILTERS(Pedidos[es_abierta] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Backlog
+
+	/// Fecha del pedido solo cuando queda backlog: la matriz muestra únicamente pedidos abiertos.
+	measure 'Fecha del pedido (abiertos)' = IF([Backlog] > 0 && HASONEVALUE(Pedidos[pedido_numero]), [Fecha del pedido])
+		formatString: dd/MM/yyyy
+		displayFolder: 05 Ficha
+
+	/// Entrega comprometida solo cuando queda backlog.
+	measure 'Fecha de entrega (abiertos)' = IF([Backlog] > 0 && HASONEVALUE(Pedidos[pedido_numero]), [Fecha de entrega comprometida])
+		formatString: dd/MM/yyyy
+		displayFolder: 05 Ficha
+
+	/// Cliente del pedido como columna de matriz (solo con backlog): evita el segundo nivel de fila.
+	measure 'Cliente del pedido' = IF([Backlog] > 0 && HASONEVALUE(Pedidos[pedido_numero]), MAXX(Pedidos, RELATED(Cliente[Cliente])))
+		displayFolder: 05 Ficha
+
+	/// Alias de negocio del número de pedido para encabezados de matriz.
+	column Pedido = Pedidos[pedido_numero]
+		dataType: string
+		summarizeBy: none
+"""
+MEDIDAS_POR_TABLA["dim_cuenta"] = MEDIDAS_POR_TABLA.get("dim_cuenta", "") + r"""
+	/// Código y nombre juntos para encabezados de matriz (hoja Resultados).
+	column Cuenta = 'Cuenta contable'[cuenta_codigo_visible] & " · " & 'Cuenta contable'[nombre]
+		dataType: string
+		summarizeBy: none
+"""
+
+MEDIDAS_POR_TABLA["hecho_movimiento_contable"] += r"""
+	/// Mismo cálculo que Resultado contable; evaluado por naturaleza (Ingresos / Costo / Gastos) da el signo de cada tramo del puente, y el total es el resultado.
+	measure 'Aporte al resultado' = [Resultado contable]
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+
+	/// Naturaleza legible de la partida (ingreso / costo / gasto) para el puente del resultado.
+	column 'Naturaleza contable' = SWITCH('Resultados contables'[naturaleza], "ingreso", "Ingresos", "costo", "Costo", "gasto", "Gastos", "Otros")
+		dataType: string
+		summarizeBy: none
+
+"""
+
 GRUPO_MONEDA = r"""table 'MD_Moneda de análisis'
 
 	calculationGroup

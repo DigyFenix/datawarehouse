@@ -114,6 +114,51 @@ table FC_Pedidos
 		displayFolder: _Narrativa
 		lineageTag: ddbeafa7-d1cc-45ce-9394-bbb44c02f351
 
+	/// Fecha del pedido en contexto (ficha para matrices).
+	measure 'Fecha del pedido' = MAX(FC_Pedidos[fecha_pedido])
+		formatString: dd/MM/yyyy
+		displayFolder: 05 Ficha
+		lineageTag: 4df44a98-0c61-47e6-8126-e5d712277b24
+
+	/// Fecha de entrega prometida del pedido en contexto.
+	measure 'Fecha de entrega comprometida' = MAX(FC_Pedidos[fecha_entrega])
+		formatString: dd/MM/yyyy
+		displayFolder: 05 Ficha
+		lineageTag: 541b0961-c5bb-4ba6-b8e9-950046435053
+
+	/// Días que lleva vencida la entrega de un pedido con backlog; en blanco si no está atrasado.
+	measure 'Días de atraso de entrega' = VAR f = [Fecha de entrega comprometida] RETURN IF([Backlog] > 0 && NOT ISBLANK(f) && f < TODAY(), INT(TODAY() - f))
+		formatString: #,0
+		displayFolder: 05 Ficha
+		lineageTag: b902027b-d161-4db5-ac28-1c5275c8c9df
+
+	/// Pedidos con al menos una línea pendiente de entregar.
+	measure 'Pedidos abiertos' = CALCULATE(DISTINCTCOUNT(FC_Pedidos[pedido_id]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
+		formatString: #,0
+		displayFolder: 02 Backlog
+		lineageTag: 2b13106a-4976-4d4b-9289-a94ef38649a3
+
+	/// Fecha del pedido solo cuando queda backlog: la matriz muestra únicamente pedidos abiertos.
+	measure 'Fecha del pedido (abiertos)' = IF([Backlog] > 0 && HASONEVALUE(FC_Pedidos[pedido_numero]), [Fecha del pedido])
+		formatString: dd/MM/yyyy
+		displayFolder: 05 Ficha
+		lineageTag: 22572ee9-5b69-4fb2-89a5-69359eca0740
+
+	/// Entrega comprometida solo cuando queda backlog.
+	measure 'Fecha de entrega (abiertos)' = IF([Backlog] > 0 && HASONEVALUE(FC_Pedidos[pedido_numero]), [Fecha de entrega comprometida])
+		formatString: dd/MM/yyyy
+		displayFolder: 05 Ficha
+		lineageTag: 7b7c570d-f202-45af-8cd6-fd9aee1c78b4
+
+	measure 'Cliente del pedido' = IF([Backlog] > 0 && HASONEVALUE(FC_Pedidos[pedido_numero]), MAXX(FC_Pedidos, RELATED(DM_Cliente[Cliente])))
+		displayFolder: 05 Ficha
+		lineageTag: 80a82fb2-4452-4c92-9fff-401ef7fa2c72
+
+	column Pedido = FC_Pedidos[pedido_numero]
+		dataType: string
+		lineageTag: 7e674417-e9a1-4a5c-802d-2815c130f0df
+		summarizeBy: none
+
 	column tiempo_clave
 		dataType: int64
 		isHidden

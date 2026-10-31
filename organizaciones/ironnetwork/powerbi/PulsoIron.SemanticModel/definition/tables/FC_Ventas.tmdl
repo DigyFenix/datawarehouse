@@ -995,6 +995,77 @@ table FC_Ventas
 		displayFolder: 16 Cobros
 		lineageTag: 581f03a5-b7e6-4d0a-bb85-adc8720966e2
 
+	/// Cuántos clientes (de mayor a menor) hacen falta para llegar al 80 % de la venta a terceros del período. El 80/20 en una cifra.
+	measure 'Clientes para el 80% de la venta' = VAR base = ADDCOLUMNS(FILTER(ALLSELECTED(DM_Cliente), [Ventas a terceros] > 0), "@v", [Ventas a terceros]) VAR total = SUMX(base, [@v]) VAR acum = ADDCOLUMNS(base, "@antes", VAR v = [@v] RETURN SUMX(FILTER(base, [@v] > v), [@v])) RETURN COUNTROWS(FILTER(acum, [@antes] < 0.8 * total))
+		formatString: #,0
+		displayFolder: 07 Pareto
+		lineageTag: 9be99679-ddfe-4521-86f2-cbd3e8b5c4ff
+
+	/// Proporción de los clientes con venta que explica el 80 % de la venta.
+	measure '% Clientes para el 80%' = DIVIDE([Clientes para el 80% de la venta], COUNTROWS(FILTER(ALLSELECTED(DM_Cliente), [Ventas a terceros] > 0)))
+		formatString: 0%
+		displayFolder: 07 Pareto
+		lineageTag: c7f4f96c-7d6f-4863-a974-c4c74ca96ad3
+
+	/// Cuántos productos hacen falta para llegar al 80 % de la venta neta del período.
+	measure 'Productos para el 80% de la venta' = VAR base = ADDCOLUMNS(FILTER(ALLSELECTED(DM_Producto), [Ventas netas] > 0), "@v", [Ventas netas]) VAR total = SUMX(base, [@v]) VAR acum = ADDCOLUMNS(base, "@antes", VAR v = [@v] RETURN SUMX(FILTER(base, [@v] > v), [@v])) RETURN COUNTROWS(FILTER(acum, [@antes] < 0.8 * total))
+		formatString: #,0
+		displayFolder: 07 Pareto
+		lineageTag: 2fe306a7-5567-4581-a9d7-0e986d0b2525
+
+	/// Proporción de los productos vendidos que explica el 80 % de la venta.
+	measure '% Productos para el 80%' = DIVIDE([Productos para el 80% de la venta], COUNTROWS(FILTER(ALLSELECTED(DM_Producto), [Ventas netas] > 0)))
+		formatString: 0%
+		displayFolder: 07 Pareto
+		lineageTag: 13f0f4be-946e-448a-8ead-36f36a39ebdf
+
+	/// Venta del mes anterior hasta el mismo día del corte: comparable con la venta del mes en curso aunque el mes no haya cerrado.
+	measure 'Venta del mes anterior al día' = VAR f = [Corte de ventas] VAR fin = EDATE(f, -1) RETURN CALCULATE([Ventas netas], DATESBETWEEN(DM_Calendario[fecha], DATE(YEAR(fin), MONTH(fin), 1), fin))
+		formatString: "Q" #,0
+		displayFolder: 17 Resumen
+		lineageTag: a7142ca1-8ae9-4a84-ac16-038109edcc06
+
+	/// Mes en curso contra el mes anterior al mismo día. En tenants sin historia de un año es la única comparación posible.
+	measure 'Variación del mes en curso vs mes anterior' = DIVIDE([Venta del mes en curso] - [Venta del mes anterior al día], [Venta del mes anterior al día])
+		formatString: 0.0%
+		displayFolder: 17 Resumen
+		lineageTag: 0806192b-8fd3-4863-905c-4249c9b0e163
+
+	/// Título de la hoja Resumen.
+	measure 'Título de Resumen' = "Resumen ejecutivo"
+		displayFolder: _Narrativa
+		lineageTag: 7471da3e-98ed-4edf-8851-b310f4e14c81
+
+	/// Título de la hoja Segmentación.
+	measure 'Título de Segmentación' = "Segmentación y riesgo de clientes"
+		displayFolder: _Narrativa
+		lineageTag: 1f6a0f9c-a9eb-462a-98e8-7d67c1a6f9f8
+
+	/// Título de la hoja Concentración.
+	measure 'Título de Concentración' = "Concentración de la venta · 80/20"
+		displayFolder: _Narrativa
+		lineageTag: cd5c9ef0-fd16-4fad-aeae-e29e1c35690b
+
+	/// Título de la hoja Tesorería.
+	measure 'Título de Tesorería' = "Tesorería y flujo de caja"
+		displayFolder: _Narrativa
+		lineageTag: 7c60cc76-d93b-4ad6-93b1-9cc3d36e0738
+
+	/// Título de la hoja Pedidos.
+	measure 'Título de Pedidos' = "Pedidos y entregas"
+		displayFolder: _Narrativa
+		lineageTag: c0370ca2-319b-410b-b7b4-283694a65e96
+
+	/// Título de la hoja Resultados.
+	measure 'Título de Resultados' = "Resultados contables"
+		displayFolder: _Narrativa
+		lineageTag: 678d0641-50cc-4a0f-8fe6-5be82dec24b7
+
+	measure 'Referencia 80 %' = 0.8
+		formatString: 0%
+		displayFolder: 07 Pareto
+		lineageTag: 6b4032ff-9912-4a07-bea2-8b690c1d13ab
+
 	column tiempo_clave
 		dataType: int64
 		isHidden

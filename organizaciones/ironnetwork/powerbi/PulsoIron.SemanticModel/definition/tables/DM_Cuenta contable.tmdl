@@ -1,6 +1,11 @@
 table 'DM_Cuenta contable'
 	lineageTag: 0b253c40-be99-4a3f-bf3e-4b81c47fb4b1
 
+	column Cuenta = 'DM_Cuenta contable'[cuenta_codigo_visible] & " · " & 'DM_Cuenta contable'[nombre]
+		dataType: string
+		lineageTag: 744788e6-1470-4d23-880b-9a30d1e98695
+		summarizeBy: none
+
 	column cuenta_clave
 		dataType: int64
 		isHidden

@@ -115,6 +115,17 @@ table 'FC_Resultados contables'
 		displayFolder: 04 Control
 		lineageTag: 4078f3e1-8145-40d3-a02b-268a78717aaf
 
+	/// Mismo cálculo que Resultado contable; evaluado por naturaleza (Ingresos / Costo / Gastos) da el signo de cada tramo del puente, y el total es el resultado.
+	measure 'Aporte al resultado' = [Resultado contable]
+		formatString: "Q" #,0
+		displayFolder: 01 P&L
+		lineageTag: c783bd4b-8ef9-42a0-b500-52cd4e74c531
+
+	column 'Naturaleza contable' = SWITCH('FC_Resultados contables'[naturaleza], "ingreso", "Ingresos", "costo", "Costo", "gasto", "Gastos", "Otros")
+		dataType: string
+		lineageTag: edea7701-3a22-42bc-adb8-b058c0334f57
+		summarizeBy: none
+
 	column tiempo_clave
 		dataType: int64
 		isHidden

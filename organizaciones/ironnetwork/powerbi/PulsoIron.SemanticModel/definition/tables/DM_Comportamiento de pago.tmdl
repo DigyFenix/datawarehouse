@@ -31,6 +31,48 @@ table 'DM_Comportamiento de pago'
 		displayFolder: 02 Montos
 		lineageTag: f732b71c-66b2-4a3e-acf7-9a66159b7bc0
 
+	/// Saldo no vencido de la ficha de comportamiento de pago (foto al corte), agrupable por perfil de riesgo.
+	measure 'Saldo corriente por perfil' = SUM('DM_Comportamiento de pago'[saldo_corriente])
+		formatString: "Q" #,0
+		displayFolder: 02 Saldos
+		lineageTag: 3812dd4a-6716-49a1-84d1-92f7e904dbd1
+
+	/// Saldo vencido de la ficha de comportamiento de pago (foto al corte), agrupable por perfil de riesgo.
+	measure 'Saldo vencido por perfil' = SUM('DM_Comportamiento de pago'[saldo_vencido])
+		formatString: "Q" #,0
+		displayFolder: 02 Saldos
+		lineageTag: 8a1b3679-9c9c-40d7-8909-92374e352d53
+
+	/// Clientes con saldo abierto, agrupables por perfil de riesgo.
+	measure 'Clientes por perfil de pago' = CALCULATE(COUNTROWS('DM_Comportamiento de pago'), KEEPFILTERS('DM_Comportamiento de pago'[saldo_total] > 0))
+		formatString: #,0
+		displayFolder: 01 Conteos
+		lineageTag: 23d4093c-3e58-424a-b236-a5c65cedabcf
+
+	/// Saldo vencido SOLO de clientes en vencido crítico: en blanco para el resto, la matriz muestra solo a los críticos.
+	measure 'Saldo vencido crítico' = CALCULATE(SUM('DM_Comportamiento de pago'[saldo_vencido]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: "Q" #,0
+		displayFolder: 03 Críticos
+		lineageTag: 5a34f222-4c23-4fcc-bf92-aa4b563a2ac7
+
+	/// Partida más vieja del cliente crítico, en días vencidos.
+	measure 'Días de mora máximos (críticos)' = CALCULATE(MAX('DM_Comportamiento de pago'[max_dias_vencido]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: #,0
+		displayFolder: 03 Críticos
+		lineageTag: b93bbcb0-ee50-49c5-9bde-3075dd1e64dc
+
+	/// Días sin recibir un pago del cliente crítico.
+	measure 'Días desde el último pago (críticos)' = CALCULATE(MAX('DM_Comportamiento de pago'[dias_desde_ultimo_pago]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: #,0
+		displayFolder: 03 Críticos
+		lineageTag: ed864c89-ba8a-4839-9e60-875d8469bb34
+
+	/// Proporción vencida del saldo del cliente crítico.
+	measure '% Vencido del cliente (críticos)' = CALCULATE(MAX('DM_Comportamiento de pago'[pct_saldo_vencido]), KEEPFILTERS('DM_Comportamiento de pago'[perfil_riesgo] = "vencido_critico"))
+		formatString: 0.0%
+		displayFolder: 03 Críticos
+		lineageTag: 1abb4d43-df18-4aef-98de-b3554f15b0ca
+
 	column empresa_id
 		dataType: string
 		isHidden

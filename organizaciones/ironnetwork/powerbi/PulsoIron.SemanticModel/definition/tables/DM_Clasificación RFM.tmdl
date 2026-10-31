@@ -79,6 +79,58 @@ table 'DM_Clasificación RFM'
 		displayFolder: 03 Rotación de cartera
 		lineageTag: 5823ea09-b35a-44bb-bf6e-f71db6c468b3
 
+	/// Segmento RFM vigente del cliente en contexto (ficha para matrices).
+	measure 'Segmento RFM del cliente' = MAX('DM_Clasificación RFM'[segmento_rfm_nombre])
+		displayFolder: 03 Ficha
+		lineageTag: 039244f6-2009-4367-a9bd-a931eaf0bde4
+
+	/// Días desde la última compra del cliente al corte del RFM.
+	measure 'Recencia del cliente (días)' = MAX('DM_Clasificación RFM'[recencia_dias])
+		formatString: #,0
+		displayFolder: 03 Ficha
+		lineageTag: c55002c2-cc6d-4459-94b6-6261dae3f6ea
+
+	/// Documentos de venta del cliente en los últimos 12 meses.
+	measure 'Compras del cliente 12m' = SUM('DM_Clasificación RFM'[frecuencia_12m])
+		formatString: #,0
+		displayFolder: 03 Ficha
+		lineageTag: 9e0ded4f-1296-4aef-9a46-747aa1e4e773
+
+	/// Venta neta del cliente en los últimos 12 meses según el RFM.
+	measure 'Venta del cliente 12m' = SUM('DM_Clasificación RFM'[monto_neto_12m])
+		formatString: "Q" #,0
+		displayFolder: 03 Ficha
+		lineageTag: fc12aa83-0b03-4c94-99a6-671ef42f9960
+
+	/// Fecha de la última compra del cliente.
+	measure 'Última compra del cliente' = MAX('DM_Clasificación RFM'[ultima_compra])
+		formatString: dd/MM/yyyy
+		displayFolder: 03 Ficha
+		lineageTag: 950906b1-9f48-4ae8-b54c-be4563d6a3d9
+
+	/// Ficha SOLO de los clientes en riesgo: en blanco para el resto, así la matriz muestra únicamente a quién hay que llamar.
+	measure 'Segmento en riesgo' = IF([Venta 12m en riesgo] > 0, [Segmento RFM del cliente])
+		displayFolder: 04 En riesgo
+		lineageTag: acd6ad79-2472-424d-a64e-e751956fefd0
+
+	/// Recencia solo de clientes en riesgo (ver Segmento en riesgo).
+	measure 'Recencia en riesgo (días)' = IF([Venta 12m en riesgo] > 0, [Recencia del cliente (días)])
+		formatString: #,0
+		displayFolder: 04 En riesgo
+		lineageTag: fc072e0a-6705-4f57-a88f-93fc2140f9f1
+
+	/// Compras 12m solo de clientes en riesgo.
+	measure 'Compras en riesgo 12m' = IF([Venta 12m en riesgo] > 0, [Compras del cliente 12m])
+		formatString: #,0
+		displayFolder: 04 En riesgo
+		lineageTag: da0a6a18-da89-47e2-b708-cc08d457c72d
+
+	/// Última compra solo de clientes en riesgo.
+	measure 'Última compra en riesgo' = IF([Venta 12m en riesgo] > 0, [Última compra del cliente])
+		formatString: dd/MM/yyyy
+		displayFolder: 04 En riesgo
+		lineageTag: 51b93df2-60c0-42a3-b98b-46b84f3be8ac
+
 	column empresa_id
 		dataType: string
 		isHidden
