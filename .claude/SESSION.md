@@ -1,6 +1,6 @@
 # SESSION — datawarehouse
 
-## ══════ SESIÓN 36 (2026-10-31) — FRESCURA HONESTA, DEMANDA NO ATENDIDA, MI TABLERO Y DESCARGAS A EXCEL — leer esto primero ══════
+## ══════ SESIÓN 36 (2026-10-31) — FRESCURA, DEMANDA, MI TABLERO, DESCARGAS A EXCEL, REDISEÑO WEB Y CHAT CON RESTRICCIONES REALES — leer esto primero ══════
 
 Edwin aclaró el pedido: el chat **solo lee Oro** («Bronce y Plata por ningún motivo, lo dicta el
 proyecto de graduación»); el caso real es «pregunto las ventas de hoy, el DWH va hasta ayer y la
@@ -63,14 +63,43 @@ detalle a elección. Power BI y el despliegue a producción quedan con él.
 - **Rediseño del portal web** («Espacio de trabajo», `consumo/portal/web/DESIGN.md`): Geist única
   familia, barra lateral clara, pestañas segmentadas, sin mono en mayúsculas, login centrado.
 
-### PENDIENTE: Edwin
-1. Power BI (sesión 35): refrescar, revisar 23 hojas, guardar, publicar; seed 58.
-2. Desplegar: `bash dist/desplegar-20261031b.sh` (toma el paquete más nuevo de `dist/`; aplica
-   136+137 a cada `dw_<tenant>`, agrega `HORAS_CARGA` al `.env` si falta y reinicia). Commit
-   `be0c6cd` + ajustes de pantalla.
-3. Si quiere datos más frescos para Iron: más horas en `HORAS_CARGA` (p. ej. `05:00 13:00 18:00`),
-   no cargas por pregunta.
+- Paneles del chat (guardadas y métricas) ocultables con dos botones sobre la conversación; la
+  preferencia se recuerda por navegador (`localStorage`, claves `quilate.chat.verGuardadas` /
+  `quilate.chat.verMetricas`).
 
+### Commits de la sesión (todos en `origin/master`)
+`be0c6cd` frescura/demanda/tablero/descargas · `4e4908f` guion de despliegue · `9105c8d` límites
+de seguridad · `5162951` rediseño web · `9ac7552` chat con restricciones reales · `dce5dac` chat por
+sesión · (último) paneles ocultables + cierre. Paquete de producción: el más nuevo en `dist/`.
+
+### PENDIENTE: Edwin — lista exacta para publicar (en este orden)
+1. **Desplegar el portal** (incluye todo lo de las sesiones 34, 35 y 36):
+   `bash dist/desplegar-20261031b.sh` desde la raíz del repo en Git Bash. El guion toma el paquete
+   más nuevo de `dist/`, sube imágenes, aplica las migraciones **136 y 137** a cada `dw_<tenant>`,
+   agrega `HORAS_CARGA=05:00` al `.env` del servidor si falta y reinicia. Verificar al final que
+   `https://ironnetwork.digyfenix.com/api/health` responda `ok`.
+2. **Variables nuevas del `.env` del servidor** (todas tienen default; revisar solo si quieres otro valor):
+   `HORAS_CARGA` (igual que el programador; si quieres datos más frescos para Iron pon p. ej.
+   `05:00 13:00 18:00`), `AGENTE_SOLO_CERTIFICADAS=true`, `AGENTE_MODELO_COMPUERTA=claude-haiku-5-5`,
+   `AGENTE_MAX_ITERACIONES=4`, `AGENTE_MAX_TOKENS=1200`, `AGENTE_MENSAJES_POR_CONVERSACION=20`,
+   `AGENTE_AVISO_RESTANTES=5`, `ZONA_HORARIA=America/Guatemala`. Si cambias alguna:
+   `docker compose up -d api-usuario` en `~/quilate-<version>`.
+3. **Probar en producción** entrando al portal de Iron: Inicio muestra «Próxima actualización»;
+   Asistente responde corto, rechaza un chiste con el texto amable, muestra las métricas a la
+   derecha y el contador «N de 20»; Mi tablero y Descargas aparecen en el menú; Administración →
+   Demanda existe.
+4. **Power BI (pendiente desde la sesión 35):** abrir `organizaciones/ironnetwork/powerbi/PulsoIron.pbip`,
+   refrescar, revisar las 23 hojas (tema «Quilate · Azul profundo», 4 hojas de análisis nuevas),
+   guardar y publicar al servicio. Después, SOLO entonces, aplicar en producción
+   `organizaciones/ironnetwork/seeds/58_hojas_gestion_ironnetwork.sql` (10 hojas) a `dw_ironnetwork`.
+5. **Opcional:** gateway de Power BI para refresco automático (cuello de botella en `ESTADO.md`).
+
+### Deuda técnica conocida
+- Mapa de calor en matrices PBIR: Desktop no lo pinta (sesión 35).
+- `generar_pbip.py` sigue sin correrse; las medidas nuevas están sincronizadas a mano en el TMDL.
+- El detector de diseño marca Geist como fuente «muy usada»: decisión consciente (Edwin pidió
+  «moderna»; Operate mode admite fuentes de sistema/workhorse).
+- Descargas: las métricas derivadas (indicadores compuestos) solo se descargan por mes.
 
 ## ══════ SESIÓN 35 (2026-10-31) — MÁS PRUEBAS DEL CHAT, TEMA NUEVO EN POWER BI, COMBOS CORREGIDOS Y 4 HOJAS DE ANÁLISIS — leer esto primero ══════
 

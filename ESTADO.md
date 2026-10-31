@@ -104,6 +104,19 @@ sola vez** para los dos.
 | 6 | Consumo (Power BI) | ✅ **modelo vigente (2026-08-08): 36 tablas de datos / 98 relaciones / 294 medidas** — 43 archivos `.tmdl` contando el grupo de cálculo y los 6 parámetros de campo. Las cifras «25/67/140» de este renglón eran de una versión anterior y se corrigieron al regenerar contra el Oro nuevo (formato Q, moneda conmutable por grupo de cálculo, comparativos MTD/QTD/YTD/año anterior, Pareto dinámico, cobranza vs tesorería, rotación de inventario, campos de usuario relacionados) — un solo PBIP para ambos ERPs. **Flujo definido: modelo publicado al servicio + dashboards en archivo aparte.** Edwin construye el análisis. **+ Portal de USUARIO** (`consumo/portal/`, 2026-08-02): tableros Publish to Web por perfil, white-label (color+logo), auto-administración por organización, tenant por hash en URL | 2026-08-01 |
 | 7 | Validación (4 criterios) | ✅ **completada 2026-08-08** — consistencia (cuadres al centavo), **seguridad/RLS** (IDOR 8/8, RLS fail-closed, certificación 7/7, guardas del agente 12/12), trazabilidad (auditoría por organización, cada consulta del agente auditada) y explicabilidad (toda respuesta lleva métrica, período y estado de certificación). **Onboarding de tenant nuevo validado E2E**: alta → provisionar → extraer 12 objetos → build 195/195 → cuadre 0 desvíos, sin un solo paso a mano | 2026-08-08 |
 
+## Avance 2026-10-31 (sesiones 34–36) — chat útil y acotado, autoservicio y rediseño del portal
+
+- Agente: desglose por dimensión, consultas guardadas reejecutables, demanda no atendida (solo
+  admin), frescura honesta con próxima carga, **restricciones reales**: compuerta de intención
+  (Haiku + salida estructurada, respuestas fijas), solo certificadas en código
+  (`AGENTE_SOLO_CERTIFICADAS`), tools `strict`, topes de tokens/iteraciones/mensajes por
+  conversación, caché del prompt. 44 tests del paquete.
+- Portal de usuario: **Mi tablero** (widgets JS sobre guardadas), **Descargas a Excel**
+  (capa semántica + RLS, hoja «Ficha»), Administración → Demanda, chat con panel de métricas,
+  contador por sesión y paneles ocultables. **Rediseño «Espacio de trabajo»** (Geist, barra clara).
+- Power BI (PulsoIron): 23 hojas, tema «Quilate · Azul profundo». Pendiente de publicar por Edwin.
+- Migraciones 136 y 137; guion `dist/desplegar-20261031b.sh`. Falta ejecutarlo (Edwin).
+
 ## Avance 2026-10-19 (sesión 32) — un tablero por hoja, sin barra de Power BI
 
 - Portal: `portal.tableros.grupo` (migración 135), Inicio agrupado como Kraken (Ventas ·

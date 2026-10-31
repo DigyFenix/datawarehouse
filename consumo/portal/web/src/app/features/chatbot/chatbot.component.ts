@@ -23,6 +23,22 @@ import {
 } from './chat.service';
 import { DatosVisualComponent } from './datos-visual.component';
 
+function leerPreferencia(clave: string, porDefecto: boolean): boolean {
+  try {
+    const v = localStorage.getItem(`quilate.${clave}`);
+    return v === null ? porDefecto : v === '1';
+  } catch {
+    return porDefecto;
+  }
+}
+function guardarPreferencia(clave: string, valor: boolean): void {
+  try {
+    localStorage.setItem(`quilate.${clave}`, valor ? '1' : '0');
+  } catch {
+    // sin almacenamiento (modo privado): la preferencia dura la sesión
+  }
+}
+
 /** Una conversación se retoma solo si tuvo actividad en las últimas 2 horas; después se empieza limpia. */
 const RETOMAR_MS = 2 * 60 * 60 * 1000;
 
@@ -42,7 +58,8 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
   standalone: true,
   imports: [DatePipe, FormsModule, EmptyComponent, IconComponent, SkeletonComponent, DatosVisualComponent],
   template: `
-    <div class="chat">
+    <div class="chat" [class.chat--sin-izq]="!verGuardadas()" [class.chat--sin-der]="!verMetricas()">
+      @if (verGuardadas()) {
       <aside class="hilos" [class.hilos--abierta]="panelAbierto()">
         <button class="nueva-consulta" (click)="nueva()" [disabled]="creando()">
           <app-icon name="chatbot" [size]="16" /> Nueva consulta
@@ -73,11 +90,17 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
             }
           </ul>
       </aside>
+      }
 
       <section class="hilo-activo">
-        <button class="alternar-panel pequeno secundario" (click)="panelAbierto.set(!panelAbierto())">
-          <app-icon name="menu" [size]="14" /> Consultas guardadas
-        </button>
+        <div class="barra-paneles">
+          <button type="button" class="pequeno secundario" (click)="alternarGuardadas()" [attr.aria-pressed]="verGuardadas()">
+            <app-icon name="guardar" [size]="14" /> {{ verGuardadas() ? 'Ocultar guardadas' : 'Guardadas' }}
+          </button>
+          <button type="button" class="pequeno secundario" (click)="alternarMetricas()" [attr.aria-pressed]="verMetricas()">
+            <app-icon name="grafico" [size]="14" /> {{ verMetricas() ? 'Ocultar métricas' : 'Métricas' }}
+          </button>
+        </div>
 
         @if (modo() === 'guardada') {
           <!-- ======================= consulta guardada abierta ======================= -->
@@ -253,6 +276,7 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
         }
       </section>
 
+      @if (verMetricas()) {
       <aside class="metricas" aria-label="Métricas disponibles">
         <div class="metricas__cab">
           <span class="eyebrow">Métricas disponibles</span>
@@ -272,11 +296,18 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
           <p class="metricas__ayuda">Tu perfil aún no tiene métricas autorizadas.</p>
         }
       </aside>
+      }
     </div>
   `,
   styles: [
     `
       .chat { display: grid; grid-template-columns: 240px minmax(0, 1fr) 230px; gap: var(--sp-4); height: calc(100vh - 170px); min-height: 460px; }
+      .chat--sin-izq { grid-template-columns: minmax(0, 1fr) 230px; }
+      .chat--sin-der { grid-template-columns: 240px minmax(0, 1fr); }
+      .chat--sin-izq.chat--sin-der { grid-template-columns: minmax(0, 1fr); }
+      .barra-paneles { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+      .barra-paneles button { display: inline-flex; align-items: center; gap: 6px; }
+      .barra-paneles button[aria-pressed="true"] { color: var(--brand-700); border-color: var(--brand-300); background: var(--brand-50); }
       .metricas { border-left: 1px solid var(--border); padding-left: var(--sp-3); overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
       .metricas__cab { display: flex; align-items: center; justify-content: space-between; }
       .metricas__ayuda { margin: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
@@ -311,7 +342,6 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
       .hilo__borrar:hover { color: var(--danger); background: var(--danger-bg); }
 
       .hilo-activo { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
-      .alternar-panel { display: none; align-self: flex-start; }
       .mensajes { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-3); padding-right: var(--sp-2); }
 
       .burbuja { max-width: 76%; padding: var(--sp-3) var(--sp-4); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--border); }
@@ -363,12 +393,10 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
       @keyframes latir { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
       @media (prefers-reduced-motion: reduce) { .puntos i { animation: none; opacity: .6; } }
 
-      @media (max-width: 1100px) { .chat { grid-template-columns: 240px minmax(0, 1fr); } .metricas { display: none; } }
+      @media (max-width: 1100px) { .chat, .chat--sin-izq { grid-template-columns: 240px minmax(0, 1fr); } .chat--sin-izq { grid-template-columns: minmax(0, 1fr); } .metricas { display: none; } }
       @media (max-width: 880px) {
-        .chat { grid-template-columns: 1fr; height: auto; }
-        .hilos { display: none; border-right: none; padding-right: 0; }
-        .hilos--abierta { display: flex; }
-        .alternar-panel { display: inline-flex; align-items: center; gap: 6px; }
+        .chat, .chat--sin-izq, .chat--sin-der { grid-template-columns: 1fr; height: auto; }
+        .hilos { border-right: none; padding-right: 0; }
         .burbuja { max-width: 92%; }
         .burbuja--datos { max-width: 100%; }
       }
@@ -391,6 +419,9 @@ export class ChatbotComponent implements OnInit {
   readonly creando = signal(false);
   readonly error = signal<string | null>(null);
   readonly panelAbierto = signal(false);
+  /** Paneles laterales ocultables; la preferencia queda en este navegador. */
+  readonly verGuardadas = signal(leerPreferencia('chat.verGuardadas', true));
+  readonly verMetricas = signal(leerPreferencia('chat.verMetricas', true));
   readonly sesion = signal<EstadoSesion | null>(null);
   readonly sugerencia = signal<SugerenciaChat | null>(null);
   readonly metricas = signal<MetricaDisponible[]>([]);
@@ -440,6 +471,15 @@ export class ChatbotComponent implements OnInit {
     });
     this.recargarGuardadas();
     this.chat.metricas().subscribe({ next: (ms) => this.metricas.set(ms), error: () => undefined });
+  }
+
+  alternarGuardadas(): void {
+    this.verGuardadas.update((v) => !v);
+    guardarPreferencia('chat.verGuardadas', this.verGuardadas());
+  }
+  alternarMetricas(): void {
+    this.verMetricas.update((v) => !v);
+    guardarPreferencia('chat.verMetricas', this.verMetricas());
   }
 
   /** Clic en una métrica del panel: deja la pregunta lista en el compositor. */
