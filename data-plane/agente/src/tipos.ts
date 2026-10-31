@@ -127,6 +127,14 @@ export interface ConfigAgente {
    */
   proximaCarga: string | null;
   fechaActual: string;
+  /** Configuración del host: true = el agente solo ve métricas certificadas (sin exploratorias). */
+  soloCertificadas: boolean;
+  /**
+   * Modelo barato para la compuerta de intención (salida estructurada). null = sin compuerta
+   * (solo las reglas del prompt). Con compuerta, saludos, temas ajenos y manipulación se
+   * contestan con texto fijo del código y el agente principal no se ejecuta.
+   */
+  modeloCompuerta: string | null;
 }
 
 /** Frescura de un dominio del warehouse (oro.estado_carga agregada por el host). */

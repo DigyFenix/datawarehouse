@@ -19,6 +19,9 @@ import {
 } from './chat.service';
 import { DatosVisualComponent } from './datos-visual.component';
 
+/** Una conversación se retoma solo si tuvo actividad en las últimas 2 horas; después se empieza limpia. */
+const RETOMAR_MS = 2 * 60 * 60 * 1000;
+
 /**
  * Chat con el agente de IA gobernado + consultas guardadas.
  *
@@ -37,42 +40,14 @@ import { DatosVisualComponent } from './datos-visual.component';
   template: `
     <div class="chat">
       <aside class="hilos" [class.hilos--abierta]="panelAbierto()">
-        <div class="hilos__pestanas" role="tablist">
-          <button class="hilos__pestana" [class.hilos__pestana--activa]="pestana() === 'conversaciones'" (click)="pestana.set('conversaciones')">Conversaciones</button>
-          <button class="hilos__pestana" [class.hilos__pestana--activa]="pestana() === 'guardadas'" (click)="pestana.set('guardadas')">
-            Guardadas @if (guardadas().length) { <span class="hilos__conteo">{{ guardadas().length }}</span> }
-          </button>
+        <button class="nueva-consulta" (click)="nueva()" [disabled]="creando()">
+          <app-icon name="chatbot" [size]="16" /> Nueva consulta
+        </button>
+        <div class="hilos__top">
+          <span class="eyebrow">Consultas guardadas</span>
+          @if (guardadas().length) { <span class="hilos__conteo">{{ guardadas().length }}</span> }
         </div>
-
-        @if (pestana() === 'conversaciones') {
-          <div class="hilos__top">
-            <span class="eyebrow">Hilos</span>
-            <button class="pequeno" (click)="nueva()" [disabled]="creando()">Nueva</button>
-          </div>
-          @if (cargandoHilos()) {
-            @for (i of [1, 2, 3, 4]; track i) { <app-skeleton variante="linea" /> }
-          } @else {
-            <ul class="hilos__lista">
-              @for (c of conversaciones(); track c.id) {
-                <li>
-                  <button class="hilo" [class.hilo--activo]="modo() === 'chat' && c.id === activaId()" (click)="abrir(c)">
-                    <span class="hilo__titulo">{{ c.titulo }}</span>
-                    <span class="hilo__fecha">{{ c.actualizadaEn | date: 'dd/MM HH:mm' }}</span>
-                  </button>
-                  <button class="hilo__borrar" (click)="eliminar(c)" aria-label="Eliminar conversación">
-                    <app-icon name="papelera" [size]="14" />
-                  </button>
-                </li>
-              } @empty {
-                <li class="hilos__vacio">Aún no hay conversaciones.</li>
-              }
-            </ul>
-          }
-        } @else {
-          <div class="hilos__top">
-            <span class="eyebrow">Mis consultas</span>
-          </div>
-          <ul class="hilos__lista">
+        <ul class="hilos__lista">
             @for (g of guardadas(); track g.id) {
               <li>
                 <button class="hilo" [class.hilo--activo]="modo() === 'guardada' && g.id === guardadaActiva()?.consulta?.id" (click)="abrirGuardada(g)">
@@ -88,17 +63,16 @@ import { DatosVisualComponent } from './datos-visual.component';
               </li>
             } @empty {
               <li class="hilos__vacio">
-                Todavía no guardas ninguna consulta. Pide una tabla o un ranking en el chat y usa
+                Todavía no guardas ninguna consulta. Pide una tabla o un ranking y usa
                 «Guardar»: la reabres otro día con datos actualizados.
               </li>
             }
           </ul>
-        }
       </aside>
 
       <section class="hilo-activo">
         <button class="alternar-panel pequeno secundario" (click)="panelAbierto.set(!panelAbierto())">
-          <app-icon name="menu" [size]="14" /> Conversaciones y guardadas
+          <app-icon name="menu" [size]="14" /> Consultas guardadas
         </button>
 
         @if (modo() === 'guardada') {
@@ -161,8 +135,8 @@ import { DatosVisualComponent } from './datos-visual.component';
               @for (i of [1, 2, 3]; track i) { <app-skeleton variante="tarjeta" [alto]="58" /> }
             } @else if (mensajes().length === 0) {
               <app-empty titulo="Pregunta por tus números">
-                Respondo con métricas certificadas, dentro de tu alcance de datos. Cada cifra viene
-                con su métrica, su período y su estado. Lo que te sirva, lo guardas y lo reabres con datos frescos.
+                Una pregunta, una respuesta: métricas certificadas, dentro de tu alcance, con su período
+                y su estado. Lo que te sirva, lo guardas y lo reabres con datos frescos.
                 @if (sugerencias().length) {
                   <div class="sugerencias">
                     @for (s of sugerencias(); track s) {
@@ -256,7 +230,7 @@ import { DatosVisualComponent } from './datos-visual.component';
     `
       .chat { display: grid; grid-template-columns: 260px 1fr; gap: var(--sp-4); height: calc(100vh - 170px); min-height: 460px; }
       .hilos { display: flex; flex-direction: column; gap: var(--sp-2); border-right: 1px solid var(--border); padding-right: var(--sp-3); overflow: hidden; }
-      .hilos__pestanas { display: flex; border-bottom: 1px solid var(--border); margin-bottom: var(--sp-1); }
+      .nueva-consulta { width: 100%; justify-content: flex-start; margin-bottom: var(--sp-2); }
       .hilos__pestana { flex: 1; min-height: 0; background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 4px; color: var(--muted); font-size: var(--fs-sm); cursor: pointer; display: inline-flex; justify-content: center; gap: 6px; align-items: center; }
       .hilos__pestana--activa { color: var(--text); border-bottom-color: var(--brand-600); font-weight: 600; }
       .hilos__conteo { font-family: var(--sans); font-variant-numeric: tabular-nums; font-size: var(--fs-2xs); background: var(--surface-2); border-radius: 999px; padding: 1px 7px; }
@@ -377,11 +351,14 @@ export class ChatbotComponent implements OnInit {
   borrador = '';
 
   ngOnInit(): void {
+    // Una sola conversación: se retoma la más reciente solo si es de las últimas horas (para
+    // terminar una aclaración); si no, la próxima pregunta arranca limpia y sin historial.
     this.chat.conversaciones().subscribe({
       next: (cs) => {
         this.conversaciones.set(cs);
         this.cargandoHilos.set(false);
-        if (cs.length) this.abrir(cs[0]);
+        const reciente = cs[0];
+        if (reciente && Date.now() - new Date(reciente.actualizadaEn).getTime() < RETOMAR_MS) this.abrir(reciente);
       },
       error: (e: Error) => {
         this.cargandoHilos.set(false);

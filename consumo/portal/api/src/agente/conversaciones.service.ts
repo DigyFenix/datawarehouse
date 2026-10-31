@@ -11,7 +11,9 @@ import { Pool } from 'pg';
 import { SesionService } from '../auth/sesion.service';
 import { UsuarioPortal } from '../auth/tipos';
 
-export const TITULO_CONVERSACION_DEFECTO = 'Nueva conversación';
+export /** Conversaciones que se conservan por usuario (la actual y un par de respaldo). */
+const CONVERSACIONES_CONSERVADAS = 3;
+const TITULO_CONVERSACION_DEFECTO = 'Nueva conversación';
 
 export interface ConversacionResumen {
   id: number;
@@ -57,6 +59,14 @@ export class ConversacionesService {
 
   async crear(usuario: UsuarioPortal): Promise<ConversacionResumen> {
     const pool = await this.pool(usuario);
+    // El chat no es un archivo de conversaciones: se conservan solo las últimas pocas del
+    // usuario (la UI muestra una). Las consultas guardadas viven aparte y no se tocan.
+    await pool.query(
+      `DELETE FROM portal.chat_conversaciones
+        WHERE usuario_id = $1
+          AND id NOT IN (SELECT id FROM portal.chat_conversaciones WHERE usuario_id = $1 ORDER BY actualizada_en DESC LIMIT $2)`,
+      [usuario.id, CONVERSACIONES_CONSERVADAS - 1],
+    );
     const resultado = await pool.query(
       `INSERT INTO portal.chat_conversaciones (usuario_id, titulo)
        VALUES ($1, $2)

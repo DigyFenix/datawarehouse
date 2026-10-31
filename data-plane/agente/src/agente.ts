@@ -8,7 +8,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 import { resolverAlcance } from './alcances';
-import { construirSystemPrompt } from './prompt';
+import { clasificarIntencion, esIntencionBloqueada, RESPUESTAS_FIJAS } from './compuerta';
+import { construirBloquesSystem } from './prompt';
 import { ejecutarTool } from './tools/ejecutar';
 import { TOOLS_ANTHROPIC } from './tools/esquemas';
 import type {
@@ -22,6 +23,17 @@ import type {
   SolicitudNoAtendida,
   TarjetaDato,
 } from './tipos';
+
+/** Tope de caracteres de la respuesta en texto (la UI ya muestra tablas y tarjetas aparte). */
+export const LARGO_MAXIMO_RESPUESTA = 900;
+
+/** Recorta en el último fin de frase que cabe en `maximo`; si no hay ninguno, corta en seco con «…». */
+export function acotarTexto(texto: string, maximo: number): string {
+  if (texto.length <= maximo) return texto;
+  const corte = texto.slice(0, maximo);
+  const fin = Math.max(corte.lastIndexOf('. '), corte.lastIndexOf('.' + String.fromCharCode(10)), corte.lastIndexOf('?'), corte.lastIndexOf('!'));
+  return fin > maximo * 0.4 ? corte.slice(0, fin + 1).trim() : `${corte.trim()}…`;
+}
 
 /** Modelos donde el fallback por rechazo de clasificador está disponible (Claude API). */
 const MODELOS_CON_FALLBACK = new Set(['claude-opus-5', 'claude-fable-5']);
@@ -41,11 +53,31 @@ export interface EntradaAgente {
 export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente> {
   const { ejecutor, config, usuarioId, historial, mensaje, auditar } = entrada;
 
-  const alcance = await resolverAlcance(ejecutor, usuarioId);
-  const system = construirSystemPrompt(config, alcance);
+  const alcance = await resolverAlcance(ejecutor, usuarioId, { soloCertificadas: config.soloCertificadas });
+  const { estatico, dinamico } = construirBloquesSystem(config, alcance);
 
   const cliente = new Anthropic({ apiKey: config.apiKey });
   const usaFallback = MODELOS_CON_FALLBACK.has(config.modelo);
+
+  // RESTRICCIÓN REAL 1 — compuerta de intención: un clasificador con salida estructurada decide si
+  // el mensaje es una consulta de métricas. Lo que no lo es se contesta con texto fijo del código
+  // y el agente principal no corre (cero tokens del modelo grande, cero margen de convencimiento).
+  if (config.modeloCompuerta) {
+    const ultimaRespuesta = [...historial].reverse().find((m) => m.rol === 'asistente')?.contenido ?? null;
+    const dominios = [...new Set([...alcance.metricas.values()].map((m) => m.dominio).filter(Boolean))];
+    const intencion = await clasificarIntencion({ cliente, modelo: config.modeloCompuerta, mensaje, ultimaRespuesta, dominios });
+    if (esIntencionBloqueada(intencion)) {
+      await auditar({ accion: 'consulta_agente_denegada', detalle: { motivo: 'compuerta', intencion } });
+      return { texto: RESPUESTAS_FIJAS[intencion], tarjetas: [], conjuntos: [], consultas: [], solicitudes: [] };
+    }
+  }
+
+  // RESTRICCIÓN REAL 2 — caché del bloque estable del system prompt (reglas por organización): el
+  // API cobra ~10 % por esos tokens en cada turno y el catálogo del usuario va aparte, sin cachear.
+  const system: Anthropic.Beta.BetaTextBlockParam[] = [
+    { type: 'text', text: estatico, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: dinamico },
+  ];
 
   const mensajes: Anthropic.Beta.BetaMessageParam[] = [
     // Al asistente se le recuerda qué herramientas sustentaron cada respuesta previa: el historial
@@ -74,7 +106,10 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
       max_tokens: config.maxTokens,
       system,
       messages: mensajes,
-      tools: TOOLS_ANTHROPIC,
+      // RESTRICCIÓN REAL 3 — tools estrictas: el API garantiza argumentos válidos contra el esquema
+      // (additionalProperties: false), antes aún de que Zod los vuelva a validar en el código.
+      tools: TOOLS_ANTHROPIC.map((t) => ({ ...t, strict: true })),
+      tool_choice: { type: 'auto' },
       // Chat interactivo: el esfuerzo bajo responde rápido y sobra para elegir
       // una tool y redactar. La inteligencia dura ya vive en el warehouse.
       output_config: { effort: 'low' },
@@ -153,6 +188,9 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
       'No pude completar la consulta en los pasos disponibles. Intenta acotar la ' +
       'pregunta a una métrica y un período concretos.';
   }
+  // El prompt pide respuestas de pocas frases; este corte es el cinturón: si el modelo se
+  // extiende, se conservan solo las frases completas que caben en el tope.
+  texto = acotarTexto(texto, LARGO_MAXIMO_RESPUESTA);
 
   // Las tarjetas se deduplican por (métrica, período, empresa): una misma consulta
   // repetida en dos iteraciones no debe mostrar el dato dos veces.

@@ -27,8 +27,21 @@ const esquemaEnv = z.object({
   // responde 503 al postear un mensaje, pero el resto de la API arranca normal.
   ANTHROPIC_API_KEY: z.string().default(''),
   AGENTE_MODELO: z.string().default('claude-opus-5'),
-  AGENTE_MAX_ITERACIONES: z.coerce.number().int().positive().default(6),
-  AGENTE_MAX_TOKENS: z.coerce.number().int().positive().default(4096),
+  // Compuerta de intención: modelo barato que clasifica cada mensaje con salida estructurada antes
+  // de que corra el agente. Vacío = sin compuerta.
+  AGENTE_MODELO_COMPUERTA: z.string().default('claude-haiku-5-5'),
+  // Cada iteración es una llamada al modelo: 4 alcanzan para aclarar, consultar y redactar.
+  AGENTE_MAX_ITERACIONES: z.coerce.number().int().positive().default(4),
+  // Respuestas cortas por diseño: el texto final son pocas frases y las tools son bloques chicos.
+  AGENTE_MAX_TOKENS: z.coerce.number().int().positive().default(1000),
+
+  // true (default) = el asistente, las guardadas, el tablero y las descargas SOLO ven métricas
+  // certificadas. Es un filtro del código al construir el catálogo autorizado: ninguna
+  // instrucción en el chat puede saltárselo. false = también exploratorias, marcadas.
+  AGENTE_SOLO_CERTIFICADAS: z
+    .string()
+    .default('true')
+    .transform((v) => !['false', '0', 'no'].includes(v.trim().toLowerCase())),
 
   // Zona horaria del negocio: «hoy», «este mes» y las fechas de corte se calculan aquí, no en UTC.
   ZONA_HORARIA: z.string().default('America/Guatemala'),

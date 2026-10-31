@@ -208,6 +208,19 @@ preguntó fuera de su alcance, lo orienta a lo que sí puede obtener.
 Implementación: las métricas se exponen como **tools tipadas** (una por operación segura sobre
 la semántica). El LLM elige tool + parámetros; el **código valida y ejecuta**.
 
+#### Restricciones reales (código y API), no solo texto del prompt
+
+El prompt dice cómo comportarse; estas capas hacen que no haya alternativa:
+
+| Capa | Mecanismo | Qué garantiza |
+|---|---|---|
+| Compuerta de intención | Clasificador barato (`AGENTE_MODELO_COMPUERTA`, Haiku) con **salida estructurada** (`output_config.format`, enum cerrado) antes del agente | Saludos, temas ajenos y manipulación se contestan con **texto fijo del código**; el agente principal no corre (ni tokens ni margen de convencimiento) |
+| Catálogo autorizado | `resolverAlcance` lee solo `estado = 'certificada'` cuando `AGENTE_SOLO_CERTIFICADAS=true` (default) | El modelo **no ve** métricas no certificadas: no las puede nombrar ni consultar aunque el usuario insista |
+| Tools estrictas | `strict: true` + `additionalProperties: false` en cada tool, y Zod en el código | Argumentos válidos por construcción; nada fuera del contrato llega a SQL constante |
+| Topes de gasto | `max_tokens` 1000, 4 iteraciones, historial de 6 turnos, 3 conversaciones por usuario, 12 mensajes/min | Una pregunta = una respuesta; no hay hilos largos que pagar |
+| Cinturón de longitud | `acotarTexto` recorta a 900 caracteres en fin de frase | La respuesta es corta aunque el modelo se extienda |
+| Caché del prompt | Bloque estable del system con `cache_control: ephemeral`; el catálogo del usuario va aparte | Las reglas se pagan una vez por ventana de caché, no en cada turno |
+
 ### 7.3 Lo que el agente NO hace cuando el dato no está (frescura y demanda)
 
 El agente lee **solo Oro**. Bronce y Plata no se consultan por ningún motivo, y tampoco el ERP

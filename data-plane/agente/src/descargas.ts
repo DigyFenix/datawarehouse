@@ -90,6 +90,8 @@ export interface EntradaDescarga {
   usuarioId: number;
   empresas: Map<string, string>;
   params: unknown;
+  /** Misma configuración que el chat: solo certificadas. */
+  soloCertificadas?: boolean;
 }
 
 const NOMBRE_DIMENSION: Record<string, string> = {
@@ -145,7 +147,7 @@ export async function prepararDescarga(entrada: EntradaDescarga): Promise<Result
   }
   const p = v.data;
 
-  const alcance = await resolverAlcance(ejecutor, usuarioId);
+  const alcance = await resolverAlcance(ejecutor, usuarioId, { soloCertificadas: entrada.soloCertificadas });
   const universo = [...universoNombres.keys()];
   const empresas = empresasParaConsulta(alcance, p.empresa_id, universo);
   if (empresas === null) {

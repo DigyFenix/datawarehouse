@@ -33,8 +33,9 @@ import { ConversacionesService } from './conversaciones.service';
 import { proximaCarga, type ProximaCarga } from './frescura';
 import { SolicitudesService } from './solicitudes.service';
 
-/** Turnos de historial que se le dan al modelo como contexto (no todo el hilo). */
-const HISTORIAL_MAXIMO = 20;
+/** Turnos de historial que se le dan al modelo como contexto: solo los últimos 3 intercambios.
+ *  El chat no es conversacional: basta con lo justo para una aclaración («¿netas o brutas?»). */
+const HISTORIAL_MAXIMO = 6;
 
 /** 'YYYY-MM-DD' de un instante en la zona horaria del negocio (nunca UTC: a las 18:00 de
  *  Guatemala ya es «mañana» en UTC y «este mes» se corría al siguiente). */
@@ -118,6 +119,8 @@ export class AgenteService {
       frescura,
       proximaCarga: this.proximaCarga()?.texto ?? null,
       fechaActual: fechaLocal(new Date(), this.config.get('ZONA_HORARIA', { infer: true })),
+      soloCertificadas: this.soloCertificadas(),
+      modeloCompuerta: this.config.get('AGENTE_MODELO_COMPUERTA', { infer: true }) || null,
     };
 
     // (e) El loop del agente vive en @quilate/agente; aquí solo se inyectan datos y auditoría.
@@ -149,6 +152,11 @@ export class AgenteService {
     return { pool, ejecutor, empresas, frescura, proximaCarga: this.proximaCarga() };
   }
 
+  /** Configuración del tenant-host: solo métricas certificadas en toda lectura gobernada. */
+  soloCertificadas(): boolean {
+    return this.config.get('AGENTE_SOLO_CERTIFICADAS', { infer: true });
+  }
+
   /** Próxima carga programada según HORAS_CARGA, en la zona del negocio (null si no hay horario). */
   proximaCarga(): ProximaCarga | null {
     return proximaCarga(this.config.get('HORAS_CARGA', { infer: true }), this.config.get('ZONA_HORARIA', { infer: true }));
@@ -178,6 +186,7 @@ export class AgenteService {
       tool: consulta.tool,
       params: consulta.params,
       auditar: (evento: EventoAuditoria) => this.auditar(pool, usuario, evento, `guardada:${id}`, ip),
+      soloCertificadas: this.soloCertificadas(),
     });
 
     const avisos: string[] = [];

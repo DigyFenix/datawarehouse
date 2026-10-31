@@ -3,6 +3,7 @@
  * dos caminos nuevos que NO pasan por el modelo para ejecutarse (la descarga) o que
  * no consultan nada (la solicitud). Sin base de datos: ejecutor falso.
  */
+import { acotarTexto } from './agente';
 import { prepararDescarga, TOPE_FILAS_DESCARGA } from './descargas';
 import { ejecutarTool } from './tools/ejecutar';
 import type { AlcanceEfectivo, EjecutorSql, MetricaAutorizada } from './tipos';
@@ -168,5 +169,20 @@ describe('Descargas autoservicio — mismas guardas, sin modelo', () => {
     expect(r.ok).toBe(true);
     expect(r.hojas.map((h) => h.estado)).toEqual(['exploratoria', 'certificada']);
     expect(r.hojas[0]?.filas).toEqual([{ periodo: '2026-03', valor: 10 }]);
+  });
+});
+
+describe('Respuestas cortas — cinturón de longitud', () => {
+  it('deja pasar un texto corto tal cual', () => {
+    expect(acotarTexto('Ventas netas de octubre: 269.586, certificada.', 900)).toBe('Ventas netas de octubre: 269.586, certificada.');
+  });
+  it('recorta en el último fin de frase que cabe', () => {
+    const largo = `${'Primera frase con dato. '.repeat(30)}Última frase que no cabe`;
+    const r = acotarTexto(largo, 200);
+    expect(r.length).toBeLessThanOrEqual(200);
+    expect(r.endsWith('.')).toBe(true);
+  });
+  it('sin puntos, corta en seco y lo marca', () => {
+    expect(acotarTexto('x'.repeat(50), 20)).toBe(`${'x'.repeat(20)}…`);
   });
 });

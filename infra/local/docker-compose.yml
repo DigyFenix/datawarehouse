@@ -128,8 +128,11 @@ services:
       # al postear un mensaje; el resto de la API funciona igual.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AGENTE_MODELO: ${AGENTE_MODELO:-claude-opus-5}
-      AGENTE_MAX_ITERACIONES: ${AGENTE_MAX_ITERACIONES:-6}
-      AGENTE_MAX_TOKENS: ${AGENTE_MAX_TOKENS:-4096}
+      AGENTE_MODELO_COMPUERTA: ${AGENTE_MODELO_COMPUERTA:-claude-haiku-5-5}
+      AGENTE_MAX_ITERACIONES: ${AGENTE_MAX_ITERACIONES:-4}
+      AGENTE_MAX_TOKENS: ${AGENTE_MAX_TOKENS:-1000}
+      # true = solo métricas certificadas en chat, guardadas, tablero y descargas (filtro en código).
+      AGENTE_SOLO_CERTIFICADAS: ${AGENTE_SOLO_CERTIFICADAS:-true}
       # Rol de solo lectura `portal_lector` (RLS oro): mismo valor que crea el rol
       # en init/03_rol_lector.sh (servicio postgres, arriba en este archivo).
       PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD:-}

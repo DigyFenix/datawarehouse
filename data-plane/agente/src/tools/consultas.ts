@@ -170,6 +170,15 @@ export const SQL_METRICAS_CONSUMIBLES = `
    where estado in ('certificada', 'exploratoria')
 `;
 
+/** Variante estricta (configuración del host `AGENTE_SOLO_CERTIFICADAS`): ni las exploratorias
+ *  entran al alcance. El usuario no puede saltárselo porque no es una regla del prompt sino el
+ *  filtro con el que se construye el catálogo autorizado. */
+export const SQL_METRICAS_CERTIFICADAS = `
+  select clave, nombre_oficial, definicion_negocio, estado
+    from metadatos.catalogo_metricas
+   where estado = 'certificada'
+`;
+
 /** Glosario de negocio (global; el del tenant se administra en el portal admin). */
 export const SQL_GLOSARIO = `
   select termino, definicion, equivale_a

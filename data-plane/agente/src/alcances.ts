@@ -15,15 +15,22 @@ import {
   SQL_ALCANCES_USUARIO,
   SQL_DOMINIOS_METRICA,
   SQL_EMPRESAS_WAREHOUSE,
+  SQL_METRICAS_CERTIFICADAS,
   SQL_METRICAS_CONSUMIBLES,
   SQL_METRICAS_DESGLOSABLES,
   SQL_PERIODOS_METRICA,
 } from './tools/consultas';
 import type { AlcanceEfectivo, EjecutorSql, MetricaAutorizada } from './tipos';
 
+export interface OpcionesAlcance {
+  /** true = solo métricas `certificada` (las exploratorias quedan fuera del catálogo autorizado). */
+  soloCertificadas?: boolean;
+}
+
 export async function resolverAlcance(
   ejecutor: EjecutorSql,
   usuarioId: number,
+  opciones: OpcionesAlcance = {},
 ): Promise<AlcanceEfectivo> {
   const alcances = await ejecutor.consultarTenant(SQL_ALCANCES_USUARIO, [usuarioId]);
 
@@ -54,7 +61,10 @@ export async function resolverAlcance(
   }
 
   // GUARDA 2: solo métricas en estado consumible (certificada / exploratoria).
-  const consumibles = await ejecutor.consultarControl(SQL_METRICAS_CONSUMIBLES, []);
+  const consumibles = await ejecutor.consultarControl(
+    opciones.soloCertificadas ? SQL_METRICAS_CERTIFICADAS : SQL_METRICAS_CONSUMIBLES,
+    [],
+  );
   const dominios = await ejecutor.consultarTenant(SQL_DOMINIOS_METRICA, []);
   const dominioPorClave = new Map(
     dominios.map((d) => [String(d['metrica_clave']), String(d['dominio'])]),

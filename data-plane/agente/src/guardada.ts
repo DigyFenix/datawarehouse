@@ -48,6 +48,8 @@ export interface EntradaGuardada {
   tool: string;
   params: Record<string, unknown>;
   auditar: (evento: EventoAuditoria) => Promise<void>;
+  /** Misma configuración que el chat: solo certificadas. */
+  soloCertificadas?: boolean;
 }
 
 export interface ResultadoGuardada {
@@ -59,11 +61,11 @@ export interface ResultadoGuardada {
 }
 
 export async function ejecutarGuardada(entrada: EntradaGuardada): Promise<ResultadoGuardada> {
-  const { ejecutor, usuarioId, empresas, tool, params, auditar } = entrada;
+  const { ejecutor, usuarioId, empresas, tool, params, auditar, soloCertificadas } = entrada;
   if (!(TOOLS_GUARDABLES as readonly string[]).includes(tool)) {
     return { ok: false, motivo: `La consulta guardada usa una herramienta que no se puede reejecutar (${tool}).`, tarjetas: [] };
   }
-  const alcance = await resolverAlcance(ejecutor, usuarioId);
+  const alcance = await resolverAlcance(ejecutor, usuarioId, { soloCertificadas });
   const resultado = await ejecutarTool(tool, params, { ejecutor, alcance, empresas });
   await auditar({ ...resultado.auditoria, detalle: { ...resultado.auditoria.detalle, origen: 'consulta_guardada' } });
   if (resultado.esError || !resultado.conjunto) {

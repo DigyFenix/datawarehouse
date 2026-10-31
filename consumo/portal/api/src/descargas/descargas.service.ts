@@ -52,7 +52,7 @@ export class DescargasService {
   /** Qué puede descargar este usuario: sus métricas autorizadas agrupadas por módulo. */
   async catalogo(usuario: UsuarioPortal): Promise<CatalogoDescargas> {
     const ctx = await this.agente.contextoLectura(usuario);
-    const alcance = await resolverAlcance(ctx.ejecutor, usuario.id);
+    const alcance = await resolverAlcance(ctx.ejecutor, usuario.id, { soloCertificadas: this.agente.soloCertificadas() });
     const porDominio = new Map<string, MetricaDescargable[]>();
     for (const m of alcance.metricas.values()) {
       const dominio = m.dominio || 'otros';
@@ -85,7 +85,9 @@ export class DescargasService {
   /** Arma el .xlsx. 400 si la especificación no pasa las guardas (el motivo se le dice al usuario). */
   async excel(usuario: UsuarioPortal, params: unknown, ip: string | null): Promise<ArchivoDescarga> {
     const ctx = await this.agente.contextoLectura(usuario);
-    const resultado: ResultadoDescarga = await prepararDescarga({ ejecutor: ctx.ejecutor, usuarioId: usuario.id, empresas: ctx.empresas, params });
+    const resultado: ResultadoDescarga = await prepararDescarga({
+      ejecutor: ctx.ejecutor, usuarioId: usuario.id, empresas: ctx.empresas, params, soloCertificadas: this.agente.soloCertificadas(),
+    });
     await this.agente.auditarEvento(ctx.pool, usuario, resultado.auditoria, 'descarga', ip);
     if (!resultado.ok) throw new BadRequestException(resultado.motivo ?? 'No se pudo preparar la descarga.');
 
