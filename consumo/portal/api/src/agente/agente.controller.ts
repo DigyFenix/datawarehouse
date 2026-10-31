@@ -79,6 +79,18 @@ export class AgenteController {
     return this.conversaciones.eliminar(this.usuario(req), id);
   }
 
+  /** Consultas usadas y restantes de la conversación (contador del chat). */
+  @Get('conversaciones/:id/estado')
+  estadoConversacion(@Param('id', ParseIntPipe) id: number, @Req() req: RequestPortal) {
+    return this.agente.estadoConversacion(this.usuario(req), id);
+  }
+
+  /** Métricas que el usuario puede consultar, solo nombre y dominio (panel derecho del chat). */
+  @Get('metricas')
+  metricas(@Req() req: RequestPortal) {
+    return this.agente.metricasDisponibles(this.usuario(req));
+  }
+
   // ---------------------------------------------------------------- consultas guardadas
 
   @Get('consultas')

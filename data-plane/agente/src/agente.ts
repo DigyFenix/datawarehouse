@@ -25,7 +25,7 @@ import type {
 } from './tipos';
 
 /** Tope de caracteres de la respuesta en texto (la UI ya muestra tablas y tarjetas aparte). */
-export const LARGO_MAXIMO_RESPUESTA = 900;
+export const LARGO_MAXIMO_RESPUESTA = 1200;
 
 /** Recorta en el último fin de frase que cabe en `maximo`; si no hay ninguno, corta en seco con «…». */
 export function acotarTexto(texto: string, maximo: number): string {

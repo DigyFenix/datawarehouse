@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -7,6 +7,7 @@ import { EmptyComponent } from '../../ui/empty.component';
 import { IconComponent } from '../../ui/icon.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
 import { ToastService } from '../../core/toast.service';
+import { nombreDominio } from '../../core/dominios';
 import {
   ChatService,
   ConjuntoDatos,
@@ -14,7 +15,10 @@ import {
   ConsultaGuardada,
   Conversacion,
   EjecucionGuardada,
+  EstadoSesion,
   MensajeChat,
+  MetricaDisponible,
+  SugerenciaChat,
   VistaConsulta,
 } from './chat.service';
 import { DatosVisualComponent } from './datos-visual.component';
@@ -214,21 +218,80 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
 
           @if (error()) { <p class="error">{{ error() }}</p> }
 
-          <form class="redactar" (ngSubmit)="enviar()">
-            <textarea [(ngModel)]="borrador" name="borrador" rows="2" [disabled]="pensando()"
-                      placeholder="¿Cuáles fueron las ventas netas por cliente de este año?"
-                      (keydown.enter)="enviarConEnter($event)"></textarea>
-            <button type="submit" [disabled]="pensando() || !borrador.trim()">
-              {{ pensando() ? 'Enviando…' : 'Enviar' }}
-            </button>
-          </form>
+          @if (sugerencia(); as s) {
+            <div class="sugerencia" [class.sugerencia--tope]="s.tipo === 'limite_alcanzado'" role="status">
+              <app-icon name="info" [size]="15" />
+              <span>{{ s.texto }}</span>
+              <button type="button" class="pequeno" (click)="nuevaDesdeSugerencia()">Nueva consulta</button>
+              @if (s.tipo !== 'limite_alcanzado') {
+                <button type="button" class="pequeno secundario" (click)="sugerencia.set(null)">Seguir aquí</button>
+              }
+            </div>
+          }
+
+          @if (sesion()?.restantes === 0) {
+            <div class="tope">
+              <span>Esta consulta llegó a su tope de {{ sesion()?.limite }} mensajes.</span>
+              <button type="button" (click)="nuevaDesdeSugerencia()">Empezar una nueva consulta</button>
+            </div>
+          } @else {
+            <form class="redactar" (ngSubmit)="enviar()">
+              <textarea [(ngModel)]="borrador" name="borrador" rows="2" [disabled]="pensando()"
+                        placeholder="¿Cuáles fueron las ventas netas por cliente de este año?"
+                        (keydown.enter)="enviarConEnter($event)"></textarea>
+              <button type="submit" [disabled]="pensando() || !borrador.trim()">
+                {{ pensando() ? 'Enviando…' : 'Enviar' }}
+              </button>
+            </form>
+            @if (sesion(); as se) {
+              <p class="contador" [class.contador--aviso]="se.avisar">
+                {{ se.usados }} de {{ se.limite }} mensajes en esta consulta
+                @if (se.avisar) { · quedan {{ se.restantes }} }
+              </p>
+            }
+          }
         }
       </section>
+
+      <aside class="metricas" aria-label="Métricas disponibles">
+        <div class="metricas__cab">
+          <span class="eyebrow">Métricas disponibles</span>
+          <span class="hilos__conteo">{{ metricas().length }}</span>
+        </div>
+        <p class="metricas__ayuda">Puedo responder sobre estas métricas, por período, empresa o desglose.</p>
+        @for (g of metricasPorDominio(); track g.dominio) {
+          <div class="metricas__grupo">
+            <span class="metricas__dominio">{{ nombreDominio(g.dominio) }}</span>
+            <ul>
+              @for (m of g.metricas; track m.clave) {
+                <li><button type="button" class="metrica" (click)="usarMetrica(m)" [title]="'Preguntar por ' + m.nombre">{{ m.nombre }}</button></li>
+              }
+            </ul>
+          </div>
+        } @empty {
+          <p class="metricas__ayuda">Tu perfil aún no tiene métricas autorizadas.</p>
+        }
+      </aside>
     </div>
   `,
   styles: [
     `
-      .chat { display: grid; grid-template-columns: 260px 1fr; gap: var(--sp-4); height: calc(100vh - 170px); min-height: 460px; }
+      .chat { display: grid; grid-template-columns: 240px minmax(0, 1fr) 230px; gap: var(--sp-4); height: calc(100vh - 170px); min-height: 460px; }
+      .metricas { border-left: 1px solid var(--border); padding-left: var(--sp-3); overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
+      .metricas__cab { display: flex; align-items: center; justify-content: space-between; }
+      .metricas__ayuda { margin: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.5; }
+      .metricas__grupo { display: flex; flex-direction: column; gap: 2px; margin-top: var(--sp-2); }
+      .metricas__dominio { font-size: var(--fs-2xs); font-weight: 600; color: var(--faint); padding: 0 8px 2px; }
+      .metricas ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+      .metrica { width: 100%; min-height: 0; justify-content: flex-start; text-align: left; background: none; border: 0; color: var(--text); font-weight: 500; font-size: var(--fs-sm); padding: 6px 8px; border-radius: 8px; white-space: normal; line-height: 1.3; }
+      .metrica:hover { background: var(--brand-50); color: var(--brand-700); }
+      .sugerencia { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: var(--sp-2) var(--sp-3); border-radius: var(--r); background: var(--info-bg); color: var(--info); font-size: var(--fs-sm); }
+      .sugerencia span { flex: 1; min-width: 200px; }
+      .sugerencia app-icon { flex: none; }
+      .sugerencia--tope { background: var(--warn-bg); color: var(--warn); }
+      .tope { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; padding: var(--sp-3) var(--sp-4); border: 1px dashed var(--border-2); border-radius: var(--r-lg); background: var(--surface-2); font-size: var(--fs-sm); color: var(--muted); }
+      .contador { margin: 0; text-align: right; font-size: var(--fs-2xs); color: var(--faint); font-variant-numeric: tabular-nums; }
+      .contador--aviso { color: var(--warn); font-weight: 500; }
       .hilos { display: flex; flex-direction: column; gap: var(--sp-2); border-right: 1px solid var(--border); padding-right: var(--sp-3); overflow: hidden; }
       .nueva-consulta { width: 100%; justify-content: flex-start; margin-bottom: var(--sp-2); }
       .hilos__pestana { flex: 1; min-height: 0; background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 4px; color: var(--muted); font-size: var(--fs-sm); cursor: pointer; display: inline-flex; justify-content: center; gap: 6px; align-items: center; }
@@ -300,6 +363,7 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
       @keyframes latir { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
       @media (prefers-reduced-motion: reduce) { .puntos i { animation: none; opacity: .6; } }
 
+      @media (max-width: 1100px) { .chat { grid-template-columns: 240px minmax(0, 1fr); } .metricas { display: none; } }
       @media (max-width: 880px) {
         .chat { grid-template-columns: 1fr; height: auto; }
         .hilos { display: none; border-right: none; padding-right: 0; }
@@ -327,6 +391,15 @@ export class ChatbotComponent implements OnInit {
   readonly creando = signal(false);
   readonly error = signal<string | null>(null);
   readonly panelAbierto = signal(false);
+  readonly sesion = signal<EstadoSesion | null>(null);
+  readonly sugerencia = signal<SugerenciaChat | null>(null);
+  readonly metricas = signal<MetricaDisponible[]>([]);
+  readonly nombreDominio = nombreDominio;
+  readonly metricasPorDominio = computed(() => {
+    const grupos = new Map<string, MetricaDisponible[]>();
+    for (const m of this.metricas()) grupos.set(m.dominio, [...(grupos.get(m.dominio) ?? []), m]);
+    return [...grupos.entries()].map(([dominio, metricas]) => ({ dominio, metricas }));
+  });
   readonly sugerencias = signal<string[]>([
     '¿Cuáles fueron las ventas netas por mes de este año?',
     '¿Quiénes son mis 10 mejores clientes del año?',
@@ -366,6 +439,21 @@ export class ChatbotComponent implements OnInit {
       },
     });
     this.recargarGuardadas();
+    this.chat.metricas().subscribe({ next: (ms) => this.metricas.set(ms), error: () => undefined });
+  }
+
+  /** Clic en una métrica del panel: deja la pregunta lista en el compositor. */
+  usarMetrica(m: MetricaDisponible): void {
+    this.modo.set('chat');
+    this.borrador = `${m.nombre} de este año por mes`;
+  }
+
+  /** Abre una consulta nueva conservando lo que la persona estaba escribiendo. */
+  nuevaDesdeSugerencia(): void {
+    const borrador = this.borrador;
+    this.sugerencia.set(null);
+    this.nueva();
+    this.borrador = borrador;
   }
 
   // ---------------------------------------------------------------- conversaciones
@@ -376,6 +464,8 @@ export class ChatbotComponent implements OnInit {
     this.panelAbierto.set(false);
     this.cargandoMensajes.set(true);
     this.error.set(null);
+    this.sugerencia.set(null);
+    this.chat.estado(c.id).subscribe({ next: (e) => this.sesion.set(e), error: () => this.sesion.set(null) });
     this.chat.mensajes(c.id).subscribe({
       next: (ms) => {
         this.mensajes.set(ms);
@@ -397,6 +487,8 @@ export class ChatbotComponent implements OnInit {
         this.mensajes.set([]);
         this.activaId.set(c.id);
         this.modo.set('chat');
+        this.sesion.set(null);
+        this.sugerencia.set(null);
         this.creando.set(false);
         this.panelAbierto.set(false);
       },
@@ -473,8 +565,10 @@ export class ChatbotComponent implements OnInit {
     this.alFinal();
 
     this.chat.enviar(conversacion, texto).subscribe({
-      next: () => {
+      next: (r) => {
         this.pensando.set(false);
+        this.sesion.set(r.sesion);
+        this.sugerencia.set(r.sugerencia);
         this.chat.mensajes(conversacion).subscribe({
           next: (ms) => {
             this.mensajes.set(ms);

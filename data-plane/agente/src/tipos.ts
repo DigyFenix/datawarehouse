@@ -70,6 +70,8 @@ export interface ConjuntoDatos {
   titulo: string;
   metricaClave: string;
   metricaNombre: string;
+  /** Dominio de negocio de la métrica (ventas, tesoreria…): el host lo usa para detectar cambios de tema. */
+  dominio: string;
   estado: 'certificada' | 'exploratoria';
   /** Período o rango consultado, legible ('2026-01 a 2026-10', 'corte 2026-10-30'). */
   periodo: string;

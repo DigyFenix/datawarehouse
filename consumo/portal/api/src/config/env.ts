@@ -33,7 +33,12 @@ const esquemaEnv = z.object({
   // Cada iteración es una llamada al modelo: 4 alcanzan para aclarar, consultar y redactar.
   AGENTE_MAX_ITERACIONES: z.coerce.number().int().positive().default(4),
   // Respuestas cortas por diseño: el texto final son pocas frases y las tools son bloques chicos.
-  AGENTE_MAX_TOKENS: z.coerce.number().int().positive().default(1000),
+  AGENTE_MAX_TOKENS: z.coerce.number().int().positive().default(1200),
+  // Consultas (mensajes del usuario) por conversación. Al acercarse al tope el chat avisa cuántas
+  // quedan; al llegar, hay que abrir una nueva consulta (contexto limpio, costo acotado).
+  AGENTE_MENSAJES_POR_CONVERSACION: z.coerce.number().int().positive().default(20),
+  // Desde cuántas consultas restantes se muestra el aviso.
+  AGENTE_AVISO_RESTANTES: z.coerce.number().int().nonnegative().default(5),
 
   // true (default) = el asistente, las guardadas, el tablero y las descargas SOLO ven métricas
   // certificadas. Es un filtro del código al construir el catálogo autorizado: ninguna

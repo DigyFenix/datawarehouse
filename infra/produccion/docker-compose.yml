@@ -134,7 +134,9 @@ services:
       # Compuerta de intención con modelo barato; topes de iteraciones y tokens por respuesta.
       AGENTE_MODELO_COMPUERTA: ${AGENTE_MODELO_COMPUERTA:-claude-haiku-5-5}
       AGENTE_MAX_ITERACIONES: ${AGENTE_MAX_ITERACIONES:-4}
-      AGENTE_MAX_TOKENS: ${AGENTE_MAX_TOKENS:-1000}
+      AGENTE_MAX_TOKENS: ${AGENTE_MAX_TOKENS:-1200}
+      AGENTE_MENSAJES_POR_CONVERSACION: ${AGENTE_MENSAJES_POR_CONVERSACION:-20}
+      AGENTE_AVISO_RESTANTES: ${AGENTE_AVISO_RESTANTES:-5}
       PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD}
       # Mismo horario que el programador: el asistente y el inicio dicen cuándo llega la próxima carga.
       HORAS_CARGA: ${HORAS_CARGA:-05:00}

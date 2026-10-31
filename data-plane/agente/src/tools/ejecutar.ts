@@ -336,6 +336,7 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
     titulo: `${metrica.nombreOficial} por mes`,
     metricaClave: metrica.clave,
     metricaNombre: metrica.nombreOficial,
+    dominio: metrica.dominio,
     estado: metrica.estado,
     periodo: periodos.length ? `${periodos[0]} a ${periodos[periodos.length - 1]}` : 'sin datos',
     columnas: [
@@ -445,6 +446,7 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
     titulo: `${metrica.nombreOficial} · ${porSocio ? 'mayores socios' : 'antigüedad'}`,
     metricaClave: metrica.clave,
     metricaNombre: metrica.nombreOficial,
+    dominio: metrica.dominio,
     estado: metrica.estado,
     periodo: fechaCorte ? `corte ${fechaCorte}` : 'sin corte',
     columnas: [
@@ -576,6 +578,7 @@ async function consultarPorDimension(entrada: unknown, ctx: ContextoTool): Promi
     titulo: `${metrica.nombreOficial} por ${etiqueta.toLowerCase()} · ${p.orden === 'menor' ? 'menores' : 'mayores'} ${p.limite}`,
     metricaClave: metrica.clave,
     metricaNombre: metrica.nombreOficial,
+    dominio: metrica.dominio,
     estado: metrica.estado,
     periodo: rango,
     columnas: [

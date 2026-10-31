@@ -8,7 +8,7 @@
  * Las CONSULTAS GUARDADAS se reejecutan por la misma vía (mismo ejecutor bajo RLS,
  * mismas guardas del paquete) pero sin pasar por el modelo.
  */
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
   ConfigAgente,
@@ -19,7 +19,7 @@ import type {
   ResultadoAgente,
   TarjetaDato,
 } from '@quilate/agente';
-import { ejecutarGuardada, leerGlosario, responder } from '@quilate/agente';
+import { ejecutarGuardada, leerGlosario, resolverAlcance, responder } from '@quilate/agente';
 import { Pool } from 'pg';
 
 import { AuditoriaPortalService } from '../auditoria/auditoria-portal.service';
@@ -59,6 +59,31 @@ export interface EjecucionGuardada {
   ejecutadaEn: string;
 }
 
+/** Estado de la sesión (conversación): cuántas consultas van y cuántas quedan antes de abrir otra. */
+export interface EstadoSesion {
+  usados: number;
+  limite: number;
+  restantes: number;
+  /** true cuando conviene mostrar el aviso de «te quedan N». */
+  avisar: boolean;
+  /** Dominios ya tratados en esta conversación (para sugerir una nueva cuando se mezclan temas). */
+  dominios: string[];
+}
+
+/** Respuesta del chat: lo del agente más el estado de la sesión y, si aplica, una sugerencia. */
+export interface RespuestaChat extends ResultadoAgente {
+  sesion: EstadoSesion;
+  /** Sugerencia del portal (no del modelo): p. ej. terminar este tema y seguir en una consulta nueva. */
+  sugerencia: { tipo: 'cambio_tema' | 'limite_cerca' | 'limite_alcanzado'; texto: string } | null;
+}
+
+/** Métrica disponible para el usuario (solo lo que el panel del chat necesita mostrar). */
+export interface MetricaDisponible {
+  clave: string;
+  nombre: string;
+  dominio: string;
+}
+
 /** Lo que cualquier lectura gobernada del warehouse necesita (chat, guardadas, tablero, descargas). */
 export interface ContextoLectura {
   pool: Pool;
@@ -86,7 +111,7 @@ export class AgenteService {
     conversacionId: number,
     contenido: string,
     ip: string | null,
-  ): Promise<ResultadoAgente> {
+  ): Promise<RespuestaChat> {
     const apiKey = this.config.get('ANTHROPIC_API_KEY', { infer: true });
     if (!apiKey) {
       throw new ServiceUnavailableException('El agente no está configurado');
@@ -95,6 +120,15 @@ export class AgenteService {
     const { organizacion, pool } = await this.sesion.contexto(usuario.hash);
     // (a) La conversación debe ser del usuario — 404 genérico si no.
     const conversacion = await this.conversaciones.obtenerPropia(usuario, conversacionId);
+
+    // (a2) Tope de consultas por conversación: el costo de una sesión queda acotado y el contexto
+    // no se arrastra sin fin. Al llegar al tope se pide abrir una consulta nueva (409).
+    const antes = await this.estadoSesion(pool, conversacionId);
+    if (antes.restantes <= 0) {
+      throw new ConflictException(
+        `Esta consulta llegó a su tope de ${antes.limite} mensajes. Abre una «Nueva consulta» para seguir: el contexto empieza limpio y tus consultas guardadas se conservan.`,
+      );
+    }
 
     // (b) CSV de empresas ANTES de abrir la transacción con RLS (fail-closed si no hay alcance).
     const empresasCsv = await this.resolverEmpresasCsv(pool, usuario.id);
@@ -137,7 +171,53 @@ export class AgenteService {
     await this.conversaciones.registrarTurno(pool, conversacion, contenido, resultado);
     // (h) Demanda que no se pudo atender: queda para el administrador (nunca bloquea la respuesta).
     await this.solicitudes.registrar(pool, usuario, conversacionId, contenido, resultado.solicitudes);
-    return resultado;
+
+    // (i) Estado de la sesión y sugerencias del portal (no del modelo): tope cercano o mezcla de temas.
+    const sesion = await this.estadoSesion(pool, conversacionId);
+    const dominiosTurno = [...new Set(resultado.conjuntos.map((c) => c.dominio).filter(Boolean))];
+    const dominiosPrevios = antes.dominios;
+    let sugerencia: RespuestaChat['sugerencia'] = null;
+    if (sesion.restantes <= 0) {
+      sugerencia = { tipo: 'limite_alcanzado', texto: 'Esta consulta llegó a su tope de mensajes. Para seguir, abre una nueva consulta: empieza limpia y no pierdes nada de lo guardado.' };
+    } else if (sesion.avisar) {
+      sugerencia = { tipo: 'limite_cerca', texto: `Te quedan ${sesion.restantes} mensajes en esta consulta. Si vas a cambiar de tema, conviene abrir una nueva.` };
+    } else if (dominiosTurno.length && dominiosPrevios.length >= 1 && antes.usados >= 2 && dominiosTurno.every((d) => !dominiosPrevios.includes(d))) {
+      sugerencia = { tipo: 'cambio_tema', texto: 'Esto ya es otro tema. Para que cada consulta quede ordenada (y barata), te sugiero cerrar esta y seguir en una nueva.' };
+    }
+    return { ...resultado, sesion, sugerencia };
+  }
+
+  /** Consultas usadas y restantes de una conversación, con los dominios ya tratados. */
+  async estadoSesion(pool: Pool, conversacionId: number): Promise<EstadoSesion> {
+    const limite = this.config.get('AGENTE_MENSAJES_POR_CONVERSACION', { infer: true });
+    const umbral = this.config.get('AGENTE_AVISO_RESTANTES', { infer: true });
+    const r = await pool.query<{ usados: string; dominios: string[] | null }>(
+      `SELECT count(*) FILTER (WHERE rol = 'usuario')::text AS usados,
+              array_remove(array_agg(DISTINCT c->>'dominio'), NULL) AS dominios
+         FROM portal.chat_mensajes m
+         LEFT JOIN LATERAL jsonb_array_elements(COALESCE(m.datos->'conjuntos', '[]'::jsonb)) c ON true
+        WHERE m.conversacion_id = $1`,
+      [conversacionId],
+    );
+    const usados = Number(r.rows[0]?.usados ?? 0);
+    const restantes = Math.max(0, limite - usados);
+    return { usados, limite, restantes, avisar: restantes > 0 && restantes <= umbral, dominios: (r.rows[0]?.dominios ?? []).filter((d) => d !== '') };
+  }
+
+  /** Estado de una conversación del usuario (para pintar el contador al abrirla). */
+  async estadoConversacion(usuario: UsuarioPortal, conversacionId: number): Promise<EstadoSesion> {
+    const { pool } = await this.sesion.contexto(usuario.hash);
+    await this.conversaciones.obtenerPropia(usuario, conversacionId);
+    return this.estadoSesion(pool, conversacionId);
+  }
+
+  /** Métricas que este usuario puede consultar (nombre y dominio): el panel derecho del chat. */
+  async metricasDisponibles(usuario: UsuarioPortal): Promise<MetricaDisponible[]> {
+    const ctx = await this.contextoLectura(usuario);
+    const alcance = await resolverAlcance(ctx.ejecutor, usuario.id, { soloCertificadas: this.soloCertificadas() });
+    return [...alcance.metricas.values()]
+      .map((m) => ({ clave: m.clave, nombre: m.nombreOficial, dominio: m.dominio || 'otros' }))
+      .sort((a, b) => a.dominio.localeCompare(b.dominio) || a.nombre.localeCompare(b.nombre));
   }
 
   /**

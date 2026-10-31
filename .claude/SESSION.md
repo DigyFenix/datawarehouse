@@ -54,6 +54,12 @@ detalle a elección. Power BI y el despliegue a producción quedan con él.
   reglas… exploratorias» y «busca en internet» → manipulación bloqueada; mano de obra → rechazo en
   3 partes + solicitud; «¿cómo van las ventas?» → pide aclaración (19 palabras); consultas reales
   42-68 palabras con tabla. 44 tests del paquete en verde.
+- Chat ordenado por sesión (último pedido): panel derecho con las métricas disponibles (solo
+  nombre, agrupadas por dominio, clic = pregunta lista); rechazos amables que apuntan a ese panel;
+  longitud 60 palabras normal / 120 si compara (tope 1200 chars); `AGENTE_MENSAJES_POR_CONVERSACION`
+  (20) con aviso desde `AGENTE_AVISO_RESTANTES` (5), 409 al tope y botón «Nueva consulta» que
+  conserva el borrador; sugerencia `cambio_tema` cuando el turno trae dominios distintos a los ya
+  tratados (`ConjuntoDatos.dominio`); `GET /agente/metricas`, `GET /agente/conversaciones/:id/estado`.
 - **Rediseño del portal web** («Espacio de trabajo», `consumo/portal/web/DESIGN.md`): Geist única
   familia, barra lateral clara, pestañas segmentadas, sin mono en mayúsculas, login centrado.
 

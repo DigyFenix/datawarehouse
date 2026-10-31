@@ -32,6 +32,7 @@ export interface ConjuntoDatos {
   titulo: string;
   metricaClave: string;
   metricaNombre: string;
+  dominio?: string;
   estado: 'certificada' | 'exploratoria';
   periodo: string;
   unidad?: string;
@@ -61,11 +62,32 @@ export interface MensajeChat {
   creadoEn: string;
 }
 
+export interface EstadoSesion {
+  usados: number;
+  limite: number;
+  restantes: number;
+  avisar: boolean;
+  dominios: string[];
+}
+
+export interface SugerenciaChat {
+  tipo: 'cambio_tema' | 'limite_cerca' | 'limite_alcanzado';
+  texto: string;
+}
+
 export interface RespuestaAgente {
   texto: string;
   tarjetas: TarjetaDato[];
   conjuntos: ConjuntoDatos[];
   consultas: ConsultaEjecutada[];
+  sesion: EstadoSesion;
+  sugerencia: SugerenciaChat | null;
+}
+
+export interface MetricaDisponible {
+  clave: string;
+  nombre: string;
+  dominio: string;
 }
 
 export type VistaConsulta = 'tabla' | 'barras' | 'lineas';
@@ -128,6 +150,15 @@ export class ChatService {
 
   eliminar(id: number): Observable<void> {
     return this.api.delete<void>(`/agente/conversaciones/${id}`);
+  }
+
+  estado(id: number): Observable<EstadoSesion> {
+    return this.api.get<EstadoSesion>(`/agente/conversaciones/${id}/estado`);
+  }
+
+  /** Métricas que el usuario puede consultar (solo nombre y dominio). */
+  metricas(): Observable<MetricaDisponible[]> {
+    return this.api.get<MetricaDisponible[]>('/agente/metricas');
   }
 
   // ---- consultas guardadas

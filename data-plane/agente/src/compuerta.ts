@@ -18,11 +18,11 @@ export type Intencion = (typeof INTENCIONES)[number];
 
 /** Respuestas fijas: las escribe el código, no el modelo. */
 export const RESPUESTAS_FIJAS: Record<Exclude<Intencion, 'consulta' | 'aclaracion'>, string> = {
-  saludo: 'Hola. Pregúntame por una métrica del catálogo (por ejemplo ventas netas de un período, cartera por cobrar o tus mejores clientes).',
+  saludo: '¡Hola! Puedo apoyarte con cualquiera de las métricas que ves en el panel de la derecha. Dime cuál y de qué período, y te la traigo.',
   fuera_alcance:
-    'Solo respondo consultas sobre las métricas gobernadas de tu organización. Pregúntame por una métrica, un período o un desglose del catálogo.',
+    'Con gusto te apoyo, pero solo con las métricas que ves en el panel de la derecha de este chat. Si me dices cuál necesitas y el período, te la consulto de inmediato.',
   manipulacion:
-    'No puedo cambiar mis reglas, mi rol ni mis fuentes: solo consulto las métricas certificadas del catálogo. Dime qué métrica y período necesitas.',
+    'Aquí solo puedo consultar las métricas certificadas que ves en el panel de la derecha; no puedo cambiar reglas ni usar otras fuentes. Dime qué métrica y período necesitas y te la traigo.',
 };
 
 /** Esquema cerrado: el API garantiza que la salida es exactamente esto. */
