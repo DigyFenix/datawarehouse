@@ -5,6 +5,7 @@ import { ApiService } from '../../core/api.service';
 import { nombreDominio } from '../../core/dominios';
 import { Autorizacion, Hecho, Metrica, Rol } from '../../core/modelos';
 import { ToastService } from '../../core/toast.service';
+import { ConfirmService } from '../../ui/confirm.service';
 
 /**
  * Autorizaciones por rol: el control de AUTORIZACIÓN de la gobernanza (§12), que
@@ -42,7 +43,7 @@ import { ToastService } from '../../core/toast.service';
           >
             <span class="fila-rol__nombre">{{ r.nombre }}</span>
             <span class="fila-rol__desc">{{ r.descripcion ?? 'Sin descripción' }}</span>
-            <span class="fila-rol__cuenta">{{ conteo()[r.id] ?? 0 }}</span>
+            <span class="fila-rol__cuenta">{{ conteo()[r.id] || 0 }}</span>
           </button>
         } @empty {
           <div class="vacio"><strong>Sin roles</strong>El catálogo de roles está vacío.</div>
@@ -87,7 +88,7 @@ import { ToastService } from '../../core/toast.service';
                       </td>
                       <td><span class="badge badge--pill">{{ etiquetaPermiso(a.permiso) }}</span></td>
                       <td style="text-align:right;">
-                        <button class="secundario pequeno" (click)="quitar(a)">Quitar</button>
+                        <button class="secundario pequeno peligro" (click)="quitar(a)">Quitar</button>
                       </td>
                     </tr>
                   } @empty {
@@ -134,12 +135,21 @@ import { ToastService } from '../../core/toast.service';
                 </select>
               </div>
 
-              <button type="submit" [disabled]="guardando()">
+              <button type="submit" [disabled]="guardando()" [attr.aria-busy]="guardando()">
+                @if (guardando()) { <span class="spinner"></span> }
                 {{ guardando() ? 'Agregando…' : 'Agregar' }}
               </button>
             </form>
 
-            @if (nueva.recursoClave === '*') {
+            @if (nueva.recursoTipo === 'portal') {
+              <p class="aviso">
+                El tipo <strong>Portal</strong> no autoriza datos: describe qué pantallas de este
+                portal de administración puede usar el rol. <strong>Administración del portal</strong> cubre
+                organizaciones, usuarios, roles y conexiones; <strong>Tableros</strong> cubre la
+                administración del portal de usuario (tableros, logo, admin del cliente).
+                Con <strong>Todos</strong> se cubren ambas.
+              </p>
+            } @else if (nueva.recursoClave === '*') {
               <p class="aviso">
                 Con <strong>Todos</strong>, este rol queda autorizado sobre
                 {{ nueva.recursoTipo === 'metrica' ? 'todas las métricas' : 'todos los dominios' }},
@@ -163,7 +173,7 @@ import { ToastService } from '../../core/toast.service';
         color: var(--faint);
       }
       .intro strong {
-        color: var(--texto);
+        color: var(--text);
       }
       .disposicion {
         display: grid;
@@ -231,7 +241,7 @@ import { ToastService } from '../../core/toast.service';
         gap: 20px;
         flex-wrap: wrap;
         padding: 16px 18px;
-        border-bottom: 1px solid var(--borde);
+        border-bottom: 1px solid var(--border);
       }
       .firmante {
         display: flex;
@@ -251,7 +261,7 @@ import { ToastService } from '../../core/toast.service';
       }
       .firmante strong {
         display: block;
-        color: var(--texto);
+        color: var(--text);
         font-size: 13px;
       }
       .panel__cabecera h3 {
@@ -274,7 +284,7 @@ import { ToastService } from '../../core/toast.service';
         align-items: flex-end;
         flex-wrap: wrap;
         padding: 14px 18px;
-        border-top: 1px solid var(--borde);
+        border-top: 1px solid var(--border);
       }
       .alta .campo {
         flex: 1 1 160px;
@@ -288,7 +298,7 @@ import { ToastService } from '../../core/toast.service';
         color: var(--faint);
       }
       .aviso strong {
-        color: var(--texto);
+        color: var(--text);
       }
     `,
   ],
@@ -296,6 +306,7 @@ import { ToastService } from '../../core/toast.service';
 export class AutorizacionesComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+  private readonly confirmar = inject(ConfirmService);
 
   readonly roles = signal<Rol[]>([]);
   readonly metricas = signal<Metrica[]>([]);
@@ -380,7 +391,7 @@ export class AutorizacionesComponent implements OnInit {
     this.api.post('/autorizaciones', { rolId, ...this.nueva }).subscribe({
       next: () => {
         this.guardando.set(false);
-        this.toast.exito('Autorización agregada');
+        this.toast.exito('Autorización agregada', 'Aplica a quien tenga este rol desde su próxima consulta.');
         this.elegirRol(rolId);
       },
       error: (e: Error) => {
@@ -390,11 +401,19 @@ export class AutorizacionesComponent implements OnInit {
     });
   }
 
-  quitar(a: Autorizacion): void {
+  async quitar(a: Autorizacion): Promise<void> {
     const rolId = this.rolActivoId();
+    const recurso = a.recursoClave === '*' ? `todos los ${a.recursoTipo === 'metrica' ? 'métricas' : a.recursoTipo === 'dominio' ? 'dominios' : 'accesos del portal'}` : this.nombreRecurso(a.recursoTipo, a.recursoClave);
+    const ok = await this.confirmar.confirmar({
+      titulo: 'Quitar autorización',
+      mensaje: `${this.rolActivo()?.nombre ?? 'Este rol'} dejará de poder «${this.etiquetaPermiso(a.permiso).toLowerCase()}» sobre ${recurso}. Quien tenga el rol lo notará en su próxima consulta.`,
+      textoConfirmar: 'Quitar',
+      peligro: true,
+    });
+    if (!ok) return;
     this.api.delete(`/autorizaciones/${a.id}`).subscribe({
       next: () => {
-        this.toast.info('Autorización quitada');
+        this.toast.info('Autorización quitada', 'Si el rol se queda sin autorizaciones, nadie con ese rol podrá consultar.');
         if (rolId !== null) this.elegirRol(rolId);
       },
       error: (e: Error) => this.toast.error('No se pudo quitar', e.message),

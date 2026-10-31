@@ -94,14 +94,21 @@ export class PortalOrgService {
   /** ¿La base del tenant tiene aplicado el esquema portal (110)? ¿Ya hay admin? */
   async estado(orgId: number) {
     const { pool, baseDatos } = await this.poolDeOrganizacion(orgId);
-    const esquema = await pool.query(
-      `SELECT count(*)::int AS tablas
-         FROM information_schema.tables
-        WHERE table_schema = 'portal'`,
-    );
-    const tablas = (esquema.rows[0] as { tablas: number }).tablas;
+    let tablas = 0;
+    try {
+      const esquema = await pool.query(
+        `SELECT count(*)::int AS tablas
+           FROM information_schema.tables
+          WHERE table_schema = 'portal'`,
+      );
+      tablas = (esquema.rows[0] as { tablas: number }).tablas;
+    } catch (e) {
+      // 3D000 = la base del tenant no existe todavía: es un estado («falta provisionar»), no un error.
+      if ((e as { code?: string }).code !== '3D000') throw e;
+      return { baseDatos, baseExiste: false, esquemaAplicado: false, adminExiste: false, usuarios: 0, tableros: 0 };
+    }
     if (tablas === 0) {
-      return { baseDatos, esquemaAplicado: false, adminExiste: false, usuarios: 0, tableros: 0 };
+      return { baseDatos, baseExiste: true, esquemaAplicado: false, adminExiste: false, usuarios: 0, tableros: 0 };
     }
     const conteos = await pool.query(
       `SELECT
@@ -112,6 +119,7 @@ export class PortalOrgService {
     const fila = conteos.rows[0] as { usuarios: number; admins: number; tableros: number };
     return {
       baseDatos,
+      baseExiste: true,
       esquemaAplicado: true,
       adminExiste: fila.admins > 0,
       usuarios: fila.usuarios,

@@ -3,12 +3,20 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
+import { cronEnLenguaje } from '../../core/cron-legible';
 import { DrawerComponent } from '../../core/drawer.component';
 import { Dominio, PlanIngesta, PoliticaIngesta, Sociedad } from '../../core/modelos';
 import { OrganizacionService } from '../../core/organizacion.service';
 import { ToastService } from '../../core/toast.service';
+import { EmptyComponent } from '../../ui/empty.component';
 
 type Estrategia = PoliticaIngesta['estrategia'];
+
+/** Etiquetas legibles del tipo de objeto (la clave técnica no se le muestra al usuario). */
+const TIPOS_OBJETO: Record<'hecho' | 'maestro', string> = {
+  hecho: 'Hecho (movimientos)',
+  maestro: 'Maestro (catálogo)',
+};
 
 // Descripciones de las estrategias. Son comportamientos del MOTOR (código del worker),
 // un conjunto cerrado: no se crean desde el portal, solo se eligen.
@@ -64,7 +72,7 @@ interface FormPlan {
 @Component({
   selector: 'app-ingesta',
   standalone: true,
-  imports: [FormsModule, DrawerComponent, RouterLink],
+  imports: [FormsModule, DrawerComponent, RouterLink, EmptyComponent],
   template: `
     <div class="page-header">
       <div class="titulo-grupo">
@@ -110,7 +118,7 @@ interface FormPlan {
               <tr>
                 <td><strong>{{ p.nombreNegocio }}</strong><br /><code>{{ p.objeto }}</code></td>
                 <td>{{ nombreDominio(p.dominio) }}</td>
-                <td>{{ p.tipoObjeto }}</td>
+                <td>{{ etiquetaTipo(p.tipoObjeto) }}</td>
                 <td><span class="chip" [title]="ayudaEstrategia(p.estrategia)">{{ etiquetaEstrategia(p.estrategia) }}</span></td>
                 <td>
                   @if (p.estrategia === 'incremental_ventana') { {{ p.lookbackValor }} {{ p.lookbackUnidad }} · <code>{{ p.campoFecha }}</code> }
@@ -126,7 +134,7 @@ interface FormPlan {
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="7"><div class="vacio"><strong>Sin políticas</strong>Define cómo se extrae cada objeto de origen.</div></td></tr>
+              <tr><td colspan="7"><app-empty titulo="Esta organización no tiene políticas">Sin políticas no se extrae nada del ERP. Crea la primera con «+ Nueva política».</app-empty></td></tr>
             }
           </tbody>
         </table>
@@ -149,14 +157,14 @@ interface FormPlan {
             @for (pl of planes(); track pl.id) {
               <tr>
                 <td><strong>{{ pl.nombre }}</strong></td>
-                <td><code>{{ pl.cron }}</code></td>
+                <td><code>{{ pl.cron }}</code><br /><span class="sutil">{{ cronEnLenguaje(pl.cron) }}</span></td>
                 <td>{{ pl.empresas.join(', ') }}</td>
                 <td>{{ pl.objetos.length }} objeto(s)</td>
                 <td>{{ pl.encadenaTransformacion ? 'sí' : 'no' }}</td>
                 <td style="text-align:right;"><button class="secundario pequeno" (click)="editarPlan(pl)">Editar</button></td>
               </tr>
             } @empty {
-              <tr><td colspan="6"><div class="vacio"><strong>Sin planes</strong>Agrupa objetos en una corrida con horario.</div></td></tr>
+              <tr><td colspan="6"><app-empty titulo="Esta organización no tiene planes de corrida">Sin un plan, las políticas no se ejecutan solas. Agrupa objetos y sociedades en una corrida con horario.</app-empty></td></tr>
             }
           </tbody>
         </table>
@@ -174,13 +182,16 @@ interface FormPlan {
 
           <div class="grid2">
             <div class="campo">
-              <label>Dominio</label>
-              <select name="dominio" [(ngModel)]="fp.dominio" required>
+              <div class="label-fila">
+                <label for="p-dominio">Dominio</label>
+                @if (!agregandoDominio()) {
+                  <button type="button" class="enlace" (click)="agregandoDominio.set(true)">+ Nuevo dominio</button>
+                }
+              </div>
+              <select id="p-dominio" name="dominio" [(ngModel)]="fp.dominio" required>
                 @for (d of dominios(); track d.id) { <option [value]="d.clave">{{ d.nombre }}</option> }
               </select>
-              @if (!agregandoDominio()) {
-                <button type="button" class="enlace" (click)="agregandoDominio.set(true)">+ nuevo dominio</button>
-              } @else {
+              @if (agregandoDominio()) {
                 <div class="mini-form">
                   <input name="ndClave" [(ngModel)]="nuevoDom.clave" placeholder="clave (ej. inventario)" />
                   <input name="ndNombre" [(ngModel)]="nuevoDom.nombre" placeholder="Nombre visible" />
@@ -193,7 +204,7 @@ interface FormPlan {
             </div>
             <div class="campo"><label>Tipo</label>
               <select name="tipoObjeto" [(ngModel)]="fp.tipoObjeto" (ngModelChange)="onTipoChange()">
-                <option value="hecho">hecho</option><option value="maestro">maestro</option>
+                <option value="hecho">{{ TIPOS_OBJETO.hecho }}</option><option value="maestro">{{ TIPOS_OBJETO.maestro }}</option>
               </select>
             </div>
           </div>
@@ -201,7 +212,7 @@ interface FormPlan {
           <div class="campo">
             <label>Estrategia <span class="sutil">· definida por el motor</span></label>
             <select name="estrategia" [(ngModel)]="fp.estrategia">
-              @for (e of estrategiasDisponibles(); track e) { <option [value]="e">{{ ESTRATEGIAS[e].etiqueta }} ({{ e }})</option> }
+              @for (e of estrategiasDisponibles(); track e) { <option [value]="e">{{ ESTRATEGIAS[e].etiqueta }}</option> }
             </select>
             <p class="nota-estrategia">{{ ESTRATEGIAS[fp.estrategia].ayuda }}</p>
           </div>
@@ -239,9 +250,9 @@ interface FormPlan {
           </div>
 
           <div class="campo">
-            <label>Modelos dbt <span class="sutil">· transformación Bronze → Gold</span></label>
+            <label>Modelos de transformación <span class="sutil">· qué se recalcula después de extraer</span></label>
             <input name="modelosDbt" [(ngModel)]="fp.modelosDbt" placeholder="silver_socio_negocio+" />
-            <p class="sutil" style="margin-top:4px;">Selección de <code>dbt build --select</code>. El <code>+</code> final incluye lo que depende aguas abajo (snapshot, dimensión). Vacío = sin botón Transformar.</p>
+            <p class="sutil" style="margin-top:4px;">Nombre del modelo que transforma este objeto. Con <code>+</code> al final se recalcula también todo lo que depende de él (histórico, dimensión). Vacío = este objeto no tiene paso de transformación.</p>
           </div>
 
           <div class="campo"><label>Owner</label><input name="owner" [(ngModel)]="fp.owner" required placeholder="Equipo de datos" /></div>
@@ -250,7 +261,10 @@ interface FormPlan {
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="politicaAbierta.set(false)">Cancelar</button>
-            <button type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar' }}</button>
+            <button type="submit" [disabled]="guardando()" [attr.aria-busy]="guardando()">
+              @if (guardando()) { <span class="spinner"></span> }
+              {{ guardando() ? 'Guardando…' : 'Guardar' }}
+            </button>
           </div>
         </form>
       </app-drawer>
@@ -262,7 +276,12 @@ interface FormPlan {
         <form (ngSubmit)="guardarPlan()">
           <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="fpl.nombre" required placeholder="order-to-cash" [disabled]="!!planEdicionId()" /></div>
           <div class="campo"><label>Descripción</label><input name="descripcion" [(ngModel)]="fpl.descripcion" placeholder="Corrida diaria del corte order-to-cash" /></div>
-          <div class="campo"><label>Cron</label><input name="cron" [(ngModel)]="fpl.cron" required placeholder="0 5 * * *" /></div>
+          <div class="campo">
+            <label for="pl-cron">Horario (cron)</label>
+            <input id="pl-cron" name="cron" [(ngModel)]="fpl.cron" required placeholder="0 5 * * *" autocomplete="off" spellcheck="false" />
+            <p class="cron-legible">{{ cronEnLenguaje(fpl.cron) }}</p>
+            <span class="sutil">Formato: minuto · hora · día del mes · mes · día de la semana. Ejemplo: <code>0 5 * * 1-5</code> = de lunes a viernes a las 05:00.</span>
+          </div>
           <!-- Solo sociedades de la organización activa: el backend rechaza las ajenas,
                así que la UI no las ofrece. -->
           <div class="campo">
@@ -304,7 +323,10 @@ interface FormPlan {
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="planAbierto.set(false)">Cancelar</button>
-            <button type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar' }}</button>
+            <button type="submit" [disabled]="guardando()" [attr.aria-busy]="guardando()">
+              @if (guardando()) { <span class="spinner"></span> }
+              {{ guardando() ? 'Guardando…' : 'Guardar' }}
+            </button>
           </div>
         </form>
       </app-drawer>
@@ -324,6 +346,9 @@ interface FormPlan {
     .check { display:flex; align-items:center; gap:8px; font-size:13.5px; margin:8px 0; color:var(--muted); }
     .enlace { background:none; border:none; color:var(--brand-600,#2f6b3f); font-size:12.5px; cursor:pointer; padding:2px 6px; }
     .enlace:hover { text-decoration:underline; }
+    .label-fila { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .label-fila label { margin-bottom:6px; }
+    .cron-legible { margin:6px 0 4px; font-size:13px; color:var(--text); font-weight:500; }
     .nota-estrategia { margin:6px 0 0; font-size:12px; color:var(--muted); background:var(--surface-2,#f6f8f6); border-left:3px solid var(--brand-300,#8fb89a); padding:7px 10px; border-radius:0 6px 6px 0; }
     .mini-form { display:flex; flex-direction:column; gap:6px; margin-top:8px; padding:10px; border:1px dashed var(--border); border-radius:8px; }
     .mini-acciones { display:flex; gap:8px; justify-content:flex-end; }
@@ -368,6 +393,8 @@ export class IngestaComponent {
   readonly orgs = inject(OrganizacionService);
 
   readonly ESTRATEGIAS = ESTRATEGIAS;
+  readonly TIPOS_OBJETO = TIPOS_OBJETO;
+  readonly cronEnLenguaje = cronEnLenguaje;
 
   readonly politicas = signal<PoliticaIngesta[]>([]);
   readonly planes = signal<PlanIngesta[]>([]);
@@ -436,6 +463,9 @@ export class IngestaComponent {
   nombreDominio(clave: string): string {
     return this.dominios().find((d) => d.clave === clave)?.nombre ?? clave;
   }
+  etiquetaTipo(t: 'hecho' | 'maestro'): string {
+    return TIPOS_OBJETO[t];
+  }
   etiquetaEstrategia(e: Estrategia): string {
     return ESTRATEGIAS[e].etiqueta;
   }
@@ -483,7 +513,7 @@ export class IngestaComponent {
         this.dominios.update((a) => [...a, d].sort((x, y) => x.clave.localeCompare(y.clave)));
         this.fp.dominio = d.clave;
         this.cancelarDominio();
-        this.toast.exito('Dominio creado', d.nombre);
+        this.toast.exito('Dominio creado', `${d.nombre} ya está seleccionado en esta política.`);
       },
       error: (e: Error) => this.toast.error('No se pudo crear el dominio', e.message),
     });
@@ -553,7 +583,10 @@ export class IngestaComponent {
       : this.api.post<PoliticaIngesta>('/ingesta/politicas', cuerpo);
     accion.subscribe({
       next: (p) => {
-        this.toast.exito(id ? 'Política actualizada' : 'Política creada', p.objeto);
+        this.toast.exito(
+          id ? 'Política actualizada' : 'Política creada',
+          id ? p.objeto : `${p.objeto}. Siguiente paso: entra a «Campos» para elegir qué columnas se extraen.`,
+        );
         this.guardando.set(false);
         this.politicaAbierta.set(false);
         this.cargar();
@@ -627,7 +660,10 @@ export class IngestaComponent {
       : this.api.post<PlanIngesta>('/ingesta/planes', cuerpo);
     accion.subscribe({
       next: (pl) => {
-        this.toast.exito(id ? 'Plan actualizado' : 'Plan creado', pl.nombre);
+        this.toast.exito(
+          id ? 'Plan actualizado' : 'Plan creado',
+          `${pl.nombre}: ${cronEnLenguaje(pl.cron)}`,
+        );
         this.guardando.set(false);
         this.planAbierto.set(false);
         this.cargar();

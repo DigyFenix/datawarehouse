@@ -59,28 +59,6 @@ interface ResumenInicio {
       </aside>
     }
 
-    <!-- Accesos directos: lo que el usuario hace a diario, a un clic. -->
-    <section class="accesos">
-      <a class="acceso" [routerLink]="['/', tenant.hash(), 'tableros']">
-        <app-icon name="grafico" [size]="18" />
-        <span class="acceso__txt"><strong>Tableros</strong><span>{{ totalTableros() }} disponibles</span></span>
-      </a>
-      @if (tenant.moduloAsistente()) {
-        <a class="acceso" [routerLink]="['/', tenant.hash(), 'chatbot']">
-          <app-icon name="chatbot" [size]="18" />
-          <span class="acceso__txt"><strong>Asistente</strong><span>Pregunta por tus números</span></span>
-        </a>
-        <a class="acceso" [routerLink]="['/', tenant.hash(), 'mi-tablero']">
-          <app-icon name="tablero" [size]="18" />
-          <span class="acceso__txt"><strong>Mi tablero</strong><span>Tus consultas fijadas, con datos frescos</span></span>
-        </a>
-      }
-      <a class="acceso" [routerLink]="['/', tenant.hash(), 'descargas']">
-        <app-icon name="descargar" [size]="18" />
-        <span class="acceso__txt"><strong>Descargas</strong><span>Métricas a Excel, con su ficha</span></span>
-      </a>
-    </section>
-
     @if (recientes().length) {
       <section class="grupo">
         <h3 class="grupo__titulo">Seguir donde quedaste</h3>
@@ -140,17 +118,6 @@ interface ResumenInicio {
       .estado__item[data-estado='Atrasado'] .punto { background: var(--warn); }
       .estado__item[data-estado='Desactualizado'] .punto { background: var(--danger); }
 
-      .accesos { margin-top: var(--sp-4); display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); }
-      .acceso {
-        display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r); text-decoration: none; color: var(--text);
-        background: var(--brand-50); border: 1px solid transparent; transition: border-color .12s, background .12s;
-      }
-      .acceso:hover { border-color: var(--brand-300); background: var(--brand-100); }
-      .acceso app-icon { color: var(--brand-600); flex: none; }
-      .acceso__txt { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-      .acceso__txt strong { font-weight: 600; font-size: var(--fs-base); }
-      .acceso__txt span { color: var(--muted); font-size: var(--fs-xs); }
-
       .recientes { display: flex; flex-wrap: wrap; gap: 8px; }
       .reciente {
         display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: var(--surface);
@@ -182,7 +149,6 @@ export class InicioComponent implements OnInit {
   readonly cargandoTableros = signal(true);
   readonly frescura = computed(() => this.resumen()?.frescura ?? []);
   readonly grupos = computed(() => agruparTableros(this.tableros()));
-  readonly totalTableros = computed(() => this.tableros().length);
   readonly recientes = computed(() => (this.resumen()?.recientes ?? []).slice(0, 6));
 
   ngOnInit(): void {

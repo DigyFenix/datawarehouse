@@ -7,6 +7,15 @@ import { ApiService } from '../../core/api.service';
 import { CampoIngesta, CanonicoCampo, PoliticaIngesta, Sociedad } from '../../core/modelos';
 import { OrganizacionService } from '../../core/organizacion.service';
 import { ToastService } from '../../core/toast.service';
+import { EmptyComponent } from '../../ui/empty.component';
+
+/** Resultado del último paso ejecutado, para que quede a la vista y no solo en un toast. */
+interface ResultadoPaso {
+  paso: 'descubrir' | 'extraer' | 'transformar';
+  ok: boolean;
+  texto: string;
+  cuando: Date;
+}
 
 /**
  * Pantalla de asignación de campos por entidad (patrón reutilizable "incluir / no incluir"):
@@ -15,7 +24,7 @@ import { ToastService } from '../../core/toast.service';
 @Component({
   selector: 'app-campos',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, EmptyComponent],
   template: `
     <div class="page-header">
       <div class="titulo-grupo">
@@ -36,22 +45,54 @@ import { ToastService } from '../../core/toast.service';
       </div>
     </div>
 
-    <div class="descubrir">
-      <span>Descubrir columnas del origen para:</span>
-      <select [(ngModel)]="sociedadSel">
-        <option value="" disabled>Elige sociedad…</option>
-        @for (s of sociedades(); track s.id) { <option [value]="s.empresaId">{{ s.nombre }} ({{ s.empresaId }})</option> }
-      </select>
-      <button (click)="descubrir()" [disabled]="!sociedadSel || descubriendo() || extrayendo()">
-        {{ descubriendo() ? 'Descubriendo…' : 'Descubrir campos' }}
-      </button>
-      <button class="secundario" (click)="extraer()" [disabled]="!sociedadSel || descubriendo() || extrayendo() || transformando()">
-        {{ extrayendo() ? 'Extrayendo…' : 'Extraer a Bronze' }}
-      </button>
-      <button class="secundario" (click)="transformarObjeto()" [disabled]="descubriendo() || extrayendo() || transformando()">
-        {{ transformando() ? 'Transformando…' : 'Transformar (Bronze → Gold)' }}
-      </button>
-      <span class="sutil">Descubrir llena esta lista. Extraer trae los campos incluidos al Bronze. Transformar corre dbt hasta Gold.</span>
+    <div class="tarjeta pasos">
+      <div class="pasos__cab">
+        <label for="sociedad">Sociedad con la que se trabaja</label>
+        <select id="sociedad" [(ngModel)]="sociedadSel">
+          <option value="" disabled>Elige una sociedad…</option>
+          @for (s of sociedades(); track s.id) { <option [value]="s.empresaId">{{ s.nombre }} ({{ s.empresaId }})</option> }
+        </select>
+        @if (!sociedades().length) { <span class="sutil">Esta organización no tiene sociedades registradas: agrégalas en Sociedades antes de continuar.</span> }
+      </div>
+      <ol class="pasos__lista">
+        <li class="paso" [class.paso--hecho]="ultimo()?.paso === 'descubrir' && ultimo()?.ok">
+          <div class="paso__texto">
+            <strong>Descubrir columnas</strong>
+            <span>Lee del ERP qué columnas tiene este objeto y llena la lista de abajo.</span>
+          </div>
+          <button (click)="descubrir()" [disabled]="!sociedadSel || ocupado()" [attr.aria-busy]="descubriendo()">
+            @if (descubriendo()) { <span class="spinner"></span> Descubriendo… } @else { Descubrir }
+          </button>
+          @if (!sociedadSel) { <span class="paso__motivo">Elige una sociedad primero</span> }
+        </li>
+        <li class="paso" [class.paso--hecho]="ultimo()?.paso === 'extraer' && ultimo()?.ok">
+          <div class="paso__texto">
+            <strong>Extraer datos</strong>
+            <span>Trae al almacén las columnas marcadas como incluidas, con la estrategia de la política.</span>
+          </div>
+          <button class="secundario" (click)="extraer()" [disabled]="!sociedadSel || ocupado() || !incluidos()" [attr.aria-busy]="extrayendo()">
+            @if (extrayendo()) { <span class="spinner"></span> Extrayendo… } @else { Extraer }
+          </button>
+          @if (!sociedadSel) { <span class="paso__motivo">Elige una sociedad primero</span> }
+          @else if (!incluidos()) { <span class="paso__motivo">No hay columnas incluidas todavía</span> }
+        </li>
+        <li class="paso" [class.paso--hecho]="ultimo()?.paso === 'transformar' && ultimo()?.ok">
+          <div class="paso__texto">
+            <strong>Transformar</strong>
+            <span>Recalcula las capas plata y oro para este objeto; es lo que ven los tableros y el asistente.</span>
+          </div>
+          <button class="secundario" (click)="transformarObjeto()" [disabled]="ocupado()" [attr.aria-busy]="transformando()">
+            @if (transformando()) { <span class="spinner"></span> Transformando… } @else { Transformar }
+          </button>
+        </li>
+      </ol>
+      @if (ultimo(); as u) {
+        <div class="resultado" [class.resultado--error]="!u.ok" role="status">
+          <strong>{{ u.ok ? 'Último paso' : 'Último paso falló' }} · {{ nombrePaso(u.paso) }}</strong>
+          <span>{{ u.texto }}</span>
+          <span class="sutil">{{ u.cuando.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }) }}</span>
+        </div>
+      }
     </div>
 
     <div class="filtros">
@@ -78,17 +119,16 @@ import { ToastService } from '../../core/toast.service';
       </div>
     }
 
-    <p class="nota">
-      Marca qué columnas entran al flujo (<strong>Incluir</strong>) y a qué campo canónico se
-      mapean (<strong>Mapea a</strong>). Ej.: si <code>Territory</code> viene vacío, mapea
-      <code>region</code> desde el UDF correcto. Mapear un campo lo incluye automáticamente.
-      Las <span class="badge sug">sugeridas</span> las recomienda el motor.
-      <br />
-      Cada campo canónico admite <strong>una sola</strong> columna de origen: el desplegable
-      ofrece los que están sin asignar y muestra los ya tomados en gris con la columna que los
-      ocupa. Para reasignar uno, ponlo en <em>extra · solo Bronze</em> en la otra fila y vuelve
-      a quedar libre. El <code>*</code> marca los campos requeridos de la entidad.
-    </p>
+    <details class="nota">
+      <summary>¿Qué significa cada columna?</summary>
+      <ul>
+        <li><strong>Incluir</strong>: la columna entra al flujo de extracción. Mapear un campo la incluye automáticamente.</li>
+        <li><strong>Columna</strong>: nombre en el ERP. <span class="badge udf">UDF</span> = campo de usuario; <span class="badge sug">sugerido</span> = el motor recomienda incluirla; <span class="badge nodata">sin datos</span> = vino vacía en la sociedad consultada.</li>
+        <li><strong>Mapea a</strong>: a qué campo del modelo canónico (capa plata) corresponde. Ejemplo: si <code>Territory</code> viene vacío, mapea <code>region</code> desde el campo de usuario correcto.</li>
+        <li>Cada campo canónico admite <strong>una sola</strong> columna de origen: el desplegable ofrece los libres y muestra en gris los ya tomados, con la columna que los ocupa. Para reasignar uno, pon la otra fila en <em>extra · solo almacén crudo</em> y vuelve a quedar libre. El <code>*</code> marca los campos requeridos.</li>
+        <li><strong>Transformación</strong>: cómo se convierte el valor al pasar a la capa plata (directo, sí/no a booleano, signo de nota de crédito, fecha, número, región).</li>
+      </ul>
+    </details>
 
     @for (grupo of grupos(); track grupo.tabla) {
       <div class="tarjeta grupo">
@@ -136,7 +176,7 @@ import { ToastService } from '../../core/toast.service';
                          mismo campo canónico sin que el destino desaparezca sin explicación. -->
                     <select class="map-sel" [class.dup]="duplicado(c)"
                             [ngModel]="c.campoCanonico ?? ''" (ngModelChange)="mapear(c, $event)">
-                      <option value="">— extra · solo Bronze —</option>
+                      <option value="">— extra · solo almacén crudo —</option>
                       @if (disponiblesDe(c).length) {
                         <optgroup label="Sin asignar">
                           @for (cn of disponiblesDe(c); track cn.id) {
@@ -172,7 +212,15 @@ import { ToastService } from '../../core/toast.service';
         </div>
       </div>
     } @empty {
-      <div class="tarjeta"><div class="vacio"><strong>Sin campos</strong>Esta entidad no tiene campos configurados aún.</div></div>
+      <div class="tarjeta">
+        @if (!campos().length) {
+          <app-empty titulo="Todavía no se han descubierto columnas">Elige una sociedad y pulsa «Descubrir» (paso 1) para leer las columnas de este objeto desde el ERP.</app-empty>
+        } @else if (filtroSig().trim()) {
+          <app-empty titulo="Ninguna columna coincide con la búsqueda">Prueba con otro nombre o cambia el filtro de arriba.</app-empty>
+        } @else {
+          <app-empty titulo="No hay columnas en esta vista">Cambia el filtro (Sugeridos, Con datos, Incluidos, Todos) para ver el resto.</app-empty>
+        }
+      </div>
     }
   `,
   styles: [`
@@ -182,8 +230,23 @@ import { ToastService } from '../../core/toast.service';
     .barra { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:4px 0 10px; }
     .buscar { flex:1; max-width:420px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13.5px; }
     .acciones { display:flex; gap:8px; }
-    .descubrir { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--surface-2,#f6f8f6); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin:0 0 14px; font-size:13px; color:var(--muted); }
-    .descubrir select { padding:6px 10px; border:1px solid var(--border); border-radius:8px; }
+    .pasos { margin:0 0 14px; display:flex; flex-direction:column; gap:12px; }
+    .pasos__cab { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .pasos__cab label { font-size:var(--fs-sm); font-weight:500; }
+    .pasos__cab select { width:auto; min-width:260px; }
+    .pasos__lista { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; counter-reset:paso; }
+    .paso { counter-increment:paso; position:relative; display:flex; flex-direction:column; gap:8px; padding:12px 12px 12px 44px; border:1px solid var(--border); border-radius:10px; background:var(--surface-2); }
+    .paso::before { content:counter(paso); position:absolute; left:12px; top:12px; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:600; background:var(--surface); border:1px solid var(--border-2); color:var(--muted); }
+    .paso--hecho::before { background:var(--ok-bg); color:var(--ok); border-color:transparent; }
+    .paso__texto { display:flex; flex-direction:column; gap:2px; font-size:12.5px; color:var(--muted); }
+    .paso__texto strong { color:var(--text); font-size:13px; }
+    .paso button { align-self:flex-start; }
+    .paso__motivo { font-size:11.5px; color:var(--muted); }
+    .resultado { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; padding:10px 12px; border-radius:8px; background:var(--ok-bg); color:var(--text); font-size:13px; }
+    .resultado strong { color:var(--ok); }
+    .resultado--error { background:var(--danger-bg); }
+    .resultado--error strong { color:var(--danger); }
+    @media (max-width: 900px) { .pasos__lista { grid-template-columns:1fr; } }
     .filtros { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
     .filtro-chip { display:inline-flex; align-items:center; gap:6px; background:var(--surface,#fff); border:1px solid var(--border); border-radius:20px; padding:5px 12px; font-size:12.5px; color:var(--muted); cursor:pointer; }
     .filtro-chip:hover { border-color:var(--brand-400,#6fa17d); }
@@ -196,6 +259,8 @@ import { ToastService } from '../../core/toast.service';
     .cob-chip.ok { border-style:solid; border-color:transparent; background:color-mix(in srgb, var(--marca) 12%, #fff); color:var(--brand-700); }
     .cob-chip .req { color:var(--danger); margin-left:1px; }
     .nota { font-size:12.5px; color:var(--muted); margin:0 0 16px; max-width:820px; }
+    .nota summary { cursor:pointer; font-weight:500; color:var(--text); }
+    .nota ul { margin:8px 0 0; padding-left:18px; display:flex; flex-direction:column; gap:4px; line-height:1.5; }
     .tipo { font-size:10.5px; color:var(--faint); font-family:var(--mono,monospace); margin-left:6px; }
     .map-sel { padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; max-width:220px; background:var(--surface,#fff); }
     .map-sel.dup { border-color:var(--danger,#b23b3b); }
@@ -236,6 +301,8 @@ export class CamposComponent implements OnInit {
   readonly extrayendo = signal(false);
   readonly transformando = signal(false);
   readonly nuevoCanonicoEnt = signal<string | null>(null);
+  readonly ultimo = signal<ResultadoPaso | null>(null);
+  readonly ocupado = computed(() => this.descubriendo() || this.extrayendo() || this.transformando());
   filtro = '';
   sociedadSel = '';
   ncNombre = '';
@@ -375,6 +442,14 @@ export class CamposComponent implements OnInit {
     this.cargar();
   }
 
+  nombrePaso(paso: ResultadoPaso['paso']): string {
+    return { descubrir: 'Descubrir columnas', extraer: 'Extraer datos', transformar: 'Transformar' }[paso];
+  }
+
+  private registrar(paso: ResultadoPaso['paso'], ok: boolean, texto: string): void {
+    this.ultimo.set({ paso, ok, texto, cuando: new Date() });
+  }
+
   descubrir(): void {
     if (!this.sociedadSel) return;
     this.descubriendo.set(true);
@@ -386,14 +461,14 @@ export class CamposComponent implements OnInit {
       .subscribe({
         next: (r) => {
           this.descubriendo.set(false);
-          this.toast.exito(
-            'Introspección completa',
-            `${r.descubiertos} columnas · ${r.sugeridos} sugeridas · ${r.con_datos} con datos`,
-          );
+          const texto = `${r.descubiertos} columnas · ${r.sugeridos} sugeridas · ${r.con_datos} con datos`;
+          this.registrar('descubrir', true, texto);
+          this.toast.exito('Columnas descubiertas', `${texto}. Siguiente paso: marca las que se incluyen y pulsa Extraer.`);
           this.cargar();
         },
         error: (e: Error) => {
           this.descubriendo.set(false);
+          this.registrar('descubrir', false, e.message);
           this.toast.error('No se pudo descubrir', e.message);
         },
       });
@@ -411,10 +486,13 @@ export class CamposComponent implements OnInit {
       .subscribe({
         next: (r) => {
           this.extrayendo.set(false);
-          this.toast.exito('Extracción a Bronze completa', `${r.filas} filas · ${r.estrategia}`);
+          const texto = `${r.filas} filas extraídas de ${this.sociedadSel}`;
+          this.registrar('extraer', true, texto);
+          this.toast.exito('Extracción completa', `${texto}. Siguiente paso: Transformar para que lleguen a los tableros.`);
         },
         error: (e: Error) => {
           this.extrayendo.set(false);
+          this.registrar('extraer', false, e.message);
           this.toast.error('No se pudo extraer', e.message);
         },
       });
@@ -431,10 +509,13 @@ export class CamposComponent implements OnInit {
       .subscribe({
         next: (r) => {
           this.transformando.set(false);
-          this.toast.exito('Transformación completa', `dbt build · ${r.nodos} modelo(s) · ${r.selector}`);
+          const texto = `${r.nodos} modelo(s) recalculados`;
+          this.registrar('transformar', true, texto);
+          this.toast.exito('Transformación completa', `${texto}. Los tableros y el asistente ya ven los datos nuevos.`);
         },
         error: (e: Error) => {
           this.transformando.set(false);
+          this.registrar('transformar', false, e.message);
           this.toast.error('No se pudo transformar', e.message);
         },
       });

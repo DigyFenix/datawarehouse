@@ -1,10 +1,13 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
 import { Hecho, Metrica, MetricaDetalle, PendienteVoto, VersionMetrica } from '../../core/modelos';
 import { ToastService } from '../../core/toast.service';
+import { ConfirmService } from '../../ui/confirm.service';
+import { EmptyComponent } from '../../ui/empty.component';
+import { PageHeaderComponent } from '../../ui/page-header.component';
 
 interface FormMetrica {
   clave: string;
@@ -19,15 +22,11 @@ interface FormMetrica {
 @Component({
   selector: 'app-metricas',
   standalone: true,
-  imports: [FormsModule, DrawerComponent],
+  imports: [FormsModule, DrawerComponent, PageHeaderComponent, EmptyComponent],
   template: `
-    <div class="page-header">
-      <div class="titulo-grupo">
-        <span class="eyebrow">Capa semántica</span>
-        <h2>Catálogo de métricas</h2>
-      </div>
-      <button (click)="nueva()">+ Nueva métrica</button>
-    </div>
+    <app-page-header eyebrow="Capa semántica" titulo="Catálogo de métricas">
+      <button acciones (click)="nueva()">+ Nueva métrica</button>
+    </app-page-header>
 
     @if (pendientes().length) {
       <div class="tarjeta pendientes">
@@ -50,18 +49,24 @@ interface FormMetrica {
       </div>
     }
 
-    <div class="tarjeta" style="padding:0;">
+    <div class="barra-lista">
+      <input class="buscador" type="search" [(ngModel)]="filtroTexto" (ngModelChange)="filtro.set($event)"
+             placeholder="Buscar por nombre, clave, origen o estado…" aria-label="Buscar métrica" />
+      <span class="sutil">{{ metricasFiltradas().length }} de {{ metricas().length }}</span>
+    </div>
+
+    <div class="tarjeta tarjeta--tabla">
       <div class="tabla-wrap">
         <table>
           <thead><tr><th>Métrica</th><th>Origen</th><th>Estado</th><th></th></tr></thead>
           <tbody>
-            @for (m of metricas(); track m.id) {
+            @for (m of metricasFiltradas(); track m.id) {
               <tr>
                 <td>
                   <div><strong>{{ m.nombreOficial }}</strong></div>
                   <code style="font-size:12px; color:var(--muted);">{{ m.clave }}</code>
                 </td>
-                <td><code>{{ m.hechoOrigen }}</code></td>
+                <td>{{ nombreHecho(m.hechoOrigen) }}<br /><code style="font-size:11.5px; color:var(--muted);">{{ m.hechoOrigen }}</code></td>
                 <td><span class="badge badge--{{ m.estado }}">{{ etiqueta(m.estado) }}</span></td>
                 <td style="text-align:right; white-space:nowrap;">
                   <button class="secundario pequeno" (click)="editar(m)">Editar</button>
@@ -72,7 +77,13 @@ interface FormMetrica {
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="4"><div class="vacio"><strong>Sin métricas</strong>Define la primera con “Nueva métrica”.</div></td></tr>
+              <tr><td colspan="4">
+                @if (metricas().length) {
+                  <app-empty titulo="Ninguna métrica coincide con la búsqueda">Prueba con otro nombre, clave u origen.</app-empty>
+                } @else {
+                  <app-empty titulo="Todavía no hay métricas">El catálogo está vacío: define la primera con «+ Nueva métrica».</app-empty>
+                }
+              </td></tr>
             }
           </tbody>
         </table>
@@ -90,7 +101,7 @@ interface FormMetrica {
           <div class="campo">
             <label>Hecho de origen</label>
             <select name="hecho" [(ngModel)]="form.hechoOrigen" [disabled]="!!edicionId()">
-              @for (h of hechos(); track h.clave) { <option [value]="h.clave">{{ h.clave }}</option> }
+              @for (h of hechos(); track h.clave) { <option [value]="h.clave">{{ h.nombreNegocio }} ({{ h.clave }})</option> }
             </select>
           </div>
           <div class="campo">
@@ -128,7 +139,10 @@ interface FormMetrica {
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="formAbierto.set(false)">Cancelar</button>
-            <button type="submit" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar' }}</button>
+            <button type="submit" [disabled]="guardando()" [attr.aria-busy]="guardando()">
+              @if (guardando()) { <span class="spinner"></span> }
+              {{ guardando() ? 'Guardando…' : 'Guardar' }}
+            </button>
           </div>
         </form>
       </app-drawer>
@@ -169,11 +183,17 @@ interface FormMetrica {
             }
             <div class="version__acciones">
               @if (v.estado === 'borrador') {
-                <button class="pequeno" (click)="enviarRevision(d.id, v.id)">Enviar a revisión</button>
+                <button class="pequeno" (click)="enviarRevision(d.id, v.id)" [disabled]="ocupada() !== null" [attr.aria-busy]="ocupada() === 'enviar-' + v.id">
+                  @if (ocupada() === 'enviar-' + v.id) { <span class="spinner"></span> Enviando… } @else { Enviar a revisión }
+                </button>
               }
               @if (v.estado === 'en_revision' && puedeVotar(v)) {
-                <button class="pequeno" (click)="votar(v.id, true)">Aprobar</button>
-                <button class="pequeno peligro" (click)="votar(v.id, false)">Rechazar</button>
+                <button class="pequeno" (click)="votar(v.id, true)" [disabled]="ocupada() !== null" [attr.aria-busy]="ocupada() === 'aprobar-' + v.id">
+                  @if (ocupada() === 'aprobar-' + v.id) { <span class="spinner"></span> Aprobando… } @else { Aprobar }
+                </button>
+                <button class="pequeno peligro" (click)="votar(v.id, false)" [disabled]="ocupada() !== null" [attr.aria-busy]="ocupada() === 'rechazar-' + v.id">
+                  @if (ocupada() === 'rechazar-' + v.id) { <span class="spinner"></span> Rechazando… } @else { Rechazar }
+                </button>
               }
             </div>
           </div>
@@ -182,11 +202,16 @@ interface FormMetrica {
         <h4 style="margin-top:18px;">Nueva versión</h4>
         <div class="campo"><label>Fórmula</label><input name="f" [(ngModel)]="nuevaVersion.formula" placeholder="ventas_brutas - devoluciones" /></div>
         <div class="campo"><label>Definición</label><input name="dn" [(ngModel)]="nuevaVersion.definicionNegocio" /></div>
-        <button class="secundario" (click)="crearVersion(d.id)">Agregar versión</button>
+        <button class="secundario" (click)="crearVersion(d.id)" [disabled]="ocupada() !== null" [attr.aria-busy]="ocupada() === 'version'">
+          @if (ocupada() === 'version') { <span class="spinner"></span> Agregando… } @else { Agregar versión }
+        </button>
       </app-drawer>
     }
   `,
   styles: [`
+    .barra-lista { display:flex; align-items:center; gap:12px; margin:0 0 10px; }
+    .buscador { max-width:420px; }
+    .sutil { font-size:11.5px; color:var(--faint); }
     .version { border: 1px solid var(--border); border-radius: var(--r-sm); padding: 13px; margin-bottom: 10px; }
     .version__cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; }
     .votos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
@@ -205,8 +230,22 @@ interface FormMetrica {
 export class MetricasComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+  private readonly confirmar = inject(ConfirmService);
 
   readonly metricas = signal<Metrica[]>([]);
+  readonly filtro = signal('');
+  filtroTexto = '';
+  /** Acción en curso dentro del drawer de certificación (una a la vez). */
+  readonly ocupada = signal<string | null>(null);
+
+  readonly metricasFiltradas = computed(() => {
+    const q = this.filtro().trim().toLowerCase();
+    if (!q) return this.metricas();
+    return this.metricas().filter((m) =>
+      [m.nombreOficial, m.clave, m.hechoOrigen, this.nombreHecho(m.hechoOrigen), this.etiqueta(m.estado)]
+        .some((v) => v.toLowerCase().includes(q)),
+    );
+  });
   readonly hechos = signal<Hecho[]>([]);
   readonly pendientes = signal<PendienteVoto[]>([]);
   readonly detalle = signal<MetricaDetalle | null>(null);
@@ -275,6 +314,11 @@ export class MetricasComponent implements OnInit {
 
   etiqueta(estado: string): string {
     return this.etiquetas[estado] ?? estado;
+  }
+
+  /** Nombre de negocio del hecho; si el catálogo aún no cargó, la clave. */
+  nombreHecho(clave: string): string {
+    return this.hechos().find((h) => h.clave === clave)?.nombreNegocio ?? clave;
   }
 
   cargar(): void {
@@ -348,36 +392,51 @@ export class MetricasComponent implements OnInit {
       this.toast.error('Faltan datos', 'Completa fórmula y definición.');
       return;
     }
+    this.ocupada.set('version');
     this.api.post(`/metricas/${metricaId}/versiones`, this.nuevaVersion).subscribe({
       next: () => {
-        this.toast.exito('Versión creada');
+        this.ocupada.set(null);
+        this.toast.exito('Versión creada', 'Queda en borrador: envíala a revisión cuando esté lista.');
         this.nuevaVersion = { formula: '', definicionNegocio: '' };
         this.refrescar(metricaId);
       },
-      error: (e: Error) => this.toast.error('No se pudo crear la versión', e.message),
+      error: (e: Error) => {
+        this.ocupada.set(null);
+        this.toast.error('No se pudo crear la versión', e.message);
+      },
     });
   }
 
   enviarRevision(metricaId: number, versionId: number): void {
+    this.ocupada.set(`enviar-${versionId}`);
     this.api.post(`/metricas/${metricaId}/versiones/${versionId}/enviar-revision`, {}).subscribe({
       next: () => {
-        this.toast.info('Enviada a revisión', 'Esperando el voto de los aprobadores.');
+        this.ocupada.set(null);
+        this.toast.info('Enviada a revisión', 'Los aprobadores la verán en «Pendientes de mi voto»; se certifica cuando todos firmen.');
         this.refrescar(metricaId);
       },
-      error: (e: Error) => this.toast.error('No se pudo enviar a revisión', e.message),
+      error: (e: Error) => {
+        this.ocupada.set(null);
+        this.toast.error('No se pudo enviar a revisión', e.message);
+      },
     });
   }
 
   votar(versionId: number, aprobado: boolean): void {
     const metricaId = this.detalle()?.id;
+    this.ocupada.set(`${aprobado ? 'aprobar' : 'rechazar'}-${versionId}`);
     this.api.post<{ resultado: string }>(`/metricas/versiones/${versionId}/votar`, { aprobado }).subscribe({
       next: (r) => {
-        if (r.resultado === 'certificada') this.toast.exito('Métrica certificada', 'Todos los aprobadores aprobaron.');
-        else if (r.resultado === 'rechazada') this.toast.info('Versión devuelta a borrador', 'Un aprobador la rechazó.');
-        else this.toast.exito('Voto registrado', 'Falta que aprueben los demás.');
+        this.ocupada.set(null);
+        if (r.resultado === 'certificada') this.toast.exito('Métrica certificada', 'Ya está disponible para el asistente y los tableros.');
+        else if (r.resultado === 'rechazada') this.toast.info('Versión devuelta a borrador', 'Corrige la fórmula y vuelve a enviarla a revisión.');
+        else this.toast.exito('Voto registrado', 'Falta que aprueben los demás firmantes.');
         if (metricaId) this.refrescar(metricaId);
       },
-      error: (e: Error) => this.toast.error('No se pudo registrar el voto', e.message),
+      error: (e: Error) => {
+        this.ocupada.set(null);
+        this.toast.error('No se pudo registrar el voto', e.message);
+      },
     });
   }
 
@@ -392,11 +451,17 @@ export class MetricasComponent implements OnInit {
   }
 
   /** Deprecar es definitivo: el único camino de vuelta es nueva versión + recertificación (§9). */
-  deprecar(m: Metrica): void {
-    if (!confirm(`¿Deprecar la métrica "${m.nombreOficial}"? Deja de estar disponible para el agente; solo se reactiva certificando una versión nueva.`)) return;
+  async deprecar(m: Metrica): Promise<void> {
+    const ok = await this.confirmar.confirmar({
+      titulo: `Deprecar «${m.nombreOficial}»`,
+      mensaje: 'Deja de estar disponible para el asistente y los tableros. Solo vuelve a estarlo si certificas una versión nueva.',
+      textoConfirmar: 'Deprecar',
+      peligro: true,
+    });
+    if (!ok) return;
     this.api.post<Metrica>(`/metricas/${m.id}/deprecar`, {}).subscribe({
       next: (d) => {
-        this.toast.exito('Métrica deprecada', d.nombreOficial);
+        this.toast.exito('Métrica deprecada', `${d.nombreOficial}. Para reactivarla, agrega una versión nueva y certifícala.`);
         this.cargar();
       },
       error: (e: Error) => this.toast.error('No se pudo deprecar', e.message),

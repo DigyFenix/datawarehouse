@@ -7,6 +7,8 @@ import { DrawerComponent } from '../../core/drawer.component';
 import { Rol, RolDeUsuario, Usuario } from '../../core/modelos';
 import { OrganizacionService } from '../../core/organizacion.service';
 import { ToastService } from '../../core/toast.service';
+import { ConfirmService } from '../../ui/confirm.service';
+import { generarPassword } from '../../ui/password';
 
 @Component({
   selector: 'app-usuarios',
@@ -148,11 +150,22 @@ import { ToastService } from '../../core/toast.service';
           <form (ngSubmit)="crear()">
             <div class="campo"><label>Email</label><input name="email" type="email" [(ngModel)]="nuevoU.email" required /></div>
             <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="nuevoU.nombre" required /></div>
-            <div class="campo"><label>Contraseña</label><input type="password" name="password" [(ngModel)]="nuevoU.password" required /></div>
+            <div class="campo">
+              <label for="u-pass">Contraseña inicial</label>
+              <div class="pass-fila">
+                <input id="u-pass" type="text" name="password" [(ngModel)]="nuevoU.password" required minlength="8" autocomplete="off" spellcheck="false" />
+                <button type="button" class="secundario pequeno" (click)="nuevoU.password = generar()">Generar</button>
+                <button type="button" class="secundario pequeno" (click)="copiar(nuevoU.password)" [disabled]="!nuevoU.password">Copiar</button>
+              </div>
+              <span class="ayuda">Entrégasela a la persona por un canal seguro; conviene que la cambie en su primer ingreso.</span>
+            </div>
             @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
             <div class="acciones-fila">
               <button type="button" class="secundario" (click)="cerrar()">Cancelar</button>
-              <button type="submit" [disabled]="guardando()">{{ guardando() ? 'Creando…' : 'Crear usuario' }}</button>
+              <button type="submit" [disabled]="guardando()" [attr.aria-busy]="guardando()">
+                @if (guardando()) { <span class="spinner"></span> }
+                {{ guardando() ? 'Creando…' : 'Crear usuario' }}
+              </button>
             </div>
           </form>
         } @else {
@@ -166,7 +179,10 @@ import { ToastService } from '../../core/toast.service';
               </select>
             </div>
             <div class="acciones-fila">
-              <button type="submit" [disabled]="guardando()">Guardar cambios</button>
+              <button type="submit" [disabled]="guardando()" [attr.aria-busy]="guardando()">
+                @if (guardando()) { <span class="spinner"></span> }
+                {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+              </button>
             </div>
           </form>
 
@@ -215,7 +231,10 @@ import { ToastService } from '../../core/toast.service';
                 </select>
               </div>
             }
-            <button type="button" (click)="asignar()">Agregar</button>
+            <button type="button" (click)="asignar()" [disabled]="asignando()" [attr.aria-busy]="asignando()">
+              @if (asignando()) { <span class="spinner"></span> }
+              {{ asignando() ? 'Agregando…' : 'Agregar' }}
+            </button>
           </div>
           @if (rolAlcance === 'global') {
             <p class="aviso-global">
@@ -237,8 +256,10 @@ import { ToastService } from '../../core/toast.service';
         color: var(--faint);
       }
       .intro strong {
-        color: var(--texto);
+        color: var(--text);
       }
+      .pass-fila { display: flex; gap: 8px; align-items: center; }
+      .pass-fila input { flex: 1; font-family: var(--mono); }
       .bloque {
         margin-bottom: 26px;
       }
@@ -269,7 +290,7 @@ import { ToastService } from '../../core/toast.service';
         color: var(--faint);
       }
       .bloque__nota strong {
-        color: var(--texto);
+        color: var(--text);
       }
       .marca-otra-org {
         font-size: 11.5px;
@@ -293,7 +314,7 @@ import { ToastService } from '../../core/toast.service';
         color: var(--faint);
       }
       .aviso-global strong {
-        color: var(--texto);
+        color: var(--text);
       }
     `,
   ],
@@ -301,9 +322,11 @@ import { ToastService } from '../../core/toast.service';
 export class UsuariosComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+  private readonly confirmar = inject(ConfirmService);
   readonly orgs = inject(OrganizacionService);
 
   readonly usuarios = signal<Usuario[]>([]);
+  readonly asignando = signal(false);
   readonly roles = signal<Rol[]>([]);
   readonly rolesPorUsuario = signal<Record<number, RolDeUsuario[]>>({});
   readonly abierto = signal(false);
@@ -389,8 +412,19 @@ export class UsuariosComponent implements OnInit {
     });
   }
 
+  generar(): string {
+    return generarPassword();
+  }
+
+  copiar(texto: string): void {
+    void navigator.clipboard.writeText(texto).then(
+      () => this.toast.exito('Contraseña copiada', 'Entrégasela a la persona por un canal seguro.'),
+      () => this.toast.error('No se pudo copiar', 'Selecciónala y cópiala a mano.'),
+    );
+  }
+
   nuevo(): void {
-    this.nuevoU = { email: '', nombre: '', password: '' };
+    this.nuevoU = { email: '', nombre: '', password: generarPassword() };
     this.editando.set(null);
     this.errorForm.set(null);
     this.abierto.set(true);
@@ -415,7 +449,7 @@ export class UsuariosComponent implements OnInit {
     this.guardando.set(true);
     this.api.post<Usuario>('/usuarios', this.nuevoU).subscribe({
       next: (u) => {
-        this.toast.exito('Usuario creado', u.email);
+        this.toast.exito('Usuario creado', `${u.email}. Siguiente paso: asígnale un rol desde «Editar» para que pueda entrar.`);
         this.guardando.set(false);
         this.abierto.set(false);
         this.cargar();
@@ -452,19 +486,31 @@ export class UsuariosComponent implements OnInit {
       return;
     }
     const organizacionId = this.rolAlcance === 'global' ? null : this.rolOrganizacionId;
+    this.asignando.set(true);
     this.api.post(`/usuarios/${u.id}/roles`, { rolId: Number(this.rolAsignar), organizacionId }).subscribe({
       next: () => {
-        this.toast.exito('Rol asignado', u.email);
+        this.asignando.set(false);
+        this.toast.exito('Rol asignado', `${u.email} ya puede entrar con ese rol en su próximo inicio de sesión.`);
         this.cargarRoles(u.id);
       },
-      error: (e: Error) => this.toast.error('No se pudo asignar el rol', e.message),
+      error: (e: Error) => {
+        this.asignando.set(false);
+        this.toast.error('No se pudo asignar el rol', e.message);
+      },
     });
   }
 
   /** Quita SOLO la asignación señalada: el mismo rol puede existir en otras organizaciones. */
-  quitarRol(r: RolDeUsuario): void {
+  async quitarRol(r: RolDeUsuario): Promise<void> {
     const u = this.editando();
     if (!u) return;
+    const ok = await this.confirmar.confirmar({
+      titulo: 'Quitar rol',
+      mensaje: `${u.email} dejará de ser ${this.tituloRol(r)}. Si era su único rol, ya no podrá entrar al portal.`,
+      textoConfirmar: 'Quitar rol',
+      peligro: true,
+    });
+    if (!ok) return;
     const alcance = r.organizacionId === null ? 'global' : String(r.organizacionId);
     this.api.delete(`/usuarios/${u.id}/roles/${r.rolId}?alcance=${alcance}`).subscribe({
       next: () => {

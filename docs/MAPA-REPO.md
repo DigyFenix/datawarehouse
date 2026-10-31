@@ -28,8 +28,9 @@ Si algo no está aquí, probablemente no exista todavía.
 | Permitir desglosar una métrica por dimensión en el chat | `data-plane/transformacion/models/oro/metrica_valor_dimension.sql` |
 | Dar de alta una organización | `docs/ONBOARDING-nueva-organizacion.md` |
 | Cambiar el schema del metadata-store | `metadata-store/schema/` + `metadata-store/rollback/` |
-| Tocar el portal admin | `control-plane/api/` + `control-plane/portal/` |
-| Tocar el portal de usuario | `consumo/portal/api/` + `consumo/portal/web/` |
+| Tocar el portal admin | `control-plane/api/` + `control-plane/portal/` (sistema visual compartido con el portal de usuario: `control-plane/portal/DESIGN.md`) |
+| Tocar el portal de usuario | `consumo/portal/api/` + `consumo/portal/web/` (guía visual y de uso: `consumo/portal/web/DESIGN.md`) |
+| Desplegar una versión a un cliente | `infra/produccion/desplegar.sh` (editar `MIGRACIONES`); runbook §9 |
 | Tocar el agente de IA | `data-plane/agente/src/` |
 | Entender una decisión de arquitectura | `docs/arquitectura/` |
 | Ver precios / modelo de negocio | `docs/comercial/` |

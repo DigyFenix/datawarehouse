@@ -38,7 +38,7 @@ interface FormPerfil {
     <div class="tarjeta tarjeta--tabla">
       <div class="tabla-wrap tabla-responsive">
         <table>
-          <thead><tr><th scope="col">Perfil</th><th scope="col">Tableros</th>@if (tenant.moduloAsistente()) { <th scope="col">Alcances (asistente)</th> }<th scope="col">Usuarios</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+          <thead><tr><th scope="col">Perfil</th><th scope="col">Tableros</th><th scope="col">Métricas y empresas</th><th scope="col">Usuarios</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
           <tbody>
             @if (cargando()) {
               <app-skeleton variante="fila-tabla" [columnas]="6"></app-skeleton>
@@ -49,14 +49,12 @@ interface FormPerfil {
                 <tr>
                   <td data-label="Perfil"><strong>{{ p.nombre }}</strong><br /><code class="sutil">{{ p.clave }}</code></td>
                   <td data-label="Tableros">{{ p.tableroIds.length }}</td>
-                  @if (tenant.moduloAsistente()) {
-                    <td data-label="Alcances">
-                      @for (a of p.alcances; track a.recursoTipo + a.recursoClave) {
-                        <span class="chip">{{ a.recursoTipo }}: {{ a.recursoClave }}</span>
-                      }
-                      @if (!p.alcances.length) { <span class="sutil">—</span> }
-                    </td>
-                  }
+                  <td data-label="Métricas y empresas">
+                    @if (resumenAlcance(p); as r) {
+                      <span class="chip" [class.chip--vacio]="r.vacio">{{ r.metricas }}</span>
+                      <span class="chip" [class.chip--vacio]="r.vacio">{{ r.empresas }}</span>
+                    }
+                  </td>
                   <td data-label="Usuarios">{{ p.usuarios }}</td>
                   <td data-label="Estado">@if (p.activo) { <span class="ok">activo</span> } @else { <span class="sutil">inactivo</span> }</td>
                   <td data-label="Acciones" class="col-acciones">
@@ -65,9 +63,7 @@ interface FormPerfil {
                       <div class="menu-acciones__lista">
                         <button type="button" (click)="editar(p); cerrarMenu($event)"><app-icon name="editar" [size]="15"></app-icon> Editar</button>
                         <button type="button" (click)="abrirTableros(p); cerrarMenu($event)"><app-icon name="grafico" [size]="15"></app-icon> Tableros</button>
-                        @if (tenant.moduloAsistente()) {
-                          <button type="button" (click)="abrirAlcances(p); cerrarMenu($event)"><app-icon name="externo" [size]="15"></app-icon> Alcances</button>
-                        }
+                        <button type="button" (click)="abrirAlcances(p); cerrarMenu($event)"><app-icon name="candado" [size]="15"></app-icon> Métricas y empresas</button>
                         <button type="button" class="peligro" (click)="eliminar(p); cerrarMenu($event)"><app-icon name="papelera" [size]="15"></app-icon> Eliminar</button>
                       </div>
                     </details>
@@ -170,14 +166,14 @@ interface FormPerfil {
     }
 
     @if (drawerAlcances()) {
-      <app-drawer titulo="Qué puede consultar en el asistente" [eyebrow]="seleccionado()?.nombre ?? ''" (cerrar)="drawerAlcances.set(false)">
+      <app-drawer titulo="Métricas y empresas del perfil" [eyebrow]="seleccionado()?.nombre ?? ''" (cerrar)="drawerAlcances.set(false)">
         @if (!catalogo()) {
           <app-skeleton variante="fila-tabla" [columnas]="1"></app-skeleton>
         } @else {
           <section class="alc-seccion">
             <header>
               <h4>Empresas</h4>
-              <p class="ayuda">De qué sociedades ve datos este perfil. Sin ninguna, el asistente no responde nada.</p>
+              <p class="ayuda">De qué sociedades ve datos este perfil (asistente, Mi tablero y Descargas). Sin ninguna, no ve ningún dato.</p>
             </header>
             <button type="button" class="sel-item sel-item--compacto" [class.sel-item--on]="empresasTodas()" role="checkbox" [attr.aria-checked]="empresasTodas()" (click)="alternarEmpresasTodas()">
               <span class="sel-caja" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -195,7 +191,7 @@ interface FormPerfil {
           <section class="alc-seccion">
             <header>
               <h4>Métricas</h4>
-              <p class="ayuda">Qué indicadores puede preguntar. Por dominio es lo habitual; las métricas sueltas sirven para excepciones.</p>
+              <p class="ayuda">Qué indicadores puede consultar en el asistente y descargar a Excel. Por dominio es lo habitual; las métricas sueltas sirven para excepciones.</p>
             </header>
             <button type="button" class="sel-item sel-item--compacto" [class.sel-item--on]="catalogoTodo()" role="checkbox" [attr.aria-checked]="catalogoTodo()" (click)="alternarCatalogoTodo()">
               <span class="sel-caja" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -245,6 +241,7 @@ interface FormPerfil {
     .ayuda { margin: 0 0 12px; font-size: var(--fs-sm); color: var(--muted); }
     .sutil { font-size: var(--fs-xs); color: var(--faint); }
     .check { display: flex; align-items: center; gap: 8px; font-size: var(--fs-base); margin: 8px 0; color: var(--muted); }
+    .chip--vacio { background: var(--warn-bg); color: var(--warn); }
     .chip { display: inline-block; background: var(--brand-100); color: var(--brand-700); border-radius: 999px; padding: 2px 9px; font-size: var(--fs-xs); margin: 1px 3px 1px 0; }
     .ok { color: var(--ok); }
     .fila-alcance { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
@@ -554,6 +551,22 @@ export class PerfilesComponent {
         error: (e: Error) => this.errorForm.set(`No se pudo cargar el catálogo: ${e.message}`),
       });
     }
+  }
+
+  /** Resumen legible de los alcances de un perfil para la tabla («Todas las métricas · 2 empresas»). */
+  resumenAlcance(p: PerfilOrg): { metricas: string; empresas: string; vacio: boolean } {
+    const a = p.alcances;
+    const todoCatalogo = a.some((x) => (x.recursoTipo === 'metrica' || x.recursoTipo === 'dominio') && x.recursoClave === '*');
+    const dominios = a.filter((x) => x.recursoTipo === 'dominio' && x.recursoClave !== '*').length;
+    const metricas = a.filter((x) => x.recursoTipo === 'metrica' && x.recursoClave !== '*').length;
+    const empresasTodas = a.some((x) => x.recursoTipo === 'empresa' && x.recursoClave === '*');
+    const empresas = a.filter((x) => x.recursoTipo === 'empresa' && x.recursoClave !== '*').length;
+    const partes: string[] = [];
+    if (dominios) partes.push(`${dominios} ${dominios === 1 ? 'dominio' : 'dominios'}`);
+    if (metricas) partes.push(`${metricas} ${metricas === 1 ? 'métrica' : 'métricas'}`);
+    const txtMetricas = todoCatalogo ? 'Todas las métricas' : partes.length ? partes.join(' · ') : 'Sin métricas';
+    const txtEmpresas = empresasTodas ? 'Todas las empresas' : empresas ? `${empresas} ${empresas === 1 ? 'empresa' : 'empresas'}` : 'Sin empresas';
+    return { metricas: txtMetricas, empresas: txtEmpresas, vacio: (!todoCatalogo && !partes.length) || (!empresasTodas && !empresas) };
   }
 
   nombreDominio(clave: string): string {
