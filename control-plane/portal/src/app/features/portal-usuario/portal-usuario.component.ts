@@ -122,8 +122,8 @@ const GRUPO_OTRO = '__otro__';
                 } @else { <span class="sutil">pendiente de provisionar</span> }
               </li>
             </ul>
-          } @else if (errorEstado(); as err) {
-            <p class="error">No se pudo leer el estado del portal: {{ err }}</p>
+          } @else if (errorEstado()) {
+            <p class="error">No se pudo leer el estado del portal: {{ errorEstado() }}</p>
           } @else {
             <p class="sutil">Cargando estado…</p>
           }
