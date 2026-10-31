@@ -23,10 +23,14 @@
   Portal del cliente en pestañas; API `estado` tolera base sin provisionar (3D000).
 - UX guiada por crestacore (`claude -p` en `C:\Claudews\crestacore`); memoria `ux-patrones-crestacore`.
 
+- **Uso de IA por usuario (solo admin)**: el agente devuelve tokens por llamada; el API los costea
+  con la tarifa del MODELO USADO (compuerta y principal por separado, `AGENTE_PRECIOS_USD`
+  opcional) y guarda una fila por turno en `portal.uso_ia` (migración 138). Pantalla
+  Administración → Uso de IA (mes, acumulado, por usuario, por perfil, por día). Probado en local
+  ($0.063 un turno Haiku+Opus) y **desplegado a Iron en `62bc0df`** (admin portal nuevo incluido).
+
 ### PENDIENTE: Edwin
-1. **Desplegar 1c7cd05** (el clasificador bloqueó a Claude): `bash infra/produccion/desplegar.sh`
-   desde la raíz (Git Bash). Luego Ctrl+F5 en ambos portales.
-2. Power BI: cerrar Desktop SIN guardar, reabrir `PulsoIron.pbip`, refrescar, revisar Resumen,
+1. Power BI: cerrar Desktop SIN guardar, reabrir `PulsoIron.pbip`, refrescar, revisar Resumen,
    publicar. Las 10 hojas nuevas ya están en el portal (abren «página no encontrada» hasta publicar).
 3. Asignar tableros y métricas a los perfiles de Iron (solo Power BI tiene 24; el resto 0).
 4. Chat: portal admin → Organizaciones → Iron → Módulo Asistente; `ANTHROPIC_API_KEY` en `.env`
