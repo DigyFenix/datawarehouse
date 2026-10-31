@@ -77,7 +77,8 @@ Resultados al final). Capturas en `docs/powerbi/kraken360/capturas/gestion/`.
    del servidor tenga `ANTHROPIC_API_KEY` (el guion aborta si falta).
 2. Power BI: abrir `PulsoIron.pbip`, refrescar, revisar las 6 hojas, guardar y **publicar**;
    luego en el servidor `psql ... < 58_hojas_gestion_ironnetwork.sql` y revisar perfiles.
-3. `git push` (bloqueado en auto mode).
+3. ~~`git push`~~ hecho: `1561698` en GitHub. Paquete de producción: `dist/quilate-1561698.tar.gz` + `dist/quilate-imagenes-1561698.tar.gz` (274 MB).
+   Desktop quedó abierto con cambios sin guardar (medidas aplicadas por XMLA que YA están en el TMDL): cerrar sin guardar y reabrir desde disco antes de refrescar y publicar.
 4. Probar el asistente en producción con un usuario de Iron y decidir si el módulo Asistente
    va incluido o aparte en el trato.
 5. Deuda menor: `generar_pbip.py` no se corrió (las medidas se sincronizaron a mano al TMDL);
