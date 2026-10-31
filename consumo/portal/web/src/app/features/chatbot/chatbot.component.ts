@@ -77,7 +77,10 @@ import { DatosVisualComponent } from './datos-visual.component';
               <li>
                 <button class="hilo" [class.hilo--activo]="modo() === 'guardada' && g.id === guardadaActiva()?.consulta?.id" (click)="abrirGuardada(g)">
                   <span class="hilo__titulo"><app-icon name="guardar" [size]="12" /> {{ g.titulo }}</span>
-                  <span class="hilo__fecha">{{ etiquetaTool(g.tool) }} · {{ g.vista }}</span>
+                  <span class="hilo__fecha">{{ etiquetaTool(g.tool) }} · {{ g.vista }}@if (g.enTablero) { · en mi tablero }</span>
+                </button>
+                <button class="hilo__borrar" [class.hilo__fijar--activo]="g.enTablero" (click)="alternarTablero(g)" [attr.aria-label]="g.enTablero ? 'Quitar de Mi tablero' : 'Agregar a Mi tablero'" [title]="g.enTablero ? 'Quitar de Mi tablero' : 'Agregar a Mi tablero'">
+                  <app-icon name="tablero" [size]="14" />
                 </button>
                 <button class="hilo__borrar" (click)="eliminarGuardada(g)" aria-label="Eliminar consulta guardada">
                   <app-icon name="papelera" [size]="14" />
@@ -132,6 +135,7 @@ import { DatosVisualComponent } from './datos-visual.component';
               <p class="guardada__frescura">
                 Ejecutada {{ ej.ejecutadaEn | date: 'dd/MM/yyyy HH:mm' }} con los datos vigentes
                 @if (frescuraDe(ej); as f) { · dato del ERP al {{ f }} }
+                @if (ej.proximaCarga; as pc) { · próxima actualización {{ pc.texto }} }
               </p>
               @for (a of ej.avisos; track a) { <p class="aviso"><app-icon name="advertencia" [size]="14" /> {{ a }}</p> }
 
@@ -191,6 +195,9 @@ import { DatosVisualComponent } from './datos-visual.component';
                                   @if (cj.tipo === 'serie') { <option value="lineas">Líneas</option> }
                                 </select>
                               </div>
+                              <label class="campo--check">
+                                <input type="checkbox" name="enTableroGuardar" [(ngModel)]="enTableroGuardar" /> Agregar a Mi tablero
+                              </label>
                               <button type="submit" class="pequeno" [disabled]="guardandoEnCurso()">Guardar</button>
                               <button type="button" class="pequeno secundario" (click)="guardando.set(null)">Cancelar</button>
                             </form>
@@ -281,6 +288,9 @@ import { DatosVisualComponent } from './datos-visual.component';
       .guardar-form { display: flex; gap: var(--sp-2); align-items: flex-end; flex-wrap: wrap; padding: var(--sp-3); border: 1px dashed var(--border-2); border-radius: var(--r); background: var(--surface-2); }
       .campo--inline { margin: 0; display: flex; flex-direction: column; gap: 4px; }
       .campo--inline input { min-width: 260px; }
+      .campo--check { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--muted); padding-bottom: 8px; cursor: pointer; }
+      .campo--check input { width: 15px; height: 15px; margin: 0; accent-color: var(--brand-600); }
+      .hilo__fijar--activo { color: var(--brand-600); }
 
       .tarjetas { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
       .dato { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-3); border-radius: var(--r); background: var(--surface-2); border-left: 3px solid var(--ok); min-width: 168px; }
@@ -358,6 +368,7 @@ export class ChatbotComponent implements OnInit {
   readonly editandoTitulo = signal(false);
   tituloGuardar = '';
   vistaGuardar: VistaConsulta = 'tabla';
+  enTableroGuardar = false;
   tituloEdit = '';
 
   borrador = '';
@@ -517,13 +528,19 @@ export class ChatbotComponent implements OnInit {
     if (!titulo) return;
     this.guardandoEnCurso.set(true);
     this.chat
-      .guardar({ titulo, tool: espec.tool, params: espec.params, vista: this.vistaGuardar, descripcion: `${conjunto.metricaNombre} · ${conjunto.periodo}` })
+      .guardar({
+        titulo, tool: espec.tool, params: espec.params, vista: this.vistaGuardar,
+        descripcion: `${conjunto.metricaNombre} · ${conjunto.periodo}`, enTablero: this.enTableroGuardar,
+      })
       .subscribe({
         next: (g) => {
           this.guardandoEnCurso.set(false);
           this.guardando.set(null);
           this.guardadas.update((gs) => [g, ...gs]);
-          this.toast.exito('Consulta guardada', 'La encuentras en la pestaña «Guardadas», siempre con datos actualizados.');
+          this.toast.exito(
+            'Consulta guardada',
+            g.enTablero ? 'Ya está en «Mi tablero», siempre con datos actualizados.' : 'La encuentras en la pestaña «Guardadas», siempre con datos actualizados.',
+          );
         },
         error: (e: Error) => {
           this.guardandoEnCurso.set(false);
@@ -577,6 +594,18 @@ export class ChatbotComponent implements OnInit {
         this.toast.exito('Consulta eliminada');
       },
       error: (e: Error) => this.toast.error('No se pudo eliminar', e.message),
+    });
+  }
+
+  /** Fija o quita una consulta guardada de «Mi tablero» sin salir del chat. */
+  alternarTablero(g: ConsultaGuardada): void {
+    this.chat.actualizarGuardada(g.id, { enTablero: !g.enTablero }).subscribe({
+      next: (n) => {
+        this.guardadas.update((gs) => gs.map((x) => (x.id === n.id ? n : x)));
+        this.guardadaActiva.update((ej) => (ej && ej.consulta.id === n.id ? { ...ej, consulta: n } : ej));
+        this.toast.exito(n.enTablero ? 'Agregada a Mi tablero' : 'Quitada de Mi tablero');
+      },
+      error: (e: Error) => this.toast.error('No se pudo actualizar', e.message),
     });
   }
 

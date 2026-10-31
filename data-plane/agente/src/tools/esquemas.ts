@@ -1,5 +1,5 @@
 /**
- * GUARDA 1 (parte a): esquemas Zod ESTRICTOS de las 4 tools. El LLM solo puede
+ * GUARDA 1 (parte a): esquemas Zod ESTRICTOS de las tools. El LLM solo puede
  * producir estos parámetros; cualquier cosa fuera del contrato se rechaza antes
  * de tocar la base. Las claves llevan regex: ni espacios, ni comillas, ni SQL.
  */
@@ -67,6 +67,23 @@ export const esquemaConsultarPorDimension = z
   })
   .strict();
 export type ParamsConsultarPorDimension = z.infer<typeof esquemaConsultarPorDimension>;
+
+/** Tipos de demanda no atendida (coinciden con portal.solicitudes_no_atendidas.tipo). */
+export const TIPOS_SOLICITUD = ['fuera_catalogo', 'frescura', 'sin_autorizacion', 'desglose_no_admitido', 'otro'] as const;
+
+/**
+ * Registro de una pregunta que NO se puede atender con la capa semántica. No consulta nada:
+ * deja constancia para el administrador. El resumen se acota y se limpia de saltos de línea.
+ */
+export const esquemaRegistrarSolicitud = z
+  .object({
+    tipo: z.enum(TIPOS_SOLICITUD),
+    resumen: z.string().trim().min(5).max(300),
+    metrica_clave: claveMetrica.optional(),
+    dominio: z.string().regex(/^[a-z_]{1,40}$/).optional(),
+  })
+  .strict();
+export type ParamsRegistrarSolicitud = z.infer<typeof esquemaRegistrarSolicitud>;
 
 export type ParamsListarMetricas = z.infer<typeof esquemaListarMetricas>;
 export type ParamsConsultarMetrica = z.infer<typeof esquemaConsultarMetrica>;
@@ -147,6 +164,27 @@ export const TOOLS_ANTHROPIC = [
         orden: { type: 'string', enum: ['mayor', 'menor'], description: "'mayor' = los más grandes (default); 'menor' = los más chicos." },
       },
       required: ['metrica_clave', 'dimension'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'registrar_solicitud',
+    description:
+      'Deja constancia de algo que la persona pidió y NO se puede atender con el catálogo: una ' +
+      'métrica o dato que no existe en la capa semántica (fuera_catalogo), un dato más reciente que ' +
+      'la última carga (frescura), un desglose que la métrica no admite (desglose_no_admitido) u ' +
+      'otra necesidad. No consulta ni cambia nada: el administrador revisa estas solicitudes para ' +
+      'decidir qué agregar. Úsala UNA vez por necesidad, después de explicarle a la persona qué sí ' +
+      'puedes darle. No la uses para preguntas ambiguas ni para errores de parámetros.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        tipo: { type: 'string', enum: [...TIPOS_SOLICITUD] },
+        resumen: { type: 'string', description: 'Qué pidió la persona, en una frase (5 a 300 caracteres), sin datos personales.' },
+        metrica_clave: { type: 'string', description: 'Métrica relacionada, si la hay.' },
+        dominio: { type: 'string', description: 'Dominio de negocio relacionado (ventas, compras, tesoreria, inventario, pedidos, rentabilidad), si aplica.' },
+      },
+      required: ['tipo', 'resumen'],
       additionalProperties: false,
     },
   },

@@ -130,6 +130,9 @@ services:
       # interruptor por organización lo oculta y bloquea.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD}
+      # Mismo horario que el programador: el asistente y el inicio dicen cuándo llega la próxima carga.
+      HORAS_CARGA: ${HORAS_CARGA:-05:00}
+      ZONA_HORARIA: America/Guatemala
       SALTOS_PROXY: 2  # Caddy + nginx
     depends_on:
       postgres:

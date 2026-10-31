@@ -1,5 +1,51 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 36 (2026-10-31) — FRESCURA HONESTA, DEMANDA NO ATENDIDA, MI TABLERO Y DESCARGAS A EXCEL — leer esto primero ══════
+
+Edwin aclaró el pedido: el chat **solo lee Oro** («Bronce y Plata por ningún motivo, lo dicta el
+proyecto de graduación»); el caso real es «pregunto las ventas de hoy, el DWH va hasta ayer y la
+próxima carga es en 5 horas»: no se refresca bajo demanda (lento y caro). Pidió además bitácora
+de lo que la gente pide y no se puede dar (solo en el admin), un «Mi tablero» del usuario armado
+con JS/HTML desde el chat y acomodable, y un módulo de descarga a Excel por módulos con nivel de
+detalle a elección. Power BI y el despliegue a producción quedan con él.
+
+### Hecho (todo probado en local con `pruebas_s36.ps1`, scratchpad)
+- **Frescura:** `HORAS_CARGA` (mismo valor del programador) entra al API de usuario (compose
+  local y prod, `.env.example`); `agente/frescura.ts` calcula la próxima carga en `ZONA_HORARIA`.
+  Prompt: reglas 8 (frescura: citar corte y próxima carga, nunca «actualizar ahora») y 9
+  (demanda). `ConfigAgente.proximaCarga`; inicio, guardadas y tablero muestran «próxima
+  actualización hoy a las 13:00». **Bug corregido:** `fecha_dato_mas_reciente` como Date
+  retrocedía un día al formatear en la zona (decía corte 29 con dato del 30) → `::text`.
+- **Demanda no atendida:** tool `registrar_solicitud` (tipos fuera_catalogo / frescura /
+  sin_autorizacion / desglose_no_admitido / otro) + deducción en código desde denegaciones por
+  métrica/empresa/desglose (no por parámetros mal formados). Migración **137** (tabla
+  `portal.solicitudes_no_atendidas` + columnas de tablero) aplicada en local y registrada en
+  Provisionar. API admin: `GET/PATCH /admin/solicitudes`, `/admin/solicitudes/resumen`. Web:
+  Administración → **Demanda** (pestaña compartida `admin/pestanas.ts`). El chat respondió
+  correctamente los tres casos (hoy / producción y mano de obra / por bodega) y registró 4.
+- **Mi tablero** (`/mi-tablero`, módulo Asistente): `consultas_guardadas.en_tablero/tablero_orden/
+  tablero_ancho`; `GET /agente/tablero` reejecuta cada widget sin modelo; `PUT /agente/tablero/orden`;
+  PATCH acepta `enTablero`/`tableroAncho` (1|2). Chat: checkbox «Agregar a Mi tablero» al guardar y
+  botón de fijar en la lista de guardadas. Widgets con arrastre HTML5, flechas, ancho, quitar y
+  vista persistida (`DatosVisual.vistaCambiada`).
+- **Descargas a Excel** (`/descargas`, todo usuario): `data-plane/agente/src/descargas.ts`
+  (`prepararDescarga`: Zod, alcance, desgloses, RLS, SQL constante, tope 50k) + 2 SQL nuevos;
+  `consumo/portal/api/src/descargas/` con **exceljs** (dependencia nueva); niveles mensual /
+  mensual_empresa / dimension_total / mensual_dimension / aging_rango / aging_socio; hoja «Ficha»;
+  auditoría `descarga_datos`. Rechazos (dimensión no admitida, inyección, aging sobre no-cartera)
+  → 400. Web: asistente de 4 pasos (módulo → métricas → detalle → período/empresa).
+- Paquete del agente: 38 tests (12 nuevos en `demanda-descargas.spec.ts`). Docs: arquitectura
+  §7.3/§7.4, MAPA-REPO, memoria `portal-frescura-demanda-autoservicio`.
+
+### PENDIENTE: Edwin
+1. Power BI (sesión 35): refrescar, revisar 23 hojas, guardar, publicar; seed 58.
+2. Desplegar: generar paquete nuevo (`infra/produccion/empaquetar.sh`) y correr el guion de
+   despliegue; en el servidor aplicar **137** a cada `dw_<tenant>` y verificar que `HORAS_CARGA`
+   esté en el `.env` (ya lo usa el programador).
+3. Si quiere datos más frescos para Iron: más horas en `HORAS_CARGA` (p. ej. `05:00 13:00 18:00`),
+   no cargas por pregunta.
+
+
 ## ══════ SESIÓN 35 (2026-10-31) — MÁS PRUEBAS DEL CHAT, TEMA NUEVO EN POWER BI, COMBOS CORREGIDOS Y 4 HOJAS DE ANÁLISIS — leer esto primero ══════
 
 Continuación de la 34 (Edwin: «más pruebas del chat contra la capa de métricas; en Power BI veo

@@ -9,15 +9,8 @@ import { ConfirmService } from '../../ui/confirm.service';
 import { EmptyComponent } from '../../ui/empty.component';
 import { PageHeaderComponent } from '../../ui/page-header.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
-import { PestanaTab, TabsComponent } from '../../ui/tabs.component';
-
-const PESTANAS: PestanaTab[] = [
-  { etiqueta: 'Usuarios', segmento: 'usuarios' },
-  { etiqueta: 'Perfiles', segmento: 'perfiles' },
-  { etiqueta: 'Glosario', segmento: 'glosario' },
-  { etiqueta: 'Indicadores', segmento: 'indicadores' },
-  { etiqueta: 'Auditoría', segmento: 'auditoria' },
-];
+import { TabsComponent } from '../../ui/tabs.component';
+import { PESTANAS_ADMIN } from './pestanas';
 
 interface Termino {
   id: number;
@@ -201,7 +194,7 @@ export class GlosarioComponent implements OnInit {
   };
 
   readonly nombreDominio = nombreDominio;
-  readonly pestanas = PESTANAS;
+  readonly pestanas = PESTANAS_ADMIN;
 
   private readonly porClave = computed(
     () => new Map(this.metricas().map((m) => [m.clave, m.nombreOficial])),

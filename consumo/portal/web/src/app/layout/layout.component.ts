@@ -273,6 +273,8 @@ export class LayoutComponent {
     { ruta: 'inicio', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: 'tableros', etiqueta: 'Tableros', icono: 'grafico' },
     { ruta: 'chatbot', etiqueta: 'Asistente', icono: 'chatbot', soloAsistente: true },
+    { ruta: 'mi-tablero', etiqueta: 'Mi tablero', icono: 'tablero', soloAsistente: true },
+    { ruta: 'descargas', etiqueta: 'Descargas', icono: 'descargar' },
     { ruta: 'admin', etiqueta: 'Administración', icono: 'admin', soloAdmin: true },
   ];
 

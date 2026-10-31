@@ -40,6 +40,43 @@ export const SQL_METRICA_DIMENSION = `
    limit $7
 `;
 
+/**
+ * DESCARGA tabulada de una métrica por período y miembro de una dimensión
+ * (oro.metrica_valor_dimension), sin ranking: todas las filas del rango, acotadas por un
+ * tope fijo de filas. Mismas guardas que el desglose: métrica del alcance, dimensión del
+ * enum, empresas del usuario.
+ */
+export const SQL_DESCARGA_DIMENSION_MENSUAL = `
+  select empresa_id, periodo, miembro_codigo, miembro_nombre, valor
+    from oro.metrica_valor_dimension
+   where metrica_clave = $1
+     and dimension = $2
+     and ($3::text is null or periodo >= $3)
+     and ($4::text is null or periodo <= $4)
+     and empresa_id = any($5::text[])
+   order by periodo, empresa_id, valor desc, miembro_codigo
+   limit $6
+`;
+
+/** Descarga del aging completo por socio (todos los socios con saldo) al último corte. */
+export const SQL_DESCARGA_AGING_SOCIO = `
+  select a.empresa_id, a.socio_codigo, a.socio_nombre, a.rango_aging,
+         coalesce(min(r.rango_aging_nombre), a.rango_aging) as rango_nombre,
+         sum(a.saldo_local) as saldo,
+         sum(a.partidas)    as partidas
+    from oro.metrica_aging a
+    left join oro.dim_rango_aging r on r.rango_aging = a.rango_aging
+   where a.tipo_cartera = $1
+     and a.empresa_id = any($2::text[])
+     and a.fecha_corte = (
+       select max(fecha_corte) from oro.metrica_aging
+        where tipo_cartera = $1 and empresa_id = any($2::text[])
+     )
+   group by a.empresa_id, a.socio_codigo, a.socio_nombre, a.rango_aging
+   order by a.socio_nombre, min(r.rango_aging_orden)
+   limit $3
+`;
+
 /** Qué métricas admiten desglose y por qué dimensiones (tabla pequeña, se lee por mensaje). */
 export const SQL_METRICAS_DESGLOSABLES = `
   select metrica_clave, dimension

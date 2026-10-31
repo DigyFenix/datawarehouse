@@ -24,6 +24,7 @@ Si algo no está aquí, probablemente no exista todavía.
 | Agregar una medida DAX | `consumo/powerbi/generar_pbip.py` (nunca el `.tmdl` a mano) |
 | Agregar o cambiar una hoja de Power BI (Iron) | `consumo/powerbi/generar_paginas_{ventas,clientes,inventario,cartera,gestion,analisis}.js` + `pbir.js` (paleta y helpers; correr `gestion` y luego `analisis`, que ordenan las pestañas) |
 | Tocar el chat (consultas guardadas, tablas/gráficas) | `consumo/portal/api/src/agente/` + `consumo/portal/web/src/app/features/chatbot/` |
+| Frescura, demanda no atendida, Mi tablero, Descargas a Excel | `data-plane/agente/src/descargas.ts`, `consumo/portal/api/src/{agente/frescura.ts,agente/solicitudes.service.ts,descargas/}`, `consumo/portal/web/src/app/features/{mi-tablero,descargas,admin/demanda.component.ts}` |
 | Permitir desglosar una métrica por dimensión en el chat | `data-plane/transformacion/models/oro/metrica_valor_dimension.sql` |
 | Dar de alta una organización | `docs/ONBOARDING-nueva-organizacion.md` |
 | Cambiar el schema del metadata-store | `metadata-store/schema/` + `metadata-store/rollback/` |

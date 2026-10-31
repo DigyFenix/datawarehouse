@@ -28,6 +28,10 @@ export interface ConsultaGuardada {
   creadaEn: Date;
   actualizadaEn: Date;
   ultimaEjecucionEn: Date | null;
+  /** «Mi tablero»: si la consulta está fijada como widget, su posición y su ancho (1 o 2 columnas). */
+  enTablero: boolean;
+  tableroOrden: number | null;
+  tableroAncho: 1 | 2;
 }
 
 export interface NuevaConsultaGuardada {
@@ -36,11 +40,21 @@ export interface NuevaConsultaGuardada {
   tool: string;
   params: Record<string, unknown>;
   vista: VistaConsulta;
+  enTablero?: boolean;
+}
+
+export interface CambiosConsultaGuardada {
+  titulo?: string;
+  descripcion?: string | null;
+  vista?: VistaConsulta;
+  enTablero?: boolean;
+  tableroAncho?: 1 | 2;
 }
 
 const COLUMNAS = `id, titulo, descripcion, tool, params, vista,
                   metrica_clave AS "metricaClave", version_definicion AS "versionDefinicion",
-                  creada_en AS "creadaEn", actualizada_en AS "actualizadaEn", ultima_ejecucion_en AS "ultimaEjecucionEn"`;
+                  creada_en AS "creadaEn", actualizada_en AS "actualizadaEn", ultima_ejecucion_en AS "ultimaEjecucionEn",
+                  en_tablero AS "enTablero", tablero_orden AS "tableroOrden", tablero_ancho AS "tableroAncho"`;
 
 @Injectable()
 export class ConsultasGuardadasService {
@@ -87,32 +101,69 @@ export class ConsultasGuardadasService {
     const pool = await this.pool(usuario);
     const metricaClave = this.metricaDe(nueva);
     const version = metricaClave ? await this.versionDefinicion(metricaClave) : null;
+    // Al tablero entra al final: el orden se toma del máximo actual del usuario.
     const r = await pool.query(
       `INSERT INTO portal.consultas_guardadas
-         (usuario_id, titulo, descripcion, tool, params, vista, metrica_clave, version_definicion)
-       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8)
+         (usuario_id, titulo, descripcion, tool, params, vista, metrica_clave, version_definicion, en_tablero, tablero_orden)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9,
+               CASE WHEN $9 THEN (SELECT COALESCE(max(tablero_orden), 0) + 1 FROM portal.consultas_guardadas WHERE usuario_id = $1) END)
        RETURNING ${COLUMNAS}`,
-      [usuario.id, nueva.titulo, nueva.descripcion ?? null, nueva.tool, JSON.stringify(nueva.params), nueva.vista, metricaClave, version],
+      [usuario.id, nueva.titulo, nueva.descripcion ?? null, nueva.tool, JSON.stringify(nueva.params), nueva.vista, metricaClave, version, nueva.enTablero === true],
     );
     return r.rows[0] as ConsultaGuardada;
   }
 
-  async actualizar(
-    usuario: UsuarioPortal,
-    id: number,
-    cambios: { titulo?: string; descripcion?: string | null; vista?: VistaConsulta },
-  ): Promise<ConsultaGuardada> {
+  /** Consultas fijadas a «Mi tablero», en el orden que el usuario les dio. */
+  async listarTablero(usuario: UsuarioPortal): Promise<ConsultaGuardada[]> {
+    const pool = await this.pool(usuario);
+    const r = await pool.query(
+      `SELECT ${COLUMNAS} FROM portal.consultas_guardadas
+        WHERE usuario_id = $1 AND en_tablero
+        ORDER BY tablero_orden NULLS LAST, actualizada_en DESC`,
+      [usuario.id],
+    );
+    return r.rows as ConsultaGuardada[];
+  }
+
+  /**
+   * Reordena el tablero: los ids llegan en el orden deseado. Solo se tocan consultas del
+   * propio usuario; un id ajeno o inexistente se ignora (no hay nada que revelar).
+   */
+  async reordenarTablero(usuario: UsuarioPortal, ids: number[]): Promise<ConsultaGuardada[]> {
+    const pool = await this.pool(usuario);
+    await pool.query(
+      `UPDATE portal.consultas_guardadas c
+          SET tablero_orden = o.pos, actualizada_en = now()
+         FROM unnest($2::bigint[]) WITH ORDINALITY AS o(id, pos)
+        WHERE c.id = o.id AND c.usuario_id = $1 AND c.en_tablero`,
+      [usuario.id, ids],
+    );
+    return this.listarTablero(usuario);
+  }
+
+  async actualizar(usuario: UsuarioPortal, id: number, cambios: CambiosConsultaGuardada): Promise<ConsultaGuardada> {
     const pool = await this.pool(usuario);
     await this.obtenerPropia(usuario, id);
+    // Al fijar al tablero se coloca al final; al quitar se libera la posición.
     const r = await pool.query(
       `UPDATE portal.consultas_guardadas
           SET titulo = COALESCE($3, titulo),
               descripcion = CASE WHEN $4::boolean THEN $5 ELSE descripcion END,
               vista = COALESCE($6, vista),
+              en_tablero = COALESCE($7, en_tablero),
+              tablero_orden = CASE
+                WHEN $7::boolean IS TRUE AND NOT en_tablero
+                  THEN (SELECT COALESCE(max(tablero_orden), 0) + 1 FROM portal.consultas_guardadas WHERE usuario_id = $2)
+                WHEN $7::boolean IS FALSE THEN NULL
+                ELSE tablero_orden END,
+              tablero_ancho = COALESCE($8, tablero_ancho),
               actualizada_en = now()
         WHERE id = $1 AND usuario_id = $2
         RETURNING ${COLUMNAS}`,
-      [id, usuario.id, cambios.titulo ?? null, cambios.descripcion !== undefined, cambios.descripcion ?? null, cambios.vista ?? null],
+      [
+        id, usuario.id, cambios.titulo ?? null, cambios.descripcion !== undefined, cambios.descripcion ?? null,
+        cambios.vista ?? null, cambios.enTablero ?? null, cambios.tableroAncho ?? null,
+      ],
     );
     return r.rows[0] as ConsultaGuardada;
   }

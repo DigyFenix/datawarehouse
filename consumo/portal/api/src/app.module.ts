@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { validarEnv } from './config/env';
 import { DbModule } from './db/db.module';
+import { DescargasModule } from './descargas/descargas.module';
 import { HealthController } from './health/health.controller';
 import { OrganizacionModule } from './organizacion/organizacion.module';
 import { TablerosModule } from './tableros/tableros.module';
@@ -28,6 +29,7 @@ import { TablerosModule } from './tableros/tableros.module';
     AdminModule,
     AgenteModule,
     InicioModule,
+    DescargasModule,
   ],
   controllers: [HealthController],
   providers: [

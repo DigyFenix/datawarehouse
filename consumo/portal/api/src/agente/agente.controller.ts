@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -24,6 +25,8 @@ import {
   CrearConsultaGuardadaDto,
   enviarMensajeSchema,
   EnviarMensajeDto,
+  ordenTableroSchema,
+  OrdenTableroDto,
 } from './agente.dto';
 import { ConsultasGuardadasService } from './consultas-guardadas.service';
 import { ConversacionesService } from './conversaciones.service';
@@ -110,5 +113,24 @@ export class AgenteController {
   @HttpCode(204)
   eliminarConsulta(@Param('id', ParseIntPipe) id: number, @Req() req: RequestPortal) {
     return this.guardadas.eliminar(this.usuario(req), id);
+  }
+
+  // ---------------------------------------------------------------- mi tablero
+
+  /**
+   * Widgets de «Mi tablero» con datos frescos: cada consulta fijada se reejecuta bajo las
+   * guardas y el alcance de quien abre (sin pasar por el modelo).
+   *
+   * @returns EjecucionGuardada[] en el orden del tablero
+   */
+  @Get('tablero')
+  tablero(@Req() req: RequestPortal) {
+    return this.agente.ejecutarTablero(this.usuario(req), req.ip ?? null);
+  }
+
+  /** Reordena los widgets (ids propios en el orden deseado). */
+  @Put('tablero/orden')
+  ordenarTablero(@Body(new ZodValidationPipe(ordenTableroSchema)) dto: OrdenTableroDto, @Req() req: RequestPortal) {
+    return this.guardadas.reordenarTablero(this.usuario(req), dto.ids);
   }
 }

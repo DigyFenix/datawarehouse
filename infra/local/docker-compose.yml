@@ -133,6 +133,9 @@ services:
       # Rol de solo lectura `portal_lector` (RLS oro): mismo valor que crea el rol
       # en init/03_rol_lector.sh (servicio postgres, arriba en este archivo).
       PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD:-}
+      # Horas de la carga programada ("HH:MM HH:MM"): el portal solo las informa (frescura).
+      HORAS_CARGA: ${HORAS_CARGA:-}
+      ZONA_HORARIA: ${ZONA_HORARIA:-America/Guatemala}
     ports:
       - "${PORTAL_USUARIO_PORT:-3002}:3002"
     depends_on:

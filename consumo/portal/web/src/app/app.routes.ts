@@ -61,6 +61,19 @@ export const routes: Routes = [
               import('./features/chatbot/chatbot.component').then((m) => m.ChatbotComponent),
           },
           {
+            // Autoservicio: widgets JS/HTML sobre las consultas guardadas del asistente.
+            path: 'mi-tablero',
+            canActivate: [asistenteGuard],
+            loadComponent: () =>
+              import('./features/mi-tablero/mi-tablero.component').then((m) => m.MiTableroComponent),
+          },
+          {
+            // Autoservicio: tabulados a Excel desde la capa semántica (no depende del asistente).
+            path: 'descargas',
+            loadComponent: () =>
+              import('./features/descargas/descargas.component').then((m) => m.DescargasComponent),
+          },
+          {
             path: 'admin',
             canActivate: [adminGuard],
             children: [
@@ -84,6 +97,11 @@ export const routes: Routes = [
                 path: 'indicadores',
                 loadComponent: () =>
                   import('./features/admin/derivadas.component').then((m) => m.DerivadasComponent),
+              },
+              {
+                path: 'demanda',
+                loadComponent: () =>
+                  import('./features/admin/demanda.component').then((m) => m.DemandaComponent),
               },
               {
                 path: 'auditoria',

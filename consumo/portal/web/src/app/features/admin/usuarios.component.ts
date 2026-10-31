@@ -10,7 +10,8 @@ import { EmptyComponent } from '../../ui/empty.component';
 import { IconComponent } from '../../ui/icon.component';
 import { PageHeaderComponent } from '../../ui/page-header.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
-import { PestanaTab, TabsComponent } from '../../ui/tabs.component';
+import { TabsComponent } from '../../ui/tabs.component';
+import { PESTANAS_ADMIN } from './pestanas';
 
 interface FormUsuario {
   email: string;
@@ -19,14 +20,6 @@ interface FormUsuario {
   esAdmin: boolean;
   activo: boolean;
 }
-
-const PESTANAS: PestanaTab[] = [
-  { etiqueta: 'Usuarios', segmento: 'usuarios' },
-  { etiqueta: 'Perfiles', segmento: 'perfiles' },
-  { etiqueta: 'Glosario', segmento: 'glosario' },
-  { etiqueta: 'Indicadores', segmento: 'indicadores' },
-  { etiqueta: 'Auditoría', segmento: 'auditoria' },
-];
 
 /** Administración de usuarios de la organización (solo su admin). */
 @Component({
@@ -165,7 +158,7 @@ export class UsuariosComponent {
   private readonly toast = inject(ToastService);
   readonly tenant = inject(TenantService);
 
-  readonly pestanas = PESTANAS;
+  readonly pestanas = PESTANAS_ADMIN;
   readonly usuarios = signal<UsuarioOrg[]>([]);
   readonly perfiles = signal<PerfilOrg[]>([]);
   readonly cargando = signal(true);

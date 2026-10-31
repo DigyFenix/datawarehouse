@@ -20,6 +20,7 @@
     "@nestjs/platform-express": "^10.3.0",
     "@quilate/agente": "file:../../../data-plane/agente",
     "argon2": "^0.40.1",
+    "exceljs": "^4.4.0",
     "pg": "^8.11.3",
     "reflect-metadata": "^0.2.1",
     "rxjs": "^7.8.1",

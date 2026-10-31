@@ -14,7 +14,9 @@ export { ejecutarTool } from './tools/ejecutar';
 export { ejecutarGuardada, validarEspecificacion, TOOLS_GUARDABLES } from './guardada';
 export type { EntradaGuardada, ResultadoGuardada } from './guardada';
 export type { ContextoTool, ResultadoTool } from './tools/ejecutar';
-export { TOOLS_ANTHROPIC } from './tools/esquemas';
+export { TOOLS_ANTHROPIC, DIMENSIONES, TIPOS_SOLICITUD } from './tools/esquemas';
+export { prepararDescarga, esquemaDescarga, NIVELES_DESCARGA, TOPE_FILAS_DESCARGA } from './descargas';
+export type { EntradaDescarga, HojaDescarga, NivelDescarga, ParamsDescarga, ResultadoDescarga } from './descargas';
 export { construirSystemPrompt } from './prompt';
 export type {
   AlcanceEfectivo,
@@ -23,8 +25,10 @@ export type {
   ConsultaEjecutada,
   EjecutorSql,
   EventoAuditoria,
+  FrescuraDominio,
   MensajeHistorial,
   MetricaAutorizada,
   ResultadoAgente,
+  SolicitudNoAtendida,
   TarjetaDato,
 } from './tipos';

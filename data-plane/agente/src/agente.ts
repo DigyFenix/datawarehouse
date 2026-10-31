@@ -19,6 +19,7 @@ import type {
   EventoAuditoria,
   MensajeHistorial,
   ResultadoAgente,
+  SolicitudNoAtendida,
   TarjetaDato,
 } from './tipos';
 
@@ -64,6 +65,7 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
   const tarjetas: TarjetaDato[] = [];
   const conjuntos: ConjuntoDatos[] = [];
   const consultas: ConsultaEjecutada[] = [];
+  const solicitudes: SolicitudNoAtendida[] = [];
   let texto = '';
 
   for (let iteracion = 0; iteracion < config.maxIteraciones; iteracion += 1) {
@@ -91,6 +93,7 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
         tarjetas: [],
         conjuntos: [],
         consultas: [],
+        solicitudes: [],
       };
     }
 
@@ -117,6 +120,13 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
       });
       await auditar(resultado.auditoria);
       tarjetas.push(...resultado.tarjetas);
+      // Demanda no atendida: la registra el modelo (tool) o la deduce el código de una
+      // denegación. Se deduplica por (tipo, métrica) para que un reintento no la repita.
+      if (resultado.solicitud) {
+        const s = resultado.solicitud;
+        const repetida = solicitudes.some((x) => x.tipo === s.tipo && (x.metricaClave ?? '') === (s.metricaClave ?? '') && x.resumen === s.resumen);
+        if (!repetida) solicitudes.push(s);
+      }
       // Toda consulta con dato queda descrita por (tool, params validados): es lo que el
       // usuario puede guardar para reejecutar otro día bajo sus propias guardas.
       if (!resultado.esError && resultado.conjunto && resultado.params) {
@@ -154,5 +164,5 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
     return true;
   });
 
-  return { texto, tarjetas: unicas, conjuntos, consultas };
+  return { texto, tarjetas: unicas, conjuntos, consultas, solicitudes };
 }

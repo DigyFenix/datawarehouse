@@ -10,9 +10,12 @@ import { AgenteService } from './agente.service';
 import { ConsultasGuardadasService } from './consultas-guardadas.service';
 import { ConversacionesService } from './conversaciones.service';
 import { LimiteAgenteGuard } from './limite-agente.guard';
+import { SolicitudesService } from './solicitudes.service';
 
 @Module({
   controllers: [AgenteController],
-  providers: [AgenteService, ConversacionesService, ConsultasGuardadasService, LimiteAgenteGuard],
+  providers: [AgenteService, ConversacionesService, ConsultasGuardadasService, SolicitudesService, LimiteAgenteGuard],
+  // Descargas (misma lectura gobernada) y Admin (bitácora de demanda) reutilizan estos servicios.
+  exports: [AgenteService, SolicitudesService],
 })
 export class AgenteModule {}

@@ -7,9 +7,12 @@
  * que se muestra.
  */
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
+import { proximaCarga, type ProximaCarga } from '../agente/frescura';
 import { SesionService } from '../auth/sesion.service';
 import { UsuarioPortal } from '../auth/tipos';
+import type { Env } from '../config/env';
 
 export interface FrescuraDominio {
   dominio: string;
@@ -19,6 +22,8 @@ export interface FrescuraDominio {
 
 export interface ResumenInicio {
   frescura: FrescuraDominio[];
+  /** Próxima carga programada del warehouse (null si no hay horario configurado). */
+  proximaCarga: ProximaCarga | null;
   tableros: number;
   /** Últimos tableros que este usuario abrió (de su propia auditoría). */
   recientes: { clave: string; nombre: string; visto: string }[];
@@ -26,7 +31,10 @@ export interface ResumenInicio {
 
 @Injectable()
 export class InicioService {
-  constructor(private readonly sesion: SesionService) {}
+  constructor(
+    private readonly sesion: SesionService,
+    private readonly config: ConfigService<Env, true>,
+  ) {}
 
   async resumen(usuario: UsuarioPortal): Promise<ResumenInicio> {
     const { pool } = await this.sesion.contexto(usuario.hash);
@@ -78,6 +86,7 @@ export class InicioService {
 
     return {
       frescura,
+      proximaCarga: proximaCarga(this.config.get('HORAS_CARGA', { infer: true }), this.config.get('ZONA_HORARIA', { infer: true })),
       tableros: Number(tableros.rows[0]?.n ?? 0),
       recientes: recientes.rows,
     };

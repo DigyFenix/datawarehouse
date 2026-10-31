@@ -8,15 +8,8 @@ import { ToastService } from '../../core/toast.service';
 import { EmptyComponent } from '../../ui/empty.component';
 import { PageHeaderComponent } from '../../ui/page-header.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
-import { PestanaTab, TabsComponent } from '../../ui/tabs.component';
-
-const PESTANAS: PestanaTab[] = [
-  { etiqueta: 'Usuarios', segmento: 'usuarios' },
-  { etiqueta: 'Perfiles', segmento: 'perfiles' },
-  { etiqueta: 'Glosario', segmento: 'glosario' },
-  { etiqueta: 'Indicadores', segmento: 'indicadores' },
-  { etiqueta: 'Auditoría', segmento: 'auditoria' },
-];
+import { TabsComponent } from '../../ui/tabs.component';
+import { PESTANAS_ADMIN } from './pestanas';
 
 /** Auditoría de la organización: logins, cambios y aperturas de tableros. */
 @Component({
@@ -89,7 +82,7 @@ export class AuditoriaComponent {
   private readonly toast = inject(ToastService);
   readonly tenant = inject(TenantService);
 
-  readonly pestanas = PESTANAS;
+  readonly pestanas = PESTANAS_ADMIN;
   readonly entradas = signal<EntradaAuditoria[]>([]);
   readonly puedeCargarMas = signal(false);
   readonly cargando = signal(true);

@@ -11,7 +11,8 @@ import { EmptyComponent } from '../../ui/empty.component';
 import { IconComponent } from '../../ui/icon.component';
 import { PageHeaderComponent } from '../../ui/page-header.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
-import { PestanaTab, TabsComponent } from '../../ui/tabs.component';
+import { TabsComponent } from '../../ui/tabs.component';
+import { PESTANAS_ADMIN } from './pestanas';
 
 interface FormPerfil {
   clave: string;
@@ -19,14 +20,6 @@ interface FormPerfil {
   descripcion: string;
   activo: boolean;
 }
-
-const PESTANAS: PestanaTab[] = [
-  { etiqueta: 'Usuarios', segmento: 'usuarios' },
-  { etiqueta: 'Perfiles', segmento: 'perfiles' },
-  { etiqueta: 'Glosario', segmento: 'glosario' },
-  { etiqueta: 'Indicadores', segmento: 'indicadores' },
-  { etiqueta: 'Auditoría', segmento: 'auditoria' },
-];
 
 /**
  * Perfiles de acceso de la organización: qué tableros ve cada perfil y — para
@@ -194,7 +187,7 @@ export class PerfilesComponent {
   private readonly confirm = inject(ConfirmService);
   readonly tenant = inject(TenantService);
 
-  readonly pestanas = PESTANAS;
+  readonly pestanas = PESTANAS_ADMIN;
   readonly perfiles = signal<PerfilOrg[]>([]);
   readonly tableros = signal<TableroAdmin[]>([]);
   readonly cargando = signal(true);

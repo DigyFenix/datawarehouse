@@ -208,6 +208,40 @@ preguntó fuera de su alcance, lo orienta a lo que sí puede obtener.
 Implementación: las métricas se exponen como **tools tipadas** (una por operación segura sobre
 la semántica). El LLM elige tool + parámetros; el **código valida y ejecuta**.
 
+### 7.3 Lo que el agente NO hace cuando el dato no está (frescura y demanda)
+
+El agente lee **solo Oro**. Bronce y Plata no se consultan por ningún motivo, y tampoco el ERP
+en vivo. De ahí salen dos comportamientos que son parte del flujo, no excepciones:
+
+- **Frescura honesta, no refresco bajo demanda.** Si alguien pregunta por «hoy» y el dato más
+  reciente es de ayer, el agente responde con lo que hay hasta la fecha de corte, dice hasta
+  cuándo llega el dato y **cuándo llega la próxima carga programada** (`HORAS_CARGA`, el mismo
+  horario del programador). No ofrece «actualizar ahora»: una carga por pregunta sería lenta
+  para quien pregunta y cara para la organización si varios la piden. Si el negocio necesita
+  datos más frescos, la respuesta es **más cargas al día**, no cargas por pregunta.
+- **Bitácora de demanda no atendida.** Lo que se pide y no se puede dar (métrica fuera del
+  catálogo, dato más reciente que la carga, desglose no publicado, métrica fuera de la
+  autorización) queda en `portal.solicitudes_no_atendidas` del tenant: lo registra el modelo
+  con la tool `registrar_solicitud` o lo deduce el código de una denegación. **Solo lo ve el
+  administrador** de la organización (Administración → Demanda). Es la lista de espera del
+  catálogo: nada de ahí amplía lo que el agente responde hasta que alguien lo agrega al
+  catálogo y lo certifica.
+
+### 7.4 Autoservicio sobre la misma capa semántica
+
+Dos módulos del portal de usuario reutilizan las tools y guardas del agente **sin pasar por el
+modelo** (cero tokens, cero desvíos):
+
+- **Mi tablero.** Widgets JS/HTML (no Power BI) armados con las consultas guardadas del chat.
+  Se guarda la especificación (tool + parámetros), nunca el resultado; al abrir el tablero cada
+  widget se reejecuta bajo el alcance de quien lo abre. El usuario ordena, cambia el ancho y la
+  vista (tabla, barras, líneas).
+- **Descargas a Excel.** El usuario elige módulo (dominio), métricas, nivel de detalle (por
+  mes, por mes y empresa, por miembro de una dimensión, por mes y miembro, aging por rango o
+  por socio), período y empresa. `prepararDescarga` (paquete del agente) valida con Zod,
+  autoriza por alcance y ejecuta SQL constante sobre `oro.metrica_*` bajo RLS. El libro lleva
+  una hoja «Ficha» con métrica, definición, estado, período, empresas y frescura.
+
 ## 8. Mapeo ERP → canónico
 
 Único punto que conoce el ERP. Cada ERP trae su archivo de mapeo. Ejemplo del valor agnóstico:

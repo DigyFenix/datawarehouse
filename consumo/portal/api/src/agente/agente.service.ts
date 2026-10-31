@@ -15,6 +15,7 @@ import type {
   ConjuntoDatos,
   EjecutorSql,
   EventoAuditoria,
+  FrescuraDominio,
   ResultadoAgente,
   TarjetaDato,
 } from '@quilate/agente';
@@ -29,6 +30,8 @@ import { ControlDbService } from '../db/control-db.service';
 import { LectorPoolsService } from '../db/lector-pools.service';
 import { ConsultaGuardada, ConsultasGuardadasService } from './consultas-guardadas.service';
 import { ConversacionesService } from './conversaciones.service';
+import { proximaCarga, type ProximaCarga } from './frescura';
+import { SolicitudesService } from './solicitudes.service';
 
 /** Turnos de historial que se le dan al modelo como contexto (no todo el hilo). */
 const HISTORIAL_MAXIMO = 20;
@@ -49,8 +52,19 @@ export interface EjecucionGuardada {
   /** Avisos que no impiden ver el dato (p. ej. la definición de la métrica cambió de versión). */
   avisos: string[];
   /** Frescura del dato por dominio al momento de ejecutar. */
-  frescura: { dominio: string; fechaDatoMasReciente: string | null }[];
+  frescura: FrescuraDominio[];
+  /** Próxima carga programada (si el host conoce el horario). */
+  proximaCarga: ProximaCarga | null;
   ejecutadaEn: string;
+}
+
+/** Lo que cualquier lectura gobernada del warehouse necesita (chat, guardadas, tablero, descargas). */
+export interface ContextoLectura {
+  pool: Pool;
+  ejecutor: EjecutorSql;
+  empresas: Map<string, string>;
+  frescura: FrescuraDominio[];
+  proximaCarga: ProximaCarga | null;
 }
 
 @Injectable()
@@ -60,6 +74,7 @@ export class AgenteService {
     private readonly sesion: SesionService,
     private readonly conversaciones: ConversacionesService,
     private readonly guardadas: ConsultasGuardadasService,
+    private readonly solicitudes: SolicitudesService,
     private readonly lectorPools: LectorPoolsService,
     private readonly controlDb: ControlDbService,
     private readonly auditoria: AuditoriaPortalService,
@@ -101,6 +116,7 @@ export class AgenteService {
       empresas,
       glosario,
       frescura,
+      proximaCarga: this.proximaCarga()?.texto ?? null,
       fechaActual: fechaLocal(new Date(), this.config.get('ZONA_HORARIA', { infer: true })),
     };
 
@@ -116,7 +132,31 @@ export class AgenteService {
 
     // (f)+(g) Persiste el turno (texto, tarjetas y conjuntos) y actualiza título/fecha.
     await this.conversaciones.registrarTurno(pool, conversacion, contenido, resultado);
+    // (h) Demanda que no se pudo atender: queda para el administrador (nunca bloquea la respuesta).
+    await this.solicitudes.registrar(pool, usuario, conversacionId, contenido, resultado.solicitudes);
     return resultado;
+  }
+
+  /**
+   * Contexto de lectura gobernada para quien NO pasa por el modelo (tablero personal,
+   * descargas): mismo ejecutor bajo RLS, mismas empresas y frescura que el chat.
+   */
+  async contextoLectura(usuario: UsuarioPortal): Promise<ContextoLectura> {
+    const { organizacion, pool } = await this.sesion.contexto(usuario.hash);
+    const empresasCsv = await this.resolverEmpresasCsv(pool, usuario.id);
+    const ejecutor = this.construirEjecutor(organizacion.baseDatosDw, empresasCsv);
+    const [empresas, frescura] = await Promise.all([this.leerEmpresas(pool), this.leerFrescura(pool)]);
+    return { pool, ejecutor, empresas, frescura, proximaCarga: this.proximaCarga() };
+  }
+
+  /** Próxima carga programada según HORAS_CARGA, en la zona del negocio (null si no hay horario). */
+  proximaCarga(): ProximaCarga | null {
+    return proximaCarga(this.config.get('HORAS_CARGA', { infer: true }), this.config.get('ZONA_HORARIA', { infer: true }));
+  }
+
+  /** Registra en la auditoría del tenant un evento producido fuera del chat (tablero, descargas). */
+  auditarEvento(pool: Pool, usuario: UsuarioPortal, evento: EventoAuditoria, entidadId: string, ip: string | null): Promise<void> {
+    return this.auditar(pool, usuario, evento, entidadId, ip);
   }
 
   /**
@@ -160,8 +200,36 @@ export class AgenteService {
       tarjetas: r.tarjetas,
       avisos,
       frescura,
+      proximaCarga: this.proximaCarga(),
       ejecutadaEn: new Date().toISOString(),
     };
+  }
+
+  /**
+   * «Mi tablero»: reejecuta, en orden, todas las consultas que el usuario fijó al tablero.
+   * Cada widget pasa por las mismas guardas que una guardada abierta a mano; una que ya no
+   * se pueda ejecutar se devuelve con su motivo, sin tumbar el resto del tablero.
+   */
+  async ejecutarTablero(usuario: UsuarioPortal, ip: string | null): Promise<EjecucionGuardada[]> {
+    const consultas = await this.guardadas.listarTablero(usuario);
+    const salida: EjecucionGuardada[] = [];
+    for (const c of consultas) {
+      try {
+        salida.push(await this.ejecutarGuardada(usuario, c.id, ip));
+      } catch (error) {
+        salida.push({
+          consulta: c,
+          ok: false,
+          motivo: error instanceof Error ? error.message : 'No se pudo ejecutar la consulta.',
+          tarjetas: [],
+          avisos: [],
+          frescura: [],
+          proximaCarga: null,
+          ejecutadaEn: new Date().toISOString(),
+        });
+      }
+    }
+    return salida;
   }
 
   private auditar(pool: Pool, usuario: UsuarioPortal, evento: EventoAuditoria, entidadId: string, ip: string | null) {
@@ -231,20 +299,23 @@ export class AgenteService {
   }
 
   /** Frescura por dominio (oro.estado_carga), agregada a través de las empresas del tenant. */
-  private async leerFrescura(
-    pool: Pool,
-  ): Promise<{ dominio: string; fechaDatoMasReciente: string | null }[]> {
+  private async leerFrescura(pool: Pool): Promise<FrescuraDominio[]> {
     const resultado = await pool.query(
-      `SELECT dominio, max(fecha_dato_mas_reciente) AS "fechaDatoMasReciente"
+      // La fecha del dato es un DATE: se trae como texto. Convertirla a Date la dejaba en
+      // medianoche UTC y, al formatearla en la zona del negocio, retrocedía un día (el chat
+      // decía «corte 29» cuando el warehouse tenía el 30).
+      `SELECT dominio,
+              max(fecha_dato_mas_reciente)::text AS "fechaDatoMasReciente",
+              max(ultima_extraccion)             AS "ultimaExtraccion"
          FROM oro.estado_carga
         GROUP BY dominio
         ORDER BY dominio`,
     );
-    const filas = resultado.rows as { dominio: string; fechaDatoMasReciente: Date | null }[];
-    const zona = this.config.get('ZONA_HORARIA', { infer: true });
+    const filas = resultado.rows as { dominio: string; fechaDatoMasReciente: string | null; ultimaExtraccion: Date | null }[];
     return filas.map((f) => ({
       dominio: f.dominio,
-      fechaDatoMasReciente: f.fechaDatoMasReciente ? fechaLocal(f.fechaDatoMasReciente, zona) : null,
+      fechaDatoMasReciente: f.fechaDatoMasReciente,
+      ultimaExtraccion: f.ultimaExtraccion ? f.ultimaExtraccion.toISOString() : null,
     }));
   }
 }

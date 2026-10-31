@@ -49,6 +49,7 @@ const DDL_TENANT = [
   '134_tablero_barra_tenant.sql',
   '135_tablero_grupo_tenant.sql',
   '136_consultas_guardadas_tenant.sql',
+  '137_tablero_personal_y_demanda_tenant.sql',
   // Va al final: siembra perfiles y necesita las tablas de las anteriores.
   '131_perfiles_base_tenant.sql',
 ];

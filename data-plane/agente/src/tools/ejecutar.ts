@@ -29,12 +29,14 @@ import {
   esquemaConsultarPorDimension,
   esquemaExplicarMetrica,
   esquemaListarMetricas,
+  esquemaRegistrarSolicitud,
 } from './esquemas';
 import type {
   AlcanceEfectivo,
   ConjuntoDatos,
   EjecutorSql,
   EventoAuditoria,
+  SolicitudNoAtendida,
   TarjetaDato,
 } from '../tipos';
 
@@ -56,6 +58,8 @@ export interface ResultadoTool {
   conjunto?: ConjuntoDatos;
   /** Parámetros YA validados con los que se ejecutó (lo que se guarda para reejecutar). */
   params?: Record<string, unknown>;
+  /** Demanda no atendida que este resultado deja registrada (tool explícita o denegación deducida). */
+  solicitud?: SolicitudNoAtendida;
 }
 
 /** Dominios de negocio válidos para los mensajes de orientación. */
@@ -71,6 +75,18 @@ function denegado(
   detalle: Record<string, unknown>,
 ): ResultadoTool {
   const disponibles = metricasDelAlcance(alcance);
+  // Una métrica o empresa fuera del alcance es DEMANDA que el administrador quiere ver
+  // (quizá falta autorizar o falta la métrica). Un parámetro mal formado por el modelo no lo es.
+  const esDemanda = typeof detalle['metrica_clave'] === 'string' || detalle['empresa_id'] != null;
+  const solicitud: SolicitudNoAtendida | undefined = esDemanda
+    ? {
+        tipo: 'sin_autorizacion',
+        resumen: mensaje.slice(0, 300),
+        metricaClave: typeof detalle['metrica_clave'] === 'string' ? detalle['metrica_clave'] : null,
+        dominio: null,
+        origen: 'denegacion',
+      }
+    : undefined;
   return {
     contenido: JSON.stringify({
       error: mensaje,
@@ -79,6 +95,35 @@ function denegado(
     esError: true,
     tarjetas: [],
     auditoria: { accion: 'consulta_agente_denegada', detalle: { ...detalle, motivo: mensaje } },
+    ...(solicitud ? { solicitud } : {}),
+  };
+}
+
+/**
+ * Registro de demanda no atendida. No toca la base: devuelve la solicitud ya validada para
+ * que el loop la entregue al host. El modelo recibe una confirmación corta y sigue.
+ */
+async function registrarSolicitud(entrada: unknown, ctx: ContextoTool): Promise<ResultadoTool> {
+  const v = validar(esquemaRegistrarSolicitud, entrada);
+  if (!v.ok) return denegado(v.error, ctx.alcance, { tool: 'registrar_solicitud' });
+  const p = v.datos;
+  const solicitud: SolicitudNoAtendida = {
+    tipo: p.tipo,
+    resumen: p.resumen.replace(/\s+/g, ' '),
+    metricaClave: p.metrica_clave ?? null,
+    dominio: p.dominio ?? null,
+    origen: 'tool',
+  };
+  return {
+    contenido: JSON.stringify({
+      registrado: true,
+      nota: 'Quedó registrado para el administrador. No prometas plazos ni cambios: solo di que quedó anotado.',
+    }),
+    esError: false,
+    tarjetas: [],
+    params: p,
+    solicitud,
+    auditoria: { accion: 'solicitud_no_atendida', detalle: { tipo: p.tipo, metrica_clave: p.metrica_clave ?? null, dominio: p.dominio ?? null } },
   };
 }
 
@@ -98,6 +143,8 @@ export async function ejecutarTool(
       return consultarPorDimension(entrada, ctx);
     case 'explicar_metrica':
       return explicarMetrica(entrada, ctx);
+    case 'registrar_solicitud':
+      return registrarSolicitud(entrada, ctx);
     default:
       return denegado(`Herramienta desconocida: ${nombre}`, ctx.alcance, { tool: nombre });
   }
@@ -477,6 +524,13 @@ async function consultarPorDimension(entrada: unknown, ctx: ContextoTool): Promi
       auditoria: {
         accion: 'consulta_agente_denegada',
         detalle: { tool: 'consultar_metrica_por_dimension', metrica_clave: p.metrica_clave, dimension: p.dimension, motivo: 'dimension_no_disponible' },
+      },
+      solicitud: {
+        tipo: 'desglose_no_admitido',
+        resumen: `Desglose de ${metrica.nombreOficial} por ${p.dimension}`,
+        metricaClave: p.metrica_clave,
+        dominio: metrica.dominio || null,
+        origen: 'denegacion',
       },
     };
   }

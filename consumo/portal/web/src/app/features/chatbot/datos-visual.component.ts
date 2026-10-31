@@ -1,4 +1,4 @@
-import { Component, Input, computed, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
 
 import { IconComponent } from '../../ui/icon.component';
 import { ConjuntoDatos, VistaConsulta } from './chat.service';
@@ -165,9 +165,12 @@ export class DatosVisualComponent {
 
   private readonly _conjunto = signal<ConjuntoDatos>({ tipo: 'serie', titulo: '', metricaClave: '', metricaNombre: '', estado: 'certificada', periodo: '', columnas: [], filas: [] });
   readonly vista = signal<VistaConsulta>('tabla');
+  /** El contenedor (p. ej. Mi tablero) puede persistir la vista que la persona prefiere. */
+  @Output() readonly vistaCambiada = new EventEmitter<VistaConsulta>();
 
   cambiar(v: VistaConsulta): void {
     this.vista.set(v);
+    this.vistaCambiada.emit(v);
   }
 
   /** La columna numérica principal: la última de tipo número (valor / saldo). */

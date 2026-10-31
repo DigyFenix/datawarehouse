@@ -97,11 +97,13 @@ export interface ResultadoAgente {
   tarjetas: TarjetaDato[];
   conjuntos: ConjuntoDatos[];
   consultas: ConsultaEjecutada[];
+  /** Demanda no atendida detectada en este turno (el host la persiste para el administrador). */
+  solicitudes: SolicitudNoAtendida[];
 }
 
 /** Evento de auditoría que el host persiste (portal.auditoria del tenant). */
 export interface EventoAuditoria {
-  accion: 'consulta_agente' | 'consulta_agente_denegada';
+  accion: 'consulta_agente' | 'consulta_agente_denegada' | 'solicitud_no_atendida' | 'descarga_datos';
   detalle: Record<string, unknown>;
 }
 
@@ -117,6 +119,37 @@ export interface ConfigAgente {
   /** Glosario término → definición (global + del tenant). */
   glosario: { termino: string; definicion: string; equivaleA: string | null }[];
   /** Frescura por dominio (oro.estado_carga), para que el agente cite el corte del dato. */
-  frescura: { dominio: string; fechaDatoMasReciente: string | null }[];
+  frescura: FrescuraDominio[];
+  /**
+   * Cuándo llega la próxima carga programada (texto legible en la zona del negocio, p. ej.
+   * «hoy a las 18:00»). null si el host no conoce el horario. El agente NO puede
+   * adelantarla: la frescura se explica, no se fuerza.
+   */
+  proximaCarga: string | null;
   fechaActual: string;
+}
+
+/** Frescura de un dominio del warehouse (oro.estado_carga agregada por el host). */
+export interface FrescuraDominio {
+  dominio: string;
+  /** Fecha del dato más reciente del ERP que ya está en Oro ('YYYY-MM-DD'). */
+  fechaDatoMasReciente: string | null;
+  /** Cuándo corrió la última carga (ISO), si el host la informa. */
+  ultimaExtraccion?: string | null;
+}
+
+/**
+ * Demanda que el agente NO pudo atender dentro de la capa semántica: algo que no está
+ * en el catálogo, un dato más reciente que la última carga, un desglose que la métrica
+ * no admite o una métrica fuera de la autorización del usuario. Se registra para que el
+ * administrador vea qué pide la gente; nunca cambia lo que el agente puede responder.
+ */
+export interface SolicitudNoAtendida {
+  tipo: 'fuera_catalogo' | 'frescura' | 'sin_autorizacion' | 'desglose_no_admitido' | 'otro';
+  /** Qué pidió la persona, en una frase (lo redacta el modelo o lo arma el código). */
+  resumen: string;
+  metricaClave?: string | null;
+  dominio?: string | null;
+  /** 'tool' = el modelo la registró a propósito; 'denegacion' = la dedujo el código de una tool denegada. */
+  origen: 'tool' | 'denegacion';
 }

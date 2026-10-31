@@ -32,6 +32,10 @@ const esquemaEnv = z.object({
 
   // Zona horaria del negocio: «hoy», «este mes» y las fechas de corte se calculan aquí, no en UTC.
   ZONA_HORARIA: z.string().default('America/Guatemala'),
+  // Horas de la carga programada del warehouse ("HH:MM HH:MM", hora del negocio). Es el MISMO
+  // valor que lee infra/produccion/programador.sh: el portal no dispara cargas, solo dice cuándo
+  // llega la próxima (frescura honesta en el asistente y en el inicio). Vacío = no se informa.
+  HORAS_CARGA: z.string().default(''),
 
   // Rol de solo lectura `portal_lector` (RLS oro): el agente lee el warehouse del
   // tenant SOLO con esta contraseña. Sin ella, LectorPoolsService lanza al usarse.

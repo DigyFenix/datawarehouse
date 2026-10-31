@@ -40,6 +40,42 @@ export class ApiService {
     return this.desempaquetar(this.http.delete<Respuesta<T>>(`${this.base()}${ruta}`));
   }
 
+  /**
+   * POST que responde un ARCHIVO (no el sobre { success, data }). El nombre sale de
+   * Content-Disposition; un error llega como JSON dentro del blob y se traduce a mensaje.
+   */
+  postArchivo(ruta: string, cuerpo: unknown): Observable<{ blob: Blob; nombre: string | null }> {
+    return this.http
+      .post(`${this.base()}${ruta}`, cuerpo, { observe: 'response', responseType: 'blob' })
+      .pipe(
+        map((r) => {
+          const disposicion = r.headers.get('Content-Disposition') ?? '';
+          const coincidencia = /filename="?([^";]+)"?/.exec(disposicion);
+          return { blob: r.body ?? new Blob(), nombre: coincidencia ? coincidencia[1] : null };
+        }),
+        catchError((e) => {
+          const cuerpoError = e?.error;
+          if (cuerpoError instanceof Blob) {
+            return new Observable<{ blob: Blob; nombre: string | null }>((obs) => {
+              cuerpoError.text().then((texto) => {
+                let mensaje = e.message ?? 'Error de red';
+                try {
+                  const json = JSON.parse(texto) as Respuesta<unknown>;
+                  mensaje = json.error?.mensaje ?? mensaje;
+                  const detalles = json.error?.detalles as { campo: string; mensaje: string }[] | undefined;
+                  if (Array.isArray(detalles) && detalles.length) mensaje += ': ' + detalles.map((d) => `${d.campo} — ${d.mensaje}`).join('; ');
+                } catch {
+                  // no era JSON: se deja el mensaje genérico
+                }
+                obs.error(new Error(mensaje));
+              });
+            });
+          }
+          return throwError(() => new Error(e?.error?.error?.mensaje ?? e.message ?? 'Error de red'));
+        }),
+      );
+  }
+
   private desempaquetar<T>(fuente: Observable<Respuesta<T>>): Observable<T> {
     return fuente.pipe(
       map((r) => {

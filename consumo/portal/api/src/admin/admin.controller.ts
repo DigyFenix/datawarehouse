@@ -7,6 +7,7 @@ import {
   HttpCode,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -40,11 +41,44 @@ import {
   TerminoGlosarioDto,
 } from './admin.dto';
 import { AdminService } from './admin.service';
+import { actualizarSolicitudSchema, ActualizarSolicitudDto, estadoSolicitudSchema } from '../agente/agente.dto';
+import { EstadoSolicitud, SolicitudesService } from '../agente/solicitudes.service';
 
 @SoloAdmin()
 @Controller('t/:hash/admin')
 export class AdminController {
-  constructor(private readonly servicio: AdminService) {}
+  constructor(
+    private readonly servicio: AdminService,
+    private readonly solicitudes: SolicitudesService,
+  ) {}
+
+  // --- Demanda no atendida (lo que la gente pide al asistente y no se puede dar) ---
+
+  /**
+   * Bitácora de demanda no atendida, más reciente primero.
+   * @param estado filtro opcional (nueva | en_revision | atendida | descartada)
+   */
+  @Get('solicitudes')
+  listarSolicitudes(@Req() req: RequestPortal, @Query('estado') estado?: string) {
+    const filtro = estado ? estadoSolicitudSchema.safeParse(estado) : null;
+    return this.solicitudes.listar(this.usuario(req), filtro && filtro.success ? (filtro.data as EstadoSolicitud) : undefined);
+  }
+
+  /** Totales (nuevas, por tipo, métricas/dominios más pedidos) para la cabecera de la pantalla. */
+  @Get('solicitudes/resumen')
+  resumenSolicitudes(@Req() req: RequestPortal) {
+    return this.solicitudes.resumen(this.usuario(req));
+  }
+
+  /** Cambia el estado de seguimiento o la nota del administrador. */
+  @Patch('solicitudes/:id')
+  actualizarSolicitud(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(actualizarSolicitudSchema)) dto: ActualizarSolicitudDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.solicitudes.actualizar(this.usuario(req), id, dto);
+  }
 
   private usuario(req: RequestPortal): UsuarioPortal {
     if (!req.usuarioPortal) throw new Error('Request sin usuario autenticado');

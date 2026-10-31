@@ -20,6 +20,7 @@ interface FrescuraDominio {
 
 interface ResumenInicio {
   frescura: FrescuraDominio[];
+  proximaCarga: { iso: string; texto: string; minutos: number } | null;
   tableros: number;
   recientes: { clave: string; nombre: string; visto: string }[];
 }
@@ -96,6 +97,10 @@ interface ResumenInicio {
             @if (f.estado && f.estado !== 'Al día') { <span class="frescura__estado">({{ f.estado }})</span> }
           </span>
           @if (!ultimo) { <span class="frescura__sep" aria-hidden="true">·</span> }
+        }
+        @if (resumen()?.proximaCarga; as pc) {
+          <span class="frescura__sep" aria-hidden="true">·</span>
+          <span class="frescura__item">Próxima actualización <span class="frescura__fecha">{{ pc.texto }}</span></span>
         }
       </aside>
     }

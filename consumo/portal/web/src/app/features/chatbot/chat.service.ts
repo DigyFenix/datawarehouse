@@ -82,6 +82,16 @@ export interface ConsultaGuardada {
   creadaEn: string;
   actualizadaEn: string;
   ultimaEjecucionEn: string | null;
+  /** «Mi tablero»: fijada como widget, su posición y su ancho (1 = media fila, 2 = fila completa). */
+  enTablero: boolean;
+  tableroOrden: number | null;
+  tableroAncho: 1 | 2;
+}
+
+export interface ProximaCarga {
+  iso: string;
+  texto: string;
+  minutos: number;
 }
 
 export interface EjecucionGuardada {
@@ -92,6 +102,7 @@ export interface EjecucionGuardada {
   tarjetas: TarjetaDato[];
   avisos: string[];
   frescura: { dominio: string; fechaDatoMasReciente: string | null }[];
+  proximaCarga: ProximaCarga | null;
   ejecutadaEn: string;
 }
 
@@ -125,7 +136,7 @@ export class ChatService {
     return this.api.get<ConsultaGuardada[]>('/agente/consultas');
   }
 
-  guardar(c: { titulo: string; descripcion?: string | null; tool: string; params: Record<string, unknown>; vista: VistaConsulta }): Observable<ConsultaGuardada> {
+  guardar(c: { titulo: string; descripcion?: string | null; tool: string; params: Record<string, unknown>; vista: VistaConsulta; enTablero?: boolean }): Observable<ConsultaGuardada> {
     return this.api.post<ConsultaGuardada>('/agente/consultas', c);
   }
 
@@ -133,11 +144,25 @@ export class ChatService {
     return this.api.get<EjecucionGuardada>(`/agente/consultas/${id}/ejecutar`);
   }
 
-  actualizarGuardada(id: number, cambios: { titulo?: string; descripcion?: string | null; vista?: VistaConsulta }): Observable<ConsultaGuardada> {
+  actualizarGuardada(
+    id: number,
+    cambios: { titulo?: string; descripcion?: string | null; vista?: VistaConsulta; enTablero?: boolean; tableroAncho?: 1 | 2 },
+  ): Observable<ConsultaGuardada> {
     return this.api.patch<ConsultaGuardada>(`/agente/consultas/${id}`, cambios);
   }
 
   eliminarGuardada(id: number): Observable<void> {
     return this.api.delete<void>(`/agente/consultas/${id}`);
+  }
+
+  // ---- mi tablero
+
+  /** Widgets del tablero personal, cada uno reejecutado con datos frescos. */
+  tablero(): Observable<EjecucionGuardada[]> {
+    return this.api.get<EjecucionGuardada[]>('/agente/tablero');
+  }
+
+  ordenarTablero(ids: number[]): Observable<ConsultaGuardada[]> {
+    return this.api.put<ConsultaGuardada[]>('/agente/tablero/orden', { ids });
   }
 }
