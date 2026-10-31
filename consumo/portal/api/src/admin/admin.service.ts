@@ -107,7 +107,13 @@ export class AdminService {
       throw e;
     }
     const usuario = insertado.rows[0] as { id: number; email: string };
-    await this.auditar(pool, actor, 'crear', 'usuarios', String(usuario.id), null, usuario, ip);
+    for (const perfilId of dto.perfilIds) {
+      await pool.query(
+        `INSERT INTO portal.usuario_perfiles (usuario_id, perfil_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [usuario.id, perfilId],
+      );
+    }
+    await this.auditar(pool, actor, 'crear', 'usuarios', String(usuario.id), null, { ...usuario, perfilIds: dto.perfilIds }, ip);
     return usuario;
   }
 
@@ -387,12 +393,54 @@ export class AdminService {
     return perfil;
   }
 
+  // --- Catálogo para los alcances del asistente (sesión 37) ---
+
+  /**
+   * Lo que un perfil puede recibir como alcance, con nombres legibles: las empresas del
+   * warehouse (eje RLS) y los dominios con sus métricas consumibles (eje autorización).
+   * Solo lectura; la validación al guardar sigue en `asignarAlcances`.
+   */
+  async catalogoAlcances(actor: UsuarioPortal) {
+    const pool = await this.pool(actor);
+    const [empresas, dominiosMetrica, metricas] = await Promise.all([
+      pool.query(
+        `SELECT empresa_id AS clave, nombre
+           FROM oro.dim_organizacion
+          WHERE es_vigente AND empresa_id IS NOT NULL
+            AND empresa_id <> 'GLOBAL' AND nombre <> 'No definido'
+          ORDER BY nombre`,
+      ),
+      pool.query(`SELECT DISTINCT metrica_clave, dominio FROM oro.metrica_valor`),
+      this.controlDb.query<{ clave: string; nombre_oficial: string; estado: string }>(
+        `SELECT clave, nombre_oficial, estado
+           FROM metadatos.catalogo_metricas
+          WHERE estado IN ('certificada', 'exploratoria')
+          ORDER BY nombre_oficial`,
+        [],
+      ),
+    ]);
+    const dominioPorClave = new Map(
+      (dominiosMetrica.rows as { metrica_clave: string; dominio: string }[]).map((d) => [String(d.metrica_clave), String(d.dominio)]),
+    );
+    const dominios = new Map<string, { clave: string; metricas: { clave: string; nombre: string; estado: string }[] }>();
+    for (const m of metricas) {
+      const dominio = dominioPorClave.get(m.clave) ?? 'otros';
+      const grupo = dominios.get(dominio) ?? { clave: dominio, metricas: [] };
+      grupo.metricas.push({ clave: m.clave, nombre: m.nombre_oficial, estado: m.estado });
+      dominios.set(dominio, grupo);
+    }
+    return {
+      empresas: empresas.rows as { clave: string; nombre: string }[],
+      dominios: [...dominios.values()].sort((a, b) => a.clave.localeCompare(b.clave)),
+    };
+  }
+
   // --- Tableros (lectura para asignar; el alta la hace el proveedor) ---
 
   async listarTableros(actor: UsuarioPortal) {
     const pool = await this.pool(actor);
     const resultado = await pool.query(
-      `SELECT id, clave, nombre, descripcion, modulo, orden, activo
+      `SELECT id, clave, nombre, descripcion, modulo, grupo, orden, activo
          FROM portal.tableros
         ORDER BY orden, id`,
     );

@@ -122,11 +122,17 @@ docker exec quilate-postgres dropdb -U quilate_admin prueba_restore
 
 ## 9. Actualizar a una versión nueva
 
+Receta automatizada: `bash infra/produccion/desplegar.sh [version]` desde la raíz del repo (editar
+`MIGRACIONES` antes). Hace todo lo de abajo, incluido copiar `pg-tls` y recolocar el cron de TLS.
+
 ```bash
 # desarrollo: bash infra/produccion/empaquetar.sh → scp de los dos archivos
 gunzip -c quilate-imagenes-<v>.tar.gz | docker load
 tar xzf quilate-<v>.tar.gz && cp quilate-<anterior>/.env quilate-<v>/ && cd quilate-<v>
-sed -i 's/^VERSION=.*/VERSION=<v>/' .env && docker compose up -d
+sed -i 's/^VERSION=.*/VERSION=<v>/' .env
+sudo cp -a ../quilate-<anterior>/pg-tls/. ./pg-tls/        # certificados TLS de Postgres: NO viajan en el paquete; sin ellos no arranca
+sudo sed -i 's#quilate-<anterior>#quilate-<v>#' /etc/cron.d/quilate-tls-postgres
+docker compose up -d
 # DDL nuevo de control:  docker exec -i quilate-postgres psql -U quilate_admin -d quilate_control < metadata-store/schema/<archivo>.sql
 # DDL nuevo de tenant (*_tenant.sql y 126/127/133): sobre dw_<codigo>
 ```

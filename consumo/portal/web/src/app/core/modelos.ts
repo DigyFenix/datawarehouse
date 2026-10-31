@@ -62,6 +62,24 @@ export interface AlcancePerfil {
   recursoClave: string;
 }
 
+/** Catálogo con nombres legibles para armar los alcances de un perfil (GET /admin/catalogo-alcances). */
+export interface CatalogoAlcances {
+  empresas: { clave: string; nombre: string }[];
+  dominios: { clave: string; metricas: { clave: string; nombre: string; estado: string }[] }[];
+}
+
+/** Catálogo con nombres legibles para armar los alcances de un perfil (GET /admin/catalogo-alcances). */
+export interface CatalogoAlcances {
+  empresas: { clave: string; nombre: string }[];
+  dominios: { clave: string; metricas: { clave: string; nombre: string; estado: string }[] }[];
+}
+
+/** Catálogo con nombres legibles para armar los alcances de un perfil (GET /admin/catalogo-alcances). */
+export interface CatalogoAlcances {
+  empresas: { clave: string; nombre: string }[];
+  dominios: { clave: string; metricas: { clave: string; nombre: string; estado: string }[] }[];
+}
+
 export interface PerfilOrg {
   id: number;
   clave: string;
@@ -80,6 +98,8 @@ export interface TableroAdmin {
   nombre: string;
   descripcion: string | null;
   modulo: string;
+  /** Familia visible en Inicio (Ventas, Clientes, Finanzas…); null = sin agrupar. */
+  grupo: string | null;
   orden: number;
   activo: boolean;
 }

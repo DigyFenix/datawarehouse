@@ -7,6 +7,8 @@ export const crearUsuarioSchema = z.object({
   // Contraseña temporal: el sistema fuerza el cambio al primer ingreso.
   password: z.string().min(8).max(100),
   esAdmin: z.boolean().default(false),
+  // Perfiles en el mismo alta (sesión 37): un usuario sin perfil no ve nada, así que se piden juntos.
+  perfilIds: z.array(z.number().int().positive()).max(100).default([]),
 });
 
 export const actualizarUsuarioSchema = z.object({

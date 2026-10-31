@@ -257,6 +257,11 @@ export class AdminController {
 
   // --- Tableros (lectura) y auditoría ---
 
+  @Get('catalogo-alcances')
+  catalogoAlcances(@Req() req: RequestPortal) {
+    return this.servicio.catalogoAlcances(this.usuario(req));
+  }
+
   @Get('tableros')
   listarTableros(@Req() req: RequestPortal) {
     return this.servicio.listarTableros(this.usuario(req));

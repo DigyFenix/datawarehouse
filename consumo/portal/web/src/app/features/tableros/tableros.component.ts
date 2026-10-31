@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
@@ -15,9 +16,21 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
 @Component({
   selector: 'app-tableros',
   standalone: true,
-  imports: [RouterLink, PageHeaderComponent, SkeletonComponent, EmptyComponent, IconComponent],
+  imports: [FormsModule, RouterLink, PageHeaderComponent, SkeletonComponent, EmptyComponent, IconComponent],
   template: `
-    <app-page-header eyebrow="Módulos · Power BI" titulo="Tableros"></app-page-header>
+    <app-page-header eyebrow="Explorar" titulo="Tableros"></app-page-header>
+
+    @if (!cargando() && tableros().length > 6) {
+      <div class="filtros">
+        <input class="buscar" type="search" placeholder="Buscar tablero…" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)" name="filtro" aria-label="Buscar tablero" />
+        <div class="familias" role="tablist" aria-label="Familia">
+          <button type="button" class="familia" role="tab" [class.familia--on]="familia() === null" [attr.aria-selected]="familia() === null" (click)="familia.set(null)">Todos <span>{{ tableros().length }}</span></button>
+          @for (g of todosLosGrupos(); track g.grupo) {
+            <button type="button" class="familia" role="tab" [class.familia--on]="familia() === g.grupo" [attr.aria-selected]="familia() === g.grupo" (click)="familia.set(g.grupo)">{{ g.grupo ?? 'Otros' }} <span>{{ g.tableros.length }}</span></button>
+          }
+        </div>
+      </div>
+    }
 
     @if (cargando()) {
       <div class="grid">
@@ -41,14 +54,25 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
         </section>
       } @empty {
         <div class="tarjeta vacio-caja">
-          <app-empty titulo="Sin tableros asignados">
-            Tu perfil aún no tiene tableros. Pide acceso al administrador de tu organización.
-          </app-empty>
+          @if (tableros().length) {
+            <app-empty titulo="Ningún tablero coincide">Prueba con otra palabra o quita el filtro de familia.</app-empty>
+          } @else {
+            <app-empty titulo="Sin tableros asignados">
+              Tu perfil aún no tiene tableros. Pide acceso al administrador de tu organización.
+            </app-empty>
+          }
         </div>
       }
     }
   `,
   styles: [`
+    .filtros { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: var(--sp-4); }
+    .buscar { flex: 1 1 240px; max-width: 360px; }
+    .familias { display: flex; flex-wrap: wrap; gap: 6px; }
+    .familia { min-height: 0; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--surface); color: var(--text); font-size: var(--fs-sm); font-weight: 500; cursor: pointer; }
+    .familia span { color: var(--faint); font-weight: 400; margin-left: 3px; }
+    .familia--on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+    .familia--on span { color: rgba(255,255,255,.8); }
     .grupo { margin-bottom: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
     .grupo__titulo { margin: 0; font-size: var(--fs-base); font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--muted); }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); }
@@ -66,7 +90,17 @@ export class TablerosComponent {
 
   readonly tableros = signal<TableroResumen[]>([]);
   readonly cargando = signal(true);
-  readonly grupos = computed(() => agruparTableros(this.tableros()));
+  readonly filtro = signal('');
+  readonly familia = signal<string | null>(null);
+  readonly todosLosGrupos = computed(() => agruparTableros(this.tableros()));
+  /** Grupos visibles: filtrados por texto y por familia elegida. */
+  readonly grupos = computed(() => {
+    const q = this.filtro().trim().toLowerCase();
+    const fam = this.familia();
+    return agruparTableros(
+      this.tableros().filter((t) => (fam === null || (t.grupo?.trim() || null) === fam) && (!q || `${t.nombre} ${t.descripcion ?? ''}`.toLowerCase().includes(q))),
+    );
+  });
 
   constructor() {
     this.api.get<TableroResumen[]>('/tableros').subscribe({

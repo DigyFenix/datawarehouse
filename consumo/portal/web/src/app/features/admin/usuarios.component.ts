@@ -79,8 +79,21 @@ interface FormUsuario {
           @if (!edicionId()) {
             <div class="campo">
               <label>Contraseña temporal</label>
-              <input name="password" type="text" [(ngModel)]="form.password" required minlength="8" />
-              <span class="sutil">El usuario deberá cambiarla en su primer ingreso.</span>
+              <div class="pass-fila">
+                <input name="password" type="text" [(ngModel)]="form.password" required minlength="8" autocomplete="off" spellcheck="false" />
+                <button type="button" class="secundario pequeno" (click)="form.password = generarPassword()">Generar</button>
+                <button type="button" class="secundario pequeno" (click)="copiar(form.password)" [disabled]="!form.password">Copiar</button>
+              </div>
+              <span class="sutil">Entrégasela al usuario; deberá cambiarla en su primer ingreso.</span>
+            </div>
+            <div class="campo">
+              <label>Perfiles</label>
+              <div class="chips-sel">
+                @for (p of perfiles(); track p.id) {
+                  <button type="button" class="chip-sel" [class.chip-sel--on]="perfilesNuevo().has(p.id)" (click)="alternarPerfilNuevo(p.id)" [attr.aria-pressed]="perfilesNuevo().has(p.id)" [disabled]="!p.activo">{{ p.nombre }}</button>
+                } @empty { <span class="sutil">Aún no hay perfiles: créalos en la pestaña Perfiles.</span> }
+              </div>
+              @if (perfiles().length && perfilesNuevo().size === 0 && !form.esAdmin) { <span class="aviso">Sin perfil, el usuario entra pero no ve tableros ni puede usar el asistente.</span> }
             </div>
           }
           <label class="check"><input type="checkbox" name="esAdmin" [(ngModel)]="form.esAdmin" /> Administrador de la organización</label>
@@ -129,8 +142,12 @@ interface FormUsuario {
         <form (ngSubmit)="restablecer()">
           <div class="campo">
             <label>Contraseña temporal nueva</label>
-            <input name="passwordNueva" type="text" [(ngModel)]="passwordNueva" required minlength="8" />
-            <span class="sutil">El usuario deberá cambiarla en su siguiente ingreso.</span>
+            <div class="pass-fila">
+              <input name="passwordNueva" type="text" [(ngModel)]="passwordNueva" required minlength="8" autocomplete="off" spellcheck="false" />
+              <button type="button" class="secundario pequeno" (click)="passwordNueva = generarPassword()">Generar</button>
+              <button type="button" class="secundario pequeno" (click)="copiar(passwordNueva)" [disabled]="!passwordNueva">Copiar</button>
+            </div>
+            <span class="sutil">Entrégasela al usuario; deberá cambiarla en su siguiente ingreso.</span>
           </div>
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
@@ -151,6 +168,14 @@ interface FormUsuario {
     .chip { display: inline-block; background: var(--brand-100); color: var(--brand-700); border-radius: 999px; padding: 2px 9px; font-size: var(--fs-xs); margin: 1px 3px 1px 0; }
     .chip--admin { background: var(--amber-100); color: var(--amber-700); }
     .ok { color: var(--ok); }
+    .pass-fila { display: flex; gap: 6px; }
+    .pass-fila input { flex: 1; font-family: var(--mono); letter-spacing: .02em; }
+    .chips-sel { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip-sel { min-height: 0; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-2); background: var(--surface); color: var(--text); font-size: var(--fs-sm); font-weight: 500; cursor: pointer; }
+    .chip-sel:hover:not(:disabled) { background: var(--surface-2); }
+    .chip-sel:disabled { opacity: .5; cursor: not-allowed; }
+    .chip-sel--on { background: var(--brand-600); border-color: var(--brand-600); color: #fff; }
+    .aviso { display: block; margin-top: 6px; padding: 6px 10px; border-radius: var(--r-sm); background: var(--warn-bg); color: var(--warn); font-size: var(--fs-xs); }
   `],
 })
 export class UsuariosComponent {
@@ -168,6 +193,7 @@ export class UsuariosComponent {
   readonly edicionId = signal<number | null>(null);
   readonly seleccionado = signal<UsuarioOrg | null>(null);
   readonly perfilesSeleccionados = signal<number[]>([]);
+  readonly perfilesNuevo = signal<Set<number>>(new Set());
   readonly errorForm = signal<string | null>(null);
   readonly guardando = signal(false);
 
@@ -207,6 +233,8 @@ export class UsuariosComponent {
 
   nuevo(): void {
     this.form = this.vacio();
+    this.form.password = this.generarPassword();
+    this.perfilesNuevo.set(new Set());
     this.edicionId.set(null);
     this.errorForm.set(null);
     this.drawerUsuario.set(true);
@@ -234,10 +262,11 @@ export class UsuariosComponent {
           nombre: this.form.nombre,
           password: this.form.password,
           esAdmin: this.form.esAdmin,
+          perfilIds: [...this.perfilesNuevo()],
         });
     accion.subscribe({
       next: () => {
-        this.toast.exito(id ? 'Usuario actualizado' : 'Usuario creado', this.form.nombre);
+        this.toast.exito(id ? 'Usuario actualizado' : 'Usuario creado', id ? this.form.nombre : `${this.form.nombre}: entrégale su contraseña temporal; la cambia al entrar.`);
         this.guardando.set(false);
         this.drawerUsuario.set(false);
         this.cargar();
@@ -247,6 +276,34 @@ export class UsuariosComponent {
         this.guardando.set(false);
       },
     });
+  }
+
+  alternarPerfilNuevo(id: number): void {
+    const s = new Set(this.perfilesNuevo());
+    if (s.has(id)) s.delete(id);
+    else s.add(id);
+    this.perfilesNuevo.set(s);
+  }
+
+  /** 12 caracteres legibles (sin 0/O, 1/l/I) con mayúscula, minúscula, dígito y símbolo garantizados. */
+  generarPassword(): string {
+    const grupos = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghjkmnpqrstuvwxyz', '23456789', '!#$%&*+?'];
+    const todo = grupos.join('');
+    const azar = (alfabeto: string) => alfabeto[crypto.getRandomValues(new Uint32Array(1))[0] % alfabeto.length];
+    const letras = grupos.map(azar);
+    while (letras.length < 12) letras.push(azar(todo));
+    for (let i = letras.length - 1; i > 0; i -= 1) {
+      const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+      [letras[i], letras[j]] = [letras[j], letras[i]];
+    }
+    return letras.join('');
+  }
+
+  copiar(texto: string): void {
+    void navigator.clipboard.writeText(texto).then(
+      () => this.toast.exito('Copiada', 'La contraseña temporal está en el portapapeles.'),
+      () => this.toast.error('No se pudo copiar', 'Selecciónala y cópiala a mano.'),
+    );
   }
 
   abrirPerfiles(u: UsuarioOrg): void {

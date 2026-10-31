@@ -42,6 +42,60 @@ interface ResumenInicio {
       </div>
     </div>
 
+    <!-- Estado del dato arriba: es lo primero que hay que saber antes de mirar un número. -->
+    @if (frescura().length) {
+      <aside class="estado" aria-label="Hasta cuándo llega el dato">
+        <span class="estado__rotulo"><app-icon name="info" [size]="14" /> Datos al</span>
+        @for (f of frescura(); track f.dominio) {
+          <span class="estado__item" [attr.data-estado]="f.estado" [attr.title]="f.estado ?? null">
+            <span class="punto" aria-hidden="true"></span>
+            {{ nombreDominio(f.dominio) }}
+            <span class="estado__fecha">{{ f.fechaDatoMasReciente ? (f.fechaDatoMasReciente | date: 'dd/MM') : 'sin dato' }}</span>
+          </span>
+        }
+        @if (resumen()?.proximaCarga; as pc) {
+          <span class="estado__proxima">Próxima actualización <strong>{{ pc.texto }}</strong></span>
+        }
+      </aside>
+    }
+
+    <!-- Accesos directos: lo que el usuario hace a diario, a un clic. -->
+    <section class="accesos">
+      <a class="acceso" [routerLink]="['/', tenant.hash(), 'tableros']">
+        <app-icon name="grafico" [size]="18" />
+        <span class="acceso__txt"><strong>Tableros</strong><span>{{ totalTableros() }} disponibles</span></span>
+      </a>
+      @if (tenant.moduloAsistente()) {
+        <a class="acceso" [routerLink]="['/', tenant.hash(), 'chatbot']">
+          <app-icon name="chatbot" [size]="18" />
+          <span class="acceso__txt"><strong>Asistente</strong><span>Pregunta por tus números</span></span>
+        </a>
+        <a class="acceso" [routerLink]="['/', tenant.hash(), 'mi-tablero']">
+          <app-icon name="tablero" [size]="18" />
+          <span class="acceso__txt"><strong>Mi tablero</strong><span>Tus consultas fijadas, con datos frescos</span></span>
+        </a>
+      }
+      <a class="acceso" [routerLink]="['/', tenant.hash(), 'descargas']">
+        <app-icon name="descargar" [size]="18" />
+        <span class="acceso__txt"><strong>Descargas</strong><span>Métricas a Excel, con su ficha</span></span>
+      </a>
+    </section>
+
+    @if (recientes().length) {
+      <section class="grupo">
+        <h3 class="grupo__titulo">Seguir donde quedaste</h3>
+        <div class="recientes">
+          @for (r of recientes(); track r.clave) {
+            <a class="reciente" [routerLink]="['/', tenant.hash(), 'tableros', r.clave]">
+              <app-icon name="grafico" [size]="16" />
+              <span>{{ r.nombre }}</span>
+              <span class="reciente__cuando">{{ r.visto | date: 'dd/MM HH:mm' }}</span>
+            </a>
+          }
+        </div>
+      </section>
+    }
+
     @if (cargandoTableros()) {
       <div class="grid">
         @for (i of [1, 2, 3, 4]; track i) { <app-skeleton variante="tarjeta" [alto]="92" /> }
@@ -70,72 +124,51 @@ interface ResumenInicio {
         </div>
       }
     }
-
-    @if (tenant.moduloAsistente()) {
-      <section class="grupo">
-        <h3 class="grupo__titulo">Asistente</h3>
-        <div class="grid">
-          <a class="tarjeta tablero" [routerLink]="['/', tenant.hash(), 'chatbot']">
-            <app-icon name="chatbot" [size]="20" />
-            <span class="tablero__nombre">Pregunta por tus números</span>
-            <span class="tablero__desc">Responde solo con métricas certificadas.</span>
-          </a>
-        </div>
-      </section>
-    }
-
-    @if (frescura().length) {
-      <!-- Informativo, no navegable: texto sobre el fondo, sin tarjetas ni bordes que parezcan botones. -->
-      <aside class="frescura" aria-label="Hasta cuándo llega el dato">
-        <app-icon name="info" [size]="14" />
-        <span class="frescura__rotulo">Datos al</span>
-        @for (f of frescura(); track f.dominio; let ultimo = $last) {
-          <span class="frescura__item" [attr.data-estado]="f.estado" [attr.title]="f.estado ?? null">
-            <span class="punto" aria-hidden="true"></span>
-            {{ nombreDominio(f.dominio) }}
-            <span class="frescura__fecha">{{ f.fechaDatoMasReciente ? (f.fechaDatoMasReciente | date: 'dd/MM/yyyy') : 'sin dato' }}</span>
-            @if (f.estado && f.estado !== 'Al día') { <span class="frescura__estado">({{ f.estado }})</span> }
-          </span>
-          @if (!ultimo) { <span class="frescura__sep" aria-hidden="true">·</span> }
-        }
-        @if (resumen()?.proximaCarga; as pc) {
-          <span class="frescura__sep" aria-hidden="true">·</span>
-          <span class="frescura__item">Próxima actualización <span class="frescura__fecha">{{ pc.texto }}</span></span>
-        }
-      </aside>
-    }
   `,
   styles: [
     `
+      .estado {
+        margin-top: var(--sp-3); padding: 10px 14px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--border);
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--muted); font-size: var(--fs-xs);
+      }
+      .estado__rotulo { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+      .estado__item { display: inline-flex; align-items: center; gap: 5px; }
+      .estado__fecha { font-variant-numeric: tabular-nums; color: var(--text); }
+      .estado__proxima { margin-left: auto; }
+      .estado__proxima strong { color: var(--text); font-weight: 600; }
+      .punto { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+      .estado__item[data-estado='Atrasado'] .punto { background: var(--warn); }
+      .estado__item[data-estado='Desactualizado'] .punto { background: var(--danger); }
+
+      .accesos { margin-top: var(--sp-4); display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--sp-3); }
+      .acceso {
+        display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r); text-decoration: none; color: var(--text);
+        background: var(--brand-50); border: 1px solid transparent; transition: border-color .12s, background .12s;
+      }
+      .acceso:hover { border-color: var(--brand-300); background: var(--brand-100); }
+      .acceso app-icon { color: var(--brand-600); flex: none; }
+      .acceso__txt { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+      .acceso__txt strong { font-weight: 600; font-size: var(--fs-base); }
+      .acceso__txt span { color: var(--muted); font-size: var(--fs-xs); }
+
+      .recientes { display: flex; flex-wrap: wrap; gap: 8px; }
+      .reciente {
+        display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: var(--surface);
+        border: 1px solid var(--border); color: var(--text); text-decoration: none; font-size: var(--fs-sm); font-weight: 500;
+      }
+      .reciente:hover { border-color: var(--brand-400); }
+      .reciente app-icon { color: var(--brand-600); }
+      .reciente__cuando { color: var(--faint); font-size: var(--fs-2xs); font-variant-numeric: tabular-nums; }
+
       .grupo { margin-top: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
-      .grupo:first-of-type { margin-top: var(--sp-3); }
-      .grupo__titulo {
-        margin: 0; font-size: var(--fs-base); font-weight: 600; text-transform: none;
-        letter-spacing: 0; color: var(--muted);
-      }
+      .grupo__titulo { margin: 0; font-size: var(--fs-base); font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--muted); }
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }
-      .tablero {
-        display: flex; flex-direction: column; gap: 6px; padding: var(--sp-4);
-        text-decoration: none; color: var(--text);
-      }
+      .tablero { display: flex; flex-direction: column; gap: 6px; padding: var(--sp-4); text-decoration: none; color: var(--text); }
       .tablero:hover { border-color: var(--brand-400); box-shadow: var(--sh-2); }
       .tablero app-icon { color: var(--brand-600); }
       .tablero__nombre { font-weight: 600; font-size: 15px; }
       .tablero__desc { color: var(--muted); font-size: var(--fs-sm); }
-
-      .frescura {
-        margin-top: var(--sp-6, 40px); padding-top: var(--sp-3); border-top: 1px solid var(--border);
-        display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
-        color: var(--muted); font-size: var(--fs-xs);
-      }
-      .frescura__rotulo { font-weight: 600; }
-      .frescura__item { display: inline-flex; align-items: center; gap: 5px; }
-      .frescura__fecha { font-family: var(--sans); font-variant-numeric: tabular-nums; color: var(--text); }
-      .frescura__sep { opacity: 0.5; }
-      .punto { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
-      .frescura__item[data-estado='Atrasado'] .punto { background: var(--warn); }
-      .frescura__item[data-estado='Desactualizado'] .punto { background: var(--danger); }
-      .frescura__item[data-estado='Desactualizado'] .frescura__estado { color: var(--danger); }
+      @media (max-width: 720px) { .estado__proxima { margin-left: 0; } }
     `,
   ],
 })
@@ -149,6 +182,8 @@ export class InicioComponent implements OnInit {
   readonly cargandoTableros = signal(true);
   readonly frescura = computed(() => this.resumen()?.frescura ?? []);
   readonly grupos = computed(() => agruparTableros(this.tableros()));
+  readonly totalTableros = computed(() => this.tableros().length);
+  readonly recientes = computed(() => (this.resumen()?.recientes ?? []).slice(0, 6));
 
   ngOnInit(): void {
     this.api.get<TableroResumen[]>('/tableros').subscribe({
