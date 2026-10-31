@@ -13,6 +13,8 @@ import { ejecutarTool } from './tools/ejecutar';
 import { TOOLS_ANTHROPIC } from './tools/esquemas';
 import type {
   ConfigAgente,
+  ConjuntoDatos,
+  ConsultaEjecutada,
   EjecutorSql,
   EventoAuditoria,
   MensajeHistorial,
@@ -53,6 +55,8 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
   ];
 
   const tarjetas: TarjetaDato[] = [];
+  const conjuntos: ConjuntoDatos[] = [];
+  const consultas: ConsultaEjecutada[] = [];
   let texto = '';
 
   for (let iteracion = 0; iteracion < config.maxIteraciones; iteracion += 1) {
@@ -78,6 +82,8 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
           'No puedo procesar esa solicitud. Reformúlala en términos de las métricas ' +
           'de negocio disponibles y con gusto la consulto.',
         tarjetas: [],
+        conjuntos: [],
+        consultas: [],
       };
     }
 
@@ -104,6 +110,17 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
       });
       await auditar(resultado.auditoria);
       tarjetas.push(...resultado.tarjetas);
+      // Toda consulta con dato queda descrita por (tool, params validados): es lo que el
+      // usuario puede guardar para reejecutar otro día bajo sus propias guardas.
+      if (!resultado.esError && resultado.conjunto && resultado.params) {
+        conjuntos.push(resultado.conjunto);
+        consultas.push({
+          tool: llamada.name,
+          params: resultado.params,
+          conjunto: conjuntos.length - 1,
+          tituloSugerido: resultado.conjunto.titulo,
+        });
+      }
       resultados.push({
         type: 'tool_result',
         tool_use_id: llamada.id,
@@ -130,5 +147,5 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
     return true;
   });
 
-  return { texto, tarjetas: unicas };
+  return { texto, tarjetas: unicas, conjuntos, consultas };
 }

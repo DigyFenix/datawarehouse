@@ -309,6 +309,46 @@ models:
   # que es el peor lugar para enterarse. Una clave repetida aquí es un defecto bloqueante, no
   # un aviso — por eso el test vive junto al modelo y no en una revisión manual.
 
+  - name: metrica_dimension_catalogo
+    description: >
+      Pares (métrica, dimensión) disponibles para desglose. Lo que lee el agente para saber
+      qué puede desglosar; se deriva de metrica_valor_dimension en cada build.
+    columns:
+      - name: metrica_clave
+        data_tests: [not_null]
+      - name: dimension
+        data_tests: [not_null]
+
+  - name: metrica_valor_dimension
+    description: >
+      Métricas certificadas DESGLOSADAS por dimensión — (empresa, métrica, período, dimensión,
+      miembro) → valor. Segunda mitad del contrato del agente de IA: responde «¿quién / qué?»
+      (ventas por cliente, producto, línea, vendedor, canal o sector; compras por proveedor;
+      cobros y pagos por socio) con las MISMAS claves y fórmulas que metrica_valor, así que la
+      suma de los miembros de un período cuadra con el valor mensual. Solo métricas aditivas por
+      línea; nada de saldos ni razones.
+    columns:
+      - name: empresa_id
+        description: Sociedad del valor. Eje del RLS del agente.
+        data_tests: [not_null]
+      - name: metrica_clave
+        description: Clave del catálogo (coincide con metadatos.catalogo_metricas y metrica_valor).
+        data_tests: [not_null]
+      - name: periodo
+        description: Mes 'YYYY-MM'.
+        data_tests: [not_null]
+      - name: dimension
+        description: Eje del desglose. Vocabulario cerrado que valida la tool del agente.
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['cliente', 'producto', 'linea', 'vendedor', 'canal', 'sector', 'proveedor']
+      - name: miembro_nombre
+        description: Nombre de negocio del miembro (vigente en la dimensión).
+        data_tests: [not_null]
+      - name: valor
+        data_tests: [not_null]
+
   - name: dim_direccion
     description: >
       Geografía de la operación: una fila por dirección registrada del socio (entrega,

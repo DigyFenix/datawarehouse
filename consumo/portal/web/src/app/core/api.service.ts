@@ -32,6 +32,10 @@ export class ApiService {
     return this.desempaquetar(this.http.put<Respuesta<T>>(`${this.base()}${ruta}`, cuerpo));
   }
 
+  patch<T>(ruta: string, cuerpo: unknown): Observable<T> {
+    return this.desempaquetar(this.http.patch<Respuesta<T>>(`${this.base()}${ruta}`, cuerpo));
+  }
+
   delete<T>(ruta: string): Observable<T> {
     return this.desempaquetar(this.http.delete<Respuesta<T>>(`${this.base()}${ruta}`));
   }

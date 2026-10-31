@@ -20,16 +20,19 @@ import {
   SQL_AGING_CORTE,
   SQL_AGING_POR_RANGO,
   SQL_AGING_POR_SOCIO,
+  SQL_METRICA_DIMENSION,
   SQL_METRICA_VALOR,
 } from './consultas';
 import {
   esquemaConsultarAging,
   esquemaConsultarMetrica,
+  esquemaConsultarPorDimension,
   esquemaExplicarMetrica,
   esquemaListarMetricas,
 } from './esquemas';
 import type {
   AlcanceEfectivo,
+  ConjuntoDatos,
   EjecutorSql,
   EventoAuditoria,
   TarjetaDato,
@@ -49,6 +52,10 @@ export interface ResultadoTool {
   esError: boolean;
   tarjetas: TarjetaDato[];
   auditoria: EventoAuditoria;
+  /** Datos tabulares de la respuesta (tabla/gráfica/CSV en la UI). Solo en consultas con dato. */
+  conjunto?: ConjuntoDatos;
+  /** Parámetros YA validados con los que se ejecutó (lo que se guarda para reejecutar). */
+  params?: Record<string, unknown>;
 }
 
 /** Dominios de negocio válidos para los mensajes de orientación. */
@@ -87,6 +94,8 @@ export async function ejecutarTool(
       return consultarMetrica(entrada, ctx);
     case 'consultar_aging':
       return consultarAging(entrada, ctx);
+    case 'consultar_metrica_por_dimension':
+      return consultarPorDimension(entrada, ctx);
     case 'explicar_metrica':
       return explicarMetrica(entrada, ctx);
     default:
@@ -274,10 +283,28 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
     total_periodos: porPeriodo.size,
   });
 
+  const periodos = [...porPeriodo.keys()].sort();
+  const conjunto: ConjuntoDatos = {
+    tipo: 'serie',
+    titulo: `${metrica.nombreOficial} por mes`,
+    metricaClave: metrica.clave,
+    metricaNombre: metrica.nombreOficial,
+    estado: metrica.estado,
+    periodo: periodos.length ? `${periodos[0]} a ${periodos[periodos.length - 1]}` : 'sin datos',
+    columnas: [
+      { clave: 'periodo', nombre: 'Período', tipo: 'periodo' },
+      ...(p.agrupar_por_empresa ? [{ clave: 'empresa', nombre: 'Empresa', tipo: 'texto' as const }] : []),
+      { clave: 'valor', nombre: metrica.nombreOficial, tipo: 'numero' },
+    ],
+    filas: tarjetas.map((t) => ({ periodo: t.periodo, ...(p.agrupar_por_empresa ? { empresa: t.empresa ?? '' } : {}), valor: t.valor })),
+  };
+
   return {
     contenido,
     esError: false,
     tarjetas,
+    conjunto,
+    params: p,
     auditoria: {
       accion: 'consulta_agente',
       detalle: {
@@ -320,7 +347,14 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
 
   const corteFilas = await ctx.ejecutor.consultarTenant(SQL_AGING_CORTE, [p.tipo_cartera, empresas]);
   const corte = corteFilas[0]?.['fecha_corte'];
-  const fechaCorte = corte == null ? null : String(corte).slice(0, 10);
+  // pg entrega `date` como Date (hora local): se formatea como ISO sin pasar por toISOString,
+  // que correría el día en zonas al oeste de UTC.
+  const fechaCorte =
+    corte == null
+      ? null
+      : corte instanceof Date
+        ? `${corte.getFullYear()}-${String(corte.getMonth() + 1).padStart(2, '0')}-${String(corte.getDate()).padStart(2, '0')}`
+        : String(corte).slice(0, 10);
 
   const filas =
     p.detalle === 'por_socio'
@@ -339,7 +373,8 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
           partidas: Number(f['partidas'] ?? 0),
         }))
       : filas.map((f) => ({
-          rango: String(f['rango_aging']),
+          rango: String(f['rango_nombre'] ?? f['rango_aging']),
+          codigo: String(f['rango_aging']),
           saldo: Number(f['saldo'] ?? 0),
           partidas: Number(f['partidas'] ?? 0),
         }));
@@ -357,6 +392,27 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
     },
   ];
 
+  const porSocio = p.detalle === 'por_socio';
+  const conjunto: ConjuntoDatos = {
+    tipo: 'aging',
+    titulo: `${metrica.nombreOficial} · ${porSocio ? 'mayores socios' : 'antigüedad'}`,
+    metricaClave: metrica.clave,
+    metricaNombre: metrica.nombreOficial,
+    estado: metrica.estado,
+    periodo: fechaCorte ? `corte ${fechaCorte}` : 'sin corte',
+    columnas: [
+      porSocio ? { clave: 'socio', nombre: 'Socio', tipo: 'texto' } : { clave: 'rango', nombre: 'Rango de antigüedad', tipo: 'texto' },
+      { clave: 'saldo', nombre: 'Saldo', tipo: 'numero' },
+      { clave: 'partidas', nombre: 'Partidas', tipo: 'numero' },
+    ],
+    filas: detalle.map((d) => {
+      const fila: Record<string, string | number | null> = { saldo: d.saldo, partidas: d.partidas };
+      if ('socio' in d) fila['socio'] = d.socio;
+      else fila['rango'] = d.rango;
+      return fila;
+    }),
+  };
+
   return {
     contenido: JSON.stringify({
       tipo_cartera: p.tipo_cartera,
@@ -369,6 +425,8 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
     }),
     esError: false,
     tarjetas,
+    conjunto,
+    params: p,
     auditoria: {
       accion: 'consulta_agente',
       detalle: {
@@ -377,6 +435,131 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
         detalle: p.detalle,
         empresas,
         fecha_corte: fechaCorte,
+        filas: filas.length,
+      },
+    },
+  };
+}
+
+const NOMBRE_DIMENSION: Record<string, string> = {
+  cliente: 'Cliente', producto: 'Producto', linea: 'Línea', vendedor: 'Vendedor',
+  canal: 'Canal', sector: 'Sector', proveedor: 'Proveedor',
+};
+
+/**
+ * Desglose de una métrica por dimensión (ranking). Mismas guardas que consultar_metrica,
+ * más una: la métrica tiene que estar en `alcance.desglosables` para esa dimensión. Las
+ * derivadas no se desglosan (una razón no se suma por miembro).
+ */
+async function consultarPorDimension(entrada: unknown, ctx: ContextoTool): Promise<ResultadoTool> {
+  const v = validar(esquemaConsultarPorDimension, entrada);
+  if (!v.ok) return denegado(v.error, ctx.alcance, { tool: 'consultar_metrica_por_dimension' });
+  const p = v.datos;
+
+  const metrica = ctx.alcance.metricas.get(p.metrica_clave);
+  if (!metrica) {
+    return denegado(
+      `La métrica '${p.metrica_clave}' no está disponible para este usuario (no existe, no está certificada o está fuera de su autorización).`,
+      ctx.alcance,
+      { tool: 'consultar_metrica_por_dimension', metrica_clave: p.metrica_clave },
+    );
+  }
+  const dimensiones = ctx.alcance.desglosables.get(p.metrica_clave) ?? [];
+  if (!dimensiones.includes(p.dimension)) {
+    return {
+      contenido: JSON.stringify({
+        error: dimensiones.length
+          ? `La métrica '${p.metrica_clave}' no se desglosa por ${p.dimension}. Dimensiones disponibles: ${dimensiones.join(', ')}.`
+          : `La métrica '${p.metrica_clave}' no admite desglose por dimensión (es un saldo, una razón o un indicador compuesto). Consúltala por período con consultar_metrica.`,
+      }),
+      esError: true,
+      tarjetas: [],
+      auditoria: {
+        accion: 'consulta_agente_denegada',
+        detalle: { tool: 'consultar_metrica_por_dimension', metrica_clave: p.metrica_clave, dimension: p.dimension, motivo: 'dimension_no_disponible' },
+      },
+    };
+  }
+
+  const universo = [...ctx.empresas.keys()];
+  const empresas = empresasParaConsulta(ctx.alcance, p.empresa_id, universo);
+  if (empresas === null) {
+    return denegado(
+      p.empresa_id === undefined
+        ? 'Este usuario no tiene ninguna empresa autorizada: no puede consultar datos.'
+        : `La empresa ${p.empresa_id} está fuera del alcance de este usuario.`,
+      ctx.alcance,
+      { tool: 'consultar_metrica_por_dimension', metrica_clave: p.metrica_clave, empresa_id: p.empresa_id ?? null },
+    );
+  }
+
+  const filas = await ctx.ejecutor.consultarTenant(SQL_METRICA_DIMENSION, [
+    p.metrica_clave,
+    p.dimension,
+    p.periodo_desde ?? null,
+    p.periodo_hasta ?? null,
+    empresas,
+    p.orden,
+    p.limite,
+  ]);
+  const detalle = filas.map((f) => ({
+    miembro: String(f['miembro_nombre'] ?? 'Sin nombre'),
+    codigo: String(f['miembro_codigo'] ?? ''),
+    empresa: ctx.empresas.get(String(f['empresa_id'] ?? '')) ?? String(f['empresa_id'] ?? ''),
+    valor: Number(f['valor'] ?? 0),
+  }));
+  // Con varias sociedades en el alcance, el mismo código puede existir en dos maestros: el
+  // miembro se muestra calificado por empresa para no fusionarlos.
+  const multiempresa = new Set(detalle.map((d) => d.empresa)).size > 1;
+  const total = detalle.reduce((acc, d) => acc + d.valor, 0);
+  const rango = p.periodo_desde || p.periodo_hasta
+    ? `${p.periodo_desde ?? 'inicio'} a ${p.periodo_hasta ?? 'último dato'}`
+    : 'todos los períodos con datos';
+  const etiqueta = NOMBRE_DIMENSION[p.dimension] ?? p.dimension;
+
+  const conjunto: ConjuntoDatos = {
+    tipo: 'ranking',
+    titulo: `${metrica.nombreOficial} por ${etiqueta.toLowerCase()} · ${p.orden === 'menor' ? 'menores' : 'mayores'} ${p.limite}`,
+    metricaClave: metrica.clave,
+    metricaNombre: metrica.nombreOficial,
+    estado: metrica.estado,
+    periodo: rango,
+    columnas: [
+      { clave: 'miembro', nombre: etiqueta, tipo: 'texto' },
+      ...(multiempresa ? [{ clave: 'empresa', nombre: 'Empresa', tipo: 'texto' as const }] : []),
+      { clave: 'valor', nombre: metrica.nombreOficial, tipo: 'numero' },
+    ],
+    filas: detalle.map((d) => ({ miembro: d.miembro, ...(multiempresa ? { empresa: d.empresa } : {}), valor: d.valor })),
+  };
+
+  return {
+    contenido: JSON.stringify({
+      metrica: metrica.nombreOficial,
+      clave: metrica.clave,
+      estado: metrica.estado,
+      dimension: p.dimension,
+      periodos: rango,
+      empresas_incluidas: empresas.map((e) => ctx.empresas.get(e) ?? String(e)),
+      orden: p.orden,
+      total_de_los_listados: total,
+      nota: 'La suma de TODOS los miembros de un período coincide con el valor mensual de la métrica; aquí solo van los listados.',
+      detalle,
+    }),
+    esError: false,
+    tarjetas: [],
+    conjunto,
+    params: p,
+    auditoria: {
+      accion: 'consulta_agente',
+      detalle: {
+        tool: 'consultar_metrica_por_dimension',
+        metrica_clave: p.metrica_clave,
+        dimension: p.dimension,
+        periodo_desde: p.periodo_desde ?? null,
+        periodo_hasta: p.periodo_hasta ?? null,
+        empresas,
+        limite: p.limite,
+        orden: p.orden,
         filas: filas.length,
       },
     },

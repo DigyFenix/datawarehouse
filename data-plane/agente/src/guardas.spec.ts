@@ -33,6 +33,7 @@ function alcanceCon(
   metricas: MetricaAutorizada[],
   empresas: '*' | string[],
   derivadas: MetricaDerivada[] = [],
+  desglosables: Record<string, string[]> = {},
 ): AlcanceEfectivo {
   const porClave = new Map(metricas.map((m) => [m.clave, m]));
   for (const d of derivadas) {
@@ -43,6 +44,7 @@ function alcanceCon(
     metricas: porClave,
     empresas,
     derivadas: new Map(derivadas.map((d) => [d.clave, d])),
+    desglosables: new Map(Object.entries(desglosables)),
   };
 }
 
@@ -349,5 +351,127 @@ describe('Métricas derivadas — composición gobernada', () => {
     // 50/50 × 100 = 100
     expect(r.tarjetas[0]?.valor).toBe(100);
     expect(r.tarjetas[0]?.metricaNombre).toBe('% de margen');
+  });
+});
+
+// ---------------------------------------------------------------- desglose por dimensión
+
+describe('Desglose por dimensión — mismas guardas, vocabulario cerrado', () => {
+  const conDesglose = () =>
+    alcanceCon([metrica('ventas_netas_sin_iva', 'ventas'), metrica('saldo_cxc', 'tesoreria')], ['proavisa'], [], {
+      ventas_netas_sin_iva: ['cliente', 'producto'],
+    });
+
+  it('rechaza una dimensión fuera del enum (ni SQL ni nombres de tabla)', async () => {
+    const ejecutor = ejecutorFalso();
+    const r = await ejecutarTool(
+      'consultar_metrica_por_dimension',
+      { metrica_clave: 'ventas_netas_sin_iva', dimension: 'bronce.oinv; drop table' },
+      ctx(conDesglose(), ejecutor),
+    );
+    expect(r.esError).toBe(true);
+    expect(ejecutor.llamadas).toHaveLength(0);
+  });
+
+  it('una métrica autorizada pero no desglosable por esa dimensión se deniega sin tocar la base', async () => {
+    const ejecutor = ejecutorFalso();
+    const r = await ejecutarTool(
+      'consultar_metrica_por_dimension',
+      { metrica_clave: 'saldo_cxc', dimension: 'cliente' },
+      ctx(conDesglose(), ejecutor),
+    );
+    expect(r.esError).toBe(true);
+    expect(r.contenido).toContain('no admite desglose');
+    expect(ejecutor.llamadas).toHaveLength(0);
+  });
+
+  it('el límite se acota a 50 y el orden a mayor/menor', async () => {
+    const r = await ejecutarTool(
+      'consultar_metrica_por_dimension',
+      { metrica_clave: 'ventas_netas_sin_iva', dimension: 'cliente', limite: 500 },
+      ctx(conDesglose(), ejecutorFalso()),
+    );
+    expect(r.esError).toBe(true);
+    const r2 = await ejecutarTool(
+      'consultar_metrica_por_dimension',
+      { metrica_clave: 'ventas_netas_sin_iva', dimension: 'cliente', orden: 'random' },
+      ctx(conDesglose(), ejecutorFalso()),
+    );
+    expect(r2.esError).toBe(true);
+  });
+
+  it('devuelve un conjunto ranking con las empresas del alcance como parámetro y los params validados', async () => {
+    const ejecutor = ejecutorFalso([
+      { miembro_codigo: 'C1', miembro_nombre: 'Cliente Uno', valor: 900, periodos: 3 },
+      { miembro_codigo: 'C2', miembro_nombre: 'Cliente Dos', valor: 100, periodos: 2 },
+    ]);
+    const r = await ejecutarTool(
+      'consultar_metrica_por_dimension',
+      { metrica_clave: 'ventas_netas_sin_iva', dimension: 'cliente', periodo_desde: '2026-01', periodo_hasta: '2026-09' },
+      ctx(conDesglose(), ejecutor),
+    );
+    expect(r.esError).toBe(false);
+    expect(ejecutor.llamadas[0]?.params[4]).toEqual(['proavisa']);
+    expect(r.conjunto?.tipo).toBe('ranking');
+    expect(r.conjunto?.filas).toEqual([
+      { miembro: 'Cliente Uno', valor: 900 },
+      { miembro: 'Cliente Dos', valor: 100 },
+    ]);
+    expect(r.conjunto?.estado).toBe('certificada');
+    expect(r.params).toMatchObject({ metrica_clave: 'ventas_netas_sin_iva', dimension: 'cliente', limite: 10, orden: 'mayor' });
+  });
+});
+
+// ---------------------------------------------------------------- consultas guardadas
+
+describe('Consultas guardadas — se reejecutan bajo las guardas de quien las abre', () => {
+  it('una especificación guardada con una métrica ya no consumible no se ejecuta y explica por qué', async () => {
+    const { ejecutarGuardada } = await import('./guardada');
+    const ejecutor: EjecutorSql = {
+      async consultarTenant(sql) {
+        if (sql.includes('perfil_alcances')) return [{ recurso_tipo: 'empresa', recurso_clave: '*' }, { recurso_tipo: 'metrica', recurso_clave: '*' }];
+        return [];
+      },
+      async consultarControl() {
+        return []; // el catálogo ya no tiene ninguna métrica consumible
+      },
+    };
+    const eventos: string[] = [];
+    const r = await ejecutarGuardada({
+      ejecutor,
+      usuarioId: 1,
+      empresas: new Map([['proavisa', 'Empresa Uno']]),
+      tool: 'consultar_metrica',
+      params: { metrica_clave: 'ventas_netas_sin_iva' },
+      auditar: async (e) => { eventos.push(e.accion); },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.motivo).toContain('no está disponible');
+    expect(eventos).toEqual(['consulta_agente_denegada']);
+  });
+
+  it('solo se reejecutan herramientas con datos (nunca listar/explicar)', async () => {
+    const { ejecutarGuardada } = await import('./guardada');
+    const r = await ejecutarGuardada({
+      ejecutor: ejecutorFalso(),
+      usuarioId: 1,
+      empresas: new Map(),
+      tool: 'listar_metricas_disponibles',
+      params: {},
+      auditar: async () => undefined,
+    });
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe('Validación de especificaciones guardables', () => {
+  it('rechaza inyección en la clave y acepta parámetros normales con defaults', async () => {
+    const { validarEspecificacion } = await import('./guardada');
+    expect(validarEspecificacion('consultar_metrica', { metrica_clave: "x'; drop table oro.metrica_valor; --" }).ok).toBe(false);
+    expect(validarEspecificacion('consultar_metrica', { metrica_clave: 'ventas_netas_sin_iva', tabla: 'oro.x' }).ok).toBe(false);
+    const ok = validarEspecificacion('consultar_metrica_por_dimension', { metrica_clave: 'ventas_netas_sin_iva', dimension: 'cliente' });
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.params).toMatchObject({ limite: 10, orden: 'mayor' });
+    expect(validarEspecificacion('explicar_metrica', { metrica_clave: 'ventas_netas_sin_iva' }).ok).toBe(false);
   });
 });

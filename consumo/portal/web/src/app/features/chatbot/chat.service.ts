@@ -1,4 +1,4 @@
-/** Cliente del agente de IA gobernado (/t/:hash/agente). */
+/** Cliente del agente de IA gobernado (/t/:hash/agente): conversaciones y consultas guardadas. */
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -26,17 +26,73 @@ export interface TarjetaDato {
   unidad?: string;
 }
 
+/** Tabla de datos de una respuesta: serie mensual, ranking por dimensión o aging. */
+export interface ConjuntoDatos {
+  tipo: 'serie' | 'ranking' | 'aging';
+  titulo: string;
+  metricaClave: string;
+  metricaNombre: string;
+  estado: 'certificada' | 'exploratoria';
+  periodo: string;
+  unidad?: string;
+  columnas: { clave: string; nombre: string; tipo: 'texto' | 'numero' | 'periodo' }[];
+  filas: Record<string, string | number | null>[];
+}
+
+/** Especificación reejecutable (tool + params validados) que produjo un conjunto. */
+export interface ConsultaEjecutada {
+  tool: string;
+  params: Record<string, unknown>;
+  conjunto: number;
+  tituloSugerido: string;
+}
+
+export interface DatosMensaje {
+  conjuntos: ConjuntoDatos[];
+  consultas: ConsultaEjecutada[];
+}
+
 export interface MensajeChat {
   id: number;
   rol: 'usuario' | 'asistente';
   contenido: string;
   tarjetas: TarjetaDato[] | null;
+  datos: DatosMensaje | null;
   creadoEn: string;
 }
 
 export interface RespuestaAgente {
   texto: string;
   tarjetas: TarjetaDato[];
+  conjuntos: ConjuntoDatos[];
+  consultas: ConsultaEjecutada[];
+}
+
+export type VistaConsulta = 'tabla' | 'barras' | 'lineas';
+
+export interface ConsultaGuardada {
+  id: number;
+  titulo: string;
+  descripcion: string | null;
+  tool: string;
+  params: Record<string, unknown>;
+  vista: VistaConsulta;
+  metricaClave: string | null;
+  versionDefinicion: number | null;
+  creadaEn: string;
+  actualizadaEn: string;
+  ultimaEjecucionEn: string | null;
+}
+
+export interface EjecucionGuardada {
+  consulta: ConsultaGuardada;
+  ok: boolean;
+  motivo?: string;
+  conjunto?: ConjuntoDatos;
+  tarjetas: TarjetaDato[];
+  avisos: string[];
+  frescura: { dominio: string; fechaDatoMasReciente: string | null }[];
+  ejecutadaEn: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -61,5 +117,27 @@ export class ChatService {
 
   eliminar(id: number): Observable<void> {
     return this.api.delete<void>(`/agente/conversaciones/${id}`);
+  }
+
+  // ---- consultas guardadas
+
+  guardadas(): Observable<ConsultaGuardada[]> {
+    return this.api.get<ConsultaGuardada[]>('/agente/consultas');
+  }
+
+  guardar(c: { titulo: string; descripcion?: string | null; tool: string; params: Record<string, unknown>; vista: VistaConsulta }): Observable<ConsultaGuardada> {
+    return this.api.post<ConsultaGuardada>('/agente/consultas', c);
+  }
+
+  ejecutarGuardada(id: number): Observable<EjecucionGuardada> {
+    return this.api.get<EjecucionGuardada>(`/agente/consultas/${id}/ejecutar`);
+  }
+
+  actualizarGuardada(id: number, cambios: { titulo?: string; descripcion?: string | null; vista?: VistaConsulta }): Observable<ConsultaGuardada> {
+    return this.api.patch<ConsultaGuardada>(`/agente/consultas/${id}`, cambios);
+  }
+
+  eliminarGuardada(id: number): Observable<void> {
+    return this.api.delete<void>(`/agente/consultas/${id}`);
   }
 }

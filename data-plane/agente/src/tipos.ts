@@ -25,6 +25,8 @@ export interface AlcanceEfectivo {
   empresas: '*' | string[];
   /** Indicadores compuestos por la organización, por clave. Vacío si no definió ninguno. */
   derivadas: Map<string, import('./derivadas').MetricaDerivada>;
+  /** Dimensiones por las que cada métrica autorizada se puede desglosar (oro.metrica_valor_dimension). */
+  desglosables: Map<string, string[]>;
 }
 
 export interface MetricaAutorizada {
@@ -55,9 +57,44 @@ export interface MensajeHistorial {
   contenido: string;
 }
 
+/**
+ * Conjunto de datos tabular que sustenta una respuesta (serie mensual, ranking por
+ * dimensión o aging). Igual que la tarjeta, se arma del catálogo y del SQL, nunca
+ * del texto del modelo. La UI lo pinta como tabla o gráfica y lo exporta a CSV.
+ */
+export interface ConjuntoDatos {
+  /** serie = (período[, empresa], valor) · ranking = (miembro, valor) · aging = (rango|socio, saldo, partidas). */
+  tipo: 'serie' | 'ranking' | 'aging';
+  titulo: string;
+  metricaClave: string;
+  metricaNombre: string;
+  estado: 'certificada' | 'exploratoria';
+  /** Período o rango consultado, legible ('2026-01 a 2026-10', 'corte 2026-10-30'). */
+  periodo: string;
+  unidad?: string;
+  columnas: { clave: string; nombre: string; tipo: 'texto' | 'numero' | 'periodo' }[];
+  filas: Record<string, string | number | null>[];
+}
+
+/**
+ * Especificación de una consulta ejecutada con éxito: la tool y sus parámetros YA
+ * validados. Es lo que se guarda para volver a ejecutarla otro día con datos frescos
+ * (nunca se guarda el resultado): la reejecución pasa por las mismas guardas y por el
+ * alcance de QUIEN la abre, no de quien la guardó.
+ */
+export interface ConsultaEjecutada {
+  tool: string;
+  params: Record<string, unknown>;
+  /** Índice del conjunto que produjo (en `ResultadoAgente.conjuntos`). */
+  conjunto: number;
+  tituloSugerido: string;
+}
+
 export interface ResultadoAgente {
   texto: string;
   tarjetas: TarjetaDato[];
+  conjuntos: ConjuntoDatos[];
+  consultas: ConsultaEjecutada[];
 }
 
 /** Evento de auditoría que el host persiste (portal.auditoria del tenant). */

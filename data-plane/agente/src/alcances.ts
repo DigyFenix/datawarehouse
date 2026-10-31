@@ -14,7 +14,9 @@ import { fichaDerivada, leerDerivadas, type MetricaDerivada } from './derivadas'
 import {
   SQL_ALCANCES_USUARIO,
   SQL_DOMINIOS_METRICA,
+  SQL_EMPRESAS_WAREHOUSE,
   SQL_METRICAS_CONSUMIBLES,
+  SQL_METRICAS_DESGLOSABLES,
   SQL_PERIODOS_METRICA,
 } from './tools/consultas';
 import type { AlcanceEfectivo, EjecutorSql, MetricaAutorizada } from './tipos';
@@ -104,15 +106,31 @@ export async function resolverAlcance(
     porClave.set(d.clave, d);
   }
 
-  return { metricas, empresas, derivadas: porClave };
+  // Dimensiones de desglose por métrica (solo para métricas ya autorizadas). Si la tabla
+  // no existe todavía en el tenant (build viejo), simplemente nada es desglosable.
+  const desglosables = new Map<string, string[]>();
+  const filasDesglose = await ejecutor.consultarTenant(SQL_METRICAS_DESGLOSABLES, []).catch((error: unknown) => {
+    // Solo «la tabla no existe» (42P01: tenant sin el build nuevo) se tolera; cualquier otro
+    // error (permisos, pool caído) se propaga: silenciarlo escondería un build mal aplicado.
+    const codigo = (error as { code?: string } | null)?.code;
+    if (codigo === '42P01') return [];
+    throw error;
+  });
+  for (const f of filasDesglose) {
+    const clave = String(f['metrica_clave'] ?? '');
+    const dimension = String(f['dimension'] ?? '');
+    if (!metricas.has(clave) || dimension === '') continue;
+    const lista = desglosables.get(clave) ?? [];
+    if (!lista.includes(dimension)) lista.push(dimension);
+    desglosables.set(clave, lista.sort());
+  }
+
+  return { metricas, empresas, derivadas: porClave, desglosables };
 }
 
 /** empresa_id existentes en el warehouse (solo para el rango de períodos con alcance '*'). */
 async function todasLasEmpresas(ejecutor: EjecutorSql): Promise<string[]> {
-  const filas = await ejecutor.consultarTenant(
-    'select distinct empresa_id from oro.metrica_valor',
-    [],
-  );
+  const filas = await ejecutor.consultarTenant(SQL_EMPRESAS_WAREHOUSE, []);
   return filas.map((f) => String(f['empresa_id'] ?? '')).filter((c) => c !== '');
 }
 

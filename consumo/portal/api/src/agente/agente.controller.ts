@@ -1,4 +1,4 @@
-/** Chat con el agente de IA gobernado, bajo el tenant de la URL (/t/:hash/agente). */
+/** Chat con el agente de IA gobernado y consultas guardadas, bajo el tenant de la URL (/t/:hash/agente). */
 import {
   Body,
   Controller,
@@ -7,6 +7,7 @@ import {
   HttpCode,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -16,15 +17,25 @@ import { RequestPortal } from '../auth/jwt-auth.guard';
 import { UsuarioPortal } from '../auth/tipos';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AgenteService } from './agente.service';
-import { enviarMensajeSchema, EnviarMensajeDto } from './agente.dto';
+import {
+  actualizarConsultaGuardadaSchema,
+  ActualizarConsultaGuardadaDto,
+  crearConsultaGuardadaSchema,
+  CrearConsultaGuardadaDto,
+  enviarMensajeSchema,
+  EnviarMensajeDto,
+} from './agente.dto';
+import { ConsultasGuardadasService } from './consultas-guardadas.service';
 import { ConversacionesService } from './conversaciones.service';
+import { LimiteAgenteGuard } from './limite-agente.guard';
 import { ModuloAsistenteGuard } from './modulo-asistente.guard';
 
 @Controller('t/:hash/agente')
-@UseGuards(ModuloAsistenteGuard)
+@UseGuards(ModuloAsistenteGuard, LimiteAgenteGuard)
 export class AgenteController {
   constructor(
     private readonly conversaciones: ConversacionesService,
+    private readonly guardadas: ConsultasGuardadasService,
     private readonly agente: AgenteService,
   ) {}
 
@@ -32,6 +43,8 @@ export class AgenteController {
     if (!req.usuarioPortal) throw new Error('Request sin usuario autenticado');
     return req.usuarioPortal;
   }
+
+  // ---------------------------------------------------------------- conversaciones
 
   @Get('conversaciones')
   listarConversaciones(@Req() req: RequestPortal) {
@@ -61,5 +74,41 @@ export class AgenteController {
   @HttpCode(204)
   eliminarConversacion(@Param('id', ParseIntPipe) id: number, @Req() req: RequestPortal) {
     return this.conversaciones.eliminar(this.usuario(req), id);
+  }
+
+  // ---------------------------------------------------------------- consultas guardadas
+
+  @Get('consultas')
+  listarConsultas(@Req() req: RequestPortal) {
+    return this.guardadas.listar(this.usuario(req));
+  }
+
+  @Post('consultas')
+  crearConsulta(
+    @Body(new ZodValidationPipe(crearConsultaGuardadaSchema)) dto: CrearConsultaGuardadaDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.guardadas.crear(this.usuario(req), dto);
+  }
+
+  /** Reejecuta la consulta con datos frescos (sin pasar por el modelo). */
+  @Get('consultas/:id/ejecutar')
+  ejecutarConsulta(@Param('id', ParseIntPipe) id: number, @Req() req: RequestPortal) {
+    return this.agente.ejecutarGuardada(this.usuario(req), id, req.ip ?? null);
+  }
+
+  @Patch('consultas/:id')
+  actualizarConsulta(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(actualizarConsultaGuardadaSchema)) dto: ActualizarConsultaGuardadaDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.guardadas.actualizar(this.usuario(req), id, dto);
+  }
+
+  @Delete('consultas/:id')
+  @HttpCode(204)
+  eliminarConsulta(@Param('id', ParseIntPipe) id: number, @Req() req: RequestPortal) {
+    return this.guardadas.eliminar(this.usuario(req), id);
   }
 }

@@ -20,6 +20,38 @@ export const SQL_METRICA_VALOR = `
    order by periodo, empresa_id
 `;
 
+/**
+ * Desglose de una métrica por dimensión (oro.metrica_valor_dimension): suma del rango
+ * de períodos por miembro, ordenado por valor. La dimensión viene de un enum cerrado
+ * (Zod) y la métrica del alcance; el orden y el límite son parámetros, no texto.
+ */
+export const SQL_METRICA_DIMENSION = `
+  select empresa_id, miembro_codigo, miembro_nombre, sum(valor) as valor, count(distinct periodo) as periodos
+    from oro.metrica_valor_dimension
+   where metrica_clave = $1
+     and dimension = $2
+     and ($3::text is null or periodo >= $3)
+     and ($4::text is null or periodo <= $4)
+     and empresa_id = any($5::text[])
+   group by empresa_id, miembro_codigo, miembro_nombre
+   order by case when $6::text = 'menor' then sum(valor) end asc,
+            case when $6::text = 'menor' then null else sum(valor) end desc,
+            miembro_codigo, empresa_id
+   limit $7
+`;
+
+/** Qué métricas admiten desglose y por qué dimensiones (tabla pequeña, se lee por mensaje). */
+export const SQL_METRICAS_DESGLOSABLES = `
+  select metrica_clave, dimension
+    from oro.metrica_dimension_catalogo
+`;
+
+/** empresa_id existentes en el warehouse (para el rango de períodos con alcance '*'). */
+export const SQL_EMPRESAS_WAREHOUSE = `
+  select distinct empresa_id
+    from oro.metrica_valor
+`;
+
 /** Rango de períodos con datos por métrica (para el prompt y listar_metricas). */
 export const SQL_PERIODOS_METRICA = `
   select metrica_clave,
@@ -40,6 +72,7 @@ export const SQL_DOMINIOS_METRICA = `
  *  presentación vive en dim_rango_aging (sin él, '+90' saldría antes que '1-30'). */
 export const SQL_AGING_POR_RANGO = `
   select a.rango_aging,
+         coalesce(min(r.rango_aging_nombre), a.rango_aging) as rango_nombre,
          sum(a.saldo_local) as saldo,
          sum(a.partidas)    as partidas
     from oro.metrica_aging a

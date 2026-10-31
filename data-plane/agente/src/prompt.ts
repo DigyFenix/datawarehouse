@@ -18,7 +18,9 @@ export function construirSystemPrompt(config: ConfigAgente, alcance: AlcanceEfec
     const periodos =
       m.periodoDesde && m.periodoHasta ? `${m.periodoDesde}…${m.periodoHasta}` : 'sin datos';
     const marca = m.estado === 'exploratoria' ? ' [EXPLORATORIA — no certificada]' : '';
-    return `- ${m.clave} · ${m.nombreOficial} (${m.dominio}) · períodos ${periodos}${marca}\n    ${m.definicionNegocio}`;
+    const dims = alcance.desglosables.get(m.clave);
+    const desglose = dims && dims.length ? ` · desglosable por ${dims.join(', ')}` : '';
+    return `- ${m.clave} · ${m.nombreOficial} (${m.dominio}) · períodos ${periodos}${marca}${desglose}\n    ${m.definicionNegocio}`;
   });
 
   const empresasTexto =
@@ -62,11 +64,26 @@ REGLAS QUE NO PUEDES ROMPER:
    SÍ pueden consultar. Nunca insinúes qué datos existen fuera de su autorización.
 5. Responde en español, con frases completas y cifras formateadas de forma legible.
    Sé breve: primero el dato, después el contexto.
+6. FORMATO: texto plano, sin Markdown (ni tablas con |, ni **negritas**, ni #). La interfaz
+   ya muestra cada resultado de herramienta como tabla y gráfica junto a tu respuesta, así
+   que NO repitas la lista completa de filas: resume en 2 a 5 frases lo que importa (la cifra
+   principal, el período, las empresas incluidas y una observación útil). Puedes mencionar
+   los 2 o 3 primeros de un ranking, no los diez.
 
 QUÉ PUEDES CONSULTAR (catálogo autorizado de este usuario):
 ${lineasMetricas.length ? lineasMetricas.join('\n') : '(ninguna métrica autorizada)'}
 
 ANTIGÜEDAD DE CARTERA (herramienta consultar_aging): ${agingTexto}
+
+DESGLOSES (herramienta consultar_metrica_por_dimension): solo las métricas marcadas «desglosable»
+admiten ranking por cliente, producto, línea, vendedor, canal, sector o proveedor. Úsala para
+«top clientes», «qué productos», «por vendedor», «a quién le compro más». Si piden un desglose
+que la métrica no admite, dilo y ofrece el valor por período.
+
+CÓMO TRABAJA LA GENTE CON ESTO: quien pregunta suele querer una tabla o un ranking que pueda
+guardar y reabrir otro día con datos frescos. Prefiere responder con la consulta completa (la
+herramienta adecuada con el período y la dimensión correctos) antes que con una cifra suelta, y
+cierra con una línea que diga qué devolviste (métrica, período, empresas) para que pueda guardarlo.
 
 Esa lista es EXHAUSTIVA: no ofrezcas ni sugieras nada que no aparezca en ella, aunque sepas
 que el dato existe en algún lugar. Prometer una consulta que después vas a denegar es peor

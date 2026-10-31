@@ -51,6 +51,23 @@ export const esquemaExplicarMetrica = z
   .object({ metrica_clave: claveMetrica })
   .strict();
 
+/** Vocabulario cerrado de dimensiones (coincide con oro.metrica_valor_dimension.dimension). */
+export const DIMENSIONES = ['cliente', 'producto', 'linea', 'vendedor', 'canal', 'sector', 'proveedor'] as const;
+export type Dimension = (typeof DIMENSIONES)[number];
+
+export const esquemaConsultarPorDimension = z
+  .object({
+    metrica_clave: claveMetrica,
+    dimension: z.enum(DIMENSIONES),
+    periodo_desde: periodo.optional(),
+    periodo_hasta: periodo.optional(),
+    empresa_id: claveEmpresa.optional(),
+    limite: z.number().int().min(1).max(50).default(10),
+    orden: z.enum(['mayor', 'menor']).default('mayor'),
+  })
+  .strict();
+export type ParamsConsultarPorDimension = z.infer<typeof esquemaConsultarPorDimension>;
+
 export type ParamsListarMetricas = z.infer<typeof esquemaListarMetricas>;
 export type ParamsConsultarMetrica = z.infer<typeof esquemaConsultarMetrica>;
 export type ParamsConsultarAging = z.infer<typeof esquemaConsultarAging>;
@@ -87,7 +104,7 @@ export const TOOLS_ANTHROPIC = [
         metrica_clave: { type: 'string', description: 'Clave exacta de la métrica (p. ej. ventas_netas_sin_iva).' },
         periodo_desde: { type: 'string', description: "Mes inicial 'YYYY-MM' (opcional)." },
         periodo_hasta: { type: 'string', description: "Mes final 'YYYY-MM' (opcional)." },
-        empresa_id: { type: 'number', description: 'Limitar a una empresa (opcional).' },
+        empresa_id: { type: 'string', description: "Clave de empresa (texto, p. ej. 'ironnetwork') para limitar a una sola (opcional)." },
         agrupar_por_empresa: { type: 'boolean', description: 'true = desglosar por empresa.' },
       },
       required: ['metrica_clave'],
@@ -103,11 +120,33 @@ export const TOOLS_ANTHROPIC = [
       type: 'object' as const,
       properties: {
         tipo_cartera: { type: 'string', enum: ['cobrar', 'pagar'] },
-        empresa_id: { type: 'number', description: 'Limitar a una empresa (opcional).' },
+        empresa_id: { type: 'string', description: "Clave de empresa (texto) para limitar a una sola (opcional)." },
         detalle: { type: 'string', enum: ['por_rango', 'por_socio'], description: "Default 'por_rango'." },
         limite_socios: { type: 'number', description: 'Top-N socios (1-25, default 10). Solo con detalle por_socio.' },
       },
       required: ['tipo_cartera'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'consultar_metrica_por_dimension',
+    description:
+      'Desglosa UNA métrica del catálogo por una dimensión (cliente, producto, línea, vendedor, ' +
+      'canal, sector o proveedor): ranking de los mayores o menores miembros, sumando el rango de ' +
+      'períodos. Úsala para «top clientes», «qué productos», «por vendedor», «a quién le compro». ' +
+      'Solo las métricas marcadas como desglosables admiten esta herramienta.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        metrica_clave: { type: 'string', description: 'Clave exacta de la métrica (debe ser desglosable).' },
+        dimension: { type: 'string', enum: [...DIMENSIONES], description: 'Eje del desglose.' },
+        periodo_desde: { type: 'string', description: "Mes inicial 'YYYY-MM' (opcional)." },
+        periodo_hasta: { type: 'string', description: "Mes final 'YYYY-MM' (opcional)." },
+        empresa_id: { type: 'string', description: 'Clave de empresa (texto) para limitar a una sola (opcional).' },
+        limite: { type: 'number', description: 'Cuántos miembros devolver (1-50, default 10).' },
+        orden: { type: 'string', enum: ['mayor', 'menor'], description: "'mayor' = los más grandes (default); 'menor' = los más chicos." },
+      },
+      required: ['metrica_clave', 'dimension'],
       additionalProperties: false,
     },
   },

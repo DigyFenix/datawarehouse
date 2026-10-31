@@ -11,12 +11,16 @@ export { resolverAlcance, empresasParaConsulta } from './alcances';
 export { fichaDeMetrica, leerGlosario } from './catalogo';
 export type { FichaMetrica, TerminoGlosario } from './catalogo';
 export { ejecutarTool } from './tools/ejecutar';
+export { ejecutarGuardada, validarEspecificacion, TOOLS_GUARDABLES } from './guardada';
+export type { EntradaGuardada, ResultadoGuardada } from './guardada';
 export type { ContextoTool, ResultadoTool } from './tools/ejecutar';
 export { TOOLS_ANTHROPIC } from './tools/esquemas';
 export { construirSystemPrompt } from './prompt';
 export type {
   AlcanceEfectivo,
   ConfigAgente,
+  ConjuntoDatos,
+  ConsultaEjecutada,
   EjecutorSql,
   EventoAuditoria,
   MensajeHistorial,

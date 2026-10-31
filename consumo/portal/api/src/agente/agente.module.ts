@@ -7,10 +7,12 @@ import { Module } from '@nestjs/common';
 
 import { AgenteController } from './agente.controller';
 import { AgenteService } from './agente.service';
+import { ConsultasGuardadasService } from './consultas-guardadas.service';
 import { ConversacionesService } from './conversaciones.service';
+import { LimiteAgenteGuard } from './limite-agente.guard';
 
 @Module({
   controllers: [AgenteController],
-  providers: [AgenteService, ConversacionesService],
+  providers: [AgenteService, ConversacionesService, ConsultasGuardadasService, LimiteAgenteGuard],
 })
 export class AgenteModule {}

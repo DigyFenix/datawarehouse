@@ -30,6 +30,9 @@ const esquemaEnv = z.object({
   AGENTE_MAX_ITERACIONES: z.coerce.number().int().positive().default(6),
   AGENTE_MAX_TOKENS: z.coerce.number().int().positive().default(4096),
 
+  // Zona horaria del negocio: «hoy», «este mes» y las fechas de corte se calculan aquí, no en UTC.
+  ZONA_HORARIA: z.string().default('America/Guatemala'),
+
   // Rol de solo lectura `portal_lector` (RLS oro): el agente lee el warehouse del
   // tenant SOLO con esta contraseña. Sin ella, LectorPoolsService lanza al usarse.
   PORTAL_LECTOR_PASSWORD: z.string().default(''),

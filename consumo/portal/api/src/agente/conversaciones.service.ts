@@ -5,7 +5,7 @@
  * si intenta otra (no se distingue "no existe" de "no es tuya").
  */
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { MensajeHistorial, TarjetaDato } from '@quilate/agente';
+import type { ConjuntoDatos, ConsultaEjecutada, MensajeHistorial, TarjetaDato } from '@quilate/agente';
 import { Pool } from 'pg';
 
 import { SesionService } from '../auth/sesion.service';
@@ -20,11 +20,18 @@ export interface ConversacionResumen {
   actualizadaEn: Date;
 }
 
+/** Conjuntos de datos y consultas ejecutadas de una respuesta (columna `datos`, jsonb). */
+export interface DatosMensaje {
+  conjuntos: ConjuntoDatos[];
+  consultas: ConsultaEjecutada[];
+}
+
 export interface MensajeChat {
   id: number;
   rol: 'usuario' | 'asistente';
   contenido: string;
   tarjetas: TarjetaDato[] | null;
+  datos: DatosMensaje | null;
   creadoEn: Date;
 }
 
@@ -85,7 +92,7 @@ export class ConversacionesService {
     const pool = await this.pool(usuario);
     await this.obtenerPropiaConPool(pool, usuario, conversacionId);
     const resultado = await pool.query(
-      `SELECT id, rol, contenido, tarjetas, creado_en AS "creadoEn"
+      `SELECT id, rol, contenido, tarjetas, datos, creado_en AS "creadoEn"
          FROM portal.chat_mensajes
         WHERE conversacion_id = $1
         ORDER BY id`,
@@ -120,8 +127,12 @@ export class ConversacionesService {
     pool: Pool,
     conversacion: ConversacionResumen,
     mensajeUsuario: string,
-    respuesta: { texto: string; tarjetas: TarjetaDato[] },
+    respuesta: { texto: string; tarjetas: TarjetaDato[]; conjuntos?: ConjuntoDatos[]; consultas?: ConsultaEjecutada[] },
   ): Promise<void> {
+    const datos: DatosMensaje | null =
+      respuesta.conjuntos && respuesta.conjuntos.length
+        ? { conjuntos: respuesta.conjuntos, consultas: respuesta.consultas ?? [] }
+        : null;
     const tituloNuevo =
       conversacion.titulo === TITULO_CONVERSACION_DEFECTO ? mensajeUsuario.slice(0, 60) : null;
     const cliente = await pool.connect();
@@ -133,9 +144,9 @@ export class ConversacionesService {
         [conversacion.id, mensajeUsuario],
       );
       await cliente.query(
-        `INSERT INTO portal.chat_mensajes (conversacion_id, rol, contenido, tarjetas)
-         VALUES ($1, 'asistente', $2, $3::jsonb)`,
-        [conversacion.id, respuesta.texto, JSON.stringify(respuesta.tarjetas)],
+        `INSERT INTO portal.chat_mensajes (conversacion_id, rol, contenido, tarjetas, datos)
+         VALUES ($1, 'asistente', $2, $3::jsonb, $4::jsonb)`,
+        [conversacion.id, respuesta.texto, JSON.stringify(respuesta.tarjetas), datos ? JSON.stringify(datos) : null],
       );
       await cliente.query(
         `UPDATE portal.chat_conversaciones
