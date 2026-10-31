@@ -21,7 +21,8 @@ SRV=ubuntu@77.112.237.34
 SSH=(ssh -i ~/.ssh/quilate_deploy -o BatchMode=yes "$SRV")
 SCP=(scp -i ~/.ssh/quilate_deploy -o BatchMode=yes)
 SUB=subida-$VERSION
-ANTERIOR=$("${SSH[@]}" "ls -d ~/quilate-*/ | grep -v '$VERSION' | sort | tail -1 | sed "s:/$::" | xargs -n1 basename | sed "s/quilate-//"")
+# Versión que CORRE hoy (tag de la imagen del API), no la carpeta que ordena último: 8b4ad65-local > 6fe70de en orden alfabético.
+ANTERIOR=$("${SSH[@]}" "docker inspect quilate-portal-api --format {{.Config.Image}} | cut -d: -f2")
 
 echo "== versión nueva: $VERSION · anterior en el servidor: $ANTERIOR =="
 echo "== 1/5 subiendo paquete =="
@@ -32,7 +33,7 @@ LOCAL=$(sha256sum "dist/quilate-imagenes-$VERSION.tar.gz" | cut -d' ' -f1)
 REMOTO=$("${SSH[@]}" "sha256sum ~/$SUB/quilate-imagenes-$VERSION.tar.gz" | cut -d' ' -f1)
 [[ "$LOCAL" == "$REMOTO" ]] || { echo "FALLO · el archivo de imágenes llegó dañado"; exit 1; }
 
-"${SSH[@]}" VERSION="$VERSION" ANTERIOR="$ANTERIOR" MIGRACIONES="${MIGRACIONES[*]}" bash -s <<'REMOTO'
+"${SSH[@]}" VERSION="$VERSION" ANTERIOR="$ANTERIOR" MIGRACIONES="$(IFS=,; echo "${MIGRACIONES[*]}")" bash -s <<'REMOTO'
 set -euo pipefail
 SUB=~/subida-$VERSION
 
@@ -61,7 +62,7 @@ sudo sed -i "s#quilate-$ANTERIOR#quilate-$VERSION#" /etc/cron.d/quilate-tls-post
 echo "== 4/5 migraciones de tenant: $MIGRACIONES =="
 for db in $(docker exec quilate-postgres psql -U quilate_admin -d quilate_control -Atc "SELECT datname FROM pg_database WHERE datname LIKE 'dw_%'"); do
   echo "   · $db"
-  for mig in $MIGRACIONES; do
+  for mig in ${MIGRACIONES//,/ }; do
     docker exec -i quilate-postgres psql -U quilate_admin -d "$db" -v ON_ERROR_STOP=1 < ~/quilate-$VERSION/metadata-store/schema/$mig > /dev/null
   done
 done
