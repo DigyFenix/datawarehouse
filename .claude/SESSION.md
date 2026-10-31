@@ -1,5 +1,45 @@
 # SESSION — datawarehouse
 
+## ══════ SESIÓN 37 (2026-10-31) — DESPLIEGUE A IRON, RESUMEN PBI PRO, ADMIN PRÁCTICO EN LOS DOS PORTALES — leer esto primero ══════
+
+### Hecho
+- **Producción Iron** (`6fe70de` desplegado por Claude): el guion no fijaba `VERSION` en el `.env` y
+  compose recreó con imágenes viejas; corregido. Postgres cayó 2 min por falta de `pg-tls/` en la
+  carpeta nueva (se copia de la anterior + cron recolocado). Seed 58 aplicado (23 tableros, perfil
+  Power BI ve 24). Firewall: el 5432 acepta TCP desde la IP de Edwin (pg_hba lo frena). Guion
+  versionado: `infra/produccion/desplegar.sh` (MIGRACIONES editable, pg-tls, VERSION, cron).
+- **Power BI**: Resumen con paneles KPI blancos (14 pt, izquierda, sin cajas) y Focos como filas
+  con barra de color + cifra grande + detalle (`panelFocos` en pbir.js; 10 medidas `Foco de X ·
+  cifra/detalle` en generar_pbip.py y TMDL). 23 hojas, 395 visuales, gate OK. **Sin publicar.**
+- **Portal de usuario**: selector de tableros por familia (tarjetas, todos/ninguno, copiar de otro
+  perfil, N cambios sin guardar), «Métricas y empresas» del perfil con chips (siempre visible, rige
+  chat + Mi tablero + Descargas; `GET /admin/catalogo-alcances`), alta de usuario con perfiles +
+  contraseña generada (`perfilIds` en POST), Inicio como panel de entrada (estado del dato arriba,
+  «Seguir donde quedaste», sin accesos duplicados del menú), Tableros con buscador y familias.
+- **Portal admin**: migrado al sistema visual «Espacio de trabajo» (Geist, barra clara, menú
+  Clientes/Datos/Semántica/Acceso, ConfirmService, DESIGN.md propio). Puesta en marcha guiada por
+  organización (checklist 5 pasos), Conexiones/Sociedades filtradas por org activa, claves slug,
+  etiquetas legibles, contraseñas generadas, buscadores, cron legible, Campos con pasos numerados,
+  Portal del cliente en pestañas; API `estado` tolera base sin provisionar (3D000).
+- UX guiada por crestacore (`claude -p` en `C:\Claudews\crestacore`); memoria `ux-patrones-crestacore`.
+
+### PENDIENTE: Edwin
+1. **Desplegar 1c7cd05** (el clasificador bloqueó a Claude): `bash infra/produccion/desplegar.sh`
+   desde la raíz (Git Bash). Luego Ctrl+F5 en ambos portales.
+2. Power BI: cerrar Desktop SIN guardar, reabrir `PulsoIron.pbip`, refrescar, revisar Resumen,
+   publicar. Las 10 hojas nuevas ya están en el portal (abren «página no encontrada» hasta publicar).
+3. Asignar tableros y métricas a los perfiles de Iron (solo Power BI tiene 24; el resto 0).
+4. Chat: portal admin → Organizaciones → Iron → Módulo Asistente; `ANTHROPIC_API_KEY` en `.env`
+   + `docker compose up -d api-usuario`.
+5. Firewall Lightsail 5432: solo IP del gateway.
+
+### Deuda
+- 50 `style=""` inline en el admin (usuarios, metricas, ingesta, auditoria); Auditoría sin rediseño.
+- `recursoTipo='portal'` en Autorizaciones no lo evalúa ningún guard del API.
+- `GET /conexiones` no filtra por organización en el API (filtro en cliente).
+- Pendientes de seguridad de la revisión: respaldos fuera del servidor, revocación de sesión,
+  2FA/IP para el admin, cookie HttpOnly, olvidé mi contraseña, aviso de expiración.
+
 ## ══════ SESIÓN 36 (2026-10-31) — FRESCURA, DEMANDA, MI TABLERO, DESCARGAS A EXCEL, REDISEÑO WEB Y CHAT CON RESTRICCIONES REALES — leer esto primero ══════
 
 Edwin aclaró el pedido: el chat **solo lee Oro** («Bronce y Plata por ningún motivo, lo dicta el
