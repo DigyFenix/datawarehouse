@@ -1,14 +1,17 @@
 /** Descargas autoservicio a Excel, bajo el tenant de la URL (/t/:hash/descargas). */
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { esquemaDescarga } from '@quilate/agente';
 import type { Response } from 'express';
 
+import { LimiteAgenteGuard } from '../agente/limite-agente.guard';
 import { RequestPortal } from '../auth/jwt-auth.guard';
 import { UsuarioPortal } from '../auth/tipos';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { DescargasService } from './descargas.service';
 
 @Controller('t/:hash/descargas')
+// Mismo límite por usuario que el asistente: el .xlsx cuenta en el cubo caro (12/min).
+@UseGuards(LimiteAgenteGuard)
 export class DescargasController {
   constructor(private readonly servicio: DescargasService) {}
 

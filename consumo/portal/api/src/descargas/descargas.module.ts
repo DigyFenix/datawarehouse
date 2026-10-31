@@ -5,12 +5,13 @@
 import { Module } from '@nestjs/common';
 
 import { AgenteModule } from '../agente/agente.module';
+import { LimiteAgenteGuard } from '../agente/limite-agente.guard';
 import { DescargasController } from './descargas.controller';
 import { DescargasService } from './descargas.service';
 
 @Module({
   imports: [AgenteModule],
   controllers: [DescargasController],
-  providers: [DescargasService],
+  providers: [DescargasService, LimiteAgenteGuard],
 })
 export class DescargasModule {}

@@ -15,6 +15,8 @@ interface Ventana {
 }
 
 const VENTANA_MS = 60_000;
+/** Handlers que cuentan en el cubo caro (modelo o exportaciones). */
+const HANDLERS_CAROS = new Set(['enviarMensaje', 'excel']);
 /** Mensajes al modelo por minuto y usuario. */
 const MAX_MENSAJES = 12;
 /** Reejecuciones de consultas guardadas (y demás lecturas) por minuto y usuario. */
@@ -30,7 +32,8 @@ export class LimiteAgenteGuard implements CanActivate {
     if (!usuario) return true; // el guard global de JWT ya rechazó o es ruta pública
     // El cubo se decide por el HANDLER resuelto por Nest, no por el texto de la ruta: un path con
     // mayúsculas o barra final distinta no puede colarse al cubo barato.
-    const esMensaje = ctx.getHandler().name === 'enviarMensaje';
+    // `excel` (descargas) entra al cubo caro: cada archivo son varias lecturas del warehouse.
+    const esMensaje = HANDLERS_CAROS.has(ctx.getHandler().name);
     const clave = `${usuario.hash}:${usuario.id}:${esMensaje ? 'mensaje' : 'lectura'}`;
     const tope = esMensaje ? MAX_MENSAJES : MAX_LECTURAS;
     const ahora = Date.now();

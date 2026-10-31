@@ -16,6 +16,6 @@ import { SolicitudesService } from './solicitudes.service';
   controllers: [AgenteController],
   providers: [AgenteService, ConversacionesService, ConsultasGuardadasService, SolicitudesService, LimiteAgenteGuard],
   // Descargas (misma lectura gobernada) y Admin (bitácora de demanda) reutilizan estos servicios.
-  exports: [AgenteService, SolicitudesService],
+  exports: [AgenteService, SolicitudesService, LimiteAgenteGuard],
 })
 export class AgenteModule {}

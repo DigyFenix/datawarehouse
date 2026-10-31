@@ -34,6 +34,8 @@ detalle a elección. Power BI y el despliegue a producción quedan con él.
   mensual_empresa / dimension_total / mensual_dimension / aging_rango / aging_socio; hoja «Ficha»;
   auditoría `descarga_datos`. Rechazos (dimensión no admitida, inyección, aging sobre no-cartera)
   → 400. Web: asistente de 4 pasos (módulo → métricas → detalle → período/empresa).
+- Revisión de seguridad post-commit: las descargas entran al cubo caro del `LimiteAgenteGuard`
+  (12/min por usuario → 429) y el tablero admite máximo 30 widgets (400 al 31; `LIMIT` al leer).
 - Paquete del agente: 38 tests (12 nuevos en `demanda-descargas.spec.ts`). Docs: arquitectura
   §7.3/§7.4, MAPA-REPO, memoria `portal-frescura-demanda-autoservicio`.
 

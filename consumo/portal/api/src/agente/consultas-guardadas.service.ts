@@ -51,6 +51,9 @@ export interface CambiosConsultaGuardada {
   tableroAncho?: 1 | 2;
 }
 
+/** Tope de widgets por tablero: cada uno es una lectura del warehouse al abrirlo. */
+export const MAX_WIDGETS_TABLERO = 30;
+
 const COLUMNAS = `id, titulo, descripcion, tool, params, vista,
                   metrica_clave AS "metricaClave", version_definicion AS "versionDefinicion",
                   creada_en AS "creadaEn", actualizada_en AS "actualizadaEn", ultima_ejecucion_en AS "ultimaEjecucionEn",
@@ -99,6 +102,7 @@ export class ConsultasGuardadasService {
     if (!v.ok) throw new BadRequestException(`Consulta inválida: ${v.motivo}`);
     const nueva: NuevaConsultaGuardada = { ...entrada, params: v.params };
     const pool = await this.pool(usuario);
+    if (nueva.enTablero) await this.exigirCupoTablero(pool, usuario.id);
     const metricaClave = this.metricaDe(nueva);
     const version = metricaClave ? await this.versionDefinicion(metricaClave) : null;
     // Al tablero entra al final: el orden se toma del máximo actual del usuario.
@@ -113,16 +117,28 @@ export class ConsultasGuardadasService {
     return r.rows[0] as ConsultaGuardada;
   }
 
-  /** Consultas fijadas a «Mi tablero», en el orden que el usuario les dio. */
+  /** Consultas fijadas a «Mi tablero», en el orden que el usuario les dio (acotadas al tope). */
   async listarTablero(usuario: UsuarioPortal): Promise<ConsultaGuardada[]> {
     const pool = await this.pool(usuario);
     const r = await pool.query(
       `SELECT ${COLUMNAS} FROM portal.consultas_guardadas
         WHERE usuario_id = $1 AND en_tablero
-        ORDER BY tablero_orden NULLS LAST, actualizada_en DESC`,
-      [usuario.id],
+        ORDER BY tablero_orden NULLS LAST, actualizada_en DESC
+        LIMIT $2`,
+      [usuario.id, MAX_WIDGETS_TABLERO],
     );
     return r.rows as ConsultaGuardada[];
+  }
+
+  /** 400 si el usuario ya llenó su tablero: abrirlo ejecuta una lectura por widget. */
+  private async exigirCupoTablero(pool: Pool, usuarioId: number): Promise<void> {
+    const r = await pool.query<{ n: string }>(
+      `SELECT count(*)::text AS n FROM portal.consultas_guardadas WHERE usuario_id = $1 AND en_tablero`,
+      [usuarioId],
+    );
+    if (Number(r.rows[0]?.n ?? 0) >= MAX_WIDGETS_TABLERO) {
+      throw new BadRequestException(`Mi tablero admite hasta ${MAX_WIDGETS_TABLERO} widgets; quita alguno antes de agregar otro.`);
+    }
   }
 
   /**
@@ -143,7 +159,8 @@ export class ConsultasGuardadasService {
 
   async actualizar(usuario: UsuarioPortal, id: number, cambios: CambiosConsultaGuardada): Promise<ConsultaGuardada> {
     const pool = await this.pool(usuario);
-    await this.obtenerPropia(usuario, id);
+    const actual = await this.obtenerPropia(usuario, id);
+    if (cambios.enTablero === true && !actual.enTablero) await this.exigirCupoTablero(pool, usuario.id);
     // Al fijar al tablero se coloca al final; al quitar se libera la posición.
     const r = await pool.query(
       `UPDATE portal.consultas_guardadas
