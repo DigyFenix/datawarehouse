@@ -39,9 +39,9 @@ detalle a elección. Power BI y el despliegue a producción quedan con él.
 
 ### PENDIENTE: Edwin
 1. Power BI (sesión 35): refrescar, revisar 23 hojas, guardar, publicar; seed 58.
-2. Desplegar: generar paquete nuevo (`infra/produccion/empaquetar.sh`) y correr el guion de
-   despliegue; en el servidor aplicar **137** a cada `dw_<tenant>` y verificar que `HORAS_CARGA`
-   esté en el `.env` (ya lo usa el programador).
+2. Desplegar: `bash dist/desplegar-20261031b.sh` (toma el paquete más nuevo de `dist/`; aplica
+   136+137 a cada `dw_<tenant>`, agrega `HORAS_CARGA` al `.env` si falta y reinicia). Commit
+   `be0c6cd` + ajustes de pantalla.
 3. Si quiere datos más frescos para Iron: más horas en `HORAS_CARGA` (p. ej. `05:00 13:00 18:00`),
    no cargas por pregunta.
 
