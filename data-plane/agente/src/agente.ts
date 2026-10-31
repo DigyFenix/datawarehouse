@@ -8,7 +8,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 import { resolverAlcance } from './alcances';
-import { clasificarIntencion, esIntencionBloqueada, RESPUESTAS_FIJAS } from './compuerta';
+import { clasificarIntencion, esIntencionBloqueada, RESPUESTAS_FIJAS, usoDeRespuesta } from './compuerta';
 import { construirBloquesSystem } from './prompt';
 import { ejecutarTool } from './tools/ejecutar';
 import { TOOLS_ANTHROPIC } from './tools/esquemas';
@@ -22,6 +22,7 @@ import type {
   ResultadoAgente,
   SolicitudNoAtendida,
   TarjetaDato,
+  UsoModelo,
 } from './tipos';
 
 /** Tope de caracteres de la respuesta en texto (la UI ya muestra tablas y tarjetas aparte). */
@@ -57,6 +58,8 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
   const { estatico, dinamico } = construirBloquesSystem(config, alcance);
 
   const cliente = new Anthropic({ apiKey: config.apiKey });
+  // Tokens de cada llamada al modelo en este turno: el host los costea por usuario.
+  const uso: UsoModelo[] = [];
   const usaFallback = MODELOS_CON_FALLBACK.has(config.modelo);
 
   // RESTRICCIÓN REAL 1 — compuerta de intención: un clasificador con salida estructurada decide si
@@ -65,10 +68,10 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
   if (config.modeloCompuerta) {
     const ultimaRespuesta = [...historial].reverse().find((m) => m.rol === 'asistente')?.contenido ?? null;
     const dominios = [...new Set([...alcance.metricas.values()].map((m) => m.dominio).filter(Boolean))];
-    const intencion = await clasificarIntencion({ cliente, modelo: config.modeloCompuerta, mensaje, ultimaRespuesta, dominios });
+    const intencion = await clasificarIntencion({ cliente, modelo: config.modeloCompuerta, mensaje, ultimaRespuesta, dominios, registrarUso: (u) => uso.push(u) });
     if (esIntencionBloqueada(intencion)) {
       await auditar({ accion: 'consulta_agente_denegada', detalle: { motivo: 'compuerta', intencion } });
-      return { texto: RESPUESTAS_FIJAS[intencion], tarjetas: [], conjuntos: [], consultas: [], solicitudes: [] };
+      return { texto: RESPUESTAS_FIJAS[intencion], uso, tarjetas: [], conjuntos: [], consultas: [], solicitudes: [] };
     }
   }
 
@@ -119,9 +122,12 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
         : {}),
     });
 
+    uso.push(usoDeRespuesta(config.modelo, respuesta.usage));
+
     // Un rechazo se comunica, no se disfraza de respuesta vacía.
     if (respuesta.stop_reason === 'refusal') {
       return {
+        uso,
         texto:
           'No puedo procesar esa solicitud. Reformúlala en términos de las métricas ' +
           'de negocio disponibles y con gusto la consulto.',
@@ -202,5 +208,5 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
     return true;
   });
 
-  return { texto, tarjetas: unicas, conjuntos, consultas, solicitudes };
+  return { texto, uso, tarjetas: unicas, conjuntos, consultas, solicitudes };
 }

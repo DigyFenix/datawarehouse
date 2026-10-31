@@ -1,3 +1,4 @@
+import type { UsoModelo } from './tipos';
 /**
  * COMPUERTA DE INTENCIÓN — restricción real, no instrucción.
  *
@@ -36,6 +37,8 @@ const ESQUEMA_INTENCION = {
 } as const;
 
 export interface EntradaCompuerta {
+  /** Recibe los tokens de la llamada del clasificador (para costeo por usuario). */
+  registrarUso?: (uso: UsoModelo) => void;
   cliente: Anthropic;
   modelo: string;
   mensaje: string;
@@ -64,8 +67,19 @@ Ante duda entre consulta y otra cosa, elige consulta.`;
  * Clasifica el mensaje. Nunca lanza: ante cualquier fallo del clasificador devuelve `consulta`
  * para no bloquear al usuario (el agente principal mantiene sus guardas).
  */
+/** Normaliza `usage` del API (los campos de caché pueden venir null) a la forma que persiste el host. */
+export function usoDeRespuesta(modelo: string, usage: { input_tokens?: number | null; output_tokens?: number | null; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null } | null | undefined): UsoModelo {
+  return {
+    modelo,
+    tokensEntrada: usage?.input_tokens ?? 0,
+    tokensSalida: usage?.output_tokens ?? 0,
+    tokensCacheLectura: usage?.cache_read_input_tokens ?? 0,
+    tokensCacheEscritura: usage?.cache_creation_input_tokens ?? 0,
+  };
+}
+
 export async function clasificarIntencion(entrada: EntradaCompuerta): Promise<Intencion> {
-  const { cliente, modelo, mensaje, ultimaRespuesta, dominios } = entrada;
+  const { cliente, modelo, mensaje, ultimaRespuesta, dominios, registrarUso } = entrada;
   try {
     const respuesta = await cliente.beta.messages.create({
       model: modelo,
@@ -81,6 +95,7 @@ export async function clasificarIntencion(entrada: EntradaCompuerta): Promise<In
       ],
       output_config: { format: { type: 'json_schema', schema: ESQUEMA_INTENCION }, effort: 'low' },
     });
+    registrarUso?.(usoDeRespuesta(modelo, respuesta.usage));
     const texto = respuesta.content
       .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
       .map((b) => b.text)

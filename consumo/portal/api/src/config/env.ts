@@ -58,6 +58,22 @@ const esquemaEnv = z.object({
   // Rol de solo lectura `portal_lector` (RLS oro): el agente lee el warehouse del
   // tenant SOLO con esta contraseña. Sin ella, LectorPoolsService lanza al usarse.
   PORTAL_LECTOR_PASSWORD: z.string().default(''),
+
+  // Tarifas del asistente para costear el uso por usuario (Administración → Uso de IA): JSON por
+  // modelo en USD por millón de tokens, p. ej. {"claude-opus-5":{"entrada":5,"salida":25}}.
+  // Vacío = tarifas de referencia del código. Solo cambia el costo ESTIMADO que ve el admin.
+  AGENTE_PRECIOS_USD: z
+    .string()
+    .default('')
+    .transform((v, ctx) => {
+      if (!v.trim()) return {} as Record<string, { entrada: number; salida: number; cacheLectura?: number; cacheEscritura?: number }>;
+      try {
+        return JSON.parse(v) as Record<string, { entrada: number; salida: number; cacheLectura?: number; cacheEscritura?: number }>;
+      } catch {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'AGENTE_PRECIOS_USD debe ser JSON válido' });
+        return z.NEVER;
+      }
+    }),
 });
 
 export type Env = z.infer<typeof esquemaEnv>;

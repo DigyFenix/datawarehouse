@@ -7,5 +7,6 @@ export const PESTANAS_ADMIN: PestanaTab[] = [
   { etiqueta: 'Glosario', segmento: 'glosario' },
   { etiqueta: 'Indicadores', segmento: 'indicadores' },
   { etiqueta: 'Demanda', segmento: 'demanda' },
+  { etiqueta: 'Uso de IA', segmento: 'uso-ia' },
   { etiqueta: 'Auditoría', segmento: 'auditoria' },
 ];

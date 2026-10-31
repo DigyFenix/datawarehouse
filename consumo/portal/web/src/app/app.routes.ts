@@ -104,6 +104,11 @@ export const routes: Routes = [
                   import('./features/admin/demanda.component').then((m) => m.DemandaComponent),
               },
               {
+                path: 'uso-ia',
+                loadComponent: () =>
+                  import('./features/admin/uso-ia.component').then((m) => m.UsoIaComponent),
+              },
+              {
                 path: 'auditoria',
                 loadComponent: () =>
                   import('./features/admin/auditoria.component').then((m) => m.AuditoriaComponent),

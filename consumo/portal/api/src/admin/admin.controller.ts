@@ -43,6 +43,8 @@ import {
 import { AdminService } from './admin.service';
 import { actualizarSolicitudSchema, ActualizarSolicitudDto, estadoSolicitudSchema } from '../agente/agente.dto';
 import { EstadoSolicitud, SolicitudesService } from '../agente/solicitudes.service';
+import { UsoIaService } from '../agente/uso-ia.service';
+import { SesionService } from '../auth/sesion.service';
 
 @SoloAdmin()
 @Controller('t/:hash/admin')
@@ -50,6 +52,8 @@ export class AdminController {
   constructor(
     private readonly servicio: AdminService,
     private readonly solicitudes: SolicitudesService,
+    private readonly usoIa: UsoIaService,
+    private readonly sesion: SesionService,
   ) {}
 
   // --- Demanda no atendida (lo que la gente pide al asistente y no se puede dar) ---
@@ -256,6 +260,18 @@ export class AdminController {
   }
 
   // --- Tableros (lectura) y auditoría ---
+
+  /**
+   * Uso y costo del asistente por usuario y perfil (solo admin). `mes` = YYYY-MM (default: mes
+   * actual). Lo que el usuario consume no se le muestra a él.
+   */
+  @Get('uso-ia')
+  async usoIaResumen(@Req() req: RequestPortal, @Query('mes') mes?: string) {
+    const actor = this.usuario(req);
+    const { pool } = await this.sesion.contexto(actor.hash);
+    const valido = mes && /^\d{4}-(0[1-9]|1[0-2])$/.test(mes) ? mes : new Date().toISOString().slice(0, 7);
+    return this.usoIa.resumen(pool, valido);
+  }
 
   @Get('catalogo-alcances')
   catalogoAlcances(@Req() req: RequestPortal) {

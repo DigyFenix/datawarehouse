@@ -22,6 +22,7 @@ export { construirSystemPrompt, construirBloquesSystem } from './prompt';
 export { clasificarIntencion, esIntencionBloqueada, RESPUESTAS_FIJAS, INTENCIONES } from './compuerta';
 export type { Intencion } from './compuerta';
 export type {
+  UsoModelo,
   AlcanceEfectivo,
   ConfigAgente,
   ConjuntoDatos,

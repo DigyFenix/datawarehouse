@@ -94,8 +94,19 @@ export interface ConsultaEjecutada {
   tituloSugerido: string;
 }
 
+/** Tokens consumidos en UNA llamada al modelo (compuerta o agente). El host los convierte a costo. */
+export interface UsoModelo {
+  modelo: string;
+  tokensEntrada: number;
+  tokensSalida: number;
+  tokensCacheLectura: number;
+  tokensCacheEscritura: number;
+}
+
 export interface ResultadoAgente {
   texto: string;
+  /** Una entrada por llamada al modelo en este turno (vacío si no se llamó a ningún modelo). */
+  uso: UsoModelo[];
   tarjetas: TarjetaDato[];
   conjuntos: ConjuntoDatos[];
   consultas: ConsultaEjecutada[];

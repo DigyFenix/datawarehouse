@@ -32,6 +32,7 @@ import { ConsultaGuardada, ConsultasGuardadasService } from './consultas-guardad
 import { ConversacionesService } from './conversaciones.service';
 import { proximaCarga, type ProximaCarga } from './frescura';
 import { SolicitudesService } from './solicitudes.service';
+import { UsoIaService } from './uso-ia.service';
 
 /** Turnos de historial que se le dan al modelo como contexto: solo los últimos 3 intercambios.
  *  El chat no es conversacional: basta con lo justo para una aclaración («¿netas o brutas?»). */
@@ -101,6 +102,7 @@ export class AgenteService {
     private readonly conversaciones: ConversacionesService,
     private readonly guardadas: ConsultasGuardadasService,
     private readonly solicitudes: SolicitudesService,
+    private readonly usoIa: UsoIaService,
     private readonly lectorPools: LectorPoolsService,
     private readonly controlDb: ControlDbService,
     private readonly auditoria: AuditoriaPortalService,
@@ -171,6 +173,8 @@ export class AgenteService {
     await this.conversaciones.registrarTurno(pool, conversacion, contenido, resultado);
     // (h) Demanda que no se pudo atender: queda para el administrador (nunca bloquea la respuesta).
     await this.solicitudes.registrar(pool, usuario, conversacionId, contenido, resultado.solicitudes);
+    // Costo del turno para el administrador (nunca bloquea; el usuario no lo ve).
+    await this.usoIa.registrar(pool, usuario, conversacionId, resultado.uso);
 
     // (i) Estado de la sesión y sugerencias del portal (no del modelo): tope cercano o mezcla de temas.
     const sesion = await this.estadoSesion(pool, conversacionId);
