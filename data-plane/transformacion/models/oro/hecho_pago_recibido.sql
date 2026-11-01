@@ -33,7 +33,18 @@ select
     p.tipo_cambio,
 
     p.proceso_transformacion,
-    p.version_proceso
+    p.version_proceso,
+    -- Estado del cobro en lenguaje de negocio (antes columna DAX). En Odoo `paid` = conciliado
+    -- contra factura e `in_process` = registrado sin conciliar; el usuario elige cuáles cuentan.
+    case p.estado
+        when 'paid'       then 'Conciliado'
+        when 'in_process' then 'En proceso'
+        when 'posted'     then 'Registrado'
+        when 'draft'      then 'Borrador'
+        when 'cancel'     then 'Cancelado'
+        when 'canceled'   then 'Cancelado'
+        else coalesce(p.estado, 'Sin estado')
+    end                                               as estado_cobro
 from {{ ref('plata_pago') }} p
 left join {{ ref('dim_cliente') }} dc
        on dc.cliente_codigo = p.socio_codigo and dc.empresa_id = p.empresa_id

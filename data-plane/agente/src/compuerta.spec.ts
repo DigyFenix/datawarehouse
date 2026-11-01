@@ -4,7 +4,7 @@
  */
 import type Anthropic from '@anthropic-ai/sdk';
 
-import { clasificarIntencion, esIntencionBloqueada, INTENCIONES, RESPUESTAS_FIJAS } from './compuerta';
+import { clasificarIntencion, esIntencionBloqueada, INTENCIONES, normalizarClasificacion, RESPUESTAS_FIJAS } from './compuerta';
 
 function clienteFalso(texto: string | Error): Anthropic {
   return {
@@ -44,5 +44,21 @@ describe('Compuerta de intención', () => {
       expect(RESPUESTAS_FIJAS[i].length).toBeGreaterThan(20);
       expect(RESPUESTAS_FIJAS[i].length).toBeLessThan(260);
     }
+  });
+
+  it('la salida ampliada se intersecta con el alcance: nada fuera del catálogo o de las empresas visibles sobrevive', () => {
+    const metricas = new Map([['ventas_netas_sin_iva', 'Ventas netas'], ['ventas_brutas_sin_iva', 'Ventas brutas']]);
+    const empresas = new Map([['proavisa', 'Empresa Uno']]);
+    const c = normalizarClasificacion(
+      { intencion: 'consulta', metricas_candidatas: ['ventas_netas_sin_iva', 'saldo_secreto', 'ventas_brutas_sin_iva'], periodo_detectado: { desde: '2026-10', hasta: '2026-01' }, empresa_detectada: 'loreto', es_ambigua: true },
+      metricas,
+      empresas,
+    );
+    expect(c.metricas_candidatas).toEqual(['ventas_netas_sin_iva', 'ventas_brutas_sin_iva']);
+    expect(c.periodo_detectado).toEqual({ desde: '2026-01', hasta: '2026-10' });
+    expect(c.empresa_detectada).toBeNull();
+    expect(c.es_ambigua).toBe(true);
+    // Una intención no-consulta nunca es ambigua; un período mal formado se descarta.
+    expect(normalizarClasificacion({ intencion: 'saludo', es_ambigua: true, periodo_detectado: { desde: '2026-13', hasta: '' } }, metricas, empresas)).toMatchObject({ es_ambigua: false, periodo_detectado: null });
   });
 });

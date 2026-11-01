@@ -10,7 +10,7 @@
 import { resolverAlcance } from './alcances';
 import { ejecutarTool } from './tools/ejecutar';
 import { esquemaConsultarAging, esquemaConsultarMetrica, esquemaConsultarPorDimension } from './tools/esquemas';
-import type { ConjuntoDatos, EjecutorSql, EventoAuditoria, TarjetaDato } from './tipos';
+import type { ConjuntoDatos, EjecutorSql, EventoAuditoria, FrescuraDominio, TarjetaDato } from './tipos';
 
 /** Tools cuyo resultado tiene forma de datos y por tanto tiene sentido guardar. */
 export const TOOLS_GUARDABLES = ['consultar_metrica', 'consultar_aging', 'consultar_metrica_por_dimension'] as const;
@@ -50,6 +50,8 @@ export interface EntradaGuardada {
   auditar: (evento: EventoAuditoria) => Promise<void>;
   /** Misma configuración que el chat: solo certificadas. */
   soloCertificadas?: boolean;
+  /** Frescura por dominio: con ella el conjunto lleva su `corte`. Opcional. */
+  frescura?: FrescuraDominio[];
 }
 
 export interface ResultadoGuardada {
@@ -61,12 +63,12 @@ export interface ResultadoGuardada {
 }
 
 export async function ejecutarGuardada(entrada: EntradaGuardada): Promise<ResultadoGuardada> {
-  const { ejecutor, usuarioId, empresas, tool, params, auditar, soloCertificadas } = entrada;
+  const { ejecutor, usuarioId, empresas, tool, params, auditar, soloCertificadas, frescura } = entrada;
   if (!(TOOLS_GUARDABLES as readonly string[]).includes(tool)) {
     return { ok: false, motivo: `La consulta guardada usa una herramienta que no se puede reejecutar (${tool}).`, tarjetas: [] };
   }
   const alcance = await resolverAlcance(ejecutor, usuarioId, { soloCertificadas });
-  const resultado = await ejecutarTool(tool, params, { ejecutor, alcance, empresas });
+  const resultado = await ejecutarTool(tool, params, { ejecutor, alcance, empresas, frescura });
   await auditar({ ...resultado.auditoria, detalle: { ...resultado.auditoria.detalle, origen: 'consulta_guardada' } });
   if (resultado.esError || !resultado.conjunto) {
     let motivo = 'La consulta no se pudo ejecutar.';

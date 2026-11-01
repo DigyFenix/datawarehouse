@@ -7,9 +7,14 @@
   Se agrega `sin_vencimiento` para las partidas del mayor que no traen fecha de vencimiento
   (asientos manuales y ajustes), que de otro modo desaparecerían del reporte.
 #}
+{#- Índices de lectura del portal/agente: cartera + empresa (RLS) + corte, y la búsqueda del último corte. -#}
 {{ config(
     materialized = 'table',
-    pre_hook = "set local max_parallel_workers_per_gather = 0"
+    pre_hook = "set local max_parallel_workers_per_gather = 0",
+    indexes = [
+        {"columns": ["tipo_cartera", "empresa_id", "fecha_corte"]},
+        {"columns": ["fecha_corte"]}
+    ]
 ) }}
 
 select

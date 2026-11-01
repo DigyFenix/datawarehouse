@@ -94,6 +94,11 @@ select
          then (current_date - a.fecha_dato_mas_reciente)::int end as dias_desde_ultimo_dato,
 
     -- Semáforo operativo. Los umbrales son los de una carga diaria: al día = corrió hoy o ayer.
+    -- OJO: es una FOTO del momento del build (current_date de cuando corrió dbt). Si el pipeline
+    -- deja de correr, esta columna sigue diciendo «Al día». Sirve para Power BI junto a la fecha
+    -- de refresco; el portal NO la lee: recalcula el estado contra now() desde `ultima_extraccion`
+    -- con estos mismos umbrales (consumo/portal/api/src/inicio/inicio.service.ts, estadoFrescura).
+    -- Si se cambian aquí, cambiarlos allá.
     case
         when (current_date - a.ultima_extraccion::date) <= 1 then 'Al día'
         when (current_date - a.ultima_extraccion::date) <= 3 then 'Atrasado'

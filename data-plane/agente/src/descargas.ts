@@ -20,6 +20,7 @@ import {
   SQL_METRICA_DIMENSION,
   SQL_METRICA_VALOR,
 } from './tools/consultas';
+import { filasDeDerivada } from './tools/ejecutar';
 import { DIMENSIONES } from './tools/esquemas';
 import type { EjecutorSql, EventoAuditoria, MetricaAutorizada } from './tipos';
 
@@ -164,8 +165,13 @@ export async function prepararDescarga(entrada: EntradaDescarga): Promise<Result
   for (const c of p.metricas) {
     const m = alcance.metricas.get(c);
     if (!m) return rechazo(`La métrica '${c}' no está disponible para este usuario.`, { metrica_clave: c });
-    if (alcance.derivadas.has(c) && p.nivel !== 'mensual') {
-      return rechazo(`El indicador '${m.nombreOficial}' es compuesto: solo se descarga por mes.`, { metrica_clave: c });
+    // Un indicador compuesto solo existe por mes (sus operandos se combinan por período y
+    // empresa): por dimensión o aging no hay fila que dar, y se dice antes de ejecutar nada.
+    if (alcance.derivadas.has(c) && p.nivel !== 'mensual' && p.nivel !== 'mensual_empresa') {
+      return rechazo(
+        `El indicador '${m.nombreOficial}' es compuesto: solo se descarga por mes (nivel «mensual» o «mensual por empresa»).`,
+        { metrica_clave: c },
+      );
     }
     metricas.push(m);
   }
@@ -213,14 +219,18 @@ export async function prepararDescarga(entrada: EntradaDescarga): Promise<Result
     };
 
     if (p.nivel === 'mensual' || p.nivel === 'mensual_empresa') {
-      // Una derivada por mes se calcula como en el chat: aquí solo se admiten métricas del
-      // catálogo; la composición se resuelve en el host si hiciera falta (hoy no se descarga).
-      const filas = await ejecutor.consultarTenant(SQL_METRICA_VALOR, [
-        m.clave,
-        p.periodo_desde ?? null,
-        p.periodo_hasta ?? null,
-        empresas,
-      ]);
+      // Una derivada no está en oro.metrica_valor: se calcula como en el chat, leyendo sus dos
+      // operandos con la plantilla constante y combinándolos por (empresa, período). Consultar su
+      // clave directo devolvía una hoja vacía en silencio.
+      const derivada = alcance.derivadas.get(m.clave);
+      const filas = derivada
+        ? await filasDeDerivada(
+            derivada,
+            { periodo_desde: p.periodo_desde, periodo_hasta: p.periodo_hasta, agrupar_por_empresa: p.nivel === 'mensual_empresa' },
+            empresas,
+            ejecutor,
+          )
+        : await ejecutor.consultarTenant(SQL_METRICA_VALOR, [m.clave, p.periodo_desde ?? null, p.periodo_hasta ?? null, empresas]);
       if (p.nivel === 'mensual_empresa') {
         hojas.push({
           ...base,

@@ -15,9 +15,11 @@
       dimensiones de Oro no son SCD2), calificado por empresa: dos sociedades con el mismo código
       de cliente son dos miembros distintos.
 #}
+{#- Índice de lectura del portal/agente: desglose por métrica y dimensión bajo RLS de empresa. -#}
 {{ config(
     materialized = 'table',
-    pre_hook = "set local max_parallel_workers_per_gather = 0"
+    pre_hook = "set local max_parallel_workers_per_gather = 0",
+    indexes = [{"columns": ["metrica_clave", "dimension", "empresa_id", "periodo"]}]
 ) }}
 
 with catalogo as (

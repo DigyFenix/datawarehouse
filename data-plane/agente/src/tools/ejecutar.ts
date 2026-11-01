@@ -16,6 +16,8 @@ import { z } from 'zod';
 import { empresasParaConsulta } from '../alcances';
 import { combinar, descripcionOperacion, type MetricaDerivada } from '../derivadas';
 import { fichaDeMetrica } from '../catalogo';
+import { dato } from '../formato';
+import { corteDe, unidadDe } from '../unidades';
 import {
   SQL_AGING_CORTE,
   SQL_AGING_POR_RANGO,
@@ -36,6 +38,7 @@ import type {
   ConjuntoDatos,
   EjecutorSql,
   EventoAuditoria,
+  FrescuraDominio,
   SolicitudNoAtendida,
   TarjetaDato,
 } from '../tipos';
@@ -45,7 +48,12 @@ export interface ContextoTool {
   alcance: AlcanceEfectivo;
   /** empresa_id → nombre visible; también define el universo cuando el alcance es '*'. */
   empresas: Map<string, string>;
+  /** Frescura por dominio: con ella cada tarjeta y conjunto lleva su `corte`. Opcional. */
+  frescura?: FrescuraDominio[];
 }
+
+/** Cuántos miembros de un ranking ve el MODELO (la UI recibe todos en el conjunto). */
+export const TOPE_RANKING_MODELO = 5;
 
 export interface ResultadoTool {
   /** Texto que se devuelve al modelo como tool_result (JSON legible, sin adornos). */
@@ -170,6 +178,15 @@ async function listarMetricas(entrada: unknown, ctx: ContextoTool): Promise<Resu
   const v = validar(esquemaListarMetricas, entrada);
   if (!v.ok) return denegado(v.error, ctx.alcance, { tool: 'listar_metricas_disponibles' });
 
+  // El dominio es un enum dinámico (los del alcance): uno ajeno se rechaza con la lista válida.
+  const dominiosAlcance = [...new Set([...ctx.alcance.metricas.values()].map((m) => m.dominio).filter(Boolean))];
+  if (v.datos.dominio && !dominiosAlcance.includes(v.datos.dominio)) {
+    return denegado(
+      `El dominio '${v.datos.dominio}' no está en el alcance de este usuario. Dominios disponibles: ${dominiosAlcance.join(', ') || 'ninguno'}.`,
+      ctx.alcance,
+      { tool: 'listar_metricas_disponibles' },
+    );
+  }
   const lista = [...ctx.alcance.metricas.values()]
     .filter((m) => !v.datos.dominio || m.dominio === v.datos.dominio)
     .map((m) => ({
@@ -200,14 +217,14 @@ async function listarMetricas(entrada: unknown, ctx: ContextoTool): Promise<Resu
  * tiene costo, el margen de ese mes no es cero: es desconocido, y en una plataforma
  * que vende certeza en el número inventarlo es el peor error posible.
  */
-async function filasDeDerivada(
+export async function filasDeDerivada(
   derivada: MetricaDerivada,
   p: { periodo_desde?: string; periodo_hasta?: string; agrupar_por_empresa?: boolean },
   empresas: string[],
-  ctx: ContextoTool,
+  ejecutor: EjecutorSql,
 ): Promise<Record<string, unknown>[]> {
   const leerOperando = (clave: string) =>
-    ctx.ejecutor.consultarTenant(SQL_METRICA_VALOR, [
+    ejecutor.consultarTenant(SQL_METRICA_VALOR, [
       clave,
       p.periodo_desde ?? null,
       p.periodo_hasta ?? null,
@@ -273,7 +290,7 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
   // SQL nuevo ni escapa del filtro de empresas.
   const derivada = ctx.alcance.derivadas.get(p.metrica_clave);
   const filas = derivada
-    ? await filasDeDerivada(derivada, p, empresas, ctx)
+    ? await filasDeDerivada(derivada, p, empresas, ctx.ejecutor)
     : await ctx.ejecutor.consultarTenant(SQL_METRICA_VALOR, [
         p.metrica_clave,
         p.periodo_desde ?? null,
@@ -283,6 +300,9 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
 
   // Agregación de presentación: por período (default) o por período y empresa.
   const tarjetas: TarjetaDato[] = [];
+  const nombresEmpresas = empresas.map((e) => ctx.empresas.get(e) ?? String(e));
+  const unidad = unidadDe(metrica);
+  const corte = corteDe(metrica, ctx.frescura);
   const porPeriodo = new Map<string, number>();
   const porPeriodoEmpresa: { periodo: string; empresaId: string; valor: number }[] = [];
   for (const f of filas) {
@@ -302,6 +322,9 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
         valor: r.valor,
         estado: metrica.estado,
         empresa: ctx.empresas.get(r.empresaId) ?? String(r.empresaId),
+        empresas: [ctx.empresas.get(r.empresaId) ?? String(r.empresaId)],
+        unidad,
+        corte,
       });
     }
   } else {
@@ -312,20 +335,35 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
         periodo,
         valor,
         estado: metrica.estado,
+        empresas: nombresEmpresas,
+        unidad,
+        corte,
       });
     }
   }
+
+  // Período pedido más allá del último dato: se informa en el resultado para que el modelo diga
+  // hasta dónde llega (y no dé por hecho que el mes pedido está completo).
+  const ultimo = metrica.periodoHasta;
+  const pideMasAlla =
+    ultimo !== null &&
+    ((p.periodo_hasta !== undefined && p.periodo_hasta > ultimo) || (p.periodo_desde !== undefined && p.periodo_desde > ultimo));
 
   const contenido = JSON.stringify({
     metrica: metrica.nombreOficial,
     clave: metrica.clave,
     estado: metrica.estado,
     definicion: metrica.definicionNegocio,
-    empresas_incluidas: empresas.map((e) => ctx.empresas.get(e) ?? String(e)),
+    empresas_incluidas: nombresEmpresas.map((n) => dato(n)),
+    unidad,
+    corte_del_dato: corte,
+    ...(pideMasAlla
+      ? { aviso: `El período pedido supera el último dato disponible (${ultimo}). Informa que el dato llega hasta ${corte ?? ultimo}.` }
+      : {}),
     valores: tarjetas.map((t) => ({
       periodo: t.periodo,
       valor: t.valor,
-      ...(t.empresa ? { empresa: t.empresa } : {}),
+      ...(t.empresa ? { empresa: dato(t.empresa) } : {}),
     })),
     total_periodos: porPeriodo.size,
   });
@@ -339,6 +377,9 @@ async function consultarMetrica(entrada: unknown, ctx: ContextoTool): Promise<Re
     dominio: metrica.dominio,
     estado: metrica.estado,
     periodo: periodos.length ? `${periodos[0]} a ${periodos[periodos.length - 1]}` : 'sin datos',
+    unidad,
+    empresas: nombresEmpresas,
+    corte,
     columnas: [
       { clave: 'periodo', nombre: 'Período', tipo: 'periodo' },
       ...(p.agrupar_por_empresa ? [{ clave: 'empresa', nombre: 'Empresa', tipo: 'texto' as const }] : []),
@@ -428,6 +469,8 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
         }));
 
   const total = detalle.reduce((acc, d) => acc + d.saldo, 0);
+  const nombresEmpresasAging = empresas.map((e) => ctx.empresas.get(e) ?? String(e));
+  const corteAging = fechaCorte ?? corteDe(metrica, ctx.frescura);
   // La cartera es un STOCK: el período de la tarjeta es el mes del corte, no un rango.
   const periodo = fechaCorte ? fechaCorte.slice(0, 7) : 'sin corte';
   const tarjetas: TarjetaDato[] = [
@@ -437,6 +480,10 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
       periodo,
       valor: total,
       estado: metrica.estado,
+      empresas: nombresEmpresasAging,
+      unidad: 'moneda',
+      // La foto de la cartera tiene su propia fecha de corte: es la más precisa.
+      corte: corteAging,
     },
   ];
 
@@ -449,6 +496,9 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
     dominio: metrica.dominio,
     estado: metrica.estado,
     periodo: fechaCorte ? `corte ${fechaCorte}` : 'sin corte',
+    unidad: 'moneda',
+    empresas: nombresEmpresasAging,
+    corte: corteAging,
     columnas: [
       porSocio ? { clave: 'socio', nombre: 'Socio', tipo: 'texto' } : { clave: 'rango', nombre: 'Rango de antigüedad', tipo: 'texto' },
       { clave: 'saldo', nombre: 'Saldo', tipo: 'numero' },
@@ -469,8 +519,11 @@ async function consultarAging(entrada: unknown, ctx: ContextoTool): Promise<Resu
       estado: metrica.estado,
       fecha_corte: fechaCorte,
       nota: 'La cartera es un saldo a la fecha de corte (foto), no un flujo del período.',
+      empresas_incluidas: nombresEmpresasAging.map((n) => dato(n)),
       total,
-      detalle,
+      // Al modelo solo los primeros: la tabla completa ya la ve el usuario.
+      detalle: detalle.slice(0, TOPE_RANKING_MODELO).map((d) => ('socio' in d ? { ...d, socio: dato(d.socio) } : d)),
+      ...(detalle.length > TOPE_RANKING_MODELO ? { filas_omitidas: detalle.length - TOPE_RANKING_MODELO } : {}),
     }),
     esError: false,
     tarjetas,
@@ -572,6 +625,7 @@ async function consultarPorDimension(entrada: unknown, ctx: ContextoTool): Promi
     ? `${p.periodo_desde ?? 'inicio'} a ${p.periodo_hasta ?? 'último dato'}`
     : 'todos los períodos con datos';
   const etiqueta = NOMBRE_DIMENSION[p.dimension] ?? p.dimension;
+  const nombresEmpresasRanking = empresas.map((e) => ctx.empresas.get(e) ?? String(e));
 
   const conjunto: ConjuntoDatos = {
     tipo: 'ranking',
@@ -581,6 +635,9 @@ async function consultarPorDimension(entrada: unknown, ctx: ContextoTool): Promi
     dominio: metrica.dominio,
     estado: metrica.estado,
     periodo: rango,
+    unidad: unidadDe(metrica),
+    empresas: nombresEmpresasRanking,
+    corte: corteDe(metrica, ctx.frescura),
     columnas: [
       { clave: 'miembro', nombre: etiqueta, tipo: 'texto' },
       ...(multiempresa ? [{ clave: 'empresa', nombre: 'Empresa', tipo: 'texto' as const }] : []),
@@ -596,11 +653,13 @@ async function consultarPorDimension(entrada: unknown, ctx: ContextoTool): Promi
       estado: metrica.estado,
       dimension: p.dimension,
       periodos: rango,
-      empresas_incluidas: empresas.map((e) => ctx.empresas.get(e) ?? String(e)),
+      empresas_incluidas: nombresEmpresasRanking.map((n) => dato(n)),
       orden: p.orden,
+      unidad: unidadDe(metrica),
+      miembros_listados: detalle.length,
       total_de_los_listados: total,
-      nota: 'La suma de TODOS los miembros de un período coincide con el valor mensual de la métrica; aquí solo van los listados.',
-      detalle,
+      nota: `La suma de TODOS los miembros de un período coincide con el valor mensual de la métrica. Aquí van solo los ${Math.min(detalle.length, TOPE_RANKING_MODELO)} primeros de ${detalle.length} listados; la tabla completa ya la ve el usuario.`,
+      detalle: detalle.slice(0, TOPE_RANKING_MODELO).map((d) => ({ ...d, miembro: dato(d.miembro), empresa: dato(d.empresa) })),
     }),
     esError: false,
     tarjetas: [],

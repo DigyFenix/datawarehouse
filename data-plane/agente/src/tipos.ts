@@ -38,6 +38,8 @@ export interface MetricaAutorizada {
   /** Rango de períodos con datos ('YYYY-MM'), para que el prompt ancle las fechas. */
   periodoDesde: string | null;
   periodoHasta: string | null;
+  /** Unidad declarada (solo las derivadas la traen del catálogo); si falta se deriva de la clave. */
+  unidad?: UnidadMetrica;
 }
 
 /** Tarjeta de dato: la guarda 5 POR CONSTRUCCIÓN — dato + métrica + período + estado
@@ -48,9 +50,18 @@ export interface TarjetaDato {
   periodo: string;
   valor: number;
   estado: 'certificada' | 'exploratoria';
+  /** Empresa de la fila cuando la consulta se desglosó por empresa. */
   empresa?: string;
-  unidad?: string;
+  /** Empresas (nombre visible) que suma este valor: la UI lo muestra siempre. */
+  empresas: string[];
+  /** Unidad del catálogo (derivadas) o derivada de la clave: decide el formato. */
+  unidad: UnidadMetrica;
+  /** Dato más reciente del dominio ('YYYY-MM-DD'), o null si el host no informa frescura. */
+  corte: string | null;
 }
+
+/** Unidad de presentación de una métrica: monto en moneda del tenant, porcentaje o número. */
+export type UnidadMetrica = 'moneda' | 'porcentaje' | 'numero';
 
 export interface MensajeHistorial {
   rol: 'usuario' | 'asistente';
@@ -75,7 +86,11 @@ export interface ConjuntoDatos {
   estado: 'certificada' | 'exploratoria';
   /** Período o rango consultado, legible ('2026-01 a 2026-10', 'corte 2026-10-30'). */
   periodo: string;
-  unidad?: string;
+  unidad: UnidadMetrica;
+  /** Empresas (nombre visible) incluidas en la consulta. */
+  empresas: string[];
+  /** Dato más reciente del dominio ('YYYY-MM-DD'); en aging, la fecha de corte de la foto. */
+  corte: string | null;
   columnas: { clave: string; nombre: string; tipo: 'texto' | 'numero' | 'periodo' }[];
   filas: Record<string, string | number | null>[];
 }
@@ -112,11 +127,46 @@ export interface ResultadoAgente {
   consultas: ConsultaEjecutada[];
   /** Demanda no atendida detectada en este turno (el host la persiste para el administrador). */
   solicitudes: SolicitudNoAtendida[];
+  /** true = el texto del modelo citaba cifras sin respaldo y se reemplazó por la plantilla del código. */
+  textoRegenerado: boolean;
+  /** Botones de desambiguación: cada uno ejecuta una tool validada SIN pasar por el modelo. */
+  opciones: OpcionAccion[];
+  /** Siguientes preguntas sugeridas (2-3), armadas en código desde el alcance; también son acciones. */
+  sugerencias: OpcionAccion[];
+  /** Contexto de la conversación actualizado tras el turno (el host lo persiste). */
+  contexto: ContextoConversacion;
+}
+
+/** Acción ejecutable sin modelo: una tool del catálogo con parámetros que el código valida al ejecutarla. */
+export interface AccionTool {
+  tool: string;
+  params: Record<string, unknown>;
+}
+
+/** Botón que la UI muestra; el clic va a `POST /agente/conversaciones/:id/accion`. */
+export interface OpcionAccion {
+  etiqueta: string;
+  accion: AccionTool;
+}
+
+/**
+ * Memoria corta de la conversación (`portal.chat_conversaciones.contexto`): la última empresa y el
+ * último período usados, para que «¿y en septiembre?» no obligue a repetir la empresa.
+ */
+export interface ContextoConversacion {
+  empresa_id: string | null;
+  periodo: { desde: string | null; hasta: string | null } | null;
+}
+
+/** Pregunta previa de la conversación con las consultas que la respondieron (detección de repetición). */
+export interface TurnoPrevio {
+  pregunta: string;
+  consultas: ConsultaEjecutada[];
 }
 
 /** Evento de auditoría que el host persiste (portal.auditoria del tenant). */
 export interface EventoAuditoria {
-  accion: 'consulta_agente' | 'consulta_agente_denegada' | 'solicitud_no_atendida' | 'descarga_datos';
+  accion: 'consulta_agente' | 'consulta_agente_denegada' | 'solicitud_no_atendida' | 'descarga_datos' | 'respuesta_regenerada';
   detalle: Record<string, unknown>;
 }
 
@@ -148,6 +198,12 @@ export interface ConfigAgente {
    * contestan con texto fijo del código y el agente principal no se ejecuta.
    */
   modeloCompuerta: string | null;
+  /** Moneda de presentación del tenant (ISO 4217). Default 'GTQ'. */
+  moneda?: string;
+  /** Símbolo con el que se escriben los montos. Default 'Q'. */
+  simboloMoneda?: string;
+  /** Contexto persistido de la conversación (empresa/período); null o ausente = sin contexto. */
+  contexto?: ContextoConversacion | null;
 }
 
 /** Frescura de un dominio del warehouse (oro.estado_carga agregada por el host). */

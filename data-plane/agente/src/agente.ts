@@ -1,17 +1,34 @@
 /**
- * Loop del agente: NL → (clarificar) → tool tipada → dato gobernado → respuesta.
+ * Loop del agente: NL → (compuerta / repetición) → tool tipada → dato gobernado → respuesta verificada.
  *
  * El LLM elige QUÉ tool usar y con qué parámetros; este código VALIDA y EJECUTA
  * (CLAUDE.md §11). Loop manual y no el tool-runner del SDK porque cada paso
  * necesita interponer las guardas, auditar y construir las tarjetas de dato.
+ *
+ * Orden de un turno:
+ *   1. Repetición: si el mensaje repite una pregunta ya respondida, se reejecuta sin modelo.
+ *   2. Compuerta (Haiku): bloquea lo que no es consulta y, si es ambigua, el CÓDIGO pregunta con botones.
+ *   3. Loop del modelo principal con tools estrictas.
+ *   4. Anclaje: cada cifra del texto debe existir en los resultados; si no, plantilla del código.
+ *   5. Sugerencias y contexto de la conversación, armados en código.
  */
 import Anthropic from '@anthropic-ai/sdk';
 
+import {
+  actualizarContexto,
+  buscarRepeticion,
+  ejecutarAcciones,
+  opcionesDesambiguacion,
+  PREGUNTA_AMBIGUA,
+  sugerenciasSiguientes,
+} from './acciones';
 import { resolverAlcance } from './alcances';
-import { clasificarIntencion, esIntencionBloqueada, RESPUESTAS_FIJAS, usoDeRespuesta } from './compuerta';
-import { construirBloquesSystem } from './prompt';
+import { clasificarMensaje, esIntencionBloqueada, RESPUESTAS_FIJAS, usoDeRespuesta, type ClasificacionCompuerta } from './compuerta';
+import { quitarDelimitadores } from './formato';
+import { construirEvidencia, plantillaRespuesta, reemplazarClaves, verificarTexto } from './grounding';
+import { construirBloquesSystem, prefijoFecha } from './prompt';
 import { ejecutarTool } from './tools/ejecutar';
-import { TOOLS_ANTHROPIC } from './tools/esquemas';
+import { construirTools } from './tools/esquemas';
 import type {
   ConfigAgente,
   ConjuntoDatos,
@@ -22,6 +39,7 @@ import type {
   ResultadoAgente,
   SolicitudNoAtendida,
   TarjetaDato,
+  TurnoPrevio,
   UsoModelo,
 } from './tipos';
 
@@ -37,7 +55,7 @@ export function acotarTexto(texto: string, maximo: number): string {
 }
 
 /** Modelos donde el fallback por rechazo de clasificador está disponible (Claude API). */
-const MODELOS_CON_FALLBACK = new Set(['claude-opus-5', 'claude-fable-5']);
+const MODELOS_CON_FALLBACK = new Set(['claude-opus-5', 'claude-opus-5-5', 'claude-fable-5', 'claude-fable-5-1']);
 
 export interface EntradaAgente {
   ejecutor: EjecutorSql;
@@ -49,53 +67,131 @@ export interface EntradaAgente {
   mensaje: string;
   /** El host persiste estos eventos en portal.auditoria. */
   auditar: (evento: EventoAuditoria) => Promise<void>;
+  /** Preguntas previas con sus consultas (detección de repetición). Opcional. */
+  turnosPrevios?: TurnoPrevio[];
+  /** Cliente del API inyectable (evaluación y pruebas). Por defecto se crea con `config.apiKey`. */
+  cliente?: Anthropic;
+}
+
+/** Resultado vacío con los campos nuevos en su valor neutro. */
+function resultadoBase(entrada: EntradaAgente, uso: UsoModelo[]): ResultadoAgente {
+  return {
+    texto: '',
+    uso,
+    tarjetas: [],
+    conjuntos: [],
+    consultas: [],
+    solicitudes: [],
+    textoRegenerado: false,
+    opciones: [],
+    sugerencias: [],
+    contexto: actualizarContexto(entrada.config.contexto, []),
+  };
 }
 
 export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente> {
   const { ejecutor, config, usuarioId, historial, mensaje, auditar } = entrada;
+  const simbolo = config.simboloMoneda ?? 'Q';
 
   const alcance = await resolverAlcance(ejecutor, usuarioId, { soloCertificadas: config.soloCertificadas });
-  const { estatico, dinamico } = construirBloquesSystem(config, alcance);
-
-  const cliente = new Anthropic({ apiKey: config.apiKey });
+  const visibles = alcance.empresas === '*' ? config.empresas.size : alcance.empresas.length;
   // Tokens de cada llamada al modelo en este turno: el host los costea por usuario.
   const uso: UsoModelo[] = [];
-  const usaFallback = MODELOS_CON_FALLBACK.has(config.modelo);
 
-  // RESTRICCIÓN REAL 1 — compuerta de intención: un clasificador con salida estructurada decide si
-  // el mensaje es una consulta de métricas. Lo que no lo es se contesta con texto fijo del código
-  // y el agente principal no corre (cero tokens del modelo grande, cero margen de convencimiento).
-  if (config.modeloCompuerta) {
-    const ultimaRespuesta = [...historial].reverse().find((m) => m.rol === 'asistente')?.contenido ?? null;
-    const dominios = [...new Set([...alcance.metricas.values()].map((m) => m.dominio).filter(Boolean))];
-    const intencion = await clasificarIntencion({ cliente, modelo: config.modeloCompuerta, mensaje, ultimaRespuesta, dominios, registrarUso: (u) => uso.push(u) });
-    if (esIntencionBloqueada(intencion)) {
-      await auditar({ accion: 'consulta_agente_denegada', detalle: { motivo: 'compuerta', intencion } });
-      return { texto: RESPUESTAS_FIJAS[intencion], uso, tarjetas: [], conjuntos: [], consultas: [], solicitudes: [] };
+  // 1 — REPETICIÓN: la misma pregunta (o «repite», «actualiza») se reejecuta sin modelo, con datos frescos.
+  const repetidas = buscarRepeticion(mensaje, entrada.turnosPrevios ?? []);
+  if (repetidas) {
+    const r = await ejecutarAcciones(
+      repetidas.map((c) => ({ tool: c.tool, params: c.params })),
+      { ejecutor, alcance, empresas: config.empresas, frescura: config.frescura, simboloMoneda: simbolo, auditar, origen: 'repeticion' },
+    );
+    if (r.ok) {
+      return {
+        ...resultadoBase(entrada, uso),
+        texto: r.texto,
+        tarjetas: r.tarjetas,
+        conjuntos: r.conjuntos,
+        consultas: r.consultas,
+        sugerencias: sugerenciasSiguientes(r.consultas[r.consultas.length - 1], alcance, visibles),
+        contexto: actualizarContexto(config.contexto, r.consultas),
+      };
     }
   }
 
-  // RESTRICCIÓN REAL 2 — caché del bloque estable del system prompt (reglas por organización): el
-  // API cobra ~10 % por esos tokens en cada turno y el catálogo del usuario va aparte, sin cachear.
+  const cliente = entrada.cliente ?? new Anthropic({ apiKey: config.apiKey });
+  const usaFallback = MODELOS_CON_FALLBACK.has(config.modelo);
+
+  // 2 — COMPUERTA: clasificador con salida estructurada. Lo que no es consulta se contesta con texto
+  // fijo; lo ambiguo se pregunta con botones armados por el código (el clic no pasa por el modelo).
+  let clasificacion: ClasificacionCompuerta | null = null;
+  if (config.modeloCompuerta) {
+    const ultimaRespuesta = [...historial].reverse().find((m) => m.rol === 'asistente')?.contenido ?? null;
+    const dominios = [...new Set([...alcance.metricas.values()].map((m) => m.dominio).filter(Boolean))];
+    const empresasVisibles = new Map([...config.empresas].filter(([id]) => alcance.empresas === '*' || alcance.empresas.includes(id)));
+    clasificacion = await clasificarMensaje({
+      cliente,
+      modelo: config.modeloCompuerta,
+      mensaje,
+      ultimaRespuesta,
+      dominios,
+      metricas: new Map([...alcance.metricas.values()].map((m) => [m.clave, m.nombreOficial])),
+      empresas: empresasVisibles,
+      fechaActual: config.fechaActual,
+      registrarUso: (u) => uso.push(u),
+    });
+    if (esIntencionBloqueada(clasificacion.intencion)) {
+      await auditar({ accion: 'consulta_agente_denegada', detalle: { motivo: 'compuerta', intencion: clasificacion.intencion } });
+      return { ...resultadoBase(entrada, uso), texto: RESPUESTAS_FIJAS[clasificacion.intencion] };
+    }
+    if (clasificacion.es_ambigua) {
+      const opciones = opcionesDesambiguacion(
+        {
+          candidatas: clasificacion.metricas_candidatas,
+          periodo: clasificacion.periodo_detectado,
+          empresa: clasificacion.empresa_detectada,
+          contexto: config.contexto,
+        },
+        alcance,
+        config.fechaActual,
+      );
+      if (opciones.length >= 2) {
+        await auditar({ accion: 'consulta_agente', detalle: { motivo: 'aclaracion_con_opciones', candidatas: clasificacion.metricas_candidatas } });
+        return {
+          ...resultadoBase(entrada, uso),
+          texto: PREGUNTA_AMBIGUA,
+          opciones,
+          contexto: actualizarContexto(config.contexto, [], { empresa: clasificacion.empresa_detectada, periodo: clasificacion.periodo_detectado }),
+        };
+      }
+    }
+  }
+
+  // 3 — LOOP DEL MODELO PRINCIPAL.
+  const { estatico, dinamico } = construirBloquesSystem(config, alcance);
+  // Caché en DOS puntos: reglas (estables por organización) y contexto del usuario (estable entre
+  // sus turnos). La fecha va en el mensaje del usuario para no invalidar el segundo bloque.
   const system: Anthropic.Beta.BetaTextBlockParam[] = [
     { type: 'text', text: estatico, cache_control: { type: 'ephemeral' } },
-    { type: 'text', text: dinamico },
+    { type: 'text', text: dinamico, cache_control: { type: 'ephemeral' } },
   ];
 
   const mensajes: Anthropic.Beta.BetaMessageParam[] = [
-    // Al asistente se le recuerda qué herramientas sustentaron cada respuesta previa: el historial
-    // guarda solo texto, y sin esa marca el modelo tomaba sus cifras anteriores por inventadas.
+    // REGLA ÚNICA DE HISTORIAL: las cifras previas no valen en este turno salvo que se vuelva a
+    // ejecutar la herramienta (el anclaje de cifras lo hace cumplir en código).
     ...historial.map((m) => ({
       role: (m.rol === 'usuario' ? 'user' : 'assistant') as 'user' | 'assistant',
       content:
         m.rol === 'asistente' && m.herramientas
-          ? `${m.contenido}
-
-[Sustento: herramientas ejecutadas en este turno → ${m.herramientas}]`
+          ? `${m.contenido}\n\n[Herramientas de ese turno: ${m.herramientas}. Para repetir una cifra hay que volver a ejecutarla.]`
           : m.contenido,
     })),
-    { role: 'user', content: mensaje },
+    { role: 'user', content: `${prefijoFecha(config.fechaActual)}\n${mensaje}` },
   ];
+
+  const dominiosAlcance = [...new Set([...alcance.metricas.values()].map((m) => m.dominio).filter(Boolean))];
+  // RESTRICCIÓN REAL 3 — tools estrictas: el API garantiza argumentos válidos contra el esquema
+  // (additionalProperties: false), antes aún de que Zod los vuelva a validar en el código.
+  const tools = construirTools(dominiosAlcance).map((t) => ({ ...t, strict: true }));
 
   const tarjetas: TarjetaDato[] = [];
   const conjuntos: ConjuntoDatos[] = [];
@@ -109,17 +205,14 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
       max_tokens: config.maxTokens,
       system,
       messages: mensajes,
-      // RESTRICCIÓN REAL 3 — tools estrictas: el API garantiza argumentos válidos contra el esquema
-      // (additionalProperties: false), antes aún de que Zod los vuelva a validar en el código.
-      tools: TOOLS_ANTHROPIC.map((t) => ({ ...t, strict: true })),
+      tools,
       tool_choice: { type: 'auto' },
-      // Chat interactivo: el esfuerzo bajo responde rápido y sobra para elegir
-      // una tool y redactar. La inteligencia dura ya vive en el warehouse.
+      // Sin `temperature`: los modelos configurados (Opus 5/5.5, Haiku 5.5) responden 400 a
+      // cualquier parámetro de muestreo. El determinismo lo dan las tools estrictas, el
+      // esfuerzo bajo y el anclaje de cifras, no la temperatura.
       output_config: { effort: 'low' },
       // Rescate del proveedor si un clasificador de seguridad declina la petición.
-      ...(usaFallback
-        ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const }
-        : {}),
+      ...(usaFallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
     });
 
     uso.push(usoDeRespuesta(config.modelo, respuesta.usage));
@@ -127,14 +220,8 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
     // Un rechazo se comunica, no se disfraza de respuesta vacía.
     if (respuesta.stop_reason === 'refusal') {
       return {
-        uso,
-        texto:
-          'No puedo procesar esa solicitud. Reformúlala en términos de las métricas ' +
-          'de negocio disponibles y con gusto la consulto.',
-        tarjetas: [],
-        conjuntos: [],
-        consultas: [],
-        solicitudes: [],
+        ...resultadoBase(entrada, uso),
+        texto: 'No puedo procesar esa solicitud. Reformúlala en términos de las métricas de negocio disponibles y con gusto la consulto.',
       };
     }
 
@@ -145,9 +232,7 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
       .trim();
     if (textoTurno) texto = textoTurno;
 
-    const llamadas = respuesta.content.filter(
-      (b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use',
-    );
+    const llamadas = respuesta.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
     if (llamadas.length === 0) break;
 
     mensajes.push({ role: 'assistant', content: respuesta.content });
@@ -158,6 +243,7 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
         ejecutor,
         alcance,
         empresas: config.empresas,
+        frescura: config.frescura,
       });
       await auditar(resultado.auditoria);
       tarjetas.push(...resultado.tarjetas);
@@ -186,17 +272,16 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
         ...(resultado.esError ? { is_error: true } : {}),
       });
     }
+    // Si el modelo ya respondió y solo dejó constancia de una solicitud, no hace falta otra vuelta.
+    if (textoTurno && llamadas.every((l) => l.name === 'registrar_solicitud')) break;
     mensajes.push({ role: 'user', content: resultados });
   }
 
   if (!texto) {
-    texto =
-      'No pude completar la consulta en los pasos disponibles. Intenta acotar la ' +
-      'pregunta a una métrica y un período concretos.';
+    texto = conjuntos.length || tarjetas.length
+      ? plantillaRespuesta(tarjetas, conjuntos, simbolo)
+      : 'No pude completar la consulta en los pasos disponibles. Intenta acotar la pregunta a una métrica y un período concretos.';
   }
-  // El prompt pide respuestas de pocas frases; este corte es el cinturón: si el modelo se
-  // extiende, se conservan solo las frases completas que caben en el tope.
-  texto = acotarTexto(texto, LARGO_MAXIMO_RESPUESTA);
 
   // Las tarjetas se deduplican por (métrica, período, empresa): una misma consulta
   // repetida en dos iteraciones no debe mostrar el dato dos veces.
@@ -208,5 +293,45 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
     return true;
   });
 
-  return { texto, uso, tarjetas: unicas, conjuntos, consultas, solicitudes };
+  // 4 — ANCLAJE: nombres oficiales en lugar de claves técnicas, tope de largo y verificación de cifras.
+  const nombres = new Map<string, string>([...alcance.metricas.values()].map((m) => [m.clave, m.nombreOficial]));
+  for (const [id, nombre] of config.empresas) nombres.set(id, nombre);
+  texto = acotarTexto(reemplazarClaves(quitarDelimitadores(texto), nombres), LARGO_MAXIMO_RESPUESTA);
+
+  const evidencia = construirEvidencia({
+    tarjetas: unicas,
+    conjuntos,
+    periodos: [...alcance.metricas.values()].flatMap((m) => [m.periodoDesde, m.periodoHasta]),
+    fechas: config.frescura.map((f) => f.fechaDatoMasReciente),
+    fechaActual: config.fechaActual,
+    textos: [...alcance.metricas.values()].map((m) => m.nombreOficial),
+  });
+  const verificacion = verificarTexto(texto, evidencia);
+  let textoRegenerado = false;
+  if (!verificacion.ok) {
+    await auditar({
+      accion: 'respuesta_regenerada',
+      detalle: { original: texto, sin_respaldo: verificacion.sinRespaldo.slice(0, 20), consultas: consultas.map((c) => c.tool) },
+    });
+    texto = plantillaRespuesta(unicas, conjuntos, simbolo);
+    textoRegenerado = true;
+  }
+
+  // 5 — Sugerencias y contexto (código, no modelo).
+  return {
+    texto,
+    uso,
+    tarjetas: unicas,
+    conjuntos,
+    consultas,
+    solicitudes,
+    textoRegenerado,
+    opciones: [],
+    sugerencias: sugerenciasSiguientes(consultas[consultas.length - 1], alcance, visibles),
+    contexto: actualizarContexto(
+      config.contexto,
+      consultas,
+      clasificacion ? { empresa: clasificacion.empresa_detectada, periodo: clasificacion.periodo_detectado } : undefined,
+    ),
+  };
 }

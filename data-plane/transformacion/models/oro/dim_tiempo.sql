@@ -96,6 +96,16 @@ with limites as (
         ) as hasta
 ),
 
+-- Corte del dato de VENTAS: última fecha facturada (la misma que `[Corte de ventas]` en Power BI).
+-- Ancla `es_anio_corte` / `es_mes_corte`: el reporte abre en el período del dato, no en el año
+-- en que se generaron las páginas (un año quemado al generar abría enero en el año viejo). Sin
+-- ventas aún (tenant recién dado de alta) cae a hoy.
+corte_ventas as (
+    select coalesce(max(fecha_documento), current_date) as corte
+      from {{ ref('plata_documento_linea') }}
+     where flujo = 'venta'
+),
+
 fechas as (
     select generate_series(
         (select desde from limites),
@@ -235,7 +245,19 @@ select
     (anio * 10  + trimestre)                                  as anio_trimestre_orden,
     (anio_iso * 100 + semana_iso)                             as anio_semana_orden,
     mes                                                       as mes_orden,
-    dia_semana_num                                            as dia_semana_orden
+    dia_semana_num                                            as dia_semana_orden,
+
+    -- ---------- perspectivas RELATIVAS al corte del dato de ventas ----------
+    -- Los segmentadores iniciales del reporte se fijan sobre `anio_selector` / `mes_selector`:
+    -- el valor 'Año actual' / 'Mes actual' es estable (no cambia con el calendario), así que la
+    -- selección guardada en el reporte se mueve sola al año/mes del corte cuando llega dato nuevo.
+    anio = extract(year from (select corte from corte_ventas))::int as es_anio_corte,
+    date_trunc('month', fecha)
+        = date_trunc('month', (select corte from corte_ventas))     as es_mes_corte,
+    case when anio = extract(year from (select corte from corte_ventas))::int
+         then 'Año actual' else anio::text end                as anio_selector,
+    case when date_trunc('month', fecha) = date_trunc('month', (select corte from corte_ventas))
+         then 'Mes actual' else to_char(fecha, 'YYYY-MM') end as mes_selector
 from enriquecido
 
 -- SIN MIEMBRO NO DEFINIDO — es la ÚNICA dimensión que no lo lleva, y es deliberado:

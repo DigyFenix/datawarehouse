@@ -13,9 +13,11 @@
   ventas y compras se publican EXPLÍCITAS en versión sin IVA y con IVA, en lugar de dejar la
   ambigüedad que este proyecto existe para eliminar.
 #}
+{#- Índice de lectura del portal/agente: toda consulta filtra por métrica, empresa (RLS) y período. -#}
 {{ config(
     materialized = 'table',
-    pre_hook = "set local max_parallel_workers_per_gather = 0"
+    pre_hook = "set local max_parallel_workers_per_gather = 0",
+    indexes = [{"columns": ["metrica_clave", "empresa_id", "periodo"]}]
 ) }}
 
 {#- IMPORTANTE — de dónde sale cada monto:

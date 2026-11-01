@@ -204,6 +204,39 @@ export const SQL_DERIVADAS = `
 
 // ---------------------------------------------------------------- tenant (portal)
 
+/** Contexto {empresa_id, periodo} de una conversación (migración 142). Lo ejecuta el HOST con su
+ *  pool normal (no portal_lector): es estado del portal, no dato del warehouse. */
+export const SQL_LEER_CONTEXTO_CONVERSACION = `
+  select contexto
+    from portal.chat_conversaciones
+   where id = $1
+`;
+
+/** Guarda el contexto tras el turno (jsonb validado por `normalizarContexto`). */
+export const SQL_GUARDAR_CONTEXTO_CONVERSACION = `
+  update portal.chat_conversaciones
+     set contexto = $2::jsonb
+   where id = $1
+`;
+
+/** Preguntas previas de la conversación con las consultas que las respondieron (detección de
+ *  repetición). Empareja cada mensaje del usuario con la respuesta del asistente que le sigue. */
+export const SQL_TURNOS_CON_CONSULTAS = `
+  select u.contenido as pregunta,
+         coalesce(a.datos->'consultas', '[]'::jsonb) as consultas
+    from portal.chat_mensajes u
+    join lateral (
+      select m.datos
+        from portal.chat_mensajes m
+       where m.conversacion_id = u.conversacion_id and m.id > u.id and m.rol = 'asistente'
+       order by m.id
+       limit 1
+    ) a on true
+   where u.conversacion_id = $1 and u.rol = 'usuario'
+   order by u.id desc
+   limit $2
+`;
+
 /** Alcances de los perfiles ACTIVOS del usuario (portal.perfil_alcances). */
 export const SQL_ALCANCES_USUARIO = `
   select pa.recurso_tipo, pa.recurso_clave

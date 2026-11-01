@@ -7,7 +7,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "jest"
+    "test": "jest",
+    "eval": "tsc -p eval/tsconfig.json && node eval/.dist/eval/eval.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",

@@ -1,6 +1,23 @@
 version: 2
 
 models:
+  - name: dim_rango_vencimiento
+    description: >
+      Rangos finos de vencimiento (vence en 31+ … vencido 91+), nivel de detalle de
+      dim_rango_aging: cada rango declara su rango grueso en `rango_aging_clave`. Una sola
+      definición para los hechos de cartera y el reporte (antes, columnas calculadas en DAX).
+    columns:
+      - name: rango_vencimiento_clave
+        data_tests: [not_null, unique]
+      - name: rango_vencimiento
+        data_tests: [not_null, unique]
+      - name: rango_aging_clave
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_rango_aging')
+              field: rango_aging_clave
+
   - name: dim_rango_aging
     description: >
       Rangos de antigüedad de cartera con su orden de presentación. Catálogo cerrado del motor

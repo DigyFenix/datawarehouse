@@ -45,7 +45,14 @@ select
          else m.debe_local - m.haber_local end / tp.tasa)::numeric(18,4) as monto_resultado,
 
     m.proceso_transformacion,
-    m.version_proceso
+    m.version_proceso,
+    -- Naturaleza legible para el puente del resultado (antes columna DAX).
+    case m.tipo_cuenta
+        when 'ingreso' then 'Ingresos'
+        when 'costo'   then 'Costo'
+        when 'gasto'   then 'Gastos'
+        else 'Otros'
+    end                                               as naturaleza_contable
 from {{ ref('plata_movimiento_contable') }} m
 left join {{ ref('plata_tasa_presentacion') }} tp
        on tp.empresa_id = m.empresa_id and tp.fecha = m.fecha

@@ -20,11 +20,11 @@ const claveEmpresa = z
   .string()
   .regex(/^[a-z0-9_]+$/, 'clave de empresa inválida (solo minúsculas, dígitos y _)');
 
+// El dominio ya no es un enum fijo: el API recibe el enum de los dominios del alcance
+// (`construirTools`) y el código vuelve a comprobar que el dominio pertenezca al alcance.
 export const esquemaListarMetricas = z
   .object({
-    dominio: z
-      .enum(['ventas', 'compras', 'tesoreria', 'rentabilidad', 'inventario', 'pedidos'])
-      .optional(),
+    dominio: z.string().regex(/^[a-z_]{1,40}$/, 'dominio inválido').optional(),
   })
   .strict();
 
@@ -71,13 +71,16 @@ export type ParamsConsultarPorDimension = z.infer<typeof esquemaConsultarPorDime
 /** Tipos de demanda no atendida (coinciden con portal.solicitudes_no_atendidas.tipo). */
 export const TIPOS_SOLICITUD = ['fuera_catalogo', 'frescura', 'sin_autorizacion', 'desglose_no_admitido', 'otro'] as const;
 
+/** Los únicos que registra el MODELO; `sin_autorizacion` y `desglose_no_admitido` los deduce el código. */
+export const TIPOS_SOLICITUD_MODELO = ['fuera_catalogo', 'frescura'] as const;
+
 /**
  * Registro de una pregunta que NO se puede atender con la capa semántica. No consulta nada:
  * deja constancia para el administrador. El resumen se acota y se limpia de saltos de línea.
  */
 export const esquemaRegistrarSolicitud = z
   .object({
-    tipo: z.enum(TIPOS_SOLICITUD),
+    tipo: z.enum(TIPOS_SOLICITUD_MODELO),
     resumen: z.string().trim().min(5).max(300),
     metrica_clave: claveMetrica.optional(),
     dominio: z.string().regex(/^[a-z_]{1,40}$/).optional(),
@@ -103,7 +106,6 @@ export const TOOLS_ANTHROPIC = [
       properties: {
         dominio: {
           type: 'string',
-          enum: ['ventas', 'compras', 'tesoreria', 'rentabilidad', 'inventario', 'pedidos'],
           description: 'Filtrar por dominio de negocio (opcional).',
         },
       },
@@ -170,16 +172,14 @@ export const TOOLS_ANTHROPIC = [
   {
     name: 'registrar_solicitud',
     description:
-      'Deja constancia de algo que la persona pidió y NO se puede atender con el catálogo: una ' +
-      'métrica o dato que no existe en la capa semántica (fuera_catalogo), un dato más reciente que ' +
-      'la última carga (frescura), un desglose que la métrica no admite (desglose_no_admitido) u ' +
-      'otra necesidad. No consulta ni cambia nada: el administrador revisa estas solicitudes para ' +
-      'decidir qué agregar. Úsala UNA vez por necesidad, después de explicarle a la persona qué sí ' +
-      'puedes darle. No la uses para preguntas ambiguas ni para errores de parámetros.',
+      'Deja constancia de algo que la persona pidió y NO se puede atender: una métrica o dato que ' +
+      'no existe en el catálogo (fuera_catalogo) o un dato más reciente que la última carga ' +
+      '(frescura). No consulta ni cambia nada. Llámala UNA vez, en el mismo turno de tu respuesta. ' +
+      'No la uses para preguntas ambiguas, permisos, desgloses ni errores de parámetros.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        tipo: { type: 'string', enum: [...TIPOS_SOLICITUD] },
+        tipo: { type: 'string', enum: [...TIPOS_SOLICITUD_MODELO] },
         resumen: { type: 'string', description: 'Qué pidió la persona, en una frase (5 a 300 caracteres), sin datos personales.' },
         metrica_clave: { type: 'string', description: 'Métrica relacionada, si la hay.' },
         dominio: { type: 'string', description: 'Dominio de negocio relacionado (ventas, compras, tesoreria, inventario, pedidos, rentabilidad), si aplica.' },
@@ -203,3 +203,25 @@ export const TOOLS_ANTHROPIC = [
     },
   },
 ];
+
+/**
+ * Tools para UNA petición: igual que `TOOLS_ANTHROPIC`, pero el filtro de dominio de
+ * `listar_metricas_disponibles` es el enum de los dominios del alcance del usuario (el modelo no
+ * puede pedir un dominio que no existe o que no le corresponde). Orden estable: los dominios se
+ * ordenan para no romper la caché del prefijo entre peticiones del mismo alcance.
+ */
+export function construirTools(dominios: string[]): typeof TOOLS_ANTHROPIC {
+  const enumDominios = [...new Set(dominios.filter((d) => /^[a-z_]{1,40}$/.test(d)))].sort();
+  return TOOLS_ANTHROPIC.map((t) => {
+    if (t.name !== 'listar_metricas_disponibles' || enumDominios.length === 0) return t;
+    return {
+      ...t,
+      input_schema: {
+        ...t.input_schema,
+        properties: {
+          dominio: { type: 'string', enum: enumDominios, description: 'Filtrar por dominio de negocio (opcional).' },
+        },
+      },
+    };
+  }) as typeof TOOLS_ANTHROPIC;
+}

@@ -15,12 +15,37 @@ export { ejecutarTool } from './tools/ejecutar';
 export { ejecutarGuardada, validarEspecificacion, TOOLS_GUARDABLES } from './guardada';
 export type { EntradaGuardada, ResultadoGuardada } from './guardada';
 export type { ContextoTool, ResultadoTool } from './tools/ejecutar';
-export { TOOLS_ANTHROPIC, DIMENSIONES, TIPOS_SOLICITUD } from './tools/esquemas';
+export { TOOLS_ANTHROPIC, DIMENSIONES, TIPOS_SOLICITUD, TIPOS_SOLICITUD_MODELO, construirTools } from './tools/esquemas';
+export {
+  ejecutarAccion,
+  ejecutarAcciones,
+  validarAccion,
+  normalizarContexto,
+  actualizarContexto,
+  sugerenciasIniciales,
+  sugerenciasSiguientes,
+  opcionesDesambiguacion,
+  buscarRepeticion,
+  turnosDesdeFilas,
+  TOOLS_ACCION,
+  PREGUNTA_AMBIGUA,
+  CONTEXTO_VACIO,
+} from './acciones';
+export type { EntradaAccion, ResultadoAcciones } from './acciones';
+export { construirEvidencia, verificarTexto, extraerCifras, reemplazarClaves, plantillaRespuesta } from './grounding';
+export type { Evidencia, Verificacion } from './grounding';
+export { formatearCifra, nombrePeriodo, nombreRango } from './formato';
+export { unidadDe, corteDe } from './unidades';
+export {
+  SQL_LEER_CONTEXTO_CONVERSACION,
+  SQL_GUARDAR_CONTEXTO_CONVERSACION,
+  SQL_TURNOS_CON_CONSULTAS,
+} from './tools/consultas';
 export { prepararDescarga, esquemaDescarga, NIVELES_DESCARGA, TOPE_FILAS_DESCARGA } from './descargas';
 export type { EntradaDescarga, HojaDescarga, NivelDescarga, ParamsDescarga, ResultadoDescarga } from './descargas';
-export { construirSystemPrompt, construirBloquesSystem } from './prompt';
-export { clasificarIntencion, esIntencionBloqueada, RESPUESTAS_FIJAS, INTENCIONES } from './compuerta';
-export type { Intencion } from './compuerta';
+export { construirSystemPrompt, construirBloquesSystem, FRASE_FUERA_CATALOGO } from './prompt';
+export { clasificarIntencion, clasificarMensaje, esIntencionBloqueada, RESPUESTAS_FIJAS, INTENCIONES } from './compuerta';
+export type { Intencion, ClasificacionCompuerta } from './compuerta';
 export type {
   UsoModelo,
   AlcanceEfectivo,
@@ -35,4 +60,9 @@ export type {
   ResultadoAgente,
   SolicitudNoAtendida,
   TarjetaDato,
+  UnidadMetrica,
+  AccionTool,
+  OpcionAccion,
+  ContextoConversacion,
+  TurnoPrevio,
 } from './tipos';

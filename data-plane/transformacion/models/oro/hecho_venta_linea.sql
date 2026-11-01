@@ -13,6 +13,7 @@
     pre_hook = "set local max_parallel_workers_per_gather = 0"
 ) }}
 
+with linea as (
 select
     -- ---------- claves dimensionales ----------
     {{ clave_tiempo('l.fecha_documento') }}
@@ -132,3 +133,34 @@ left join {{ ref('dim_condicion_pago') }} dcp
        on dcp.condicion_pago_codigo = coalesce(cab.condicion_pago_codigo, dc.condicion_pago_codigo)
       and dcp.empresa_id = l.empresa_id
 where l.flujo = 'venta'
+),
+
+{#- COHORTES DE CLIENTES (sesión 38, auditoría §6). Antes eran columnas calculadas de Power BI con
+    FILTER(ALL(Ventas)) por fila —cuadráticas: en Cresta, 450k × 450k comparaciones en cada
+    refresco—. Aquí son funciones de ventana, con la misma semántica que tenía el DAX:
+      · primera_compra_cliente        = primera fecha facturada del cliente en todo el hecho
+      · fecha_compra_anterior_cliente = última fecha facturada del cliente ANTES de esta (otro día)
+      · mes_documento                 = fin del mes del documento (EOMONTH)
+      · es_primer_mes_cliente         = la línea cae en el mes de su primera compra
+      · es_compra_recuperacion        = vuelve tras 6 o más meses calendario sin comprar
+    El cliente es `cliente_clave`, como en DAX (los no definidos comparten la clave −1). -#}
+cohorte as (
+select
+    linea.*,
+    min(fecha_documento) over (partition by cliente_clave) as primera_compra_cliente,
+    max(fecha_documento) over (
+        partition by cliente_clave order by fecha_documento
+        range between unbounded preceding and '1 day'::interval preceding
+    )                                                 as fecha_compra_anterior_cliente,
+    (date_trunc('month', fecha_documento) + interval '1 month - 1 day')::date as mes_documento
+from linea
+)
+
+select
+    cohorte.*,
+    date_trunc('month', fecha_documento) = date_trunc('month', primera_compra_cliente) as es_primer_mes_cliente,
+    coalesce(
+        (extract(year from fecha_documento) * 12 + extract(month from fecha_documento))
+      - (extract(year from fecha_compra_anterior_cliente) * 12 + extract(month from fecha_compra_anterior_cliente))
+        >= 6, false)                                  as es_compra_recuperacion
+from cohorte

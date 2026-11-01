@@ -109,6 +109,7 @@ export function fichaDerivada(
     estado,
     periodoDesde: desde,
     periodoHasta: hasta,
+    unidad: derivada.unidad,
   };
 }
 

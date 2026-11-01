@@ -47,8 +47,16 @@ select
     {{ aging_rango(corte, 'p.fecha_vencimiento', 'clave') }}  as rango_aging_clave,
 
     p.proceso_transformacion,
-    p.version_proceso
+    p.version_proceso,
+    -- Rango FINO de vencimiento (nivel de detalle de la antigüedad): sale del catálogo
+    -- `dim_rango_vencimiento`, una sola definición para cobrar y pagar (antes, columnas DAX).
+    rv.rango_vencimiento,
+    rv.rango_vencimiento_orden,
+    rv.estado_vencimiento
 from {{ ref('plata_partida_cartera') }} p
+left join {{ ref('dim_rango_vencimiento') }} rv
+       on case when p.fecha_vencimiento is null then rv.rango_vencimiento_codigo = 'sin_vencimiento'
+               else ({{ corte }} - p.fecha_vencimiento) between rv.dias_desde and rv.dias_hasta end
 left join {{ ref('dim_proveedor') }} dpr
        on dpr.proveedor_codigo = p.socio_codigo and dpr.empresa_id = p.empresa_id
 left join {{ ref('dim_socio_negocio') }} ds
