@@ -35,6 +35,20 @@
   «Al día», chat sin verificación de números ni evaluación, PBI proyección/aging/DSO/pie, sin
   índices en Oro. Tesis ≈85 %.
 
+- **Correcciones de la auditoría implementadas** (5 agentes Opus + integración, commits 4483027..de0de0b):
+  seguridad (allowlist ingesta/worker, filtroOrigen solo admin_portal, pbi_lector CIDR + CONNECTION
+  LIMIT, M1/M2 solo admin_portal, revocación JWT 139/141, compose endurecido, respaldos cifrables),
+  portal (frescura real, recientes, entrar-como, glosario, interceptor 403/500, formularios, caché),
+  rendimiento (índices en Oro, 1 transacción RLS por turno: 48→14, tablero concurrente, caché org),
+  chat (grounding de cifras, botones de desambiguación sin modelo 47 ms, sugerencias desde el alcance,
+  contexto 142, prompt compacto con moneda; **eval real aprobado: exactitud 91 %, 0 alucinaciones,
+  p95 7 s**), Power BI (proyección al corte, DSO/DPO hoy, aging único, columnas calculadas a Oro, pie,
+  contraste, tema único, validador al día, regenerar_paginas.js). Publish to Web se queda (decisión).
+  RLS: 56/56 tablas de Oro con política. Trampa: regex escritos vía Python con `\b` dejaron
+  retrocesos invisibles (veto xp_/sp_ no bloqueaba): revisar con `cat -A`.
+- **Despliegue bloqueado por el clasificador**: Edwin corre `bash infra/produccion/desplegar.sh`
+  (ya aplica control 139, tenant 138/140/141/142 y build dbt con cuadre).
+
 ### PENDIENTE: Edwin
 1. Power BI: cerrar Desktop SIN guardar, reabrir `PulsoIron.pbip`, refrescar, revisar Resumen,
    publicar. Las 10 hojas nuevas ya están en el portal (abren «página no encontrada» hasta publicar).
