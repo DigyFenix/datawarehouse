@@ -29,6 +29,12 @@
   Administración → Uso de IA (mes, acumulado, por usuario, por perfil, por día). Probado en local
   ($0.063 un turno Haiku+Opus) y **desplegado a Iron en `62bc0df`** (admin portal nuevo incluido).
 
+- **Auditoría completa** (5 agentes + recorrido en navegador + sesión en el proyecto de graduación):
+  `docs/auditoria-2026-10-31.md`. P1: inyección SQL en metadatos de ingesta, Postgres público con
+  BYPASSRLS, entrar-como roto, glosario borra dominio, Inicio recientes/fechas, frescura siempre
+  «Al día», chat sin verificación de números ni evaluación, PBI proyección/aging/DSO/pie, sin
+  índices en Oro. Tesis ≈85 %.
+
 ### PENDIENTE: Edwin
 1. Power BI: cerrar Desktop SIN guardar, reabrir `PulsoIron.pbip`, refrescar, revisar Resumen,
    publicar. Las 10 hojas nuevas ya están en el portal (abren «página no encontrada» hasta publicar).

@@ -14,6 +14,7 @@ Si algo no está aquí, probablemente no exista todavía.
 | Quiero | Archivo / carpeta |
 |---|---|
 | Saber en qué va el proyecto | `ESTADO.md` |
+| Ver la lista de hallazgos de la auditoría completa (seguridad, UX, chat, PBI, rendimiento, tesis) | `docs/auditoria-2026-10-31.md` |
 | Saber en qué va el Power BI | `docs/powerbi/STATE.md` |
 | Saber qué pasó la sesión pasada | `.claude/SESSION.md` (bloque de arriba) |
 | Levantar o diagnosticar el entorno | skill `stack-local` · `infra/local/docker-compose.yml` |
