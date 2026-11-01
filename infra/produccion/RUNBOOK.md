@@ -60,7 +60,7 @@ superusuario por `docker exec`, que entra por el socket local):
 
 ```bash
 # 1) Tope de conexiones del gateway (un abuso de la credencial no agota max_connections)
-docker exec quilate-postgres psql -U quilate_admin -d quilate_control -c "ALTER ROLE pbi_lector CONNECTION LIMIT 5;"
+docker exec quilate-postgres psql -U quilate_admin -d quilate_control -c "ALTER ROLE pbi_lector CONNECTION LIMIT 30;"
 
 # 2) pg_hba: cambiar 0.0.0.0/0 por la IP del gateway /32 y quitar la línea ::/0
 docker exec quilate-postgres sh -c 'cp "$PGDATA/pg_hba.conf" "$PGDATA/pg_hba.conf.bak" &&   sed -i -e "s#pbi_lector   0.0.0.0/0  #pbi_lector   <IP-GATEWAY>/32#" -e "/pbi_lector   ::\/0/d" "$PGDATA/pg_hba.conf" &&   grep pbi_lector "$PGDATA/pg_hba.conf"'
