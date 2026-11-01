@@ -16,6 +16,10 @@ cd "$(dirname "$0")/../.."
 
 # Migraciones de TENANT (archivos de metadata-store/schema) que esta versión necesita, en orden.
 MIGRACIONES=(138_uso_ia_tenant.sql 140_auditoria_recientes_tenant.sql 141_password_cambiada_en_tenant.sql 142_chat_contexto_tenant.sql)
+# Migraciones de la base de CONTROL (quilate_control), idempotentes, en orden.
+MIGRACIONES_CONTROL=(139_password_cambiada_en.sql)
+# true = después del reinicio corre el build dbt (Oro cambió: índices, columnas nuevas). Solo build, no extrae.
+BUILD_DBT=true
 VERSION="${1:-$(ls -t dist/quilate-imagenes-*.tar.gz | head -1 | sed -E 's#.*quilate-imagenes-(.*)\.tar\.gz#\1#')}"
 SRV=ubuntu@77.112.237.34
 SSH=(ssh -i ~/.ssh/quilate_deploy -o BatchMode=yes "$SRV")
@@ -33,7 +37,7 @@ LOCAL=$(sha256sum "dist/quilate-imagenes-$VERSION.tar.gz" | cut -d' ' -f1)
 REMOTO=$("${SSH[@]}" "sha256sum ~/$SUB/quilate-imagenes-$VERSION.tar.gz" | cut -d' ' -f1)
 [[ "$LOCAL" == "$REMOTO" ]] || { echo "FALLO · el archivo de imágenes llegó dañado"; exit 1; }
 
-"${SSH[@]}" VERSION="$VERSION" ANTERIOR="$ANTERIOR" MIGRACIONES="$(IFS=,; echo "${MIGRACIONES[*]}")" bash -s <<'REMOTO'
+"${SSH[@]}" VERSION="$VERSION" ANTERIOR="$ANTERIOR" MIGRACIONES="$(IFS=,; echo "${MIGRACIONES[*]}")" MIGRACIONES_CONTROL="$(IFS=,; echo "${MIGRACIONES_CONTROL[*]}")" BUILD_DBT="$BUILD_DBT" bash -s <<'REMOTO'
 set -euo pipefail
 SUB=~/subida-$VERSION
 
@@ -59,7 +63,10 @@ sed -i "s/^VERSION=.*/VERSION=$VERSION/" ~/quilate-$VERSION/.env   # sin esto co
 sudo cp -a ~/quilate-$ANTERIOR/pg-tls/. ~/quilate-$VERSION/pg-tls/
 sudo sed -i "s#quilate-$ANTERIOR#quilate-$VERSION#" /etc/cron.d/quilate-tls-postgres 2>/dev/null || true
 
-echo "== 4/5 migraciones de tenant: $MIGRACIONES =="
+echo "== 4/5 migraciones de control: ${MIGRACIONES_CONTROL:-ninguna} · de tenant: $MIGRACIONES =="
+for mig in ${MIGRACIONES_CONTROL//,/ }; do
+  docker exec -i quilate-postgres psql -U quilate_admin -d quilate_control -v ON_ERROR_STOP=1 < ~/quilate-$VERSION/metadata-store/schema/$mig > /dev/null
+done
 for db in $(docker exec quilate-postgres psql -U quilate_admin -d quilate_control -Atc "SELECT datname FROM pg_database WHERE datname LIKE 'dw_%'"); do
   echo "   · $db"
   for mig in ${MIGRACIONES//,/ }; do
@@ -70,7 +77,15 @@ done
 echo "== 5/5 reinicio de servicios =="
 cd ~/quilate-$VERSION && docker compose up -d
 sleep 25
-docker ps --format '{{.Names}} {{.Status}}' | grep -E "portal|worker|programador"
+docker ps --format '{{.Names}} {{.Status}}' | grep -E "portal|worker|programador|caddy|postgres"
+if [[ "$BUILD_DBT" == "true" ]]; then
+  echo "== build dbt (Oro) =="
+  for org in $(docker exec quilate-postgres psql -U quilate_admin -d quilate_control -Atc "SELECT codigo FROM gobierno.organizaciones WHERE base_datos_dw IS NOT NULL"); do
+    echo "   · $org"
+    docker exec quilate-worker python3 /dbt/herramientas/correr.py "$org" 2>&1 | tail -3
+    docker exec quilate-postgres psql -U quilate_admin -d "dw_$org" -Atc "SELECT 'filas sin cuadrar: ' || count(*) FROM plata.plata_control_cuadre WHERE NOT cuadra"
+  done
+fi
 REMOTO
 
 echo "== verificación =="
