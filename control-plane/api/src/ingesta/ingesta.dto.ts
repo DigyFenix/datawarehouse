@@ -55,7 +55,7 @@ const claveNaturalSql = z
   );
 
 // Fragmentos vetados en el filtro libre de origen además de las palabras reservadas.
-const FILTRO_VETADO = /;|--|\/\*|\*\/|xp_|sp_|openrowset|opendatasource|char\s*\(/i;
+const FILTRO_VETADO = /;|--|\/\*|\*\/|\bxp_|\bsp_|openrowset|opendatasource|char\s*\(/i;
 
 const politicaBase = z.object({
   organizacionId: organizacionIdSchema,

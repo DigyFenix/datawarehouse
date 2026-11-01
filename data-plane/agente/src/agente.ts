@@ -89,6 +89,31 @@ function resultadoBase(entrada: EntradaAgente, uso: UsoModelo[]): ResultadoAgent
   };
 }
 
+const TOOLS_CON_PERIODO = new Set(['consultar_metrica', 'consultar_metrica_por_dimension']);
+const RE_TOP = /\b(?:los|las|top)\s+(\d{1,2})\b/i;
+
+/** Repone período detectado y «los N» explícitos del mensaje en los parámetros de la tool. */
+export function completarParametros(
+  tool: string,
+  input: unknown,
+  mensaje: string,
+  clasificacion: ClasificacionCompuerta | null,
+): unknown {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return input;
+  const p = { ...(input as Record<string, unknown>) };
+  const periodo = clasificacion?.periodo_detectado;
+  if (TOOLS_CON_PERIODO.has(tool) && periodo && !p['periodo_desde'] && !p['periodo_hasta']) {
+    if (periodo.desde) p['periodo_desde'] = periodo.desde;
+    if (periodo.hasta) p['periodo_hasta'] = periodo.hasta;
+  }
+  if (tool === 'consultar_metrica_por_dimension') {
+    const top = RE_TOP.exec(mensaje);
+    const n = top ? Number(top[1]) : NaN;
+    if (Number.isInteger(n) && n >= 1 && n <= 50) p['limite'] = n;
+  }
+  return p;
+}
+
 export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente> {
   const { ejecutor, config, usuarioId, historial, mensaje, auditar } = entrada;
   const simbolo = config.simboloMoneda ?? 'Q';
@@ -239,7 +264,10 @@ export async function responder(entrada: EntradaAgente): Promise<ResultadoAgente
 
     const resultados: Anthropic.Beta.BetaToolResultBlockParam[] = [];
     for (const llamada of llamadas) {
-      const resultado = await ejecutarTool(llamada.name, llamada.input, {
+      // Lo que el USUARIO dijo explícito (período, «los 5») no queda a criterio del modelo: si la tool
+      // lo omitió o lo cambió, el código lo repone antes de ejecutar. Solo completa; nunca amplía alcance.
+      const entradaTool = completarParametros(llamada.name, llamada.input, mensaje, clasificacion);
+      const resultado = await ejecutarTool(llamada.name, entradaTool, {
         ejecutor,
         alcance,
         empresas: config.empresas,

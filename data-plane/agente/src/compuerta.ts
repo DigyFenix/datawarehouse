@@ -108,8 +108,11 @@ fecha de hoy: «este año» = enero del año en curso a mes en curso; «el mes p
 2025-01 a 2025-12. "" si el mensaje no indica período.
 empresa_detectada: empresa_id de la lista si el mensaje nombra una; si no, "".
 es_ambigua: true SOLO si hay 2 o más candidatas razonables y el mensaje no decide entre ellas (bruto o
-neto, con o sin IVA, cartera total o por antigüedad), o si hay una sola candidata pero el mensaje no
-trae período. false si el mensaje decide, si es aclaracion o si no es consulta.`;
+neto, con o sin IVA), o si hay una sola candidata de FLUJO (ventas, cobros, compras) y el mensaje no
+trae período. Saldos, cartera, deudas, antigüedad y vencimientos son FOTO al corte: nunca son ambiguos
+por falta de período, y «antigüedad», «vencido», «quién me debe más», «a quién le debo más» ya deciden
+la lectura (cartera por antigüedad o por socio). false si el mensaje decide, si es aclaracion o si no
+es consulta.`;
 
 /** Normaliza `usage` del API (los campos de caché pueden venir null) a la forma que persiste el host. */
 export function usoDeRespuesta(modelo: string, usage: { input_tokens?: number | null; output_tokens?: number | null; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null } | null | undefined): UsoModelo {
@@ -148,8 +151,22 @@ export function normalizarClasificacion(
     metricas_candidatas: candidatas,
     periodo_detectado: periodo,
     empresa_detectada: empresa && empresas?.has(empresa) ? empresa : null,
-    es_ambigua: intencion === 'consulta' && d['es_ambigua'] === true,
+    es_ambigua: intencion === 'consulta' && d['es_ambigua'] === true && !decideElCodigo(candidatas),
   };
+}
+
+/** Métricas de foto (saldo al corte): no piden período, así que una sola candidata no es ambigua. */
+const RE_FOTO = /^(saldo_|cartera_|aging|por_cobrar|por_pagar)/;
+
+/**
+ * Red de seguridad sobre el clasificador: con una sola candidata de foto, o con candidatas que son
+ * todas de foto y de la MISMA cartera (cobrar o pagar), no hay nada que preguntar.
+ */
+function decideElCodigo(candidatas: string[]): boolean {
+  if (candidatas.length === 0) return false;
+  if (!candidatas.every((c) => RE_FOTO.test(c))) return false;
+  const carteras = new Set(candidatas.map((c) => (/cxp|pagar/.test(c) ? 'pagar' : 'cobrar')));
+  return carteras.size === 1;
 }
 
 /**

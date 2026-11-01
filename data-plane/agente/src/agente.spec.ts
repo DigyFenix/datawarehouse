@@ -5,7 +5,7 @@
 import { clienteGuionado, configLab, ejecutorLab, type RegistroLlamada } from '../eval/laboratorio';
 import { ejecutarAccion, sugerenciasIniciales } from './acciones';
 import { resolverAlcance } from './alcances';
-import { responder } from './agente';
+import { completarParametros, responder } from './agente';
 import { construirBloquesSystem } from './prompt';
 import { prepararDescarga } from './descargas';
 import type { EventoAuditoria } from './tipos';
@@ -200,5 +200,18 @@ describe('Descargas de derivadas', () => {
     const no = await prepararDescarga({ ejecutor, usuarioId: 1, empresas: configLab().empresas, params: { metricas: ['margen_pct'], nivel: 'dimension_total', dimension: 'cliente' } });
     expect(no.ok).toBe(false);
     expect(no.motivo).toContain('solo se descarga por mes');
+  });
+});
+
+describe('completarParametros', () => {
+  it('repone el «los N» explícito y el período detectado', () => {
+    const p = completarParametros(
+      'consultar_metrica_por_dimension',
+      { metrica_clave: 'ventas_netas_sin_iva', dimension: 'vendedor', limite: 10, orden: 'menor' },
+      'Los 5 vendedores con menos ventas netas sin IVA en septiembre 2026',
+      { intencion: 'consulta', metricas_candidatas: [], periodo_detectado: { desde: '2026-09', hasta: '2026-09' }, empresa_detectada: null, es_ambigua: false },
+    ) as Record<string, unknown>;
+    expect(p['limite']).toBe(5);
+    expect(p['periodo_desde']).toBe('2026-09');
   });
 });
