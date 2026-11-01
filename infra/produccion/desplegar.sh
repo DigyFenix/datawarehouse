@@ -31,7 +31,7 @@ ANTERIOR=$("${SSH[@]}" "docker inspect quilate-portal-api --format {{.Config.Ima
 echo "== versión nueva: $VERSION · anterior en el servidor: $ANTERIOR =="
 echo "== 1/5 subiendo paquete =="
 "${SSH[@]}" "mkdir -p ~/$SUB"
-REMOTO_PREV=$("${SSH[@]}" "sha256sum ~/$SUB/quilate-imagenes-$VERSION.tar.gz 2>/dev/null" | cut -d" " -f1)
+REMOTO_PREV=$("${SSH[@]}" "sha256sum ~/$SUB/quilate-imagenes-$VERSION.tar.gz 2>/dev/null || true" | cut -d" " -f1)
 if [[ "$REMOTO_PREV" == "$(sha256sum "dist/quilate-imagenes-$VERSION.tar.gz" | cut -d" " -f1)" ]]; then echo "   (ya estaba subido, se omite)"; else "${SCP[@]}" "dist/quilate-$VERSION.tar.gz" "dist/quilate-imagenes-$VERSION.tar.gz" "$SRV:~/$SUB/"; fi
 LOCAL=$(sha256sum "dist/quilate-imagenes-$VERSION.tar.gz" | cut -d' ' -f1)
 REMOTO=$("${SSH[@]}" "sha256sum ~/$SUB/quilate-imagenes-$VERSION.tar.gz" | cut -d' ' -f1)
