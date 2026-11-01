@@ -14,6 +14,12 @@
 > El producto Power BI sigue su propio
 > contrato; su progreso vive en `docs/powerbi/STATE.md`.
 
+> **Al 2026-11-01 (sesión 37)** producción Iron corre `de0de0b` con la auditoría completa
+> implementada (`docs/auditoria-2026-10-31.md`): seguridad, rendimiento (índices en Oro, 1
+> transacción por turno), chat con anclaje de cifras y evaluación real aprobada (91 %, 0
+> alucinaciones), costo de IA por usuario y ambos portales rediseñados. **Cuello de botella
+> vigente:** activar el Módulo Asistente y los alcances en Iron (UI) y que Edwin publique Power BI.
+
 Tablero maestro de avance. Fuente de verdad del progreso. Se actualiza al cerrar cada fase.
 Regla: cada fase se valida contra su **DoD** antes de avanzar (salvo instrucción de entregar
 varias de una vez). Roadmap conceptual: `docs/arquitectura/04-roadmap.md`.

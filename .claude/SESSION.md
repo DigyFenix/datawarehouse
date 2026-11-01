@@ -1,6 +1,24 @@
 # SESSION — datawarehouse
 
-## ══════ SESIÓN 37 (2026-10-31) — DESPLIEGUE A IRON, RESUMEN PBI PRO, ADMIN PRÁCTICO EN LOS DOS PORTALES — leer esto primero ══════
+## ══════ SESIÓN 37 (2026-10-31 → 2026-11-01) — AUDITORÍA COMPLETA Y CORRECCIONES DESPLEGADAS, ADMIN PRÁCTICO, USO DE IA — leer esto primero ══════
+
+Sesión larga: se rediseñó la administración de ambos portales, se agregó el costo de IA por usuario,
+se hizo una auditoría completa del sistema (seguridad, portal, chat, Power BI, rendimiento, tesis)
+y se implementaron y desplegaron todas sus correcciones salvo Publish to Web (se queda por decisión
+de Edwin: una sola cuenta publica, no hay RLS posible en Power BI hoy). **Producción Iron corre
+`de0de0b`.** Lo que queda abierto es configuración en los portales y publicar Power BI.
+
+### Estado al cierre (2026-11-01)
+- Producción `de0de0b`: RLS 56/56 en Oro, cuadre 0, 4 índices en Oro, migraciones control 139 y
+  tenant 138/140/141/142 aplicadas. `ANTHROPIC_API_KEY` cargada por Edwin y `api-usuario`
+  reiniciado (verificado dentro del contenedor, sin mostrar el valor).
+- `pbi_lector` CONNECTION LIMIT **30** (con 5 el refresco de Power BI falló: «too many connections»;
+  Desktop abre una conexión por tabla, 47 tablas). Corregido en prod, init y RUNBOOK (`92d1b05`).
+- Último commit de código `92d1b05`. **Sin commitear a propósito:** ~424 archivos de
+  `PulsoIron.Report` y 9 `.tmdl` que Desktop guardó mientras Edwin actualizaba (validador al cierre:
+  23 hojas, 400 visuales, 0 defectos → no borró visuales). Commitearlos después de publicar:
+  `python consumo/powerbi/validar_reporte.py organizaciones/ironnetwork/powerbi` y luego
+  `git add organizaciones/ironnetwork/powerbi && git commit`.
 
 ### Hecho
 - **Producción Iron** (`6fe70de` desplegado por Claude): el guion no fijaba `VERSION` en el `.env` y
@@ -50,13 +68,29 @@
   con cuadre 0, RLS 56/56, 4 índices en Oro, pbi_lector CONNECTION LIMIT 5. Power BI verificado: 687
   columnas del modelo existen en producción, 0 referencias DAX rotas, validador 0 defectos.
 
-### PENDIENTE: Edwin
-1. Power BI: cerrar Desktop SIN guardar, reabrir `PulsoIron.pbip`, refrescar, revisar Resumen,
-   publicar. Las 10 hojas nuevas ya están en el portal (abren «página no encontrada» hasta publicar).
-3. Asignar tableros y métricas a los perfiles de Iron (solo Power BI tiene 24; el resto 0).
-4. Chat: portal admin → Organizaciones → Iron → Módulo Asistente; `ANTHROPIC_API_KEY` en `.env`
-   + `docker compose up -d api-usuario`.
-5. Firewall Lightsail 5432: solo IP del gateway.
+### PENDIENTE: Edwin (siguiente paso concreto)
+1. **Power BI**: Edwin estaba actualizando cuando dio el error de conexiones (ya resuelto). Cerrar el
+   diálogo → **Actualizar** de nuevo → revisar con `docs/powerbi/qa/visual-qa-checklist.md` las 23
+   hojas (todas cambiaron de estilo, no solo Resumen) → guardar → publicar. Validar cifras contra el
+   motor con el MCP si hace falta.
+2. **Chat en Iron** (el clasificador no dejó a Claude escribir en la base de prod; hacerlo por UI):
+   - Portal admin → Organizaciones → Iron → Editar → **Módulo Asistente** (hoy `false`).
+   - Portal Iron → Perfiles → «Power BI» (perfil de carlos@iron.com) → Métricas y empresas → todas.
+   - Usuarios → echacon@digyfenix.com (admin, sin perfil) → asignar «Dirección».
+   - Probar «¿cuánto vendimos en septiembre 2026?» y ver Administración → Uso de IA.
+3. Perfiles de Iron sin tableros asignados (salvo Power BI con 24): asignar desde el selector nuevo.
+4. IP del gateway de Power BI → `PBI_GATEWAY_CIDR` en `.env` del servidor + RUNBOOK §3.1.
+
+### PENDIENTE: técnico (próximas sesiones)
+- Dependencias: 11 vulnerabilidades API admin (NestJS 12, zod 4, drizzle 0.45) y 8 portal web
+  (Angular 20+): solo con majors; planificar migración.
+- Chat: opciones/sugerencias no se persisten (`conversaciones.service.registrarTurno`); moneda por
+  tenant como variable (hoy default GTQ/Q); `SQL_DOMINIOS_METRICA` hace scan completo; correr
+  `EVAL_REAL=1 npm run eval` antes de cada cambio de prompt (último: 91 %, p95 7 s).
+- Portal admin: ocultar botones de impersonar/restablecer a admin_organizacion (ahora 403).
+- TMDL de PulsoCresta no se puso al día con las columnas nuevas de Oro.
+- Turno del chat retiene una conexión del lector durante la llamada al modelo (pool 10 ≈ 10 chats
+  simultáneos por tenant).
 
 ### Deuda
 - 50 `style=""` inline en el admin (usuarios, metricas, ingesta, auditoria); Auditoría sin rediseño.
