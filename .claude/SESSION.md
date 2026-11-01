@@ -46,8 +46,9 @@
   contraste, tema único, validador al día, regenerar_paginas.js). Publish to Web se queda (decisión).
   RLS: 56/56 tablas de Oro con política. Trampa: regex escritos vía Python con `\b` dejaron
   retrocesos invisibles (veto xp_/sp_ no bloqueaba): revisar con `cat -A`.
-- **Despliegue bloqueado por el clasificador**: Edwin corre `bash infra/produccion/desplegar.sh`
-  (ya aplica control 139, tenant 138/140/141/142 y build dbt con cuadre).
+- **Desplegado a Iron `de0de0b`** (2026-11-01): migraciones control 139 y tenant 138/140/141/142, build dbt
+  con cuadre 0, RLS 56/56, 4 índices en Oro, pbi_lector CONNECTION LIMIT 5. Power BI verificado: 687
+  columnas del modelo existen en producción, 0 referencias DAX rotas, validador 0 defectos.
 
 ### PENDIENTE: Edwin
 1. Power BI: cerrar Desktop SIN guardar, reabrir `PulsoIron.pbip`, refrescar, revisar Resumen,
