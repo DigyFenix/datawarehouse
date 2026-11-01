@@ -12,6 +12,7 @@ import structlog
 
 from . import diccionario
 from .catalogo import ConfigPostgres, resolver_origen, tablas_de_objeto, upsert_campos
+from .identificadores import validar_identificador, validar_identificadores
 from .config import credenciales_origen
 from .fuentes import odoo_postgres, sap_b1, sap_b1_mssql
 
@@ -37,6 +38,9 @@ def descubrir(
         raise ValueError(f"La sociedad '{empresa_id}' no tiene esquema de origen configurado.")
 
     tablas_obj = tablas or tablas_de_objeto(cfg, origen.organizacion_id, objeto)
+    # Los nombres de tabla se interpolan en el SQL al ERP: allowlist antes de conectar.
+    validar_identificador(origen.esquema_origen, "esquema de origen")
+    validar_identificadores(tablas_obj, "tabla de origen")
     if not tablas_obj:
         raise ValueError(
             f"No sé qué tablas leer para '{objeto}'. Créale la política (fuente en origen) "

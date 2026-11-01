@@ -26,6 +26,12 @@ from .catalogo import (
 from .config import credenciales_origen
 from .destino_bronze import escribir
 from .fuentes import odoo_postgres, sap_b1, sap_b1_mssql
+from .identificadores import (
+    es_identificador,
+    validar_filtro_origen,
+    validar_identificador,
+    validar_identificadores,
+)
 
 log = structlog.get_logger()
 
@@ -65,6 +71,10 @@ def _clausulas_filtro(filtros: list[tuple[str, str, str, str]], tabla: str) -> l
         if t.lower() != tabla.lower():
             continue
         operador = (op or "").strip().lower()
+        if not es_identificador(campo):
+            # El campo va entre comillas dentro del SQL: fuera de la allowlist no se interpola.
+            log.warning("filtro.campo_invalido", tabla=tabla, campo=campo)
+            continue
         if operador not in permitidos:
             log.warning("filtro.operador_no_permitido", tabla=tabla, campo=campo, op=op)
             continue
@@ -107,14 +117,27 @@ def extraer_objeto(
     politica = politica_de_objeto(cfg, origen.organizacion_id, objeto)
     if not politica:
         raise ValueError(f"'{objeto}' no tiene política de ingesta.")
-    tablas = tablas_de_objeto(cfg, origen.organizacion_id, objeto)
-    incluidos = campos_incluidos(cfg, origen.organizacion_id, objeto)
+    # Todo identificador que se interpola en el SQL al ERP se valida ANTES de conectar
+    # (defensa en profundidad: el API ya lo valida, el worker no confía en él).
+    validar_identificador(origen.esquema_origen, "esquema de origen")
+    tablas = validar_identificadores(
+        tablas_de_objeto(cfg, origen.organizacion_id, objeto), "tabla de origen"
+    )
+    incluidos_crudos = campos_incluidos(cfg, origen.organizacion_id, objeto)
+    incluidos = [(t, c) for (t, c) in incluidos_crudos if es_identificador(c)]
+    descartados = [f"{t}.{c}" for (t, c) in incluidos_crudos if not es_identificador(c)]
+    if descartados:
+        log.warning("extraer.campos_invalidos_omitidos", objeto=objeto, campos=descartados)
     if not incluidos:
         raise ValueError(f"'{objeto}' no tiene columnas incluidas. Márcalas en Campos primero.")
     filtros = filtros_de_objeto(cfg, origen.organizacion_id, objeto)
 
     estrategia = politica["estrategia"]
     campo_fecha = politica["campo_fecha"]
+    if campo_fecha:
+        validar_identificador(campo_fecha, "campo de fecha")
+    if politica.get("filtro_origen"):
+        validar_filtro_origen(politica["filtro_origen"])
     fecha_desde = desde
     fecha_hasta = hasta
     if estrategia == "incremental_ventana" and campo_fecha and not fecha_desde:
@@ -148,6 +171,9 @@ def extraer_objeto(
         clave_padre, clave_hija = (x.strip() for x in _clave.split(">", 1))
     else:
         clave_padre = clave_hija = _clave
+    if clave_padre:
+        validar_identificador(clave_padre, "campo clave de la tabla principal")
+        validar_identificador(clave_hija, "campo clave de la tabla hija")
     del clave_acceso  # la credencial ya se usó: fuera del alcance del resto
     try:
         total = 0

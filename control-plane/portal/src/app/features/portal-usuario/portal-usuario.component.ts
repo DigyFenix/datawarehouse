@@ -549,8 +549,9 @@ export class PortalUsuarioComponent {
   }
 
   /**
-   * Pide el pase y abre el portal del cliente en otra pestaña. El pase viaja en la
-   * URL porque caduca en dos minutos y sirve una sola vez: no es una credencial.
+   * Pide el pase y abre el portal del cliente en otra pestaña. El pase viaja en el
+   * FRAGMENTO (#pase=): el navegador no lo manda al servidor, así que no queda en logs
+   * de Caddy/nginx ni en el Referer. Además caduca en dos minutos y sirve una sola vez.
    */
   verComo(): void {
     const organizacionId = this.orgs.activaId();
@@ -564,7 +565,7 @@ export class PortalUsuarioComponent {
       .subscribe({
         next: (r) => {
           this.emitiendo.set(false);
-          const url = `${this.portalUsuarioUrl()}/${r.hashTenant}/entrar-como?pase=${r.ticket}`;
+          const url = `${this.portalUsuarioUrl()}/${r.hashTenant}/entrar-como#pase=${encodeURIComponent(r.ticket)}`;
           window.open(url, '_blank', 'noopener');
           this.toast.info('Portal abierto en otra pestaña', `Viendo como ${r.usuario.email}. La sesión es de solo lectura.`);
         },

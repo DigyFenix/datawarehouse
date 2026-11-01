@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import structlog
 
+from ..identificadores import es_identificador, validar_identificador, validar_identificadores
+
 from .sap_b1 import CampoDescubierto, _valor_json
 
 log = structlog.get_logger()
@@ -45,6 +47,7 @@ def conectar(host: str, puerto: int, usuario: str, clave: str):  # noqa: ANN201 
 
 def _columnas_nativas(conn, base: str, tabla: str) -> list[tuple[str, str]]:
     """(nombre, tipo) de todas las columnas de la tabla, en orden. Incluye UDFs (U_*)."""
+    validar_identificador(base, "base de origen")
     sql = (
         f"SELECT COLUMN_NAME, DATA_TYPE FROM [{base}].INFORMATION_SCHEMA.COLUMNS "
         "WHERE TABLE_NAME = %s AND TABLE_SCHEMA = 'dbo' ORDER BY ORDINAL_POSITION"
@@ -64,6 +67,7 @@ def columnas_existentes(conn, esquema: str, tabla: str) -> set[str]:
 
 def _descripciones_udf(conn, base: str, tabla: str) -> dict[str, str]:
     """{ 'U_'+AliasID : Descr } de los campos de usuario definidos para la tabla (CUFD)."""
+    validar_identificador(base, "base de origen")
     sql = f"SELECT [AliasID], [Descr] FROM [{base}].dbo.[CUFD] WHERE [TableID] = %s"
     try:
         with conn.cursor() as cur:
@@ -78,9 +82,14 @@ def _perfilar_no_nulos(
     conn, base: str, tabla: str, columnas: list[tuple[str, str]], muestra: int = 100_000
 ) -> dict[str, bool]:
     """Cuenta no-nulos por columna sobre una muestra (TOP en vez de LIMIT)."""
-    perfilables = [c for c, tipo in columnas if tipo.upper() not in TIPOS_LOB]
+    # Solo se perfilan nombres que pasan la allowlist: el resto queda 'desconocido' (None).
+    perfilables = [
+        c for c, tipo in columnas if tipo.upper() not in TIPOS_LOB and es_identificador(c)
+    ]
     if not perfilables:
         return {}
+    validar_identificador(base, "base de origen")
+    validar_identificador(tabla, "tabla de origen")
     lista = ", ".join(f"COUNT([{c}])" for c in perfilables)
     sql = f"SELECT {lista} FROM (SELECT TOP {int(muestra)} * FROM [{base}].dbo.[{tabla}]) t"
     try:
@@ -98,6 +107,9 @@ def extraer(conn, esquema: str, tabla: str, columnas: list[str], filtro: str | N
     filas como dicts JSON-safe para bronce.<tabla>.datos (jsonb)."""
     if not columnas:
         return []
+    validar_identificador(esquema, "base de origen")
+    validar_identificador(tabla, "tabla de origen")
+    validar_identificadores(columnas, "campo de origen")
     cols = ", ".join(f"[{c}]" for c in columnas)
     sql = f"SELECT {cols} FROM [{esquema}].dbo.[{tabla}]"
     if filtro:

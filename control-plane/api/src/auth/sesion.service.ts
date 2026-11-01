@@ -32,10 +32,20 @@ export interface SesionVigente {
 export class SesionService {
   constructor(@Inject(DRIZZLE) private readonly db: DB) {}
 
-  /** Usuario ACTIVO con sus roles frescos, o null si no existe / está inactivo. */
-  async usuarioVigente(id: number): Promise<SesionVigente | null> {
+  /**
+   * Usuario ACTIVO con sus roles frescos, o null si no existe / está inactivo / el token
+   * es anterior al último cambio de contraseña.
+   * @param emitidoEn `iat` del JWT (segundos epoch); si se omite no se evalúa la revocación
+   */
+  async usuarioVigente(id: number, emitidoEn?: number): Promise<SesionVigente | null> {
     const [usuario] = await this.db.select().from(usuarios).where(eq(usuarios.id, id));
     if (!usuario || !usuario.activo) return null;
+    if (emitidoEn !== undefined && usuario.passwordCambiadaEn) {
+      // `iat` tiene resolución de segundos: se compara contra el segundo truncado del cambio
+      // para no expulsar el token emitido en el mismo segundo del login posterior.
+      const cambioSeg = Math.floor(usuario.passwordCambiadaEn.getTime() / 1000);
+      if (emitidoEn < cambioSeg) return null;
+    }
 
     const asignaciones = await this.db
       .select({ clave: roles.clave, organizacionId: usuarioRoles.organizacionId })

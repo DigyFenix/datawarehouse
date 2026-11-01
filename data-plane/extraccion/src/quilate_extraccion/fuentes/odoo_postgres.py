@@ -23,6 +23,8 @@ from dataclasses import dataclass
 import psycopg
 import structlog
 
+from ..identificadores import es_identificador, validar_identificador, validar_identificadores
+
 log = structlog.get_logger()
 
 
@@ -70,9 +72,12 @@ def _perfilar_no_nulos(
     conn, esquema: str, tabla: str, columnas: list[tuple[str, str]], muestra: int = 100_000
 ) -> dict[str, bool]:
     """Cuenta no-nulos por columna sobre una muestra, para que el portal sugiera campos."""
-    nombres = [c for c, _ in columnas]
+    # Solo se perfilan nombres que pasan la allowlist: el resto queda 'desconocido' (None).
+    nombres = [c for c, _ in columnas if es_identificador(c)]
     if not nombres:
         return {}
+    validar_identificador(esquema, "esquema de origen")
+    validar_identificador(tabla, "tabla de origen")
     lista = ", ".join(f'COUNT("{c}")' for c in nombres)
     sql = f'SELECT {lista} FROM (SELECT * FROM "{esquema}"."{tabla}" LIMIT {int(muestra)}) m'
     try:
@@ -130,6 +135,9 @@ def extraer(
     """Lee (read-only) las columnas indicadas, con filtro opcional. Devuelve dicts JSON-safe."""
     if not columnas:
         return []
+    validar_identificador(esquema, "esquema de origen")
+    validar_identificador(tabla, "tabla de origen")
+    validar_identificadores(columnas, "campo de origen")
     cols = ", ".join(f'"{c}"' for c in columnas)
     sql = f'SELECT {cols} FROM "{esquema}"."{tabla}"'
     if filtro:

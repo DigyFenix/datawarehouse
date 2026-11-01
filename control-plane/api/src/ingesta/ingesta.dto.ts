@@ -24,6 +24,39 @@ export const filtroCamposSchema = z.object({
 
 export type FiltroCamposDto = z.infer<typeof filtroCamposSchema>;
 
+// Identificador SQL que viaja al worker y se interpola en la consulta al ERP (tabla,
+// columna). Allowlist estricta: letras, dígitos y guion bajo. El worker repite la misma
+// validación antes de interpolar (defensa en profundidad, §11/§14).
+export const IDENTIFICADOR_SQL = /^[A-Za-z0-9_]+$/;
+const identificadorSql = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(IDENTIFICADOR_SQL, 'Solo letras, dígitos y guion bajo (identificador SQL)');
+
+// Fuente en origen: una o varias tablas unidas por «+» (cabecera+líneas: 'OINV+INV1').
+const fuenteObjetoSql = z
+  .string()
+  .min(1)
+  .max(200)
+  .regex(
+    /^[A-Za-z0-9_]{1,128}(\+[A-Za-z0-9_]{1,128})*$/,
+    'Tablas de origen separadas por «+»; cada una solo letras, dígitos y guion bajo',
+  );
+
+// Clave natural: 'campo' o 'campo_padre>campo_hija' (encadena la tabla hija).
+const claveNaturalSql = z
+  .string()
+  .min(1)
+  .max(200)
+  .regex(
+    /^[A-Za-z0-9_]{1,128}(>[A-Za-z0-9_]{1,128})?$/,
+    "Formato 'campo' o 'campo_padre>campo_hija' (letras, dígitos y guion bajo)",
+  );
+
+// Fragmentos vetados en el filtro libre de origen además de las palabras reservadas.
+const FILTRO_VETADO = /;|--|\/\*|\*\/|xp_|sp_|openrowset|opendatasource|char\s*\(/i;
+
 const politicaBase = z.object({
   organizacionId: organizacionIdSchema,
   objeto: z.string().min(1).max(100),
@@ -31,12 +64,12 @@ const politicaBase = z.object({
   dominio: z.string().min(1).max(100),
   tipoObjeto,
   estrategia,
-  fuenteObjeto: z.string().min(1).max(200),
-  campoFecha: z.string().max(100).optional(),
+  fuenteObjeto: fuenteObjetoSql,
+  campoFecha: identificadorSql.optional(),
   lookbackValor: z.number().int().positive().optional(),
   lookbackUnidad: lookbackUnidad.optional(),
-  claveNatural: z.string().min(1).max(200),
-  columnasVersionado: z.array(z.string().min(1)).default([]),
+  claveNatural: claveNaturalSql,
+  columnasVersionado: z.array(identificadorSql).default([]),
   modelosDbt: z.string().max(500).nullable().optional(),
   // Condición extra aplicada EN EL ORIGEN sobre la tabla principal (se une con AND a la
   // ventana). Escotilla del paquete base para lo que no se expresa como campo/valor:
@@ -44,10 +77,15 @@ const politicaBase = z.object({
   // Va LITERAL al WHERE de la consulta al ERP: solo una condición. Se rechazan separadores
   // de sentencia, comentarios, subconsultas y verbos de escritura/DDL (pymssql acepta varias
   // sentencias por llamada; una cuenta ERP mal configurada no debe poder escribir).
+  // Solo lo escribe `admin_portal` global (lo verifica IngestaService): un admin de
+  // organización no puede mandar SQL al ERP aunque pase este filtro.
   filtroOrigen: z
     .string()
     .max(500)
-    .refine((f) => !/;|--|\/\*|\*\//.test(f), 'Sin «;», ni comentarios SQL')
+    .refine(
+      (f) => !FILTRO_VETADO.test(f),
+      'Sin «;», comentarios SQL, procedimientos (xp_/sp_), OPENROWSET ni CHAR()',
+    )
     .refine(
       (f) =>
         !/\b(select|insert|update|delete|drop|alter|create|truncate|grant|revoke|exec|execute|union|into|copy|call|merge|pg_sleep|waitfor|dblink)\b/i.test(
@@ -167,7 +205,7 @@ export const descubrirSchema = z.object({
   organizacionId: organizacionIdSchema,
   objeto: z.string().min(1).max(100),
   sociedad: z.string().min(1).max(50),
-  tablas: z.array(z.string().min(1)).optional(),
+  tablas: z.array(identificadorSql).max(50).optional(),
 });
 
 export type DescubrirDto = z.infer<typeof descubrirSchema>;

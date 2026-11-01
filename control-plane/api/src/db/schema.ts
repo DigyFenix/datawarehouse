@@ -49,6 +49,8 @@ export const usuarios = gobierno.table('usuarios', {
   nombre: text('nombre').notNull(),
   hashPassword: text('hash_password').notNull(),
   activo: boolean('activo').notNull().default(true),
+  // Último cambio de contraseña: los JWT con `iat` anterior se rechazan (migración 139).
+  passwordCambiadaEn: timestamp('password_cambiada_en', { withTimezone: true }),
   creadoEn: timestamp('creado_en', { withTimezone: true }).notNull().defaultNow(),
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
 });

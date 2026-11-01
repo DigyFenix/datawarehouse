@@ -6,6 +6,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -64,7 +65,28 @@ export class IngestaService {
       .orderBy(politicaIngesta.id);
   }
 
+  /**
+   * `filtroOrigen` viaja literal al WHERE de la consulta al ERP: solo el operador del
+   * producto (admin_portal global) puede escribirlo. Reenviar el valor vigente no cuenta
+   * como cambio (el formulario manda la política completa).
+   * @throws 403 si un actor sin rol global intenta fijar o cambiar el filtro
+   */
+  private exigirFiltroOrigenGlobal(
+    actor: Actor,
+    nuevo: string | null | undefined,
+    vigente: string | null,
+  ): void {
+    if (actor.esGlobal || nuevo === undefined) return;
+    const normal = (v: string | null): string | null => (v && v.trim() ? v : null);
+    if (normal(nuevo) !== normal(vigente)) {
+      throw new ForbiddenException(
+        'Solo el administrador del producto puede definir el filtro de origen (filtroOrigen)',
+      );
+    }
+  }
+
   async crearPolitica(dto: CrearPoliticaDto, actor: Actor) {
+    this.exigirFiltroOrigenGlobal(actor, dto.filtroOrigen, null);
     await this.exigirOrganizacion(dto.organizacionId);
     const [existe] = await this.db
       .select({ id: politicaIngesta.id })
@@ -98,6 +120,7 @@ export class IngestaService {
     const [antes] = await this.db.select().from(politicaIngesta).where(eq(politicaIngesta.id, id));
     if (!antes) throw new NotFoundException(`Política ${id} no encontrada`);
     exigirAccesoOrg(actor, antes.organizacionId); // IDOR por PK: la fila debe ser de una org del actor
+    this.exigirFiltroOrigenGlobal(actor, dto.filtroOrigen, antes.filtroOrigen);
     const [act] = await this.db
       .update(politicaIngesta)
       .set({ ...dto, actualizadoEn: new Date() })

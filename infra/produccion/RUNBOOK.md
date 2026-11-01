@@ -34,7 +34,9 @@ Lo que **no** viaja: `organizaciones/`, `docs/`, `consumo/powerbi/`, código fue
 | 5432 | **Solo la IP del gateway de Power BI** | `pbi_lector` |
 
 Además, Postgres rechaza por `pg_hba` todo acceso externo que no sea `pbi_lector` a una base
-`dw_*` (init 05): ni el superusuario ni el portal entran desde fuera aunque el firewall falle.
+`dw_*` desde `PBI_GATEWAY_CIDR` (init 05): ni el superusuario ni el portal entran desde fuera
+aunque el firewall falle. **`PBI_GATEWAY_CIDR` debe ser la IP del gateway con `/32`**; vacío
+queda `0.0.0.0/0` (pbi_lector, que es BYPASSRLS, abierto a internet con solo contraseña).
 
 ## 3. Preparar el servidor (una vez)
 
@@ -50,6 +52,34 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 echo '{"userland-proxy": false, "log-driver": "json-file", "log-opts": {"max-size": "10m", "max-file": "3"}}' \
   | sudo tee /etc/docker/daemon.json && sudo systemctl restart docker
 ```
+
+### 3.1 Acceso de `pbi_lector` en un servidor YA instalado (auditoría 2026-10-31, A2)
+
+El init solo corre en el primer arranque. En un servidor existente, aplicar a mano (como
+superusuario por `docker exec`, que entra por el socket local):
+
+```bash
+# 1) Tope de conexiones del gateway (un abuso de la credencial no agota max_connections)
+docker exec quilate-postgres psql -U quilate_admin -d quilate_control -c "ALTER ROLE pbi_lector CONNECTION LIMIT 5;"
+
+# 2) pg_hba: cambiar 0.0.0.0/0 por la IP del gateway /32 y quitar la línea ::/0
+docker exec quilate-postgres sh -c 'cp "$PGDATA/pg_hba.conf" "$PGDATA/pg_hba.conf.bak" &&   sed -i -e "s#pbi_lector   0.0.0.0/0  #pbi_lector   <IP-GATEWAY>/32#" -e "/pbi_lector   ::\/0/d" "$PGDATA/pg_hba.conf" &&   grep pbi_lector "$PGDATA/pg_hba.conf"'
+docker exec -u postgres quilate-postgres sh -c 'pg_ctl reload -D "$PGDATA"'
+# Rollback: restaurar pg_hba.conf.bak + reload · ALTER ROLE pbi_lector CONNECTION LIMIT -1;
+```
+
+Y fijar `PBI_GATEWAY_CIDR=<IP-GATEWAY>/32` en `.env` para que un reinicio desde cero lo respete.
+**Rotación de la contraseña de `pbi_lector`:** `ALTER ROLE pbi_lector PASSWORD '<nueva>';`,
+actualizar `.env` y la credencial del origen en el gateway; al menos una vez al año y cada vez
+que alguien con acceso al gateway deja el proyecto.
+
+### 3.2 Riesgo aceptado: Publish to Web
+
+Decisión de Edwin (2026-10-31): los tableros se publican con **Publish to Web** de Power BI.
+Ese vínculo es **público**: quien lo obtenga ve el reporte sin autenticarse y sin RLS, aunque
+el portal solo lo muestre a usuarios autenticados. Mitigación: los códigos nunca viajan en JSON
+del portal (se redirige desde el visor), y si uno se filtra se rota (§8, «Rotar vínculo de
+Power BI filtrado»). No poner en Publish to Web datos que no se puedan ver públicamente.
 
 ## 4. DNS (Cloudflare)
 
@@ -98,7 +128,9 @@ crea los roles `portal_app`, `pbi_lector`, `portal_lector`.
 
 - Gateway (Windows, siempre encendido, IP fija o conocida) → origen PostgreSQL
   `<ip-servidor>:5432`, base `dw_<codigo>`, usuario **`pbi_lector`** (nunca el superusuario).
-- Agregar la IP del gateway al firewall de Lightsail (5432).
+- Agregar la IP del gateway al firewall de Lightsail (5432) **y** a `PBI_GATEWAY_CIDR` (`<ip>/32`)
+  en `.env` (servidor existente: §3.1). Si la IP del gateway cambia, actualizar ambos.
+- Publish to Web es un riesgo aceptado (§3.2): el vínculo es público, sin RLS.
 - Refresco programado **al menos 1 h después** de `HORAS_CARGA`.
 - Publish to Web → registrar cada página/reporte en **Portal usuario → Tableros**.
 
@@ -108,14 +140,18 @@ crea los roles `portal_app`, `pbi_lector`, `portal_lector`.
 |---|---|
 | Carga diaria | Automática (`quilate-programador`, `HORAS_CARGA`). Log: `docker logs quilate-programador` |
 | Carga manual | `docker exec quilate-worker python3 /dbt/herramientas/actualizar.py <codigo>` (si hay otra en curso, sale con «OMITIDO») |
-| Respaldos | `./backups` diario, 14 días + snapshots de Lightsail |
+| Respaldos | `./backups` diario, 14 días + snapshots de Lightsail. Con `RESPALDO_PASSPHRASE` salen cifrados (`*.dump.enc`) |
 | Espacio | `df -h /` y `docker system df` — alerta si el disco pasa de 70 % |
 | Rotar vínculo de Power BI filtrado | Power BI → Administrar códigos para insertar → eliminar → crear otro → actualizar en Portal usuario → Tableros |
 
 **Probar la restauración** al menos una vez:
 ```bash
 docker exec quilate-postgres createdb -U quilate_admin prueba_restore
+# Respaldo en claro (*.dump):
 docker exec -i quilate-postgres pg_restore -U quilate_admin -d prueba_restore < backups/<archivo>.dump
+# Respaldo cifrado (*.dump.enc): se descifra con la misma passphrase de .env (openssl en el host)
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:RESPALDO_PASSPHRASE -in backups/<archivo>.dump.enc   | docker exec -i quilate-postgres pg_restore -U quilate_admin -d prueba_restore
+#   (antes: export RESPALDO_PASSPHRASE='...' en la sesión, o -pass file:<ruta> con permisos 600)
 docker exec quilate-postgres psql -U quilate_admin -d prueba_restore -c "SELECT count(*) FROM oro.hecho_venta_linea;"
 docker exec quilate-postgres dropdb -U quilate_admin prueba_restore
 ```

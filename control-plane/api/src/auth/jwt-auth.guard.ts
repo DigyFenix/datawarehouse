@@ -48,16 +48,23 @@ export class JwtAuthGuard implements CanActivate {
     const token = auth.slice('Bearer '.length);
 
     let sub: number;
+    let iat: number;
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: number; email: string }>(token, {
-        secret: this.config.get('JWT_SECRET', { infer: true }),
-      });
+      const payload = await this.jwt.verifyAsync<{ sub: number; email: string; iat?: number }>(
+        token,
+        { secret: this.config.get('JWT_SECRET', { infer: true }) },
+      );
       sub = payload.sub;
+      // Sin `iat` no se puede probar que el token sea posterior al último cambio de
+      // contraseña: se trata como inválido (jsonwebtoken siempre lo emite).
+      if (typeof payload.iat !== 'number') throw new Error('token sin iat');
+      iat = payload.iat;
     } catch {
       throw new UnauthorizedException('Token inválido o expirado');
     }
 
-    const vigente = await this.sesion.usuarioVigente(sub);
+    // Revocación: token emitido antes del último cambio de contraseña ⇒ 401 (migración 139).
+    const vigente = await this.sesion.usuarioVigente(sub, iat);
     if (!vigente) {
       // Mismo mensaje que un token malo: no filtra si el usuario existe o fue desactivado.
       throw new UnauthorizedException('Token inválido o expirado');

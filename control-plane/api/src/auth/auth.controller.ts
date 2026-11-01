@@ -9,8 +9,9 @@ import { UsuarioAutenticado } from './jwt-auth.guard';
 import { Publico } from './publico.decorator';
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email().max(254),
+  // Tope: argon2 sobre entradas enormes es un vector de agotamiento de CPU/RAM.
+  password: z.string().min(1).max(128),
 });
 type LoginDto = z.infer<typeof loginSchema>;
 

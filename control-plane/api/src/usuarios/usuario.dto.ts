@@ -4,7 +4,10 @@ import { z } from 'zod';
 export const crearUsuarioSchema = z.object({
   email: z.string().email(),
   nombre: z.string().min(2).max(200),
-  password: z.string().min(8, 'la contraseña debe tener al menos 8 caracteres'),
+  password: z
+    .string()
+    .min(8, 'la contraseña debe tener al menos 8 caracteres')
+    .max(128, 'la contraseña admite como máximo 128 caracteres'),
 });
 
 export const actualizarUsuarioSchema = z.object({

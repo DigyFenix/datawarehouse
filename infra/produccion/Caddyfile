@@ -20,7 +20,11 @@
 
 (seguridad) {
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# `preload` solo surte efecto si el dominio raíz (digyfenix.com) se inscribe en
+		# hstspreload.org; inscribirlo obliga HTTPS en TODOS sus subdominios, para siempre.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		# El portal no usa cámara, micrófono ni ubicación: se niegan también a iframes.
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		# Nadie puede meter nuestro portal en un iframe ajeno (clickjacking).

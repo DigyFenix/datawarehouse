@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 # Migraciones de TENANT (archivos de metadata-store/schema) que esta versión necesita, en orden.
-MIGRACIONES=(138_uso_ia_tenant.sql)
+MIGRACIONES=(138_uso_ia_tenant.sql 140_auditoria_recientes_tenant.sql 141_password_cambiada_en_tenant.sql 142_chat_contexto_tenant.sql)
 VERSION="${1:-$(ls -t dist/quilate-imagenes-*.tar.gz | head -1 | sed -E 's#.*quilate-imagenes-(.*)\.tar\.gz#\1#')}"
 SRV=ubuntu@77.112.237.34
 SSH=(ssh -i ~/.ssh/quilate_deploy -o BatchMode=yes "$SRV")

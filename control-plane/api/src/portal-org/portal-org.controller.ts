@@ -15,6 +15,7 @@ import { Request } from 'express';
 
 import { AlcanceOrg } from '../auth/alcance-org.decorator';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
+import { RolesGlobales } from '../auth/roles.decorator';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { Actor } from '../organizaciones/organizaciones.service';
 import {
@@ -70,8 +71,10 @@ export class PortalOrgController {
    * Emite un pase de un solo uso para abrir el portal de la organización viendo
    * exactamente lo que ve ese usuario. No expone su contraseña y la sesión
    * resultante es de solo lectura, marcada y auditada en ambos planos.
+   * Reservado al operador del producto (admin_portal global).
    */
   @Post('usuarios/:usuarioId/impersonar')
+  @RolesGlobales('admin_portal')
   impersonar(
     @Param('id', ParseIntPipe) id: number,
     @Param('usuarioId', ParseIntPipe) usuarioId: number,
@@ -83,9 +86,12 @@ export class PortalOrgController {
   /**
    * Restablece la contraseña de un usuario del portal (incluido el admin de la
    * organización). Devuelve la temporal una sola vez; el cambio es obligatorio al entrar.
-   * @returns { email, passwordTemporal } · 404 si el usuario no existe
+   * La temporal viaja solo en esta respuesta: no se guarda, no se audita ni se registra en logs.
+   * Reservado al operador del producto (admin_portal global).
+   * @returns { email, passwordTemporal } · 403 sin rol global · 404 si el usuario no existe
    */
   @Post('usuarios/:usuarioId/restablecer-password')
+  @RolesGlobales('admin_portal')
   restablecerPassword(
     @Param('id', ParseIntPipe) id: number,
     @Param('usuarioId', ParseIntPipe) usuarioId: number,

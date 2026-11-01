@@ -10,6 +10,7 @@
 #   pbi_lector  Gateway de Power BI. Solo lectura de oro (GRANT por tenant
 #               en 133_roles_aplicacion_tenant.sql y en cada build de dbt).
 #               BYPASSRLS: Power BI no fija `app.empresas` y vería cero filas.
+#               CONNECTION LIMIT 5 (auditoría 2026-10-31 A2).
 #
 # Contraseñas: PORTAL_APP_PASSWORD y PBI_LECTOR_PASSWORD. Si una no está
 # definida, ese rol no se crea (el resto del init no depende de ellos).
@@ -43,6 +44,10 @@ fi
 if [ -n "${PBI_LECTOR_PASSWORD:-}" ]; then
   echo "[init] Creando rol pbi_lector"
   crear_rol pbi_lector "$PBI_LECTOR_PASSWORD" "BYPASSRLS"
+  # Tope de conexiones: el gateway usa pocas; un abuso de la credencial (expuesta a internet
+  # por el puerto del gateway) no puede agotar max_connections y tumbar el portal.
+  # Servidor ya existente: aplicar a mano (RUNBOOK §4).
+  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB"        -c "ALTER ROLE pbi_lector CONNECTION LIMIT 5;" >/dev/null
 else
   echo "[init] PBI_LECTOR_PASSWORD no definida — se omite pbi_lector"
 fi

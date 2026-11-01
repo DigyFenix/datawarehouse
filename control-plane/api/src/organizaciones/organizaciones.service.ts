@@ -1,7 +1,7 @@
 /** Lógica de negocio de organizaciones (tenants). Cada mutación queda auditada (§12). */
 import { randomBytes } from 'node:crypto';
 
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq, inArray } from 'drizzle-orm';
 import { Pool } from 'pg';
 
@@ -81,8 +81,25 @@ export class OrganizacionesService {
     return creada;
   }
 
+  /**
+   * Actualiza la organización. Un `admin_organizacion` solo edita la ficha visible
+   * (nombre, sector, color de marca); la conexión, la base del plano de datos, el ERP,
+   * el estado y los módulos contratados quedan reservados al operador del producto.
+   * Se compara contra el valor vigente: reenviar el mismo valor (formulario completo) no falla.
+   * @throws 403 si un actor sin rol global intenta cambiar un campo reservado
+   */
   async actualizar(id: number, dto: ActualizarOrganizacionDto, actor: Actor) {
     const antes = await this.obtener(id);
+    if (!actor.esGlobal) {
+      const reservados = (
+        ['baseDatosDw', 'secretoConexionRef', 'estado', 'moduloAsistente', 'erpTipo'] as const
+      ).filter((campo) => dto[campo] !== undefined && dto[campo] !== antes[campo]);
+      if (reservados.length > 0) {
+        throw new ForbiddenException(
+          `Solo el administrador del producto puede cambiar: ${reservados.join(', ')}`,
+        );
+      }
+    }
     const [actualizada] = await this.db
       .update(organizaciones)
       .set({ ...dto, actualizadoEn: new Date() })

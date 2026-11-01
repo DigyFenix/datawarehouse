@@ -23,6 +23,32 @@ x-logs: &logs
     max-size: "10m"
     max-file: "3"
 
+# Endurecimiento común (auditoría 2026-10-31 M5): ningún proceso gana privilegios por
+# setuid/capacidades de archivo después de arrancar.
+x-sin-escalada: &sin-escalada
+  - no-new-privileges:true
+
+# nginx (imagen oficial) arranca como root y baja a su usuario: necesita CHOWN (crea y
+# entrega sus temporales), SETUID/SETGID (cambio de usuario) y NET_BIND_SERVICE (puerto 80).
+# Probado con quilate-web y quilate-web-usuario: con menos capacidades no arranca.
+x-nginx-endurecido: &nginx-endurecido
+  read_only: true
+  security_opt: *sin-escalada
+  cap_drop: [ALL]
+  cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]
+  tmpfs:
+    - /var/cache/nginx
+    - /var/run
+    - /tmp
+
+# APIs Node: corren como `node` en el puerto >1024, solo leen su código. Sin capacidades.
+x-node-endurecido: &node-endurecido
+  read_only: true
+  security_opt: *sin-escalada
+  cap_drop: [ALL]
+  tmpfs:
+    - /tmp
+
 x-postgres-cliente: &postgres-cliente
   POSTGRES_HOST: postgres
   POSTGRES_PORT: 5432
@@ -33,6 +59,8 @@ services:
     image: postgres:16-alpine
     container_name: quilate-postgres
     restart: unless-stopped
+    # Sin read_only ni cap_drop: el entrypoint de Postgres hace chown/su-exec sobre PGDATA.
+    security_opt: *sin-escalada
     # WAL acotado: el default (1 GB) es reserva fija que un tenant chico nunca necesita.
     # TLS con el certificado de Let's Encrypt de Caddy (tls-postgres.sh lo copia a ./pg-tls).
     command: ["postgres", "-c", "max_wal_size=256MB", "-c", "min_wal_size=64MB",
@@ -46,8 +74,10 @@ services:
       PORTAL_LECTOR_PASSWORD: ${PORTAL_LECTOR_PASSWORD}
       PORTAL_APP_PASSWORD: ${PORTAL_APP_PASSWORD}
       PBI_LECTOR_PASSWORD: ${PBI_LECTOR_PASSWORD}
-      # pg_hba (init 05): desde fuera de esta subred solo entra pbi_lector a dw_*.
+      # pg_hba (init 05): desde fuera de esta subred solo entra pbi_lector a dw_*,
+      # y solo desde PBI_GATEWAY_CIDR (IP del gateway /32; sin definir = 0.0.0.0/0 ⚠).
       RED_INTERNA: 172.28.0.0/16
+      PBI_GATEWAY_CIDR: ${PBI_GATEWAY_CIDR:-0.0.0.0/0}
     logging: *logs
     mem_limit: 700m
     # 5432 publicado SOLO para el gateway de Power BI. El firewall de Lightsail lo
@@ -73,6 +103,7 @@ services:
     image: quilate-api:${VERSION:-latest}
     container_name: quilate-portal-api
     restart: unless-stopped
+    <<: *node-endurecido
     logging: *logs
     mem_limit: 384m
     environment:
@@ -105,6 +136,7 @@ services:
     image: quilate-web:${VERSION:-latest}
     container_name: quilate-portal-web
     restart: unless-stopped
+    <<: *nginx-endurecido
     logging: *logs
     mem_limit: 64m
     depends_on:
@@ -115,6 +147,7 @@ services:
     image: quilate-api-usuario:${VERSION:-latest}
     container_name: quilate-portal-usuario-api
     restart: unless-stopped
+    <<: *node-endurecido
     logging: *logs
     mem_limit: 384m
     environment:
@@ -150,6 +183,7 @@ services:
     image: quilate-web-usuario:${VERSION:-latest}
     container_name: quilate-portal-usuario-web
     restart: unless-stopped
+    <<: *nginx-endurecido
     logging: *logs
     mem_limit: 64m
     depends_on:
@@ -160,6 +194,8 @@ services:
     image: quilate-worker:${VERSION:-latest}
     container_name: quilate-worker
     restart: unless-stopped
+    # Sin read_only: dbt escribe target/, logs/ y el profiles en /tmp/dbt.
+    security_opt: *sin-escalada
     logging: *logs
     mem_limit: 512m
     environment: &entorno-worker
@@ -186,6 +222,7 @@ services:
     image: quilate-worker:${VERSION:-latest}
     container_name: quilate-programador
     restart: unless-stopped
+    security_opt: *sin-escalada
     logging: *logs
     mem_limit: 768m
     environment:
@@ -206,6 +243,13 @@ services:
     image: caddy:2-alpine
     container_name: quilate-caddy
     restart: unless-stopped
+    # Caddy corre como root pero solo necesita abrir 80/443; escribe en los volúmenes /data y /config.
+    read_only: true
+    security_opt: *sin-escalada
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    tmpfs:
+      - /tmp
     logging: *logs
     mem_limit: 128m
     environment:
@@ -229,6 +273,8 @@ services:
     image: postgres:16-alpine
     container_name: quilate-respaldo
     restart: unless-stopped
+    # Sin read_only: instala openssl con apk cuando se pide cifrado (respaldo.sh).
+    security_opt: *sin-escalada
     logging: *logs
     mem_limit: 256m
     environment:
@@ -237,6 +283,8 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
       BASE_CONTROL: ${POSTGRES_DB}
       RETENCION_DIAS: ${RESPALDO_RETENCION_DIAS:-14}
+      # Opcional: cifra cada volcado (AES-256 + PBKDF2). Restaurar: RUNBOOK §8.
+      RESPALDO_PASSPHRASE: ${RESPALDO_PASSPHRASE:-}
     volumes:
       - ./backups:/backups
       - ./respaldo.sh:/usr/local/bin/respaldo.sh:ro

@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import structlog
 
+from ..identificadores import es_identificador, validar_identificador, validar_identificadores
+
 log = structlog.get_logger()
 
 
@@ -69,6 +71,7 @@ def columnas_existentes(conn, esquema: str, tabla: str) -> set[str]:
 
 def _descripciones_udf(conn, esquema: str, tabla: str) -> dict[str, str]:
     """{ 'U_'+AliasID : Descr } de los campos de usuario definidos para la tabla (CUFD)."""
+    validar_identificador(esquema, "esquema de origen")
     sql = f'SELECT "AliasID", "Descr" FROM "{esquema}"."CUFD" WHERE "TableID" = ?'
     try:
         with conn.cursor() as cur:
@@ -84,9 +87,14 @@ def _perfilar_no_nulos(
 ) -> dict[str, bool]:
     """Cuenta no-nulos por columna sobre una muestra. Excluye tipos LOB (no agregables).
     Devuelve solo las columnas perfilables; las omitidas quedan como 'desconocido' (None) arriba."""
-    perfilables = [c for c, tipo in columnas if tipo.upper() not in TIPOS_LOB]
+    # Solo se perfilan nombres que pasan la allowlist: el resto queda 'desconocido' (None).
+    perfilables = [
+        c for c, tipo in columnas if tipo.upper() not in TIPOS_LOB and es_identificador(c)
+    ]
     if not perfilables:
         return {}
+    validar_identificador(esquema, "esquema de origen")
+    validar_identificador(tabla, "tabla de origen")
     lista = ", ".join(f'COUNT("{c}")' for c in perfilables)
     sql = f'SELECT {lista} FROM (SELECT * FROM "{esquema}"."{tabla}" LIMIT {int(muestra)})'
     try:
@@ -119,6 +127,9 @@ def extraer(conn, esquema: str, tabla: str, columnas: list[str], filtro: str | N
     como dicts JSON-safe (para aterrizar en bronce.<tabla>.datos jsonb)."""
     if not columnas:
         return []
+    validar_identificador(esquema, "esquema de origen")
+    validar_identificador(tabla, "tabla de origen")
+    validar_identificadores(columnas, "campo de origen")
     cols = ", ".join(f'"{c}"' for c in columnas)
     sql = f'SELECT {cols} FROM "{esquema}"."{tabla}"'
     if filtro:

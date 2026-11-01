@@ -24,7 +24,12 @@ export const crearSociedadSchema = z.object({
   // Moneda de consolidación; distinta de `moneda` = convertir con la serie de la sociedad.
   monedaPresentacion: z.string().trim().toUpperCase().length(3).nullable().optional(),
   conexionId: z.number().int().positive().nullable().optional(),
-  esquemaOrigen: z.string().max(100).optional(),
+  // Esquema (HANA/Odoo) o base (SQL Server) de origen: se interpola en el SQL al ERP.
+  esquemaOrigen: z
+    .string()
+    .max(128)
+    .regex(/^[A-Za-z0-9_]*$/, 'Solo letras, dígitos y guion bajo')
+    .optional(),
   activo: z.boolean().default(true),
   orden: z.number().int().min(0).default(0),
 });
