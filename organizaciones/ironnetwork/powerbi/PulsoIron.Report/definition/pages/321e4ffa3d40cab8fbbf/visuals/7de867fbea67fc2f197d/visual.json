@@ -287,7 +287,7 @@
     },
     "drillFilterOtherVisuals": true,
     "syncGroup": {
-      "groupName": "sector",
+      "groupName": "sector-cliente",
       "fieldChanges": true,
       "filterChanges": true
     }

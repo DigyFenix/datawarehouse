@@ -49,8 +49,8 @@ table 'FC_Venta diaria'
 		displayFolder: 03 Ritmo
 		lineageTag: 3a43e148-724f-45cf-be02-7cb227b36d4e
 
-	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado: con el período abierto devolvía la venta de toda la historia repartida entre todos los días hábiles del calendario — un número plausible y falso (≈Q9.8M contra una venta mensual real cercana a Q50M). Ahora se calla en vez de mentir.
-	measure 'Proyección de cierre de mes' = IF(DISTINCTCOUNT(DM_Calendario[anio_mes]) <> 1, BLANK(), DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE), KEEPFILTERS(DM_Calendario[fecha] <= TODAY()))) * MAX(DM_Calendario[dias_habiles_del_mes]))
+	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado: con el período abierto devolvía la venta de toda la historia repartida entre todos los días hábiles del calendario — un número plausible y falso (≈Q9.8M contra una venta mensual real cercana a Q50M). Ahora se calla en vez de mentir. Los días hábiles trabajados se cuentan hasta el CORTE del dato, no hasta hoy: con la extracción atrasada, contar hasta TODAY() repartía la venta entre días sin dato y subestimaba el cierre.
+	measure 'Proyección de cierre de mes' = VAR corte = [Corte de ventas] RETURN IF(DISTINCTCOUNT(DM_Calendario[anio_mes]) <> 1, BLANK(), DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(DM_Calendario), KEEPFILTERS(DM_Calendario[es_dia_habil] = TRUE), KEEPFILTERS(DM_Calendario[fecha] <= corte))) * MAX(DM_Calendario[dias_habiles_del_mes]))
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo
 		lineageTag: 10dcfc99-b550-4167-941d-943d557e7a81

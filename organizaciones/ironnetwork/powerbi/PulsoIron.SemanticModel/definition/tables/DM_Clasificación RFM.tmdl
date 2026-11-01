@@ -96,12 +96,6 @@ table 'DM_Clasificación RFM'
 		displayFolder: 03 Ficha
 		lineageTag: 9e0ded4f-1296-4aef-9a46-747aa1e4e773
 
-	/// Venta neta del cliente en los últimos 12 meses según el RFM.
-	measure 'Venta del cliente 12m' = SUM('DM_Clasificación RFM'[monto_neto_12m])
-		formatString: "Q" #,0
-		displayFolder: 03 Ficha
-		lineageTag: fc12aa83-0b03-4c94-99a6-671ef42f9960
-
 	/// Fecha de la última compra del cliente.
 	measure 'Última compra del cliente' = MAX('DM_Clasificación RFM'[ultima_compra])
 		formatString: dd/MM/yyyy

@@ -1,91 +1,197 @@
-"""Valida que el reporte (report.json) solo referencie tablas, columnas y medidas que existen
-en el modelo semántico (TMDL).
+"""Valida el reporte Power BI (PBIR) contra el modelo semántico (TMDL) y contra las reglas del producto.
 
 Por qué existe: Power BI no avisa de una referencia rota al guardar. El visual simplemente
 aparece VACÍO al abrir el reporte, y eso se descubre en la presentación. Como el modelo se
 genera por código y el reporte también, cruzarlos aquí es barato y atrapa el fallo antes.
 
-Comprueba además que ningún visual se salga del lienzo ni se solape con otro: dos tarjetas
-superpuestas es el defecto visual que más rápido delata un tablero generado sin revisar.
+Siempre (sesión 38, auditoría §6 — antes miraba un lienzo de 720 y la paleta de Cresta):
+  - cada referencia existe: tabla, columna, y la MEDIDA en la tabla que el visual declara;
+  - lienzo 1280×960 y ningún visual pisa el pie (y = 944);
+  - ningún hex fuera de la paleta de pbir.js (paleta.json) o del tema registrado;
+  - ningún TEXTO con un color claro (ámbar, pizarra claro…: contraste < 3:1 sobre blanco);
+  - el tema fuente (organizaciones/<org>/powerbi/theme) y el de RegisteredResources son el mismo archivo;
+  - ninguna página tiene menos visuales que los registrados por regenerar_paginas.js (Desktop ya
+    borró visuales dos veces);
+  - ids únicos, pages.json coherente, destinos de navegación, propiedades del esquema, customTheme.
+Con `--gate-f61`: además grilla de 8, solapes generales, números escritos a mano y títulos.
 
-Uso:  python validar_reporte.py <carpeta_proyecto>
+Uso:  python validar_reporte.py <carpeta_proyecto> [--gate-f61]
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
 from pathlib import Path
 
-LIENZO_W, LIENZO_H = 1280, 720
+LIENZO_W, LIENZO_H = 1280, 960
+LIENZO_LEGADO_W, LIENZO_LEGADO_H = 1280, 720   # report.json legado (generar_reporte.py, retirado)
+PIE_Y = LIENZO_H - 16
+AQUI = Path(__file__).resolve().parent
 
 
-def leer_modelo(defi: Path) -> tuple[set[str], dict[str, set[str]], set[str]]:
-    """(tablas, columnas por tabla, medidas) declaradas en el TMDL."""
+def leer_modelo(defi: Path) -> tuple[set[str], dict[str, set[str]], set[str], dict[str, set[str]]]:
+    """(tablas, columnas por tabla, medidas, medidas por tabla) declaradas en el TMDL."""
     tablas: set[str] = set()
     columnas: dict[str, set[str]] = {}
     medidas: set[str] = set()
+    por_tabla: dict[str, set[str]] = {}
     for f in sorted((defi / "tables").glob("*.tmdl")):
         actual = ""
         for linea in f.read_text(encoding="utf-8").split("\n"):
             s = linea.strip()
-            m = re.match(r"^table\s+(?:'([^']+)'|(\S+))", s)
+            m = re.match(r"^table\s+(?:'((?:[^']|'')+)'|(\S+))", s)
             if m:
-                actual = m.group(1) or m.group(2)
+                actual = (m.group(1) or m.group(2)).replace("''", "'")
                 tablas.add(actual)
                 columnas.setdefault(actual, set())
+                por_tabla.setdefault(actual, set())
                 continue
-            m = re.match(r"^column\s+(?:'([^']+)'|(\S+))", s)
+            m = re.match(r"^column\s+(?:'((?:[^']|'')+)'|([^\s=]+))", s)
             if m and actual:
-                columnas[actual].add(m.group(1) or m.group(2))
+                columnas[actual].add((m.group(1) or m.group(2)).replace("''", "'"))
                 continue
-            m = re.match(r"^measure\s+(?:'([^']+)'|([^\s=]+))", s)
+            m = re.match(r"^measure\s+(?:'((?:[^']|'')+)'|([^\s=]+))", s)
             if m:
-                medidas.add(m.group(1) or m.group(2))
-    return tablas, columnas, medidas
+                nombre = (m.group(1) or m.group(2)).replace("''", "'")
+                medidas.add(nombre)
+                por_tabla.setdefault(actual, set()).add(nombre)
+    return tablas, columnas, medidas, por_tabla
 
 
-def _refs_pbir(nodo, tablas: set[str], columnas: dict[str, set[str]],
-               medidas: set[str], etq: str, fallos: list[str]) -> None:
-    """Recorre un visual.json PBIR buscando referencias {Expression: SourceRef.Entity, Property}
-    y valida que existan en el modelo. Una referencia rota no da error en Desktop: el visual
-    simplemente aparece vacío."""
+def _refs_pbir(nodo, modelo, etq: str, fallos: list[str]) -> None:
+    """Recorre un visual.json buscando {Measure|Column: {Expression.SourceRef.Entity, Property}}.
+    Una medida citada desde una tabla que no es la suya deja el visual vacío igual que una que no
+    existe: en PBIR la referencia es (tabla, medida), no solo el nombre."""
+    tablas, columnas, _medidas, por_tabla = modelo
     if isinstance(nodo, dict):
-        ent = (nodo.get("Expression", {}).get("SourceRef", {}) or {}).get("Entity")
-        prop = nodo.get("Property")
-        if ent and prop:
+        for clase in ("Measure", "Column"):
+            ref = nodo.get(clase)
+            if not isinstance(ref, dict):
+                continue
+            ent = ((ref.get("Expression") or {}).get("SourceRef") or {}).get("Entity")
+            prop = ref.get("Property")
+            if not (ent and prop):
+                continue
             if ent not in tablas:
                 fallos.append(f"{etq}: tabla '{ent}' no existe en el modelo")
-            elif prop not in columnas.get(ent, set()) and prop not in medidas:
-                fallos.append(f"{etq}: {ent}[{prop}] no existe en el modelo")
+            elif clase == "Measure" and prop not in por_tabla.get(ent, set()):
+                donde = [t for t, ms in por_tabla.items() if prop in ms]
+                fallos.append(f"{etq}: medida {ent}[{prop}] no existe" + (f" (vive en {donde[0]})" if donde else ""))
+            elif clase == "Column" and prop not in columnas.get(ent, set()):
+                fallos.append(f"{etq}: columna {ent}[{prop}] no existe en el modelo")
         for v in nodo.values():
-            _refs_pbir(v, tablas, columnas, medidas, etq, fallos)
+            _refs_pbir(v, modelo, etq, fallos)
     elif isinstance(nodo, list):
         for v in nodo:
-            _refs_pbir(v, tablas, columnas, medidas, etq, fallos)
+            _refs_pbir(v, modelo, etq, fallos)
 
 
-# --- gate F6.1 (contrato §6): reglas duras sobre el PBIR generado -----------------------------
+# --- color: paleta compartida con pbir.js y contraste del texto ---------------------------------
 
-# Los únicos hex tolerados inline: los tokens del contrato (`sistema-visual.md`). Todo lo demás
-# debe salir del tema. Un hex fuera de esta lista es un color inventado y falla el gate.
-HEX_PERMITIDOS = {
-    # marca y estado
-    "#0043af", "#d51c29", "#0ca30c", "#eda100", "#eb6834",
-    # paleta categórica
-    "#004ec9", "#1baf7a", "#e87ba4", "#008300", "#4a3aa7", "#0093ab",
-    # rampa secuencial
-    "#d6e6ff", "#8eb8ff", "#5391ff", "#0b69ff", "#00348c", "#00266d",
-    # tintas y neutros
-    "#1a1a1a", "#5b6472", "#8a9099", "#c9ced6", "#e3e6eb", "#e8e9ec",
-    "#eceef2", "#f2f3f5", "#f4f6f9", "#fafbfc", "#ffffff",
-}
+def _luminancia(hexa: str) -> float:
+    c = [int(hexa[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
 
-# El chrome se superpone a propósito (título y navegación viven SOBRE la banda) y las tarjetas
-# no llevan título de contenedor. Estos tipos quedan exentos de solape/título respectivamente.
+
+def contraste_sobre_blanco(hexa: str) -> float:
+    return 1.05 / (_luminancia(hexa) + 0.05)
+
+
+def cargar_paleta(tema: dict | None) -> tuple[set[str], set[str]]:
+    """(hex permitidos, hex prohibidos en texto). Permitidos = paleta.json de pbir.js ∪ colores del tema."""
+    permitidos: set[str] = set()
+    prohibidos: set[str] = set()
+    ruta = AQUI / "paleta.json"
+    if ruta.exists():
+        pal = json.loads(ruta.read_text(encoding="utf-8"))
+        permitidos |= {v.lower() for v in pal.get("colores", {}).values()}
+        prohibidos |= {v.lower() for v in pal.get("prohibidosEnTexto", [])}
+    if tema:
+        permitidos |= {h.lower() for h in re.findall(r"#[0-9a-fA-F]{6}\b", json.dumps(tema))}
+    return permitidos, prohibidos
+
+
+# Propiedades que pintan LETRAS. `color` cuenta solo dentro de objetos de texto/etiquetas.
+_PROPS_TEXTO = {"fontColor", "fontColorPrimary", "fontColorSecondary", "labelColor", "titleColor", "secLabelColor"}
+_OBJETOS_ETIQUETA = {"labels", "value", "categoryLabels", "dataLabels"}
+
+
+def _colores(nodo, etq: str, permitidos: set[str], prohibidos: set[str], fallos: list[str],
+             objeto: str = "", prop: str = "") -> None:
+    if isinstance(nodo, dict):
+        for k, v in nodo.items():
+            if k == "textStyle" and isinstance(v, dict) and isinstance(v.get("color"), str):
+                _chequear_texto(v["color"], etq, "texto", prohibidos, fallos)
+            sig_obj = k if prop == "" and objeto == "" and isinstance(v, list) and k not in ("projections", "paragraphs", "textRuns") else objeto
+            sig_prop = k if k in _PROPS_TEXTO or k == "color" else prop
+            _colores(v, etq, permitidos, prohibidos, fallos, sig_obj, sig_prop)
+    elif isinstance(nodo, list):
+        for v in nodo:
+            _colores(v, etq, permitidos, prohibidos, fallos, objeto, prop)
+    elif isinstance(nodo, str):
+        for h in re.findall(r"#[0-9a-fA-F]{6}\b", nodo):
+            if permitidos and h.lower() not in permitidos:
+                fallos.append(f"{etq}: hex {h} fuera de la paleta (pbir.js / tema)")
+            if prop in _PROPS_TEXTO or (prop == "color" and objeto in _OBJETOS_ETIQUETA):
+                _chequear_texto(h, etq, objeto, prohibidos, fallos)
+
+
+def _chequear_texto(h: str, etq: str, objeto: str, prohibidos: set[str], fallos: list[str]) -> None:
+    h = h.lower()
+    # El blanco solo aparece como texto DENTRO de barras apiladas (etiqueta sobre el relleno oscuro).
+    if h == "#ffffff":
+        return
+    if h in prohibidos or contraste_sobre_blanco(h) < 3.0:
+        fallos.append(f"{etq}: texto en color claro {h} ({contraste_sobre_blanco(h):.2f}:1) en «{objeto}» — usar la variante oscura")
+
+
+def validar_tema(proyecto: Path, defi_rep: Path, nombre_tema: str | None) -> tuple[list[str], dict | None]:
+    """Una sola fuente del tema: la copia de `<proyecto>/theme/` y la de RegisteredResources deben ser
+    idénticas (hash). Antes divergían: la fuente traía la paleta Kraken y el reporte el Azul profundo."""
+    fallos: list[str] = []
+    if not nombre_tema:
+        return fallos, None
+    registrado = defi_rep.parent / "StaticResources" / "RegisteredResources" / nombre_tema
+    if not registrado.exists():
+        return [f"tema: customTheme '{nombre_tema}' no está en StaticResources/RegisteredResources"], None
+    tema = json.loads(registrado.read_text(encoding="utf-8"))
+    fuente = proyecto / "theme" / nombre_tema
+    if not fuente.exists():
+        fallos.append(f"tema: falta la fuente {fuente} (debe ser copia exacta de RegisteredResources)")
+    else:
+        h1 = hashlib.sha256(fuente.read_bytes()).hexdigest()[:12]
+        h2 = hashlib.sha256(registrado.read_bytes()).hexdigest()[:12]
+        if h1 != h2:
+            fallos.append(f"tema: la fuente ({h1}) y RegisteredResources ({h2}) difieren — sincronizar copiando la fuente")
+    return fallos, tema
+
+
+def validar_conteo(defi_rep: Path, conteo_actual: dict[str, int]) -> list[str]:
+    """Compara contra conteo_visuales.json (lo escribe regenerar_paginas.js). Menos visuales que lo
+    registrado = algo los borró (Desktop lo hizo dos veces, B6)."""
+    ruta = AQUI / "conteo_visuales.json"
+    if not ruta.exists():
+        return []
+    esperado = json.loads(ruta.read_text(encoding="utf-8")).get(defi_rep.parent.name.replace(".Report", ""), {})
+    fallos = []
+    for pagina, n in esperado.items():
+        real = conteo_actual.get(pagina)
+        if real is None:
+            fallos.append(f"conteo: la página «{pagina}» desapareció (tenía {n} visuales)")
+        elif real < n:
+            fallos.append(f"conteo: «{pagina}» tiene {real} visuales y se registraron {n} — ¿Desktop borró visuales?")
+    return fallos
+
+
+# --- gate F6.1 (contrato §6): reglas de estilo opcionales -------------------------------------
+
+# El chrome se superpone a propósito (paneles de focos: textbox de fondo + tarjetas encima).
 TIPOS_SIN_SOLAPE = {"shape", "textbox"}
-TIPOS_SIN_TITULO = {"shape", "textbox", "card", "kpi", "slicer", "actionButton", "pageNavigator"}
+TIPOS_SIN_TITULO = {"shape", "textbox", "card", "cardVisual", "kpi", "slicer", "actionButton", "pageNavigator"}
 
 # En el texto estático solo se toleran dígitos que son identificador de página ("01 · Dirección");
 # cualquier otro dígito en un título es un número escrito a mano (§3.2).
@@ -99,19 +205,6 @@ RAIZ_VISUAL_PERMITIDA = {"$schema", "name", "position", "visual", "visualGroup",
                          "howCreated"}
 
 
-def _hex_fuera_de_paleta(nodo, etq: str, fallos: list[str]) -> None:
-    if isinstance(nodo, dict):
-        for v in nodo.values():
-            _hex_fuera_de_paleta(v, etq, fallos)
-    elif isinstance(nodo, list):
-        for v in nodo:
-            _hex_fuera_de_paleta(v, etq, fallos)
-    elif isinstance(nodo, str):
-        for h in re.findall(r"#[0-9a-fA-F]{6}\b", nodo):
-            if h.lower() not in HEX_PERMITIDOS:
-                fallos.append(f"{etq}: hex fuera de la paleta del contrato: {h}")
-
-
 def _texto_literal(props: dict) -> str | None:
     """Extrae el texto de una propiedad si es Literal (estático). Un enlace a medida (fx)
     no es estático y no se examina: su contenido lo gobierna §3.2 desde el DAX."""
@@ -121,31 +214,35 @@ def _texto_literal(props: dict) -> str | None:
     return None
 
 
-def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
-    """Valida el reporte PBIR. Siempre: referencias al modelo, propiedades fuera del esquema,
-    unicidad de ids, destinos de navegación, pages.json y customTheme — lo que rompe el reporte
-    o deja un visual vacío. Con `--gate-f61` agrega las reglas de estilo del contrato (lienzo,
-    múltiplos de 8, solapes, hex fuera de paleta, dígitos en texto estático, títulos): aplican a
-    páginas GENERADAS; las páginas construidas a mano en Desktop (división de trabajo vigente
-    desde 2026-08-08: Edwin construye los dashboards) llevan coordenadas libres y no se les
-    exige la grilla. Escribe el acta en docs/powerbi/qa/structural-qa.md si docs/ existe."""
+def _es_pie(tipo: str, x: float, y: float, w: float, h: float) -> bool:
+    return tipo == "cardVisual" and y >= PIE_Y - 0.5 and w >= LIENZO_W - 100
+
+
+def validar_pbir(proyecto: Path, defi_rep: Path, modelo) -> int:
     estricto = "--gate-f61" in sys.argv
     fallos: list[str] = []
     paginas = sorted(defi_rep.glob("pages/*/page.json"))
     ids_pagina = {pj.parent.name for pj in paginas}
     nombres_vistos: dict[str, str] = {}
     n_vis = 0
+    conteo: dict[str, int] = {}
 
     # report.json: si hay tema custom, el esquema exige name + type + reportVersionAtImport
     # (Desktop se niega a abrir sin él — pasó el 2026-08-08).
+    nombre_tema = None
     ruta_rj = defi_rep / "report.json"
     if ruta_rj.exists():
-        tema = json.loads(ruta_rj.read_text(encoding="utf-8")) \
-            .get("themeCollection", {}).get("customTheme")
-        if tema:
+        tema_rj = json.loads(ruta_rj.read_text(encoding="utf-8")).get("themeCollection", {}).get("customTheme")
+        if tema_rj:
+            nombre_tema = tema_rj.get("name")
             for req in ("name", "type", "reportVersionAtImport"):
-                if req not in tema:
+                if req not in tema_rj:
                     fallos.append(f"report.json: customTheme sin la propiedad requerida '{req}'")
+    fallos_tema, tema = validar_tema(proyecto, defi_rep, nombre_tema)
+    fallos += fallos_tema
+    permitidos, prohibidos = cargar_paleta(tema)
+    if not permitidos:
+        fallos.append("paleta: no existe consumo/powerbi/paleta.json (correr `node consumo/powerbi/pbir.js --paleta`)")
 
     # pages.json debe registrar exactamente las carpetas que existen.
     ruta_pages = defi_rep / "pages" / "pages.json"
@@ -166,21 +263,22 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
         nombre = pagina.get("displayName", pj.parent.name)
         if pagina.get("name") != pj.parent.name:
             fallos.append(f"{nombre}: page.json name '{pagina.get('name')}' ≠ carpeta '{pj.parent.name}'")
+        if (pagina.get("width"), pagina.get("height")) != (LIENZO_W, LIENZO_H):
+            fallos.append(f"{nombre}: lienzo {pagina.get('width')}×{pagina.get('height')} (se esperaba {LIENZO_W}×{LIENZO_H})")
         cajas: list[tuple[str, float, float, float, float, str]] = []
+        visuales = sorted(pj.parent.glob("visuals/*/visual.json"))
+        conteo[nombre] = len(visuales)
 
-        for vj in sorted(pj.parent.glob("visuals/*/visual.json")):
+        for vj in visuales:
             n_vis += 1
             cfg = json.loads(vj.read_text(encoding="utf-8"))
             vis = cfg.get("visual", {})
             tipo = vis.get("visualType", "?")
-            etq = f"{nombre}/{tipo}"
+            etq = f"{nombre}/{tipo}/{vj.parent.name[:6]}"
 
-            # propiedades fuera del esquema en la raíz del contenedor
             for extra_prop in set(cfg) - RAIZ_VISUAL_PERMITIDA:
-                fallos.append(f"{etq}: propiedad '{extra_prop}' no admitida en la raíz del "
-                              f"visual.json (¿va dentro de 'visual'?)")
+                fallos.append(f"{etq}: propiedad '{extra_prop}' no admitida en la raíz del visual.json (¿va dentro de 'visual'?)")
 
-            # unicidad e integridad del id
             vid = cfg.get("name", "")
             if vid != vj.parent.name:
                 fallos.append(f"{etq}: visual.json name '{vid}' ≠ carpeta '{vj.parent.name}'")
@@ -188,16 +286,15 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
                 fallos.append(f"{etq}: id '{vid}' duplicado (también en {nombres_vistos[vid]})")
             nombres_vistos[vid] = etq
 
-            # referencias al modelo
-            _refs_pbir(cfg, tablas, columnas, medidas, etq, fallos)
+            _refs_pbir(cfg, modelo, etq, fallos)
+            _colores(cfg, etq, permitidos, prohibidos, fallos)
 
-            # geometría: lienzo y grilla de 8 (solo en modo estricto — páginas generadas)
             pos = cfg.get("position", {})
             x, y = pos.get("x", 0), pos.get("y", 0)
             w, h = pos.get("width", 0), pos.get("height", 0)
+            if x < 0 or y < 0 or x + w > LIENZO_W + 0.5 or y + h > LIENZO_H + 0.5:
+                fallos.append(f"{etq}: se sale del lienzo {LIENZO_W}×{LIENZO_H} (x={x} y={y} w={w} h={h})")
             if estricto:
-                if x < 0 or y < 0 or x + w > LIENZO_W + 0.5 or y + h > LIENZO_H + 0.5:
-                    fallos.append(f"{etq}: se sale del lienzo (x={x} y={y} w={w} h={h})")
                 for eje, valor in (("x", x), ("y", y), ("w", w), ("h", h)):
                     if valor != int(valor) or int(valor) % 8:
                         fallos.append(f"{etq}: {eje}={valor} no es múltiplo de 8")
@@ -205,25 +302,16 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
 
             vc = vis.get("visualContainerObjects", {}) or {}
             if estricto:
-                # color fuera de paleta
-                _hex_fuera_de_paleta(cfg, etq, fallos)
-
-                # números escritos a mano en texto estático (título, subtítulo, botones)
-                textos = [p.get("properties", {}) for clave in ("title", "subTitle")
-                          for p in vc.get(clave, [])]
+                textos = [p.get("properties", {}) for clave in ("title", "subTitle") for p in vc.get(clave, [])]
                 textos += [p.get("properties", {}) for p in (vis.get("objects", {}) or {}).get("text", [])]
                 for props in textos:
                     texto = _texto_literal(props)
                     if texto and re.search(r"\d", _PREFIJO_PAGINA.sub("", texto)):
                         fallos.append(f"{etq}: número escrito a mano en texto estático: «{texto}» (§3.2)")
-
-                # título obligatorio en visuales de análisis
                 if tipo not in TIPOS_SIN_TITULO:
-                    tiene_titulo = any("text" in p.get("properties", {}) for p in vc.get("title", []))
-                    if not tiene_titulo:
+                    if not any("text" in p.get("properties", {}) for p in vc.get("title", [])):
                         fallos.append(f"{etq}: visual de análisis sin título propio")
 
-            # destinos de navegación
             for enlace in (vis.get("objects", {}) or {}).get("visualLink", []):
                 destino = (enlace.get("properties", {}).get("navigationSection") or {}) \
                     .get("expr", {}).get("Literal", {}).get("Value", "")
@@ -231,7 +319,13 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
                 if destino and destino not in ids_pagina:
                     fallos.append(f"{etq}: navega a la página '{destino}' que no existe")
 
-        # solapes dentro de la página (solo en modo estricto)
+        # El pie no lo pisa nadie (siempre): era el solape de 4 px de las 23 hojas.
+        for e, x, y, w, h, t in cajas:
+            if _es_pie(t, x, y, w, h):
+                continue
+            if y + h > PIE_Y + 0.5:
+                fallos.append(f"{e}: invade la banda del pie (y + alto = {y + h:.0f} > {PIE_Y})")
+
         for i in range(len(cajas) if estricto else 0):
             for j in range(i + 1, len(cajas)):
                 e1, x1, y1, w1, h1, t1 = cajas[i]
@@ -243,13 +337,17 @@ def validar_pbir(defi_rep: Path, tablas, columnas, medidas) -> int:
                 if solape_x > 1 and solape_y > 1:
                     fallos.append(f"{nombre}: se solapan {e1} y {e2} ({solape_x:.0f}x{solape_y:.0f} px)")
 
+    fallos += validar_conteo(defi_rep, conteo)
+
     _escribir_acta(fallos, len(paginas), n_vis)
     if fallos:
-        print(f"FALLO · {len(fallos)} problema(s) [PBIR / gate F6.1]:")
+        print(f"FALLO · {len(fallos)} problema(s) [PBIR{' / gate F6.1' if estricto else ''}]:")
         for f in fallos:
             print(f"   {f}")
         return 1
-    print(f"OK · PBIR · {len(paginas)} paginas · {n_vis} visuales · gate F6.1 sin defectos")
+    print(f"OK · PBIR · {len(paginas)} páginas · {n_vis} visuales · referencias (medida+tabla), lienzo "
+          f"{LIENZO_W}×{LIENZO_H}, pie, paleta, contraste, tema y conteo sin defectos"
+          + (" · gate F6.1 sin defectos" if estricto else ""))
     return 0
 
 
@@ -266,14 +364,10 @@ def _escribir_acta(fallos: list[str], n_pag: int, n_vis: int) -> None:
         f"CORRIDA: {date.today().isoformat()} · {n_pag} páginas · {n_vis} visuales",
         f"RESULTADO: {'FALLO — ' + str(len(fallos)) + ' defecto(s)' if fallos else 'PASA — cero defectos'}",
         "",
-        "Reglas verificadas: referencias al modelo · lienzo 1280×720 · grilla en múltiplos de 8 ·",
-        "solapes · hex fuera de la paleta del contrato · unicidad de ids · destinos de navegación ·",
-        "números escritos a mano en texto estático (§3.2) · título en visuales de análisis ·",
-        "consistencia de pages.json.",
-        "",
-        "Interpretación registrada: «cero hex literales» se verifica contra la lista blanca de",
-        "tokens del contrato (`sistema-visual.md`) — el rojo de estado y las tintas no son",
-        "alcanzables vía ThemeDataColor y el contrato mismo los define.",
+        "Reglas verificadas: referencias (medida en su tabla) · lienzo 1280×960 · pie sin invadir ·",
+        "hex fuera de la paleta de pbir.js/tema · texto en colores claros · tema fuente = registrado ·",
+        "conteo de visuales · ids · navegación · pages.json. Con --gate-f61: grilla de 8, solapes,",
+        "números a mano y títulos.",
         "",
     ]
     if fallos:
@@ -300,12 +394,13 @@ def main() -> int:
 
 
 def _validar_par(sm: Path, rep: Path) -> int:
-    tablas, columnas, medidas = leer_modelo(sm / "definition")
+    modelo = leer_modelo(sm / "definition")
+    tablas, columnas, medidas, _ = modelo
 
     # Formato PBIR (Desktop migra a definition/ al guardar; el report.json legado desaparece).
     if not (rep / "report.json").exists():
         if (rep / "definition").exists():
-            return validar_pbir(rep / "definition", tablas, columnas, medidas)
+            return validar_pbir(sm.parent, rep / "definition", modelo)
         print(f"FALLO · {rep.name} no tiene report.json ni definition/")
         return 1
 
@@ -360,10 +455,10 @@ def _validar_par(sm: Path, rep: Path) -> int:
             pos = cfg.get("layouts", [{}])[0].get("position", {})
             x, y = pos.get("x", 0), pos.get("y", 0)
             w, h = pos.get("width", 0), pos.get("height", 0)
-            if x < 0 or y < 0 or x + w > LIENZO_W + 0.5 or y + h > LIENZO_H + 0.5:
+            if x < 0 or y < 0 or x + w > LIENZO_LEGADO_W + 0.5 or y + h > LIENZO_LEGADO_H + 0.5:
                 fallos.append(
                     f"{etq}: se sale del lienzo (x={x} y={y} w={w} h={h}; "
-                    f"lienzo {LIENZO_W}x{LIENZO_H})")
+                    f"lienzo {LIENZO_LEGADO_W}x{LIENZO_LEGADO_H})")
             cajas.append((etq, x, y, w, h))
 
         # --- solapes (los textos del encabezado se ignoran: se superponen a propósito) ---

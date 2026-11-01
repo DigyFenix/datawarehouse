@@ -23,15 +23,33 @@
                       "Entity": "DM_Calendario"
                     }
                   },
-                  "Property": "anio"
+                  "Property": "anio_selector"
                 }
               },
-              "queryRef": "DM_Calendario.anio",
-              "nativeQueryRef": "anio",
+              "queryRef": "DM_Calendario.anio_selector",
+              "nativeQueryRef": "anio_selector",
               "active": true
             }
           ]
         }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "DM_Calendario"
+                  }
+                },
+                "Property": "anio_selector"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
       }
     },
     "objects": {
@@ -73,7 +91,7 @@
                                   "Source": "t"
                                 }
                               },
-                              "Property": "anio"
+                              "Property": "anio_selector"
                             }
                           }
                         ],
@@ -81,7 +99,7 @@
                           [
                             {
                               "Literal": {
-                                "Value": "2026L"
+                                "Value": "'Año actual'"
                               }
                             }
                           ]

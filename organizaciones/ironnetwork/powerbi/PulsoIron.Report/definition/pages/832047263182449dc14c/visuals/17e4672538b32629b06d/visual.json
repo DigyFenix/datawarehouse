@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "17e4672538b32629b06d",
   "position": {
     "x": 24,
     "y": 448,
-    "z": 3200,
+    "z": 3700,
     "height": 240,
     "width": 296,
-    "tabOrder": 32
+    "tabOrder": 37
   },
   "visual": {
     "visualType": "barChart",
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Antigüedad.rango_aging_nombre",
-              "nativeQueryRef": "rango_aging_nombre",
-              "active": true
+              "nativeQueryRef": "rango_aging_nombre"
             }
           ]
         },

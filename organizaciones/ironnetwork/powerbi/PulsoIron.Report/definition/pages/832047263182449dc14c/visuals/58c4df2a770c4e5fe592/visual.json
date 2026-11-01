@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "58c4df2a770c4e5fe592",
   "position": {
     "x": 544,
     "y": 704,
-    "z": 3600,
+    "z": 4100,
     "height": 240,
     "width": 400,
-    "tabOrder": 36
+    "tabOrder": 41
   },
   "visual": {
     "visualType": "barChart",
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Clasificación RFM.segmento_rfm_nombre",
-              "nativeQueryRef": "segmento_rfm_nombre",
-              "active": true
+              "nativeQueryRef": "segmento_rfm_nombre"
             }
           ]
         },

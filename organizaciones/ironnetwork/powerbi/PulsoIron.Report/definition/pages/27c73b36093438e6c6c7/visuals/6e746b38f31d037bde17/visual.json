@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "6e746b38f31d037bde17",
   "position": {
     "x": 232,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Cliente.Cliente",
-              "nativeQueryRef": "Cliente",
-              "active": true
+              "nativeQueryRef": "Cliente"
             }
           ]
         },
@@ -305,28 +304,6 @@
                   "expr": {
                     "Literal": {
                       "Value": "'#172532'"
-                    }
-                  }
-                }
-              }
-            },
-            "backColorPrimary": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "'#ffffff'"
-                    }
-                  }
-                }
-              }
-            },
-            "backColorSecondary": {
-              "solid": {
-                "color": {
-                  "expr": {
-                    "Literal": {
-                      "Value": "'#f5f8fb'"
                     }
                   }
                 }

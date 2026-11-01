@@ -2,13 +2,12 @@
 // Cuentas por cobrar · Análisis de utilidad · Recuperación y cobros · Cuentas por pagar
 // (docs/powerbi/kraken360/inventario.md, capturas 10-12; la de CxP la pidió Edwin como espejo de CxC).
 //
-// Uso:  node generar_paginas_cartera.js <ruta al .Report> [anio_actual]
+// Uso:  node generar_paginas_cartera.js <ruta al .Report>
 'use strict';
 const P = require('./pbir');
 const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, barras, dona, matriz, marcadores, ejeValores, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, encabezado, pie, visual, pColumna, pMedida, ordenAsc, ordenDesc, str, num, int, bool, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
-const ANIO_ACTUAL = Number(process.argv[3] || new Date().getFullYear());
 const V = T.VENTAS, PROV = 'DM_Proveedor';
 
 // Barras apiladas "no vencido / vencido" por categoría (azul-pizarra / rojo).
@@ -88,10 +87,10 @@ function paginaUtilidad() {
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Utilidad', 'Subtítulo de corte mensual'));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[1], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[1], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(kpis(slug, 'resultado', [[V, 'Costo de lo vendido'], [V, 'Ganancia'], [V, 'Ventas netas'], [V, '% Margen']], [xCol(3), BANDA[0], wCol(5), 112], 'Resultado', 'Costo · ganancia · resultado (venta) · margen %'));
   vs.push(segmentador(slug, 'f-linea', T.PROD, 'grupo_nombre', [xCol(8), BANDA[0], wCol(2), 64], { sync: 'linea', titulo: 'Línea' }));
-  vs.push(segmentador(slug, 'f-sector', T.CLI, 'Sector', [xCol(8), BANDA[1], wCol(2), 64], { sync: 'sector', titulo: 'Sector' }));
+  vs.push(segmentador(slug, 'f-sector', T.CLI, 'Sector', [xCol(8), BANDA[1], wCol(2), 64], { sync: 'sector-cliente', titulo: 'Sector' }));
   vs.push(segmentador(slug, 'f-buscar-cliente', T.CLI, 'nombre', [xCol(10), BANDA[0], wCol(3), 64], { busqueda: true, titulo: 'Buscar cliente' }));
   vs.push(segmentador(slug, 'f-buscar-producto', T.PROD, 'nombre', [xCol(10), BANDA[1], wCol(3), 64], { busqueda: true, titulo: 'Buscar producto' }));
 
@@ -159,12 +158,12 @@ function paginaCobros() {
     objects: {
       categoryAxis: ejeCat({ innerPadding: int(35) }),
       valueAxis: ejeValGrilla({ secShow: bool(false) }),
-      labels: etiquetasBarra([[V, 'Cargos del mes', C.ROJO], [V, 'Abonos del mes', C.VERDE], [F, 'Saldo al cierre del mes', '#8e5ea2']]),
+      labels: etiquetasBarra([[V, 'Cargos del mes', C.ROJO], [V, 'Abonos del mes', C.VERDE], [F, 'Saldo al cierre del mes', C.MORADO]]),
       legend: leyenda(true),
       dataPoint: [
         { properties: { fill: color(C.ROJO) }, selector: meta(V, 'Cargos del mes') },
         { properties: { fill: color(C.VERDE) }, selector: meta(V, 'Abonos del mes') },
-        { properties: { fill: color('#8e5ea2') }, selector: meta(F, 'Saldo al cierre del mes') },
+        { properties: { fill: color(C.MORADO) }, selector: meta(F, 'Saldo al cierre del mes') },
       ],
     },
     vc: vcTitulo('Cargos, abonos y saldos mensuales', '12 meses · cargos = facturación con IVA · abonos = cobros · saldo = cartera al cierre del mes'),

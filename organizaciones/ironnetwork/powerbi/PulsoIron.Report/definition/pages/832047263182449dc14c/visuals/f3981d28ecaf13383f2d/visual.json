@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "f3981d28ecaf13383f2d",
   "position": {
     "x": 544,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Calendario.dia",
-              "nativeQueryRef": "dia",
-              "active": true
+              "nativeQueryRef": "dia"
             }
           ]
         },
@@ -422,8 +421,13 @@
             },
             "text": {
               "expr": {
-                "Literal": {
-                  "Value": "'Acumulado por día · sólida: mes en curso al corte · punteada: mes anterior completo'"
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Subtítulo de ritmo del mes"
                 }
               }
             },

@@ -2,13 +2,12 @@
 // Matriz de Oportunidades · Cartera de Clientes · Clientes Nuevos · Clientes Recuperados
 // (docs/powerbi/kraken360/inventario.md, capturas 03-06).
 //
-// Uso:  node generar_paginas_clientes.js <ruta al .Report> [anio_actual]
+// Uso:  node generar_paginas_clientes.js <ruta al .Report>
 'use strict';
 const P = require('./pbir');
 const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, barras, matriz, bloqueMoneda, columnasMensuales, comboMensual, columnasApiladas, encabezado, pie } = P;
 
 const REPORT = P.reporteDeArgs();
-const ANIO_ACTUAL = Number(process.argv[3] || new Date().getFullYear());
 const V = T.VENTAS;
 
 // Filtros de página comunes a Kraken: sector, línea, año (dropdowns, 2 × 2). Sin «Sucursal» (sesión 32): la
@@ -20,7 +19,7 @@ function filtrosComerciales(slug, { conAnio = true } = {}) {
     segmentador(slug, 'f-linea', T.PROD, 'grupo_nombre', [xCol(9), BANDA[1], wCol(2), 64], { sync: 'linea', titulo: 'Línea' }),
   ];
   vs.push(conAnio
-    ? segmentador(slug, 'f-anio', T.CAL, 'anio', [xCol(11), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' })
+    ? segmentador(slug, 'f-anio', T.CAL, 'anio_selector', [xCol(11), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true })
     : segmentador(slug, 'f-buscar', T.CLI, 'nombre', [xCol(11), BANDA[0], wCol(2), 64], { busqueda: true, titulo: 'Buscar cliente' }));
   return vs;
 }

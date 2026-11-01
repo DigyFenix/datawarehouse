@@ -23,11 +23,11 @@
                       "Entity": "DM_Calendario"
                     }
                   },
-                  "Property": "mes_nombre"
+                  "Property": "mes_nombre_corto"
                 }
               },
-              "queryRef": "DM_Calendario.mes_nombre",
-              "nativeQueryRef": "mes_nombre",
+              "queryRef": "DM_Calendario.mes_nombre_corto",
+              "nativeQueryRef": "mes_nombre_corto",
               "active": true
             }
           ]
@@ -277,6 +277,11 @@
         }
       ]
     },
-    "drillFilterOtherVisuals": true
+    "drillFilterOtherVisuals": true,
+    "syncGroup": {
+      "groupName": "mes",
+      "fieldChanges": true,
+      "filterChanges": true
+    }
   }
 }

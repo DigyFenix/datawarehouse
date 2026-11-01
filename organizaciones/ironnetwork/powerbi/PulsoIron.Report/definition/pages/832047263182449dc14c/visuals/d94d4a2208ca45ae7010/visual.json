@@ -4,10 +4,10 @@
   "position": {
     "x": 868,
     "y": 333,
-    "z": 1700,
+    "z": 1800,
     "height": 79,
     "width": 5,
-    "tabOrder": 17
+    "tabOrder": 18
   },
   "visual": {
     "visualType": "textbox",
@@ -44,7 +44,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#8e5ea2'"
+                      "Value": "'#a06cb5'"
                     }
                   }
                 }

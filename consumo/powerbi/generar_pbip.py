@@ -3,7 +3,9 @@
 Se introspecciona la base en vez de escribir 17 archivos a mano: los tipos, nombres y columnas
 salen del modelo real, así que el PBIP no puede quedar desincronizado del warehouse.
 
-Uso:  python generar_pbip.py <base> <nombre_proyecto> <carpeta_salida>
+Uso:  python generar_pbip.py <base> <nombre_proyecto> <carpeta_salida>          (completa: borra el caché)
+      python generar_pbip.py --solo-medidas <carpeta_salida> <nombre_proyecto> [--columnas <base>] [--moneda ISO]
+             (solo medidas y columnas calculadas; con --columnas agrega las columnas de Oro que falten)
 """
 
 from __future__ import annotations
@@ -338,7 +340,15 @@ ORDENAR_POR = {
         "mes_nombre_corto": "mes_orden", "dia_semana_nombre": "dia_semana_orden",
         "dia_semana_corto": "dia_semana_orden", "anio_trimestre": "anio_trimestre_orden",
         "anio_semana": "anio_semana_orden", "mes_anio_etiqueta": "anio_mes_orden",
+        # Segmentadores iniciales anclados al corte ('Año actual' / 'Mes actual'), en orden cronológico.
+        "anio_selector": "anio", "mes_selector": "anio_mes_orden",
     },
+    "dim_cliente": {
+        "rango_meses_con_compra": "rango_meses_con_compra_orden",
+        "rango_meses_sin_compra": "rango_meses_sin_compra_orden",
+    },
+    "hecho_cartera_cobrar": {"rango_vencimiento": "rango_vencimiento_orden"},
+    "hecho_cartera_pagar": {"rango_vencimiento": "rango_vencimiento_orden"},
     # 'Vencido' debe salir antes que las semanas futuras; el offset relativo al corte lo da.
     "proyeccion_caja_semanal": {"semana_etiqueta": "semana_offset"},
 }
@@ -356,6 +366,56 @@ def columnas(cur, tabla: str) -> list[tuple[str, str]]:
     return [(c, TIPOS.get(t, "string")) for c, t in cur.fetchall()]
 
 
+# Alias de ENCABEZADO: columnas de Oro que se declaran en el TMDL con su nombre de negocio
+# (`column 'Estado del cobro'` + `sourceColumn: estado_cobro`). Reemplazan columnas calculadas en
+# DAX con el mismo nombre visible (sesión 38): los visuales no cambian y el cálculo vive en Oro.
+ALIAS_COLUMNAS: dict[str, dict[str, str]] = {
+    "dim_cliente": {
+        "sector": "Sector",
+        "meses_con_compra_12m": "Meses con compra 12m",
+        "rango_meses_con_compra": "Rango de meses con compra",
+        "rango_meses_con_compra_orden": "Rango de meses con compra orden",
+        "meses_sin_compra": "Meses sin compra",
+        "rango_meses_sin_compra": "Rango de meses sin compra",
+        "rango_meses_sin_compra_orden": "Rango de meses sin compra orden",
+    },
+    "hecho_cartera_cobrar": {
+        "estado_vencimiento": "Estado", "rango_vencimiento": "Rango de vencimiento",
+        "rango_vencimiento_orden": "Rango de vencimiento orden",
+    },
+    "hecho_cartera_pagar": {
+        "estado_vencimiento": "Estado", "rango_vencimiento": "Rango de vencimiento",
+        "rango_vencimiento_orden": "Rango de vencimiento orden",
+    },
+    "hecho_pago_recibido": {"estado_cobro": "Estado del cobro"},
+    "hecho_movimiento_contable": {"naturaleza_contable": "Naturaleza contable"},
+}
+
+
+def nombre_columna(tabla: str, col: str) -> str:
+    return ALIAS_COLUMNAS.get(tabla, {}).get(col, col)
+
+
+def gen_columna(tabla: str, col: str, tipo: str, nombres: set[str]) -> list[str]:
+    """Bloque TMDL de una columna de datos de Oro (sin la línea en blanco final)."""
+    L = [f"\tcolumn {tmdl_nombre(nombre_columna(tabla, col))}", f"\t\tdataType: {tipo}"]
+    if tabla == "dim_tiempo" and col == "fecha":
+        L.append("\t\tisKey")
+    if oculta(col, tabla):
+        L.append("\t\tisHidden")
+    # Agregación explícita: nunca sumas implícitas — toda medida es DAX declarada.
+    L.append("\t\tsummarizeBy: none")
+    L.append(f"\t\tsourceColumn: {col}")
+    f = formato(col, tipo)
+    if f:
+        L.append(f'\t\tformatString: {f}')
+    # Sin esto "Febrero" sale después de "Diciembre" y "+90" antes de "1 a 30".
+    orden = ORDENAR_POR.get(tabla, {}).get(col)
+    if orden and orden in nombres:
+        L.append(f"\t\tsortByColumn: {tmdl_nombre(nombre_columna(tabla, orden))}")
+    return L
+
+
 def gen_tabla(tabla: str, cols: list[tuple[str, str]], base: str) -> str:
     etq = ETIQUETA.get(tabla, tabla)
     es_tiempo = tabla == "dim_tiempo"
@@ -364,23 +424,9 @@ def gen_tabla(tabla: str, cols: list[tuple[str, str]], base: str) -> str:
         # Marca la tabla como calendario: sin esto la inteligencia de tiempo falla en silencio.
         L += ["\tdataCategory: Time", ""]
 
+    nombres = {c for c, _ in cols}
     for col, tipo in cols:
-        L.append(f"\tcolumn {tmdl_nombre(col)}")
-        L.append(f"\t\tdataType: {tipo}")
-        if es_tiempo and col == "fecha":
-            L.append("\t\tisKey")
-        if oculta(col, tabla):
-            L.append("\t\tisHidden")
-        # Agregación explícita: nunca sumas implícitas — toda medida es DAX declarada.
-        L.append("\t\tsummarizeBy: none")
-        L.append(f"\t\tsourceColumn: {col}")
-        f = formato(col, tipo)
-        if f:
-            L.append(f'\t\tformatString: {f}')
-        # Sin esto "Febrero" sale después de "Diciembre" y "+90" antes de "1 a 30".
-        orden = ORDENAR_POR.get(tabla, {}).get(col)
-        if orden and orden in {c for c, _ in cols}:
-            L.append(f"\t\tsortByColumn: {orden}")
+        L += gen_columna(tabla, col, tipo, nombres)
         L.append("")
 
     # Jerarquía contable: los 5 niveles homologados de Oro (árbol B1 / segmentos Odoo).
@@ -418,7 +464,7 @@ def gen_tabla(tabla: str, cols: list[tuple[str, str]], base: str) -> str:
     # pero agruparlas aquí mantiene el archivo legible al revisarlo en un diff.
     medidas = MEDIDAS_POR_TABLA.get(tabla)
     if medidas:
-        L.append(renombrar_dax(medidas).strip("\n"))
+        L.append(ocultar_auxiliares(renombrar_dax(medidas).strip("\n")))
         L.append("")
 
     L += [
@@ -985,8 +1031,8 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] = r"""
 		formatString: #,0.0
 		displayFolder: 04 Riesgo
 
-	/// Días de venta a terceros pendientes de cobro. Mezclar el saldo del grupo lo triplica.
-	measure 'Días de cartera terceros' = DIVIDE([Saldo por cobrar terceros], DIVIDE([Ventas a terceros], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Ventas)))
+	/// DSO: días de venta a terceros pendientes de cobro. Numerador = saldo de HOY (la cartera es una foto: recortarla a la fecha del documento ocultaba las facturas viejas y no cuadraba con los KPIs «hoy» de la misma hoja); denominador = venta diaria promedio del período. Mezclar el saldo del grupo lo triplica.
+	measure 'Días de cartera terceros' = DIVIDE([Por cobrar terceros hoy], DIVIDE([Ventas a terceros], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Ventas)))
 		formatString: #,0.0
 		displayFolder: 04 Riesgo
 
@@ -1097,8 +1143,13 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] = r"""
 		formatString: "Q" #,0
 		displayFolder: 04 Foto de hoy
 
-	/// DPO: días que tardamos en pagar a proveedores. Misma convención que 'Días de cartera terceros' para que el ciclo de efectivo cuadre.
-	measure 'Días de pago terceros' = DIVIDE([Saldo por pagar terceros], DIVIDE([Compras a terceros], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Compras)))
+	/// Foto de HOY del saldo por pagar a terceros: ignora el filtro de fechas (numerador del DPO).
+	measure 'Por pagar terceros hoy' = CALCULATE([Saldo por pagar terceros], REMOVEFILTERS(Calendario))
+		formatString: "Q" #,0
+		displayFolder: 05 Ciclo de efectivo
+
+	/// DPO: días que tardamos en pagar a proveedores. Misma convención que 'Días de cartera terceros' (saldo de hoy ÷ compra diaria del período) para que el ciclo de efectivo cuadre.
+	measure 'Días de pago terceros' = DIVIDE([Por pagar terceros hoy], DIVIDE([Compras a terceros], CALCULATE(DISTINCTCOUNT(Calendario[fecha]), Compras)))
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
 
@@ -1435,8 +1486,8 @@ MEDIDAS_POR_TABLA["metrica_venta_diaria"] = r"""
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo
 
-	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado: con el período abierto devolvía la venta de toda la historia repartida entre todos los días hábiles del calendario — un número plausible y falso (≈Q9.8M contra una venta mensual real cercana a Q50M). Ahora se calla en vez de mentir.
-	measure 'Proyección de cierre de mes' = IF(DISTINCTCOUNT(Calendario[anio_mes]) <> 1, BLANK(), DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(Calendario), KEEPFILTERS(Calendario[es_dia_habil] = TRUE), KEEPFILTERS(Calendario[fecha] <= TODAY()))) * MAX(Calendario[dias_habiles_del_mes]))
+	/// Dónde va a cerrar el mes si se mantiene el ritmo de los días hábiles ya trabajados. Solo tiene sentido con UN mes filtrado: con el período abierto devolvía la venta de toda la historia repartida entre todos los días hábiles del calendario — un número plausible y falso (≈Q9.8M contra una venta mensual real cercana a Q50M). Ahora se calla en vez de mentir. Los días hábiles trabajados se cuentan hasta el CORTE del dato, no hasta hoy: con la extracción atrasada, contar hasta TODAY() repartía la venta entre días sin dato y subestimaba el cierre.
+	measure 'Proyección de cierre de mes' = VAR corte = [Corte de ventas] RETURN IF(DISTINCTCOUNT(Calendario[anio_mes]) <> 1, BLANK(), DIVIDE([Venta diaria neta], CALCULATE(COUNTROWS(Calendario), KEEPFILTERS(Calendario[es_dia_habil] = TRUE), KEEPFILTERS(Calendario[fecha] <= corte))) * MAX(Calendario[dias_habiles_del_mes]))
 		formatString: "Q" #,0
 		displayFolder: 03 Ritmo
 
@@ -1529,8 +1580,8 @@ MEDIDAS_POR_TABLA["hecho_pedido_linea"] = r"""
 		formatString: #,0
 		displayFolder: 02 Backlog
 
-	/// De lo pedido, cuánto ya se cumplió (1 − backlog/pedido). El pulso de la operación.
-	measure 'Fill rate' = 1 - DIVIDE([Backlog], [Monto pedido], 0)
+	/// De lo pedido, cuánto ya se cumplió (1 − backlog/pedido). El pulso de la operación. Sin pedidos en el período queda en blanco: antes el 0 de DIVIDE lo convertía en un 100 % de cumplimiento que nadie había ganado.
+	measure 'Fill rate' = VAR p = [Monto pedido] RETURN IF(ISBLANK(p) || p = 0, BLANK(), 1 - DIVIDE([Backlog], p))
 		formatString: 0.0%
 		displayFolder: 02 Backlog
 
@@ -1688,10 +1739,6 @@ MEDIDAS_POR_TABLA["hecho_movimiento_contable"] = r"""
 """
 
 MEDIDAS_POR_TABLA["hecho_pago_recibido"] = r"""
-	/// Estado del cobro en lenguaje de negocio. En Odoo `paid` = conciliado contra factura y `in_process` = registrado pero sin conciliar; el usuario decide en el segmentador cuáles cuentan.
-	column 'Estado del cobro' = SWITCH('Pagos recibidos'[estado], "paid", "Conciliado", "in_process", "En proceso", "posted", "Registrado", "draft", "Borrador", "cancel", "Cancelado", "canceled", "Cancelado", BLANK(), "Sin estado", 'Pagos recibidos'[estado])
-		dataType: string
-		summarizeBy: none
 
 	/// Flujo de cobros del período en MONEDA DE PRESENTACIÓN. INFORMATIVO para caja: el saldo de cartera sale del mayor.
 	measure 'Monto cobrado' = SUM('Pagos recibidos'[monto])
@@ -2225,11 +2272,11 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += rf"""
 		displayFolder: 10 Seguimiento
 
 	/// Título de la página de histórico: corte real del dato y porcentaje del año transcurrido.
-	measure 'Título de Histórico de ventas' = VAR f = [Corte de ventas] RETURN "Histórico de ventas"
+	measure 'Título de Histórico de ventas' = "Histórico de ventas · " & [Período activo]
 		displayFolder: _Narrativa
 
 	/// Título de la página de seguimiento: corte real del dato y porcentaje del mes transcurrido.
-	measure 'Título de Seguimiento de ventas' = VAR f = [Corte de ventas] RETURN "Seguimiento de ventas"
+	measure 'Título de Seguimiento de ventas' = "Seguimiento de ventas · " & [Período activo]
 		displayFolder: _Narrativa
 
 	/// Etiqueta de dato para las columnas mensuales: importe abreviado y variación contra el mismo mes del año anterior en una sola línea ("1.3M · +29%"). Sin año anterior solo muestra el importe.
@@ -2257,16 +2304,19 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 	measure 'Empresa activa' = SELECTEDVALUE(Empresa[nombre], "Todas")
 		displayFolder: _Narrativa
 
-	/// Subtítulo del histórico: "al 16 oct (79%)" — corte real y fracción del año transcurrida.
-	measure 'Subtítulo de corte anual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del año], "0%") & ")"
+	/// Subtítulo de las hojas anuales: "al 16 oct · 79 % del año transcurrido" — corte real del dato y fracción del año que ya pasó (antes "(79%)" sin decir de qué).
+	measure 'Subtítulo de corte anual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " · " & FORMAT([% Avance del año] * 100, "0") & " % del año transcurrido"
 		displayFolder: _Narrativa
 
 	/// Pie de las páginas de ventas: habla del corte de VENTAS, no del dominio más rezagado (en Iron, tipos de cambio con una sola tasa arrastraría la frescura global a 2025 y desmentiría un tablero correcto).
 	measure 'Pie de ventas' = VAR f = [Corte de ventas] VAR d = [Días desde última extracción] RETURN IF(ISBLANK(f), "Sin ventas cargadas", "Ventas del ERP al " & FORMAT(f, "d") & " de " & FORMAT(f, "mmmm") & " de " & FORMAT(f, "yyyy") & " · extraído hace " & FORMAT(d, "0") & IF(d = 1, " día", " días"))
 		displayFolder: _Narrativa
 
-	/// Subtítulo del seguimiento: "al 16 oct (52%)" — corte real y fracción del mes transcurrida.
-	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & ")"
+	/// Subtítulo de las hojas mensuales: "al 16 oct · 52 % del mes transcurrido" — corte real del dato y fracción del mes que ya pasó.
+	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " · " & FORMAT([% Avance del mes] * 100, "0") & " % del mes transcurrido"
+
+	/// Subtítulo del «Ritmo del mes» (Resumen): nombra los dos meses que compara. En enero el mes anterior es diciembre del AÑO ANTERIOR y lo dice; en un tenant sin historia ese mes sale vacío y el subtítulo explica por qué.
+	measure 'Subtítulo de ritmo del mes' = VAR f = [Corte de ventas] VAR ant = EOMONTH(f, -1) RETURN "Acumulado por día · sólida: " & FORMAT(f, "mmmm") & " al " & FORMAT(f, "d") & " · punteada: " & FORMAT(ant, "mmmm") & IF(MONTH(f) = 1, " " & FORMAT(ant, "yyyy") & " (año anterior)", " completo")
 		displayFolder: _Narrativa
 """
 
@@ -2276,38 +2326,6 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 # Cliente + medidas de ventana (mes de partida → corte) y de 12 meses.
 # ---------------------------------------------------------------------------------------------
 MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
-	/// Primera compra del cliente de esta línea (sobre TODO el hecho). Base de las cohortes de clientes nuevos.
-	column primera_compra_cliente = VAR c = Ventas[cliente_clave] RETURN CALCULATE(MIN(Ventas[fecha_documento]), FILTER(ALL(Ventas), Ventas[cliente_clave] = c))
-		dataType: dateTime
-		formatString: dd/MM/yyyy
-		isHidden
-		summarizeBy: none
-
-	/// La línea pertenece al PRIMER mes de relación del cliente (venta de estreno vs recompra).
-	column es_primer_mes_cliente = EOMONTH(Ventas[fecha_documento], 0) = EOMONTH(Ventas[primera_compra_cliente], 0)
-		dataType: boolean
-		isHidden
-		summarizeBy: none
-
-	/// Mes del documento (fin de mes) para contar meses distintos con compra.
-	column mes_documento = EOMONTH(Ventas[fecha_documento], 0)
-		dataType: dateTime
-		formatString: dd/MM/yyyy
-		isHidden
-		summarizeBy: none
-
-	/// Compra anterior del mismo cliente (última fecha estrictamente menor). Base de los recuperados.
-	column fecha_compra_anterior_cliente = VAR c = Ventas[cliente_clave] VAR f = Ventas[fecha_documento] RETURN CALCULATE(MAX(Ventas[fecha_documento]), FILTER(ALL(Ventas), Ventas[cliente_clave] = c && Ventas[fecha_documento] < f))
-		dataType: dateTime
-		formatString: dd/MM/yyyy
-		isHidden
-		summarizeBy: none
-
-	/// La línea es una compra de RETORNO: el cliente llevaba 6 meses o más sin comprar.
-	column es_compra_recuperacion = NOT ISBLANK(Ventas[fecha_compra_anterior_cliente]) && DATEDIFF(Ventas[fecha_compra_anterior_cliente], Ventas[fecha_documento], MONTH) >= 6
-		dataType: boolean
-		isHidden
-		summarizeBy: none
 
 	/// Meses hacia atrás desde el corte que delimitan la ventana de las cohortes (segmentador "Mes de partida", -12 por defecto).
 	measure 'Meses de partida' = SELECTEDVALUE('MD_Mes de partida'[Mes de partida], -12)
@@ -2336,7 +2354,7 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 
 	/// Variación del mes en curso contra el mismo tramo del año anterior.
 	measure 'Variación del mes en curso vs año anterior' = DIVIDE([Venta del mes en curso] - [Venta del mes en curso año anterior], [Venta del mes en curso año anterior])
-		formatString: +0%;-0%;0%
+		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 10 Seguimiento
 
 	/// Diferencia absoluta del acumulado del año contra el acumulado del año anterior a la misma fecha (la "Variación" de la matriz de oportunidades).
@@ -2488,13 +2506,19 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += _cohorte(
 
 MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 	/// Títulos del dashboard de clientes.
-	measure 'Título de Matriz de oportunidades' = "Matriz de oportunidades"
+	measure 'Título de Matriz de oportunidades' = "Matriz de oportunidades · " & [Período activo]
 		displayFolder: _Narrativa
-	measure 'Título de Cartera de clientes' = "Cartera de clientes"
+
+	/// Título de la hoja Cartera 12 meses: la ventana móvil, no el período del segmentador.
+	measure 'Título de Cartera de clientes' = "Cartera de clientes · últimos 12 meses"
 		displayFolder: _Narrativa
-	measure 'Título de Clientes nuevos' = "Clientes nuevos"
+
+	/// Título de la hoja de clientes nuevos con el período activo.
+	measure 'Título de Clientes nuevos' = "Clientes nuevos · " & [Período activo]
 		displayFolder: _Narrativa
-	measure 'Título de Clientes recuperados' = "Clientes recuperados"
+
+	/// Título de la hoja de clientes recuperados con el período activo.
+	measure 'Título de Clientes recuperados' = "Clientes recuperados · " & [Período activo]
 		displayFolder: _Narrativa
 """
 
@@ -2510,39 +2534,6 @@ MEDIDAS_POR_TABLA["dim_cliente"] += r"""
 		dataType: string
 		summarizeBy: none
 
-	/// Meses distintos con compra en los últimos 12 meses al corte.
-	column 'Meses con compra 12m' = VAR fin = CALCULATE(MAX(Ventas[fecha_documento]), REMOVEFILTERS()) VAR e = EDATE(fin, -11) VAR ini = DATE(YEAR(e), MONTH(e), 1) RETURN CALCULATE(DISTINCTCOUNT(Ventas[mes_documento]), Ventas[fecha_documento] >= ini && Ventas[fecha_documento] <= fin)
-		dataType: int64
-		formatString: 0
-		summarizeBy: none
-
-	/// Rango de frecuencia (meses con compra en 12): 1-3 · 4-6 · 7-9 · 10-12.
-	column 'Rango de meses con compra' = VAR n = Cliente[Meses con compra 12m] RETURN SWITCH(TRUE(), ISBLANK(n) || n = 0, "0", n <= 3, "1-3", n <= 6, "4-6", n <= 9, "7-9", "10-12")
-		dataType: string
-		summarizeBy: none
-		sortByColumn: 'Rango de meses con compra orden'
-
-	column 'Rango de meses con compra orden' = VAR n = Cliente[Meses con compra 12m] RETURN SWITCH(TRUE(), ISBLANK(n) || n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 9, 3, 4)
-		dataType: int64
-		isHidden
-		summarizeBy: none
-
-	/// Meses consecutivos sin compra al corte (desde la última compra).
-	column 'Meses sin compra' = VAR fin = CALCULATE(MAX(Ventas[fecha_documento]), REMOVEFILTERS()) VAR u = CALCULATE(MAX(Ventas[fecha_documento])) RETURN IF(ISBLANK(u), BLANK(), DATEDIFF(u, fin, MONTH))
-		dataType: int64
-		formatString: 0
-		summarizeBy: none
-
-	/// Rango de abandono (meses sin compra): 0 · 1-3 · 4-6 · 7-12 · +12.
-	column 'Rango de meses sin compra' = VAR n = Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), "Sin compra", n = 0, "0 meses", n <= 3, "1-3 meses", n <= 6, "4-6 meses", n <= 12, "7-12 meses", "+12 meses")
-		dataType: string
-		summarizeBy: none
-		sortByColumn: 'Rango de meses sin compra orden'
-
-	column 'Rango de meses sin compra orden' = VAR n = Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), 9, n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 12, 3, 4)
-		dataType: int64
-		isHidden
-		summarizeBy: none
 """
 
 # Tablas de parámetro del dashboard de clientes (calculadas; nombre final, no pasan por ETIQUETA).
@@ -2695,22 +2686,32 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 	measure 'Resto a máximo bodega existencias' = VAR m = MAXX(ALLSELECTED(Bodega[nombre]), [Unidades en existencia]) VAR v = [Unidades en existencia] RETURN IF(ISBLANK(v), BLANK(), m - v)
 		formatString: #,0
 		displayFolder: _Auxiliar
+
+	/// Barra fantasma del ranking de existencias por línea (auxiliar de dibujo, no es cifra de negocio).
 	measure 'Resto a máximo línea existencias' = VAR m = MAXX(ALLSELECTED(Producto[grupo_nombre]), [Unidades en existencia]) VAR v = [Unidades en existencia] RETURN IF(ISBLANK(v), BLANK(), m - v)
 		formatString: #,0
 		displayFolder: _Auxiliar
+
+	/// Barra fantasma del ranking de costo por bodega (auxiliar de dibujo).
 	measure 'Resto a máximo bodega valor' = VAR m = MAXX(ALLSELECTED(Bodega[nombre]), [Valor de inventario]) VAR v = [Valor de inventario] RETURN IF(ISBLANK(v), BLANK(), m - v)
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
+
+	/// Barra fantasma del ranking de costo por línea (auxiliar de dibujo).
 	measure 'Resto a máximo línea valor' = VAR m = MAXX(ALLSELECTED(Producto[grupo_nombre]), [Valor de inventario]) VAR v = [Valor de inventario] RETURN IF(ISBLANK(v), BLANK(), m - v)
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 
 	/// Títulos del dashboard de inventarios.
-	measure 'Título de Existencias de inventario' = "Existencias de inventario"
+	measure 'Título de Existencias de inventario' = "Existencias de inventario · foto de hoy"
 		displayFolder: _Narrativa
-	measure 'Título de Costo del inventario' = "Costo del inventario"
+
+	/// Título de la hoja de costo del inventario: es foto al corte, no flujo.
+	measure 'Título de Costo del inventario' = "Costo del inventario · foto de hoy"
 		displayFolder: _Narrativa
-	measure 'Título de Análisis de inventario' = "Análisis de inventario"
+
+	/// Título de la hoja de reposición: foto al corte del inventario.
+	measure 'Título de Análisis de inventario' = "Análisis de inventario · foto de hoy"
 		displayFolder: _Narrativa
 """
 
@@ -2754,22 +2755,6 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += """
 		formatString: 0
 		summarizeBy: none
 
-	/// Vencido / No vencido (días vencido positivos = vencido; negativos = días que faltan).
-	column Estado = IF('Cartera por cobrar'[dias_vencido] > 0, "Vencido", "No vencido")
-		dataType: string
-		summarizeBy: none
-
-	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+). Etiquetas en lenguaje claro («Vence en 22-30», «Vencido 31-60»): Edwin pidió retirar el «Próx.» y la jerarquía Estado › Rango no abre por PBIR.
-	column 'Rango de vencimiento' = VAR d = 'Cartera por cobrar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "Vencido 91+", d > 60, "Vencido 61-90", d > 30, "Vencido 31-60", d > 15, "Vencido 16-30", d > 0, "Vencido 1-15", d > -8, "Vence en 7", d > -15, "Vence en 8-14", d > -22, "Vence en 15-21", d > -31, "Vence en 22-30", "Vence en 31+")
-		dataType: string
-		summarizeBy: none
-		sortByColumn: 'Rango de vencimiento orden'
-
-	column 'Rango de vencimiento orden' = VAR d = 'Cartera por cobrar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, 10, d > 60, 9, d > 30, 8, d > 15, 7, d > 0, 6, d > -8, 5, d > -15, 4, d > -22, 3, d > -31, 2, 1)
-		dataType: int64
-		isHidden
-		summarizeBy: none
-
 	/// Proporción del saldo que aún no vence.
 	measure '% No vencido' = DIVIDE([Saldo corriente], [Saldo por cobrar])
 		formatString: 0%
@@ -2804,14 +2789,22 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += """
 	measure 'Fecha de factura' = MAX('Cartera por cobrar'[fecha_documento])
 		formatString: dd/MM/yyyy
 		displayFolder: 15 Cuentas por cobrar
+
+	/// Días de crédito pactados de la partida (una fila por documento en el detalle).
 	measure 'Días de crédito de la partida' = MAX('Cartera por cobrar'[Días de crédito])
 		formatString: 0
 		displayFolder: 15 Cuentas por cobrar
+
+	/// Días desde el documento hasta el corte, para la partida del detalle.
 	measure 'Días transcurridos de la partida' = MAX('Cartera por cobrar'[Días transcurridos])
 		formatString: 0
 		displayFolder: 15 Cuentas por cobrar
+
+	/// Vencido / No vencido de la partida del detalle (sale del catálogo de rangos de Oro).
 	measure 'Estado de la partida' = MAX('Cartera por cobrar'[Estado])
 		displayFolder: 15 Cuentas por cobrar
+
+	/// Rango fino de vencimiento de la partida del detalle (catálogo dim_rango_vencimiento).
 	measure 'Rango de la partida' = MAX('Cartera por cobrar'[Rango de vencimiento])
 		displayFolder: 15 Cuentas por cobrar
 
@@ -2821,9 +2814,11 @@ MEDIDAS_POR_TABLA["hecho_cartera_cobrar"] += """
 		displayFolder: 16 Cobros
 
 	/// Títulos.
-	measure 'Título de Cuentas por cobrar' = "Cuentas por cobrar"
+	measure 'Título de Cuentas por cobrar' = "Cuentas por cobrar · foto de hoy"
 		displayFolder: _Narrativa
-	measure 'Título de Cobros' = "Recuperación y cobros"
+
+	/// Título de la hoja de recuperación: ventana de 12 meses.
+	measure 'Título de Cobros' = "Recuperación y cobros · últimos 12 meses"
 		displayFolder: _Narrativa
 """
 
@@ -2840,27 +2835,12 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] += """
 		formatString: 0
 		summarizeBy: none
 
-	/// Vencido / No vencido (días vencido positivos = vencido; negativos = días que faltan).
-	column Estado = IF('Cartera por pagar'[dias_vencido] > 0, "Vencido", "No vencido")
-		dataType: string
-		summarizeBy: none
-
-	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+). Etiquetas en lenguaje claro («Vence en 22-30», «Vencido 31-60»): Edwin pidió retirar el «Próx.» y la jerarquía Estado › Rango no abre por PBIR.
-	column 'Rango de vencimiento' = VAR d = 'Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "Vencido 91+", d > 60, "Vencido 61-90", d > 30, "Vencido 31-60", d > 15, "Vencido 16-30", d > 0, "Vencido 1-15", d > -8, "Vence en 7", d > -15, "Vence en 8-14", d > -22, "Vence en 15-21", d > -31, "Vence en 22-30", "Vence en 31+")
-		dataType: string
-		summarizeBy: none
-		sortByColumn: 'Rango de vencimiento orden'
-
-	column 'Rango de vencimiento orden' = VAR d = 'Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, 10, d > 60, 9, d > 30, 8, d > 15, 7, d > 0, 6, d > -8, 5, d > -15, 4, d > -22, 3, d > -31, 2, 1)
-		dataType: int64
-		isHidden
-		summarizeBy: none
-
 	/// Saldo por pagar que aún no vence.
 	measure 'Por pagar no vencido' = CALCULATE([Saldo por pagar], KEEPFILTERS('Antigüedad'[es_vencido] = FALSE))
 		formatString: "Q" #,0
 		displayFolder: 17 Cuentas por pagar
 
+	/// Proporción del saldo por pagar que aún no vence.
 	measure '% Por pagar no vencido' = DIVIDE([Por pagar no vencido], [Saldo por pagar])
 		formatString: 0%
 		displayFolder: 17 Cuentas por pagar
@@ -2875,6 +2855,7 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] += """
 		formatString: #,0
 		displayFolder: 17 Cuentas por pagar
 
+	/// Cuántos días por encima (+) o por debajo (−) del crédito del proveedor estamos pagando.
 	measure 'Sobregiro en días por pagar' = [Días promedio por pagar] - [Días autorizados por proveedores]
 		formatString: +#,0;-#,0;0
 		displayFolder: 17 Cuentas por pagar
@@ -2883,18 +2864,27 @@ MEDIDAS_POR_TABLA["hecho_cartera_pagar"] += """
 	measure 'Fecha de factura por pagar' = MAX('Cartera por pagar'[fecha_documento])
 		formatString: dd/MM/yyyy
 		displayFolder: 17 Cuentas por pagar
+
+	/// Días de crédito pactados con el proveedor en la partida del detalle.
 	measure 'Días de crédito de la partida por pagar' = MAX('Cartera por pagar'[Días de crédito])
 		formatString: 0
 		displayFolder: 17 Cuentas por pagar
+
+	/// Días desde el documento del proveedor hasta el corte.
 	measure 'Días transcurridos de la partida por pagar' = MAX('Cartera por pagar'[Días transcurridos])
 		formatString: 0
 		displayFolder: 17 Cuentas por pagar
+
+	/// Vencido / No vencido de la partida por pagar del detalle.
 	measure 'Estado de la partida por pagar' = MAX('Cartera por pagar'[Estado])
 		displayFolder: 17 Cuentas por pagar
+
+	/// Rango fino de vencimiento de la partida por pagar del detalle.
 	measure 'Rango de la partida por pagar' = MAX('Cartera por pagar'[Rango de vencimiento])
 		displayFolder: 17 Cuentas por pagar
 
-	measure 'Título de Cuentas por pagar' = "Cuentas por pagar"
+	/// Título de la hoja de cuentas por pagar: foto de hoy.
+	measure 'Título de Cuentas por pagar' = "Cuentas por pagar · foto de hoy"
 		displayFolder: _Narrativa
 """
 
@@ -2909,12 +2899,17 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
 
+	/// Facturación con IVA de los 12 meses que terminan en el corte: lo que se cargó a la cartera.
 	measure 'Cargos totales 12 meses' = CALCULATE([Ventas netas con IVA], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
+
+	/// Cobros de los 12 meses al corte: lo que se abonó a la cartera.
 	measure 'Abonos totales 12 meses' = CALCULATE([Cobros de clientes], REMOVEFILTERS(Calendario), DATESBETWEEN(Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
+
+	/// Cargos − abonos de 12 meses: si es positivo, la cartera creció en el año móvil.
 	measure 'Cargos menos abonos 12 meses' = VAR c = [Cargos totales 12 meses] VAR a = [Abonos totales 12 meses] RETURN IF(ISBLANK(c) && ISBLANK(a), BLANK(), COALESCE(c, 0) - COALESCE(a, 0))
 		formatString: "Q" #,0;-"Q" #,0;"Q" 0
 		displayFolder: 16 Cobros
@@ -2929,22 +2924,24 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 		formatString: "Q" #,0;-"Q" #,0;"Q" 0
 		displayFolder: 16 Cobros
 
-	/// Utilidad: nombres como los muestra Kraken.
+	/// Alias de [Margen bruto] con el nombre que muestra Kraken (leyendas de la hoja Utilidad). OCULTO: en el panel de campos se usa el original, así nadie elige entre dos medidas iguales.
 	measure 'Ganancia' = [Margen bruto]
 		formatString: "Q" #,0
+		isHidden
 		displayFolder: 18 Utilidad
+
+	/// Alias de [Costo de ventas] con el nombre que muestra Kraken. OCULTO por la misma razón que 'Ganancia'.
 	measure 'Costo de lo vendido' = [Costo de ventas]
 		formatString: "Q" #,0
+		isHidden
 		displayFolder: 18 Utilidad
-	measure 'Título de Utilidad' = "Análisis de utilidad"
+
+	/// Título de la hoja Utilidad con el período activo.
+	measure 'Título de Utilidad' = "Análisis de utilidad · " & [Período activo]
 		displayFolder: _Narrativa
 """
 
 MEDIDAS_POR_TABLA["dim_cliente"] += r"""
-	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días). Si la ficha no la trae (en Odoo casi nunca), se toma la de su última factura, para que cartera y utilidad digan lo mismo que ventas.
-	column Sector = VAR directo = LOOKUPVALUE('Condición de pago'[nombre], 'Condición de pago'[condicion_pago_codigo], Cliente[condicion_pago_codigo], 'Condición de pago'[empresa_id], Cliente[empresa_id]) VAR ultima = MAXX(TOPN(1, CALCULATETABLE(Ventas), Ventas[fecha_documento], DESC), Ventas[condicion_pago_clave]) VAR porFactura = LOOKUPVALUE('Condición de pago'[nombre], 'Condición de pago'[condicion_pago_clave], ultima) RETURN COALESCE(directo, porFactura, "Sin condición")
-		dataType: string
-		summarizeBy: none
 """
 
 MEDIDAS_POR_TABLA.setdefault("dim_proveedor", "")
@@ -2973,19 +2970,19 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 		displayFolder: 18 Vendedores
 
 	/// Título de la hoja Vendedores.
-	measure 'Título de Vendedores' = "Desempeño comercial por vendedor"
+	measure 'Título de Vendedores' = "Desempeño comercial por vendedor · " & [Período activo]
 		displayFolder: _Narrativa
 
 	/// Título de la hoja Pulso.
-	measure 'Título de Pulso' = "Pulso diario de la venta"
+	measure 'Título de Pulso' = "Pulso diario de la venta · " & [Período activo]
 		displayFolder: _Narrativa
 
 	/// Título de la hoja Salud.
-	measure 'Título de Salud de inventario' = "Salud del inventario"
+	measure 'Título de Salud de inventario' = "Salud del inventario · foto de hoy"
 		displayFolder: _Narrativa
 
 	/// Título de la hoja Compras.
-	measure 'Título de Compras' = "Compras y proveedores"
+	measure 'Título de Compras' = "Compras y proveedores · " & [Período activo]
 		displayFolder: _Narrativa
 
 """
@@ -3053,11 +3050,6 @@ MEDIDAS_POR_TABLA["clasificacion_rfm_cliente"] += r"""
 	/// Documentos de venta del cliente en los últimos 12 meses.
 	measure 'Compras del cliente 12m' = SUM('Clasificación RFM'[frecuencia_12m])
 		formatString: #,0
-		displayFolder: 03 Ficha
-
-	/// Venta neta del cliente en los últimos 12 meses según el RFM.
-	measure 'Venta del cliente 12m' = SUM('Clasificación RFM'[monto_neto_12m])
-		formatString: "Q" #,0
 		displayFolder: 03 Ficha
 
 	/// Fecha de la última compra del cliente.
@@ -3150,7 +3142,7 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 
 	/// Mes en curso contra el mes anterior al mismo día. En tenants sin historia de un año es la única comparación posible.
 	measure 'Variación del mes en curso vs mes anterior' = DIVIDE([Venta del mes en curso] - [Venta del mes anterior al día], [Venta del mes anterior al día])
-		formatString: 0.0%
+		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 17 Resumen
 
 	/// Título de la hoja Resumen.
@@ -3159,27 +3151,28 @@ MEDIDAS_POR_TABLA["hecho_venta_linea"] += r"""
 		formatString: 0%
 		displayFolder: 07 Pareto
 
-	measure 'Título de Resumen' = "Resumen ejecutivo"
+	/// Título del resumen ejecutivo con el período activo.
+	measure 'Título de Resumen' = "Resumen ejecutivo · " & [Período activo]
 		displayFolder: _Narrativa
 
 	/// Título de la hoja Segmentación.
-	measure 'Título de Segmentación' = "Segmentación y riesgo de clientes"
+	measure 'Título de Segmentación' = "Segmentación y riesgo de clientes · foto de hoy"
 		displayFolder: _Narrativa
 
 	/// Título de la hoja Concentración.
-	measure 'Título de Concentración' = "Concentración de la venta · 80/20"
+	measure 'Título de Concentración' = "Concentración de la venta · 80/20 · " & [Período activo]
 		displayFolder: _Narrativa
 
 	/// Título de la hoja Tesorería.
-	measure 'Título de Tesorería' = "Tesorería y flujo de caja"
+	measure 'Título de Tesorería' = "Tesorería y flujo de caja · " & [Período activo]
 		displayFolder: _Narrativa
 
 	/// Título de la hoja Pedidos.
-	measure 'Título de Pedidos' = "Pedidos y entregas"
+	measure 'Título de Pedidos' = "Pedidos y entregas · " & [Período activo]
 		displayFolder: _Narrativa
 
 	/// Título de la hoja Resultados.
-	measure 'Título de Resultados' = "Resultados contables"
+	measure 'Título de Resultados' = "Resultados contables · " & [Período activo]
 		displayFolder: _Narrativa
 
 """
@@ -3235,11 +3228,6 @@ MEDIDAS_POR_TABLA["hecho_movimiento_contable"] += r"""
 	measure 'Aporte al resultado' = [Resultado contable]
 		formatString: "Q" #,0
 		displayFolder: 01 P&L
-
-	/// Naturaleza legible de la partida (ingreso / costo / gasto) para el puente del resultado.
-	column 'Naturaleza contable' = SWITCH('Resultados contables'[naturaleza], "ingreso", "Ingresos", "costo", "Costo", "gasto", "Gastos", "Otros")
-		dataType: string
-		summarizeBy: none
 
 """
 
@@ -3563,7 +3551,238 @@ def validar_calendario(cur) -> list[str]:
     return fallos
 
 
+# ---------------------------------------------------------------------------------------------
+# MODO --solo-medidas
+#
+# La corrida completa reescribe todos los .tmdl desde cero y borra `.pbi/cache.abf`: es lo
+# correcto cuando cambia la estructura de Oro, pero tira el caché de datos que Desktop tarda en
+# reconstruir y pierde los `lineageTag` que Desktop asignó. Para el caso más frecuente —cambió una
+# medida o una columna calculada— este modo toca SOLO esos bloques en los .tmdl existentes:
+#   - reemplaza medidas y columnas calculadas por lo que define MEDIDAS_POR_TABLA;
+#   - conserva el `lineageTag` y las anotaciones que Desktop haya puesto a cada bloque;
+#   - con `--columnas <base>` además agrega las columnas de Oro que falten en la tabla (nunca
+#     borra una columna de datos: eso se decide con la corrida completa);
+#   - no toca particiones, relaciones, caché ni visuales, y respeta el fin de línea del archivo.
+# ---------------------------------------------------------------------------------------------
+_INICIO_BLOQUE = re.compile(
+    r"^\t(///|measure |column |hierarchy |partition |annotation |calculationGroup|calculationItem |changedProperty )")
+
+
+def _nombre_decl(resto: str) -> tuple[str, str]:
+    """(nombre, texto tras el nombre) de una declaración TMDL (`'Ventas netas' = …` o `cantidad`)."""
+    resto = resto.lstrip()
+    if resto.startswith("'"):
+        i = 1
+        while i < len(resto):
+            if resto[i] == "'":
+                if i + 1 < len(resto) and resto[i + 1] == "'":
+                    i += 2
+                    continue
+                return resto[1:i].replace("''", "'"), resto[i + 1:]
+            i += 1
+        return resto[1:], ""
+    partes = re.split(r"(?=[\s=])", resto, maxsplit=1)
+    return partes[0], (partes[1] if len(partes) > 1 else "")
+
+
+def _bloques(lineas: list[str]) -> tuple[list[str], list[dict]]:
+    """Parte una tabla TMDL en cabecera + bloques de primer nivel (cada uno con su comentario ///)."""
+    cabecera: list[str] = []
+    bloques: list[dict] = []
+    actual: dict | None = None
+    for ln in lineas:
+        if _INICIO_BLOQUE.match(ln):
+            es_doc = ln.startswith("\t///")
+            if actual is not None and actual["tipo"] == "doc":
+                # La declaración (o más ///) que sigue a un comentario pertenece al mismo bloque.
+                actual["lineas"].append(ln)
+                if es_doc:
+                    continue
+            else:
+                actual = {"tipo": "doc" if es_doc else None, "nombre": "", "lineas": [ln]}
+                bloques.append(actual)
+                if es_doc:
+                    continue
+            s = ln[1:]
+            if s.startswith("measure "):
+                actual["tipo"], actual["nombre"] = "medida", _nombre_decl(s[8:])[0]
+            elif s.startswith("column "):
+                nombre, tras = _nombre_decl(s[7:])
+                # Columna calculada: la declaración trae ` = DAX` después del nombre.
+                actual["tipo"] = "calculada" if tras.lstrip().startswith("=") else "columna"
+                actual["nombre"] = nombre
+            else:
+                actual["tipo"], actual["nombre"] = "otro", s.split()[0]
+            continue
+        if actual is None:
+            cabecera.append(ln)
+        else:
+            actual["lineas"].append(ln)
+    return cabecera, bloques
+
+
+def ocultar_auxiliares(texto: str) -> str:
+    """Toda medida de la carpeta `_Auxiliar` (barras fantasma, anclas, inicios de ventana) y la
+    referencia del Pareto quedan ocultas: los visuales las usan, el usuario no tiene por qué verlas
+    en el panel de campos (auditoría §6: 16 auxiliares visibles)."""
+    out, bloques = _bloques(texto.split("\n"))
+    if not bloques:
+        return texto
+    for b in bloques:
+        lineas = b["lineas"]
+        aux = b["tipo"] == "medida" and (any(ln.strip() == "displayFolder: _Auxiliar" for ln in lineas)
+                                         or b["nombre"] == "Referencia 80 %")
+        if aux and not any(ln.strip() == "isHidden" for ln in lineas):
+            k = next(i for i, ln in enumerate(lineas) if ln.startswith("\tmeasure "))
+            lineas = lineas[: k + 1] + ["\t\tisHidden"] + lineas[k + 1:]
+        out += lineas
+    return "\n".join(out)
+
+
+def _sin_vacias(lineas: list[str]) -> list[str]:
+    return [ln for ln in lineas if ln.strip()]
+
+
+def _con_desktop(nuevo: dict, previo: dict | None) -> list[str]:
+    """Bloque generado + lo que Desktop le agregó y el generador no conoce (lineageTag, anotaciones)."""
+    lineas = _sin_vacias(nuevo["lineas"])
+    if previo:
+        propias = {ln.strip().split(":")[0].split(" ")[0] for ln in lineas if ln.startswith("\t\t")}
+        for ln in previo["lineas"]:
+            if ln.startswith("\t\tlineageTag:") or ln.startswith("\t\tannotation ") or ln.startswith("\t\tchangedProperty"):
+                if ln.strip().split(":")[0].split(" ")[0] not in propias or ln.startswith("\t\tannotation "):
+                    lineas.append(ln)
+    return lineas + [""]
+
+
+def sincronizar_medidas(salida: Path, proyecto: str, base_columnas: str | None, moneda: str | None) -> int:
+    defi = salida / f"{proyecto}.SemanticModel" / "definition"
+    if not (defi / "tables").exists():
+        print(f"FALLO · no existe {defi / 'tables'}")
+        return 1
+    if moneda is None:
+        ventas = defi / "tables" / f"{ETIQUETA['hecho_venta_linea']}.tmdl"
+        hallado = re.search(r'formatString: "([^"]+)" #', ventas.read_text(encoding="utf-8")) if ventas.exists() else None
+        simbolo = hallado.group(1) if hallado else "Q"
+        moneda = next((m for m, s in SIMBOLO_MONEDA.items() if s == simbolo), "GTQ")
+        print(f"  moneda de presentación: {moneda} (inferida del modelo existente)")
+
+    cols_oro: dict[str, list[tuple[str, str]]] = {}
+    if base_columnas:
+        host = os.environ.get("POSTGRES_HOST", "localhost")
+        dsn = (f"host={host} port={os.environ.get('POSTGRES_PORT','5432')} dbname={base_columnas} "
+               f"user={os.environ['POSTGRES_USER']} password={os.environ['POSTGRES_PASSWORD']}")
+        with psycopg.connect(dsn) as cx:
+            cx.read_only = True
+            cur = cx.cursor()
+            for tabla in DIMENSIONES + HECHOS:
+                cols_oro[tabla] = columnas(cur, tabla)
+
+    total = {"cambiadas": 0, "nuevas": 0, "quitadas": 0, "columnas": 0}
+    for tabla in DIMENSIONES + HECHOS:
+        ruta = defi / "tables" / f"{ETIQUETA.get(tabla, tabla)}.tmdl"
+        if not ruta.exists():
+            continue
+        crudo = ruta.read_bytes().decode("utf-8")
+        crlf = "\r\n" in crudo
+        cabecera, previos = _bloques(crudo.replace("\r\n", "\n").split("\n"))
+
+        # Lo que el generador define hoy para la tabla (mismo pipeline que gen_tabla).
+        generado = MEDIDAS_POR_TABLA.get(tabla, "")
+        texto_gen = ocultar_auxiliares(alias_columnas(aplicar_moneda(renombrar_dax(generado).strip("\n"), moneda))) if generado.strip() else ""
+        nuevos = [b for b in (_bloques(texto_gen.split("\n"))[1] if texto_gen else []) if b["tipo"] in ("medida", "calculada")]
+        por_clave = {(b["tipo"], b["nombre"]): b for b in previos if b["tipo"] in ("medida", "calculada")}
+        generadas = {(b["tipo"], b["nombre"]) for b in nuevos}
+
+        # Cada bloque conserva su lugar en el archivo (diff mínimo); los nuevos van al final de su grupo.
+        actualizado: dict[tuple[str, str], list[str]] = {}
+        nuevas_m: list[str] = []
+        nuevas_c: list[str] = []
+        for b in nuevos:
+            previo = por_clave.get((b["tipo"], b["nombre"]))
+            lineas = _con_desktop(b, previo)
+            if previo is None:
+                total["nuevas"] += 1
+                print(f"  + {ruta.stem}: {b['tipo']} '{b['nombre']}'")
+                (nuevas_m if b["tipo"] == "medida" else nuevas_c).extend(lineas)
+                continue
+            if sorted(_sin_vacias(previo["lineas"])) == sorted(_sin_vacias(lineas)):
+                # Mismo contenido: se deja el bloque tal cual (Desktop ordena las propiedades a su modo).
+                lineas = _sin_vacias(previo["lineas"]) + [""]
+            else:
+                total["cambiadas"] += 1
+                print(f"  ~ {ruta.stem}: {b['tipo']} '{b['nombre']}'")
+            actualizado[(b["tipo"], b["nombre"])] = lineas
+        for tipo, nombre in por_clave:
+            if (tipo, nombre) not in generadas:
+                total["quitadas"] += 1
+                print(f"  - {ruta.stem}: {tipo} '{nombre}' (el generador ya no la define)")
+
+        # Columnas de Oro que faltan en la tabla (solo con --columnas). Una columna calculada que
+        # pasó a Oro con el mismo nombre se vuelve columna de datos.
+        col_txt: list[str] = []
+        if cols_oro.get(tabla):
+            fuentes = {ln.strip().split(":", 1)[1].strip() for b in previos if b["tipo"] == "columna"
+                       for ln in b["lineas"] if ln.strip().startswith("sourceColumn:")}
+            calc_gen = {b["nombre"] for b in nuevos if b["tipo"] == "calculada"}
+            nombres_oro = {c for c, _ in cols_oro[tabla]}
+            for col, tipo in cols_oro[tabla]:
+                if col in fuentes or nombre_columna(tabla, col) in calc_gen:
+                    continue
+                bloque = gen_columna(tabla, col, tipo, nombres_oro)
+                # Reemplaza a una columna calculada homónima: hereda su lineageTag (Desktop la reconoce).
+                viejo = por_clave.get(("calculada", nombre_columna(tabla, col)))
+                if viejo:
+                    bloque += [ln for ln in viejo["lineas"] if ln.startswith("\t\tlineageTag:")]
+                col_txt += bloque + [""]
+                total["columnas"] += 1
+                print(f"  + {ruta.stem}: columna de Oro '{col}'")
+
+        ult_m = max((k for k, b in enumerate(previos) if b["tipo"] == "medida"), default=None)
+        ult_c = max((k for k, b in enumerate(previos) if b["tipo"] in ("calculada", "columna")), default=None)
+        out = list(cabecera)
+        for k, b in enumerate(previos):
+            if b["tipo"] == "otro" and b["nombre"] == "partition":
+                # Sin medidas o columnas previas, lo nuevo entra justo antes de la partición.
+                out += nuevas_m + col_txt + nuevas_c
+                nuevas_m, col_txt, nuevas_c = [], [], []
+            if b["tipo"] in ("medida", "calculada"):
+                clave = (b["tipo"], b["nombre"])
+                if clave in actualizado:
+                    out += actualizado[clave]
+            else:
+                out += b["lineas"]
+            if k == ult_m:
+                out += nuevas_m
+                nuevas_m = []
+            if k == ult_c:
+                out += col_txt + nuevas_c
+                col_txt, nuevas_c = [], []
+        out += nuevas_m + col_txt + nuevas_c
+        texto = re.sub(r"\n{3,}", "\n\n", "\n".join(out))
+        if crlf:
+            texto = texto.replace("\n", "\r\n")
+        if texto != crudo:
+            ruta.write_bytes(texto.encode("utf-8"))
+
+    fallos = validar_tmdl(defi) + validar_referencias(defi)
+    print(f"  {total['cambiadas']} cambiadas · {total['nuevas']} nuevas · {total['quitadas']} quitadas · "
+          f"{total['columnas']} columnas de Oro agregadas")
+    if fallos:
+        print(f"FALLO · {proyecto} · TMDL invalido:")
+        for x in fallos:
+            print(f"   {x}")
+        return 1
+    print(f"OK · {proyecto} · solo medidas · TMDL valido (caché, particiones y lineageTag intactos)")
+    return 0
+
+
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--solo-medidas":
+        # python generar_pbip.py --solo-medidas <carpeta_salida> <proyecto> [--columnas <base>] [--moneda ISO]
+        args = sys.argv[2:]
+        opc = {args[i]: args[i + 1] for i in range(2, len(args) - 1, 2)}
+        return sincronizar_medidas(Path(args[0]), args[1], opc.get("--columnas"), opc.get("--moneda"))
     base, proyecto, salida = sys.argv[1], sys.argv[2], Path(sys.argv[3])
     host = os.environ.get("POSTGRES_HOST", "localhost")
     dsn = (f"host={host} port={os.environ.get('POSTGRES_PORT','5432')} dbname={base} "

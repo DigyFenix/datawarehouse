@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "9a54b66679bed1a17b51",
   "position": {
     "x": 440,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Análisis de producto.clase_abc_producto_nombre",
-              "nativeQueryRef": "clase_abc_producto_nombre",
-              "active": true
+              "nativeQueryRef": "clase_abc_producto_nombre"
             }
           ]
         },
@@ -268,7 +267,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#e0a526'"
+                      "Value": "'#b9781a'"
                     }
                   }
                 }

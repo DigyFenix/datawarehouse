@@ -2,7 +2,7 @@
 // y que explotan lo que el modelo ya calcula en Oro: resumen ejecutivo, segmentación RFM y riesgo de
 // pago, concentración 80/20, tesorería y flujo de caja, pedidos y entregas, resultados contables.
 //
-// Uso:  node generar_paginas_gestion.js <ruta al .Report> [anio_actual]
+// Uso:  node generar_paginas_gestion.js <ruta al .Report>
 //
 // Determinista (ids sha1 por página y clave); solo reescribe sus propias páginas. El orden final de
 // las hojas lo fija `ordenarPaginas` al final (Resumen primero, el resto junto a su familia).
@@ -13,11 +13,9 @@ const P = require('./pbir');
 const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, matriz, ejeValores, leyenda, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
-const ANIO_ACTUAL = Number(process.argv[3] || new Date().getFullYear());
 const V = T.VENTAS, CXC = 'FC_Cartera por cobrar', CXP = 'FC_Cartera por pagar', PAG = 'FC_Pagos recibidos', PAGE = 'FC_Pagos efectuados',
   PROY = 'FC_Proyección de caja', PED = 'FC_Pedidos', CONT = 'FC_Resultados contables', CTA = 'DM_Cuenta contable', INV = 'FC_Inventario',
   HIST = 'FC_Cartera cobrar histórico', CP = 'DM_Comportamiento de pago', RFM = T.RFM, AP = 'DM_Análisis de producto', AGING = 'DM_Antigüedad';
-const MORADO = '#8e5ea2';
 
 // Helpers genéricos (línea, columnas, combo, barrasH, pareto, cascada, panelAlertas) viven en pbir.js desde la sesión 35.
 const { linea, columnas, combo, barrasH, pareto, cascada, panelFocos } = P;
@@ -29,11 +27,11 @@ function paginaResumen() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Resumen', 'Subtítulo de corte mensual'));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[1], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(kpi(slug, 'ventas', [xCol(3), BANDA[0], wCol(4), 112], 'Ventas', [
-    [V, 'Venta del mes en curso', 'Mes en curso'], [V, 'Variación del mes en curso vs mes anterior', 'vs. mes anterior al día'], [V, 'Ventas acumuladas año', 'Acumulado del año'], [V, 'Ticket promedio', 'Ticket promedio'],
-  ], 'Moneda de presentación · sin IVA · el mes se compara al mismo día'));
+    [V, 'Venta del mes en curso', 'Mes en curso'], [V, 'Variación del mes en curso vs mes anterior', 'vs. mes anterior al día'], [V, 'Media móvil 3 meses', 'Media móvil 3 meses'], [V, 'Ticket promedio', 'Ticket promedio'],
+  ], 'Moneda de presentación · sin IVA · el mes se compara al mismo día · media = promedio mensual de los últimos 3 meses'));
   vs.push(kpi(slug, 'cartera', [xCol(7), BANDA[0], wCol(4), 112], 'Cartera y caja', [
     [CXC, 'Por cobrar terceros hoy', 'Por cobrar hoy'], [CXC, '% Vencido terceros hoy', '% vencido hoy'], [PAG, 'Cobros de clientes', 'Cobros del período'], [CXP, 'Posición neta hoy', 'Posición neta hoy'],
   ], 'Saldos = foto de hoy · cobros = período filtrado'));
@@ -49,11 +47,12 @@ function paginaResumen() {
       lineStyles: [P.marcadoresFinos, { properties: { strokeWidth: num(2) }, selector: meta(V, 'Ritmo del mes en curso') }, { properties: { lineStyle: str('dotted'), strokeWidth: num(2) }, selector: meta(V, 'Ritmo del mes anterior') }],
       dataPoint: [{ properties: { fill: color(C.PIZARRA) }, selector: meta(V, 'Ritmo del mes en curso') }, { properties: { fill: color(C.ACENTO) }, selector: meta(V, 'Ritmo del mes anterior') }],
     },
-    vc: vcTitulo('Ritmo del mes', 'Acumulado por día · sólida: mes en curso al corte · punteada: mes anterior completo'),
+    // El subtítulo nombra los dos meses (en enero, «diciembre <año> (año anterior)»): medida, no texto fijo.
+    vc: vcTitulo('Ritmo del mes', P.fx(V, 'Subtítulo de ritmo del mes')),
   }));
   vs.push(...panelFocos(slug, 'alertas', [xCol(9), FILA[0], wCol(4), ALTO * 2 + 16], 'Focos de atención', 'Calculados sobre datos gobernados · hoy', [
-    [CXC, 'Foco de vencido · cifra', 'Foco de vencido · detalle', C.ROJO], [PROY, 'Foco de caja · cifra', 'Foco de caja · detalle', MORADO], [PED, 'Foco de backlog · cifra', 'Foco de backlog · detalle', C.PIZARRA],
-    [AP, 'Foco de quiebre · cifra', 'Foco de quiebre · detalle', C.ACENTO], [V, 'Foco de venta bajo costo · cifra', 'Foco de venta bajo costo · detalle', C.TINTA_SUAVE],
+    [CXC, 'Foco de vencido · cifra', 'Foco de vencido · detalle', C.ROJO, 'Por cobrar'], [PROY, 'Foco de caja · cifra', 'Foco de caja · detalle', C.MORADO, 'Tesorería'], [PED, 'Foco de backlog · cifra', 'Foco de backlog · detalle', C.PIZARRA, 'Pedidos'],
+    [AP, 'Foco de quiebre · cifra', 'Foco de quiebre · detalle', C.ACENTO, 'Salud'], [V, 'Foco de venta bajo costo · cifra', 'Foco de venta bajo costo · detalle', C.TINTA_SUAVE, 'Utilidad'],
   ]));
   // Fila 2: aging de terceros · top clientes · top productos
   vs.push(barrasH(slug, 'aging', [xCol(1), FILA[1], wCol(3), ALTO], 'Antigüedad de la cartera · hoy', [AGING, 'rango_aging_nombre'], [[CXC, 'Por cobrar terceros hoy', C.PIZARRA]], { ordenPorColumna: true, subtitulo: 'Terceros · saldo por rango de vencimiento' }));
@@ -111,7 +110,7 @@ function paginaConcentracion() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Concentración', 'Subtítulo de corte anual'));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[1], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(kpi(slug, 'clientes', [xCol(3), BANDA[0], wCol(5), 112], 'Clientes · ¿de quién depende la venta?', [
     [V, 'Clientes para el 80% de la venta', 'Clientes = 80 % venta'], [V, '% Clientes para el 80%', '% de los clientes'], [V, '% Venta en top 10 clientes', 'Venta en top 10'], [V, 'Clientes con venta', 'Clientes con venta'],
@@ -137,7 +136,7 @@ function paginaTesoreria() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Tesorería', 'Subtítulo de corte anual'));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[1], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(kpi(slug, 'caja', [xCol(3), BANDA[0], wCol(6), 112], 'Caja del período', [
     [PAG, 'Cobros de clientes', 'Cobros'], [PAGE, 'Pagos a proveedores', 'Pagos'], [PAGE, 'Flujo neto de caja', 'Flujo neto'], [PAG, '% Cobrado vs facturado', '% cobrado vs facturado'], [PAG, 'Clientes que pagaron', 'Clientes que pagaron'], [PAG, 'Cobro promedio', 'Cobro promedio'],
@@ -169,7 +168,7 @@ function paginaPedidos() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Pedidos', 'Subtítulo de corte anual'));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[1], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(kpi(slug, 'pedidos', [xCol(3), BANDA[0], wCol(6), 112], 'Pedidos del período', [
     [PED, 'Monto pedido', 'Monto pedido'], [PED, 'Pedidos del período', 'Pedidos'], [PED, 'Clientes con pedido', 'Clientes'], [PED, 'Ticket promedio de pedido', 'Ticket de pedido'], [PED, 'Pedido sobre facturado', 'Pedido vs factura'], [PED, 'Fill rate', 'Fill rate'],
@@ -197,7 +196,7 @@ function paginaResultados() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Resultados', 'Subtítulo de corte anual'));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[1], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(kpi(slug, 'pyl', [xCol(3), BANDA[0], wCol(7), 112], 'Resultado según el mayor', [
     [CONT, 'Ingresos contables', 'Ingresos'], [CONT, 'Costo (contable)', 'Costo'], [CONT, 'Gasto operativo', 'Gasto operativo'], [CONT, 'Resultado contable', 'Resultado'], [CONT, '% Margen operativo', 'Margen operativo'],

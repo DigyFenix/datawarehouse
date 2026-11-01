@@ -20,7 +20,7 @@ table FC_Pedidos
 		lineageTag: 11c7de3a-4427-4d27-939d-daa98f15e1d3
 
 	/// Pedido y AÚN no cumplido (líneas abiertas): lo que la operación debe entregar/facturar.
-	measure Backlog = CALCULATE(SUM(FC_Pedidos[monto_abierto]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
+	measure 'Backlog' = CALCULATE(SUM(FC_Pedidos[monto_abierto]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 02 Backlog
 		lineageTag: 7dd33e2c-9a70-4926-8aef-cc323738c24c
@@ -37,8 +37,8 @@ table FC_Pedidos
 		displayFolder: 02 Backlog
 		lineageTag: 61b34bd2-ae83-4ec7-839d-18819caf3dfc
 
-	/// De lo pedido, cuánto ya se cumplió (1 − backlog/pedido). El pulso de la operación.
-	measure 'Fill rate' = 1 - DIVIDE([Backlog], [Monto pedido], 0)
+	/// De lo pedido, cuánto ya se cumplió (1 − backlog/pedido). El pulso de la operación. Sin pedidos en el período queda en blanco: antes el 0 de DIVIDE lo convertía en un 100 % de cumplimiento que nadie había ganado.
+	measure 'Fill rate' = VAR p = [Monto pedido] RETURN IF(ISBLANK(p) || p = 0, BLANK(), 1 - DIVIDE([Backlog], p))
 		formatString: 0.0%
 		displayFolder: 02 Backlog
 		lineageTag: 8b8e0b66-707f-4ba1-a8de-330d0dc48123
@@ -160,6 +160,7 @@ table FC_Pedidos
 		displayFolder: 05 Ficha
 		lineageTag: 7b7c570d-f202-45af-8cd6-fd9aee1c78b4
 
+	/// Cliente del pedido como columna de matriz (solo con backlog): evita el segundo nivel de fila.
 	measure 'Cliente del pedido' = IF([Backlog] > 0 && HASONEVALUE(FC_Pedidos[pedido_numero]), MAXX(FC_Pedidos, RELATED(DM_Cliente[Cliente])))
 		displayFolder: 05 Ficha
 		lineageTag: 80a82fb2-4452-4c92-9fff-401ef7fa2c72
@@ -387,10 +388,11 @@ table FC_Pedidos
 		summarizeBy: none
 		sourceColumn: version_proceso
 
+	/// Alias de negocio del número de pedido para encabezados de matriz.
 	column Pedido = FC_Pedidos[pedido_numero]
 		dataType: string
-		lineageTag: 7e674417-e9a1-4a5c-802d-2815c130f0df
 		summarizeBy: none
+		lineageTag: 7e674417-e9a1-4a5c-802d-2815c130f0df
 
 	partition FC_Pedidos = m
 		mode: import

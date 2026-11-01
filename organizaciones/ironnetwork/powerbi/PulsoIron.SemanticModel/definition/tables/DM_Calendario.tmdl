@@ -416,6 +416,28 @@ table DM_Calendario
 		summarizeBy: none
 		sortByColumn: dia_semana_orden
 
+	column es_anio_corte
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_anio_corte
+
+	column es_mes_corte
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_mes_corte
+
+	column anio_selector
+		dataType: string
+		summarizeBy: none
+		sourceColumn: anio_selector
+		sortByColumn: anio
+
+	column mes_selector
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mes_selector
+		sortByColumn: anio_mes_orden
+
 	hierarchy 'Jerarquía natural'
 		lineageTag: 2625ca81-3e12-45c7-b819-6c032b8cadd9
 

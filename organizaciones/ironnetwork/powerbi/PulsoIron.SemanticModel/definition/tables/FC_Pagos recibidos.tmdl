@@ -213,11 +213,11 @@ table 'FC_Pagos recibidos'
 		summarizeBy: none
 		sourceColumn: version_proceso
 
-	/// Estado del cobro en lenguaje de negocio. En Odoo `paid` = conciliado contra factura y `in_process` = registrado pero sin conciliar; el usuario decide en el segmentador cuáles cuentan.
-	column 'Estado del cobro' = SWITCH('FC_Pagos recibidos'[estado], "paid", "Conciliado", "in_process", "En proceso", "posted", "Registrado", "draft", "Borrador", "cancel", "Cancelado", "canceled", "Cancelado", BLANK(), "Sin estado", 'FC_Pagos recibidos'[estado])
+	column 'Estado del cobro'
 		dataType: string
-		lineageTag: 4e53a96e-21f1-4e85-9fab-d8a2380918b3
 		summarizeBy: none
+		sourceColumn: estado_cobro
+		lineageTag: 4e53a96e-21f1-4e85-9fab-d8a2380918b3
 
 	partition 'FC_Pagos recibidos' = m
 		mode: import

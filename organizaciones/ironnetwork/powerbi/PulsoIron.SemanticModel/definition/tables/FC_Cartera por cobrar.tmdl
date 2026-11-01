@@ -103,8 +103,8 @@ table 'FC_Cartera por cobrar'
 		displayFolder: 04 Riesgo
 		lineageTag: 0a13ce3f-ea99-4f64-9b96-06c713a1d52b
 
-	/// Días de venta a terceros pendientes de cobro. Mezclar el saldo del grupo lo triplica.
-	measure 'Días de cartera terceros' = DIVIDE([Saldo por cobrar terceros], DIVIDE([Ventas a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas)))
+	/// DSO: días de venta a terceros pendientes de cobro. Numerador = saldo de HOY (la cartera es una foto: recortarla a la fecha del documento ocultaba las facturas viejas y no cuadraba con los KPIs «hoy» de la misma hoja); denominador = venta diaria promedio del período. Mezclar el saldo del grupo lo triplica.
+	measure 'Días de cartera terceros' = DIVIDE([Por cobrar terceros hoy], DIVIDE([Ventas a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Ventas)))
 		formatString: #,0.0
 		displayFolder: 04 Riesgo
 		lineageTag: 1e7f8350-3b05-4627-85b7-ff7f6b0d9e08
@@ -231,20 +231,24 @@ table 'FC_Cartera por cobrar'
 		displayFolder: 15 Cuentas por cobrar
 		lineageTag: fcb1b383-4250-4f2d-8936-0d7a833e0365
 
+	/// Días de crédito pactados de la partida (una fila por documento en el detalle).
 	measure 'Días de crédito de la partida' = MAX('FC_Cartera por cobrar'[Días de crédito])
 		formatString: 0
 		displayFolder: 15 Cuentas por cobrar
 		lineageTag: 1bb25082-90d8-4be5-bb3a-562502003c8b
 
+	/// Días desde el documento hasta el corte, para la partida del detalle.
 	measure 'Días transcurridos de la partida' = MAX('FC_Cartera por cobrar'[Días transcurridos])
 		formatString: 0
 		displayFolder: 15 Cuentas por cobrar
 		lineageTag: d537eaa7-bb0a-4fe2-bd7e-d86111346626
 
+	/// Vencido / No vencido de la partida del detalle (sale del catálogo de rangos de Oro).
 	measure 'Estado de la partida' = MAX('FC_Cartera por cobrar'[Estado])
 		displayFolder: 15 Cuentas por cobrar
 		lineageTag: 052af5ab-4a3e-4ff5-bc60-5be88e47b815
 
+	/// Rango fino de vencimiento de la partida del detalle (catálogo dim_rango_vencimiento).
 	measure 'Rango de la partida' = MAX('FC_Cartera por cobrar'[Rango de vencimiento])
 		displayFolder: 15 Cuentas por cobrar
 		lineageTag: 0c6bbea9-587d-4f9a-ad84-9a11bf69370e
@@ -256,11 +260,12 @@ table 'FC_Cartera por cobrar'
 		lineageTag: d1287dc5-4b63-4ef3-8f25-3ae7e2a23913
 
 	/// Títulos.
-	measure 'Título de Cuentas por cobrar' = "Cuentas por cobrar"
+	measure 'Título de Cuentas por cobrar' = "Cuentas por cobrar · foto de hoy"
 		displayFolder: _Narrativa
 		lineageTag: 4b186201-c790-4959-b128-c06a923d4eb1
 
-	measure 'Título de Cobros' = "Recuperación y cobros"
+	/// Título de la hoja de recuperación: ventana de 12 meses.
+	measure 'Título de Cobros' = "Recuperación y cobros · últimos 12 meses"
 		displayFolder: _Narrativa
 		lineageTag: 15b1bab6-9e7d-4b0b-ae58-771891c45c9b
 
@@ -466,24 +471,26 @@ table 'FC_Cartera por cobrar'
 		lineageTag: fa614357-1e2c-4c6f-96a1-f80dadc30da9
 		summarizeBy: none
 
-	/// Vencido / No vencido (días vencido positivos = vencido; negativos = días que faltan).
-	column Estado = IF('FC_Cartera por cobrar'[dias_vencido] > 0, "Vencido", "No vencido")
+	column 'Rango de vencimiento'
 		dataType: string
-		lineageTag: b0115991-1507-43b9-b6a4-2b5d46e4f38e
 		summarizeBy: none
-
-	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+). Etiquetas en lenguaje claro («Vence en 22-30», «Vencido 31-60»): Edwin pidió retirar el «Próx.» y la jerarquía Estado › Rango no abre por PBIR.
-	column 'Rango de vencimiento' = VAR d = 'FC_Cartera por cobrar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "Vencido 91+", d > 60, "Vencido 61-90", d > 30, "Vencido 31-60", d > 15, "Vencido 16-30", d > 0, "Vencido 1-15", d > -8, "Vence en 7", d > -15, "Vence en 8-14", d > -22, "Vence en 15-21", d > -31, "Vence en 22-30", "Vence en 31+")
-		dataType: string
-		lineageTag: 3b49be16-f9cf-4a58-b498-7255c4a0cf55
-		summarizeBy: none
+		sourceColumn: rango_vencimiento
 		sortByColumn: 'Rango de vencimiento orden'
+		lineageTag: 3b49be16-f9cf-4a58-b498-7255c4a0cf55
 
-	column 'Rango de vencimiento orden' = VAR d = 'FC_Cartera por cobrar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, 10, d > 60, 9, d > 30, 8, d > 15, 7, d > 0, 6, d > -8, 5, d > -15, 4, d > -22, 3, d > -31, 2, 1)
+	column 'Rango de vencimiento orden'
 		dataType: int64
 		isHidden
-		lineageTag: 57709200-3a11-4503-935f-c87ed25ec69c
 		summarizeBy: none
+		sourceColumn: rango_vencimiento_orden
+		formatString: 0
+		lineageTag: 57709200-3a11-4503-935f-c87ed25ec69c
+
+	column Estado
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado_vencimiento
+		lineageTag: b0115991-1507-43b9-b6a4-2b5d46e4f38e
 
 	partition 'FC_Cartera por cobrar' = m
 		mode: import

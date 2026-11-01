@@ -146,51 +146,55 @@ table DM_Cliente
 		lineageTag: 55e1dc36-fb78-409b-b465-fdcb5ad09fa0
 		summarizeBy: none
 
-	/// Meses distintos con compra en los últimos 12 meses al corte.
-	column 'Meses con compra 12m' = VAR fin = CALCULATE(MAX(FC_Ventas[fecha_documento]), REMOVEFILTERS()) VAR e = EDATE(fin, -11) VAR ini = DATE(YEAR(e), MONTH(e), 1) RETURN CALCULATE(DISTINCTCOUNT(FC_Ventas[mes_documento]), FC_Ventas[fecha_documento] >= ini && FC_Ventas[fecha_documento] <= fin)
-		dataType: int64
-		formatString: 0
-		lineageTag: 7dc15e02-817a-45be-a05e-095341e0ee42
-		summarizeBy: none
-
-	/// Rango de frecuencia (meses con compra en 12): 1-3 · 4-6 · 7-9 · 10-12.
-	column 'Rango de meses con compra' = VAR n = DM_Cliente[Meses con compra 12m] RETURN SWITCH(TRUE(), ISBLANK(n) || n = 0, "0", n <= 3, "1-3", n <= 6, "4-6", n <= 9, "7-9", "10-12")
+	column Sector
 		dataType: string
-		lineageTag: f99a4f81-a593-49f7-ad28-325a9c31439a
 		summarizeBy: none
-		sortByColumn: 'Rango de meses con compra orden'
-
-	column 'Rango de meses con compra orden' = VAR n = DM_Cliente[Meses con compra 12m] RETURN SWITCH(TRUE(), ISBLANK(n) || n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 9, 3, 4)
-		dataType: int64
-		isHidden
-		lineageTag: 591b4ddf-8979-4a09-a729-df47b6f8446b
-		summarizeBy: none
-
-	/// Meses consecutivos sin compra al corte (desde la última compra).
-	column 'Meses sin compra' = VAR fin = CALCULATE(MAX(FC_Ventas[fecha_documento]), REMOVEFILTERS()) VAR u = CALCULATE(MAX(FC_Ventas[fecha_documento])) RETURN IF(ISBLANK(u), BLANK(), DATEDIFF(u, fin, MONTH))
-		dataType: int64
-		formatString: 0
-		lineageTag: a4f0c7ad-e952-4e9b-a9a0-e3ddea2c4d5d
-		summarizeBy: none
-
-	/// Rango de abandono (meses sin compra): 0 · 1-3 · 4-6 · 7-12 · +12.
-	column 'Rango de meses sin compra' = VAR n = DM_Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), "Sin compra", n = 0, "0 meses", n <= 3, "1-3 meses", n <= 6, "4-6 meses", n <= 12, "7-12 meses", "+12 meses")
-		dataType: string
-		lineageTag: 390183b7-217c-469a-8500-244d24cff9af
-		summarizeBy: none
-		sortByColumn: 'Rango de meses sin compra orden'
-
-	column 'Rango de meses sin compra orden' = VAR n = DM_Cliente[Meses sin compra] RETURN SWITCH(TRUE(), ISBLANK(n), 9, n = 0, 0, n <= 3, 1, n <= 6, 2, n <= 12, 3, 4)
-		dataType: int64
-		isHidden
-		lineageTag: 3b7df0a2-29b1-44ad-a599-c3be4d8906c5
-		summarizeBy: none
-
-	/// Sector del cliente = nombre de su condición de pago (crédito / contado / N días). Si la ficha no la trae (en Odoo casi nunca), se toma la de su última factura, para que cartera y utilidad digan lo mismo que ventas.
-	column Sector = VAR directo = LOOKUPVALUE('DM_Condición de pago'[nombre], 'DM_Condición de pago'[condicion_pago_codigo], DM_Cliente[condicion_pago_codigo], 'DM_Condición de pago'[empresa_id], DM_Cliente[empresa_id]) VAR ultima = MAXX(TOPN(1, CALCULATETABLE(FC_Ventas), FC_Ventas[fecha_documento], DESC), FC_Ventas[condicion_pago_clave]) VAR porFactura = LOOKUPVALUE('DM_Condición de pago'[nombre], 'DM_Condición de pago'[condicion_pago_clave], ultima) RETURN COALESCE(directo, porFactura, "Sin condición")
-		dataType: string
+		sourceColumn: sector
 		lineageTag: 987da73a-57ea-4163-bd4b-5a5ae75347f4
+
+	column 'Meses con compra 12m'
+		dataType: int64
 		summarizeBy: none
+		sourceColumn: meses_con_compra_12m
+		formatString: #,0
+		lineageTag: 7dc15e02-817a-45be-a05e-095341e0ee42
+
+	column 'Meses sin compra'
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: meses_sin_compra
+		formatString: #,0
+		lineageTag: a4f0c7ad-e952-4e9b-a9a0-e3ddea2c4d5d
+
+	column 'Rango de meses con compra'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: rango_meses_con_compra
+		sortByColumn: 'Rango de meses con compra orden'
+		lineageTag: f99a4f81-a593-49f7-ad28-325a9c31439a
+
+	column 'Rango de meses con compra orden'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_meses_con_compra_orden
+		formatString: 0
+		lineageTag: 591b4ddf-8979-4a09-a729-df47b6f8446b
+
+	column 'Rango de meses sin compra'
+		dataType: string
+		summarizeBy: none
+		sourceColumn: rango_meses_sin_compra
+		sortByColumn: 'Rango de meses sin compra orden'
+		lineageTag: 390183b7-217c-469a-8500-244d24cff9af
+
+	column 'Rango de meses sin compra orden'
+		dataType: int64
+		isHidden
+		summarizeBy: none
+		sourceColumn: rango_meses_sin_compra_orden
+		formatString: 0
+		lineageTag: 3b7df0a2-29b1-44ad-a599-c3be4d8906c5
 
 	partition DM_Cliente = m
 		mode: import

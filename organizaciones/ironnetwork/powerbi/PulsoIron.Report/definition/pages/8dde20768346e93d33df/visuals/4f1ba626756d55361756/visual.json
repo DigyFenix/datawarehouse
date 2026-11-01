@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "4f1ba626756d55361756",
   "position": {
     "x": 24,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Cuenta contable.Cuenta",
-              "nativeQueryRef": "Cuenta",
-              "active": true
+              "nativeQueryRef": "Cuenta"
             }
           ]
         },

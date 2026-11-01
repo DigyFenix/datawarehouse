@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "384f18b378b4b5b9e353",
   "position": {
     "x": 336,
     "y": 448,
-    "z": 3300,
+    "z": 3800,
     "height": 240,
     "width": 296,
-    "tabOrder": 33
+    "tabOrder": 38
   },
   "visual": {
     "visualType": "barChart",
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Cliente.nombre",
-              "nativeQueryRef": "nombre",
-              "active": true
+              "nativeQueryRef": "nombre"
             }
           ]
         },
@@ -47,6 +46,52 @@
               },
               "queryRef": "FC_Ventas.Ventas netas",
               "nativeQueryRef": "Ventas netas"
+            }
+          ]
+        },
+        "Tooltips": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Documentos de venta"
+                }
+              },
+              "queryRef": "FC_Ventas.Documentos de venta",
+              "nativeQueryRef": "Documentos de venta"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Ticket promedio"
+                }
+              },
+              "queryRef": "FC_Ventas.Ticket promedio",
+              "nativeQueryRef": "Ticket promedio"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Variación vs año anterior"
+                }
+              },
+              "queryRef": "FC_Ventas.Variación vs año anterior",
+              "nativeQueryRef": "Variación vs año anterior"
             }
           ]
         }

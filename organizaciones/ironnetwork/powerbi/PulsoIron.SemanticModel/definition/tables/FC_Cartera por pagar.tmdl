@@ -67,8 +67,8 @@ table 'FC_Cartera por pagar'
 		displayFolder: 04 Foto de hoy
 		lineageTag: 97287dfa-e1e3-4cfd-a678-0c2febcc6763
 
-	/// DPO: días que tardamos en pagar a proveedores. Misma convención que 'Días de cartera terceros' para que el ciclo de efectivo cuadre.
-	measure 'Días de pago terceros' = DIVIDE([Saldo por pagar terceros], DIVIDE([Compras a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Compras)))
+	/// DPO: días que tardamos en pagar a proveedores. Misma convención que 'Días de cartera terceros' (saldo de hoy ÷ compra diaria del período) para que el ciclo de efectivo cuadre.
+	measure 'Días de pago terceros' = DIVIDE([Por pagar terceros hoy], DIVIDE([Compras a terceros], CALCULATE(DISTINCTCOUNT(DM_Calendario[fecha]), FC_Compras)))
 		formatString: #,0.0
 		displayFolder: 05 Ciclo de efectivo
 		lineageTag: f2a0aa3f-68c4-48f3-90fd-33930a200dd6
@@ -115,6 +115,7 @@ table 'FC_Cartera por pagar'
 		displayFolder: 17 Cuentas por pagar
 		lineageTag: bc2ef4ff-db30-40f6-ac98-71ff8d789197
 
+	/// Proporción del saldo por pagar que aún no vence.
 	measure '% Por pagar no vencido' = DIVIDE([Por pagar no vencido], [Saldo por pagar])
 		formatString: 0%
 		displayFolder: 17 Cuentas por pagar
@@ -132,6 +133,7 @@ table 'FC_Cartera por pagar'
 		displayFolder: 17 Cuentas por pagar
 		lineageTag: c48dae89-c2df-4370-bddc-0843849227f5
 
+	/// Cuántos días por encima (+) o por debajo (−) del crédito del proveedor estamos pagando.
 	measure 'Sobregiro en días por pagar' = [Días promedio por pagar] - [Días autorizados por proveedores]
 		formatString: +#,0;-#,0;0
 		displayFolder: 17 Cuentas por pagar
@@ -143,27 +145,37 @@ table 'FC_Cartera por pagar'
 		displayFolder: 17 Cuentas por pagar
 		lineageTag: 90b2e9a2-dd6b-4da4-aeb7-23f8b8798761
 
+	/// Días de crédito pactados con el proveedor en la partida del detalle.
 	measure 'Días de crédito de la partida por pagar' = MAX('FC_Cartera por pagar'[Días de crédito])
 		formatString: 0
 		displayFolder: 17 Cuentas por pagar
 		lineageTag: 1066ba26-974b-45e0-a088-0b6a352c00bc
 
+	/// Días desde el documento del proveedor hasta el corte.
 	measure 'Días transcurridos de la partida por pagar' = MAX('FC_Cartera por pagar'[Días transcurridos])
 		formatString: 0
 		displayFolder: 17 Cuentas por pagar
 		lineageTag: cdb1020d-5911-4333-aceb-068e974d338a
 
+	/// Vencido / No vencido de la partida por pagar del detalle.
 	measure 'Estado de la partida por pagar' = MAX('FC_Cartera por pagar'[Estado])
 		displayFolder: 17 Cuentas por pagar
 		lineageTag: c22e7067-97f2-4ab2-828c-8069bc5b29a6
 
+	/// Rango fino de vencimiento de la partida por pagar del detalle.
 	measure 'Rango de la partida por pagar' = MAX('FC_Cartera por pagar'[Rango de vencimiento])
 		displayFolder: 17 Cuentas por pagar
 		lineageTag: 501feb63-01c9-44ac-aab3-3c0b37edaaac
 
-	measure 'Título de Cuentas por pagar' = "Cuentas por pagar"
+	/// Título de la hoja de cuentas por pagar: foto de hoy.
+	measure 'Título de Cuentas por pagar' = "Cuentas por pagar · foto de hoy"
 		displayFolder: _Narrativa
 		lineageTag: 227287e1-4861-4ded-8640-170d4b681605
+
+	/// Foto de HOY del saldo por pagar a terceros: ignora el filtro de fechas (numerador del DPO).
+	measure 'Por pagar terceros hoy' = CALCULATE([Saldo por pagar terceros], REMOVEFILTERS(DM_Calendario))
+		formatString: "Q" #,0
+		displayFolder: 05 Ciclo de efectivo
 
 	column tiempo_clave
 		dataType: int64
@@ -366,24 +378,26 @@ table 'FC_Cartera por pagar'
 		lineageTag: c9213053-01df-4c96-9076-83661fbf01b1
 		summarizeBy: none
 
-	/// Vencido / No vencido (días vencido positivos = vencido; negativos = días que faltan).
-	column Estado = IF('FC_Cartera por pagar'[dias_vencido] > 0, "Vencido", "No vencido")
+	column 'Rango de vencimiento'
 		dataType: string
-		lineageTag: ae19b0bf-bf48-4fe7-8681-995f0dafd129
 		summarizeBy: none
-
-	/// Rangos finos de vencimiento como en Kraken: por vencer (31+, 22-30, 15-21, 8-14, 7 días) y vencido (1-15, 16-30, 31-60, 61-90, 91+). Etiquetas en lenguaje claro («Vence en 22-30», «Vencido 31-60»): Edwin pidió retirar el «Próx.» y la jerarquía Estado › Rango no abre por PBIR.
-	column 'Rango de vencimiento' = VAR d = 'FC_Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, "Vencido 91+", d > 60, "Vencido 61-90", d > 30, "Vencido 31-60", d > 15, "Vencido 16-30", d > 0, "Vencido 1-15", d > -8, "Vence en 7", d > -15, "Vence en 8-14", d > -22, "Vence en 15-21", d > -31, "Vence en 22-30", "Vence en 31+")
-		dataType: string
-		lineageTag: 43aa2d2d-026a-466c-99ad-3f6131ecacf6
-		summarizeBy: none
+		sourceColumn: rango_vencimiento
 		sortByColumn: 'Rango de vencimiento orden'
+		lineageTag: 43aa2d2d-026a-466c-99ad-3f6131ecacf6
 
-	column 'Rango de vencimiento orden' = VAR d = 'FC_Cartera por pagar'[dias_vencido] RETURN SWITCH(TRUE(), d > 90, 10, d > 60, 9, d > 30, 8, d > 15, 7, d > 0, 6, d > -8, 5, d > -15, 4, d > -22, 3, d > -31, 2, 1)
+	column 'Rango de vencimiento orden'
 		dataType: int64
 		isHidden
-		lineageTag: 5903f213-df59-423f-bbf6-fd8beb61d23f
 		summarizeBy: none
+		sourceColumn: rango_vencimiento_orden
+		formatString: 0
+		lineageTag: 5903f213-df59-423f-bbf6-fd8beb61d23f
+
+	column Estado
+		dataType: string
+		summarizeBy: none
+		sourceColumn: estado_vencimiento
+		lineageTag: ae19b0bf-bf48-4fe7-8681-995f0dafd129
 
 	partition 'FC_Cartera por pagar' = m
 		mode: import

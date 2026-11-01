@@ -1,7 +1,7 @@
 # STATE — Quilate Analytics · Power BI Product
 
 FASE_ACTUAL: F5 (construcción POR CÓDIGO — decisión 21; tenant de trabajo Iron Network; 13 páginas replicadas de Kraken 360 + 6 hojas de gestión propias (sesión 34): Resumen ejecutivo, Segmentación, Concentración 80/20, Tesorería, Pedidos, Resultados — 19 páginas / 323 visuales)
-ULTIMA_ACTUALIZACION: 2026-10-31 (sesión 35 — tema «Quilate · Azul profundo», combos con eje secundario, ritmo del mes corregido, 4 hojas de análisis con `generar_paginas_analisis.js` (23 páginas); pendiente publicar, seed 58 y mapa de calor; detalle en .claude/SESSION.md)
+ULTIMA_ACTUALIZACION: 2026-10-31 (sesión 38 — auditoría §6 de Power BI implementada: DAX corregido, 10 columnas calculadas llevadas a Oro, aging fino único, segmentadores anclados al corte, validador al día, `regenerar_paginas.js` y `generar_pbip.py --solo-medidas`; 23 hojas / 400 visuales; pendiente: Edwin refresca y publica — ver «Sesión 38»)
 GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el motor)
 
 > **CAMBIO DE RUMBO (2026-08-08, decisión de Edwin):** la ola 1 se generó completa por código
@@ -44,7 +44,8 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 | Artefacto | Ruta | Fase | Estado |
 |---|---|---|---|
 | Estado del producto | `docs/powerbi/STATE.md` | — | vigente |
-| Tema del producto | `consumo/powerbi/theme/quilate-theme.json` | GATE 0 | creado, JSON válido |
+| Tema del producto (plantilla) | `consumo/powerbi/theme/quilate-theme.json` | GATE 0 | plantilla para tenants nuevos; ningún reporte lo usa (sesión 38) |
+| Tema de Iron (fuente única) | `organizaciones/ironnetwork/powerbi/theme/ironnetwork-theme.json` = `RegisteredResources/` | F5 | «Quilate · Azul profundo»; el validador exige el mismo hash (sesión 38) |
 | Matriz de capacidades | `docs/powerbi/tool-capability-matrix.md` | F0 | cerrada |
 | Mapa de explotación analítica | `docs/powerbi/model-exploitation-map.md` | F1 | cerrado — 43/43 tablas |
 | Matriz de oportunidad | `docs/powerbi/analytics-opportunity-matrix.md` | F2 | cerrada — 32 filas, 11 P0 |
@@ -86,6 +87,22 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 | 22 | Los rankings usan `barChart` apilado con una medida «Resto a máximo <dim>» en gris (barra fantasma); el color condicional solo se aplica sobre la medida mostrada; `sortDefinition` vive en `visual.query` | Tres trampas PBIR verificadas en render: `stackedBarChart` no es nativo, un `FillRule` con `Input` ajeno invalida la consulta, y `sortDefinition` en la raíz rompe el esquema | F5 |
 | 23 | Lo que Kraken muestra y el warehouse no tiene se resuelve ampliando la extracción (seed 70: categoría, vendedor, equipo de ventas, condición de pago, dirección de entrega), nunca inventando en el reporte | Es el principio del producto: el tablero es una ventana a datos gobernados. `dim_canal` y `dim_condicion_pago` nuevas; SAP compila con ellas vacías | F5 |
 
+## Sesión 38 — auditoría 2026-10-31 §6 implementada
+
+| Área | Qué se hizo |
+|---|---|
+| DAX | Proyección de cierre cuenta días hábiles hasta `[Corte de ventas]` (no `TODAY()`); DSO/DPO con numerador «hoy» (`Por cobrar terceros hoy` / nueva `Por pagar terceros hoy`); Fill rate en blanco sin pedidos; 28 medidas con comentario de negocio; `Venta del cliente 12m` eliminada (≡ `Venta 12m clasificada`); `Ganancia` / `Costo de lo vendido` ocultas (alias de Kraken); variaciones `+0.0%;-0.0%;0.0%`; auxiliares ocultas (toda `_Auxiliar` + `Referencia 80 %`, por `ocultar_auxiliares()`); títulos con `[Período activo]` (o «foto de hoy» / «últimos 12 meses»); subtítulo «al 16 oct · 79 % del año transcurrido»; nueva `Subtítulo de ritmo del mes` (nombra los meses; en enero, diciembre del año anterior) |
+| Oro | `dim_tiempo`: `es_anio_corte`, `es_mes_corte`, `anio_selector`, `mes_selector` · `dim_cliente`: `sector`, `meses_con_compra_12m`, `meses_sin_compra` y sus rangos/orden · `hecho_venta_linea`: cohortes por ventana (`primera_compra_cliente`, `fecha_compra_anterior_cliente`, `mes_documento`, `es_primer_mes_cliente`, `es_compra_recuperacion`) · nuevo `dim_rango_vencimiento` (aging fino, hijo de `dim_rango_aging`; test `rango_vencimiento_anidado`) + `rango_vencimiento*`/`estado_vencimiento` en ambos hechos de cartera · `hecho_pago_recibido.estado_cobro` · `hecho_movimiento_contable.naturaleza_contable`. Build Iron 251/251 PASS, cuadre 0 desvíos |
+| TMDL | 21 columnas DAX quitadas, 24 columnas de Oro agregadas con su alias (`ALIAS_COLUMNAS` → `sourceColumn`), lineageTag heredado; sincronizado con `--solo-medidas --columnas` (corrida completa a carpeta temporal = mismas declaraciones) |
+| Hojas | pie en y=944/16 px (sin solape); texto con `colorTexto()` (#b9781a / #4a6fa5); pareto a 8 pt; `C.MORADO` del tema; Año = `anio_selector` («Año actual») en todas, Seguimiento = `mes_selector` («Mes actual»), Pulso/Utilidad mes = `mes_nombre_corto` sincronizado; focos con «Ver hoja … →»; tooltips en rankings de cliente/producto; Resumen: «Media móvil 3 meses» en lugar del acumulado anual. Todas las hojas quedan con el estilo KPI de la sesión 37 |
+| Proceso | `validar_reporte.py` (1280×960, medida+tabla, paleta de `paleta.json`, contraste, hash del tema, conteo de visuales, pie) · `generar_reporte.py` aborta con PBIR · `generar_pbip.py --solo-medidas [--columnas <base>]` · `regenerar_paginas.js` |
+
+**Pendiente de Edwin (requiere Desktop / servicio):** abrir `PulsoIron.pbip` y **Actualizar** (las
+columnas nuevas de Oro y `dim_rango_vencimiento` no están en el caché import), revisar con
+`qa/visual-qa-checklist.md`, guardar y **publicar** el modelo y el reporte (Publish to Web sin cambios).
+Antes de publicar en producción hay que desplegar los modelos de Oro (dbt build en el servidor del tenant):
+el PBIP ya referencia las columnas nuevas.
+
 ## Bloqueos abiertos
 
 | # | Bloqueo | Requiere de | Desde |
@@ -96,7 +113,7 @@ GATE_ANTERIOR: PASA (F1–F3 cerradas; F4 lote 1 cerrado y validado contra el mo
 
 ## Presupuesto consumido
 
-- Páginas construidas en PulsoIron (Iron): **23** — 13 réplicas de Kraken 360 + 6 hojas de gestión (sesión 34, `generar_paginas_gestion.js`, capturas en `docs/powerbi/kraken360/capturas/gestion/`) + 4 hojas de análisis (sesión 35, `generar_paginas_analisis.js`, capturas en `docs/powerbi/kraken360/capturas/analisis/`). Tema «Quilate · Azul profundo» (sesión 35).
+- Páginas construidas en PulsoIron (Iron): **23** (400 visuales tras la sesión 38) — 13 réplicas de Kraken 360 + 6 hojas de gestión (sesión 34, `generar_paginas_gestion.js`, capturas en `docs/powerbi/kraken360/capturas/gestion/`) + 4 hojas de análisis (sesión 35, `generar_paginas_analisis.js`, capturas en `docs/powerbi/kraken360/capturas/analisis/`). Tema «Quilate · Azul profundo» (sesión 35).
 - Páginas construidas en PulsoCresta: **1 / 12** — la 00 · Inicio (piloto por código, sesión 25; pendiente el
   veredicto visual de Edwin). Las 12 tienen contrato en `report-architecture.md`
 - Medidas nuevas creadas: **22 / 40** — GAP-01 (3) + `_Fecha ancla móvil` (auxiliar) +

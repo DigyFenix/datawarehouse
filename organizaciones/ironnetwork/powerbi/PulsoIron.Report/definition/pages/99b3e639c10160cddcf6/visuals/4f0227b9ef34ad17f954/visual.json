@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "4f0227b9ef34ad17f954",
   "position": {
     "x": 24,
@@ -13,25 +13,6 @@
     "visualType": "pivotTable",
     "query": {
       "queryState": {
-        "Columns": {
-          "projections": [
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "DM_Calendario"
-                    }
-                  },
-                  "Property": "Mes corto"
-                }
-              },
-              "queryRef": "DM_Calendario.Mes corto",
-              "nativeQueryRef": "Mes corto",
-              "active": true
-            }
-          ]
-        },
         "Rows": {
           "projections": [
             {
@@ -46,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Calendario.Día",
-              "nativeQueryRef": "Día",
-              "active": true
+              "nativeQueryRef": "Día"
             }
           ]
         },
@@ -66,6 +46,24 @@
               },
               "queryRef": "FC_Venta diaria.Venta diaria neta",
               "nativeQueryRef": "Venta diaria neta"
+            }
+          ]
+        },
+        "Columns": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DM_Calendario"
+                    }
+                  },
+                  "Property": "Mes corto"
+                }
+              },
+              "queryRef": "DM_Calendario.Mes corto",
+              "nativeQueryRef": "Mes corto"
             }
           ]
         }

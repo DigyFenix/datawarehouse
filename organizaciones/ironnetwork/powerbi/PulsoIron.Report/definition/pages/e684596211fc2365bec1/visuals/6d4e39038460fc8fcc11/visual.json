@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "6d4e39038460fc8fcc11",
   "position": {
     "x": 648,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "FC_Pagos recibidos.Estado del cobro",
-              "nativeQueryRef": "Estado del cobro",
-              "active": true
+              "nativeQueryRef": "Estado del cobro"
             }
           ]
         },

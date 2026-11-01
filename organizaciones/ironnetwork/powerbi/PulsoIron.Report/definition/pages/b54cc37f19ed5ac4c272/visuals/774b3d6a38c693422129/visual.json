@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "774b3d6a38c693422129",
   "position": {
     "x": 544,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Producto.Línea",
-              "nativeQueryRef": "Línea",
-              "active": true
+              "nativeQueryRef": "Línea"
             }
           ]
         },

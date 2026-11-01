@@ -1,7 +1,7 @@
 // Genera las páginas de VENTAS del reporte PBIR replicando los tableros "Histórico de Ventas" y
 // "Seguimiento de Ventas" de Kraken 360 (docs/powerbi/kraken360/inventario.md).
 //
-// Uso:  node generar_paginas_ventas.js <ruta al .Report> [mes_actual yyyy-MM] [anio_actual]
+// Uso:  node generar_paginas_ventas.js <ruta al .Report>
 //
 // Determinista: ids sha1 fijos por (página, clave) — re-ejecutar produce archivos idénticos.
 // Solo reescribe sus propias páginas; las demás conservan su lugar en pages.json.
@@ -10,9 +10,6 @@ const P = require('./pbir');
 const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, mapa, matriz, marcadoresFinos, ejeValores, ejeCategoria, bloqueMoneda, columnasMensuales, encabezado, pie, visual, pColumna, pMedida, ordenAsc, str, num, bool, color, meta, vcTitulo } = P;
 
 const REPORT = P.reporteDeArgs();
-const hoy = new Date();
-const MES_ACTUAL = process.argv[3] || `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-const ANIO_ACTUAL = Number(process.argv[4] || hoy.getFullYear());
 
 // ============================================================ PÁGINA 01 · HISTÓRICO DE VENTAS
 function pagina01() {
@@ -23,7 +20,7 @@ function pagina01() {
 
   // --- KPIs: empresa + año · resultado del año · moneda
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), BANDA[0], wCol(2), 64], { sync: 'empresa', titulo: 'Empresa' }));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[1], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[1], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(kpis(slug, 'resultado-anio', [
     [T.VENTAS, 'Ventas acumuladas año', 'Ventas del año'],
     [T.VENTAS, 'Variación acumulada vs año anterior', 'vs. año anterior'],
@@ -77,7 +74,7 @@ function pagina02() {
   vs.push(...bloqueMoneda(slug));
 
   // --- Fila 1: año-mes (lista) + empresa · vendedor · sector · cliente top · producto top
-  vs.push(segmentador(slug, 'anio-mes', T.CAL, 'anio_mes', [xCol(1), FILA[0], wCol(2), 148], { modo: 'VerticalList', seleccion: MES_ACTUAL, sync: 'periodo', titulo: 'Año y mes', descendente: true }));
+  vs.push(segmentador(slug, 'anio-mes', T.CAL, 'mes_selector', [xCol(1), FILA[0], wCol(2), 148], { modo: 'VerticalList', seleccion: 'Mes actual', sync: 'periodo', titulo: 'Año y mes', descendente: true }));
   vs.push(segmentador(slug, 'empresa', T.EMP, 'nombre', [xCol(1), FILA[0] + 156, wCol(2), 76], { sync: 'empresa', titulo: 'Empresa' }));
   vs.push(ranking(slug, 'vendedor', [xCol(3), FILA[0], wCol(2), ALTO], T.VEND, 'nombre', 'Venta por vendedor', 'vendedor'));
   vs.push(ranking(slug, 'sector', [xCol(5), FILA[0], wCol(2), ALTO], T.CONDPAGO, 'nombre', 'Venta por sector', 'sector'));

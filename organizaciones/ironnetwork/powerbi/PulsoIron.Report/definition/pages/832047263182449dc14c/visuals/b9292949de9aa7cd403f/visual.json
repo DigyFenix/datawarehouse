@@ -51,11 +51,11 @@
                       "Entity": "FC_Ventas"
                     }
                   },
-                  "Property": "Ventas acumuladas año"
+                  "Property": "Media móvil 3 meses"
                 }
               },
-              "queryRef": "FC_Ventas.Ventas acumuladas año",
-              "nativeQueryRef": "Ventas acumuladas año"
+              "queryRef": "FC_Ventas.Media móvil 3 meses",
+              "nativeQueryRef": "Media móvil 3 meses"
             },
             {
               "field": {
@@ -225,13 +225,13 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Acumulado del año'"
+                  "Value": "'Media móvil 3 meses'"
                 }
               }
             }
           },
           "selector": {
-            "metadata": "FC_Ventas.Ventas acumuladas año"
+            "metadata": "FC_Ventas.Media móvil 3 meses"
           }
         },
         {
@@ -414,7 +414,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Moneda de presentación · sin IVA · el mes se compara al mismo día'"
+                  "Value": "'Moneda de presentación · sin IVA · el mes se compara al mismo día · media = promedio mensual de los últimos 3 meses'"
                 }
               }
             },

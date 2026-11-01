@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "219cc071b57b149330f1",
   "position": {
     "x": 24,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Vendedor.nombre",
-              "nativeQueryRef": "nombre",
-              "active": true
+              "nativeQueryRef": "nombre"
             }
           ]
         },
@@ -268,7 +267,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#8fa9c4'"
+                      "Value": "'#4a6fa5'"
                     }
                   }
                 }

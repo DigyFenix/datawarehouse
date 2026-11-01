@@ -359,6 +359,7 @@ table FC_Ventas
 
 	/// Última fecha con venta registrada, ignorando el período seleccionado. Es el "al 16 oct" de los títulos: el corte real del dato, no la fecha de hoy ni la del calendario.
 	measure 'Corte de ventas' = CALCULATE(MAX(FC_Ventas[fecha_documento]), ALL(DM_Calendario))
+		isHidden
 		formatString: dd/MM/yyyy
 		displayFolder: _Auxiliar
 		lineageTag: 41b484fd-16f8-484a-91b0-31659eaf4490
@@ -394,12 +395,12 @@ table FC_Ventas
 		lineageTag: 3eda283f-966e-4d1c-9493-2c4daa495ce2
 
 	/// Título de la página de histórico: corte real del dato y porcentaje del año transcurrido.
-	measure 'Título de Histórico de ventas' = VAR f = [Corte de ventas] RETURN "Histórico de ventas"
+	measure 'Título de Histórico de ventas' = "Histórico de ventas · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 6305e5aa-af8e-45eb-a225-d436c5d0bf9d
 
 	/// Título de la página de seguimiento: corte real del dato y porcentaje del mes transcurrido.
-	measure 'Título de Seguimiento de ventas' = VAR f = [Corte de ventas] RETURN "Seguimiento de ventas"
+	measure 'Título de Seguimiento de ventas' = "Seguimiento de ventas · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 7059bef0-4e24-424e-aba9-0f9c63ebfe2d
 
@@ -410,48 +411,56 @@ table FC_Ventas
 
 	/// Fondo gris del ranking por cliente: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
 	measure 'Resto a máximo cliente' = VAR m = MAXX(ALLSELECTED(DM_Cliente[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 7f54b8fc-f557-41cb-af79-83e2eac93068
 
 	/// Fondo gris del ranking por producto: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
 	measure 'Resto a máximo producto' = VAR m = MAXX(ALLSELECTED(DM_Producto[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 727a0af8-0cab-4712-ba66-1e4effffa992
 
 	/// Fondo gris del ranking por vendedor: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
 	measure 'Resto a máximo vendedor' = VAR m = MAXX(ALLSELECTED(DM_Vendedor[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 3c7e2ef0-8cde-43ac-afb5-9f6eac244d03
 
 	/// Fondo gris del ranking por sector: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
 	measure 'Resto a máximo sector' = VAR m = MAXX(ALLSELECTED('DM_Condición de pago'[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 0e7e65bc-8471-4254-bbf1-0e29c55bdbd1
 
 	/// Fondo gris del ranking por sucursal: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
 	measure 'Resto a máximo sucursal' = VAR m = MAXX(ALLSELECTED(DM_Bodega[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: a7dd1010-2a9f-416d-bacd-5417bf6301f1
 
 	/// Fondo gris del ranking por línea: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
 	measure 'Resto a máximo línea' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: e34a8f1a-61d1-4375-ae40-aa45adc9960e
 
 	/// Fondo gris del ranking por canal: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
 	measure 'Resto a máximo canal' = VAR m = MAXX(ALLSELECTED(DM_Canal[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 10c235a6-fdee-42c8-b643-ae2d20c65fe0
 
 	/// Fondo gris del ranking por empresa: diferencia entre el líder del visual y esta categoría. Se apila detrás de 'Ventas netas' para dibujar la barra fantasma de referencia; no es una cifra de negocio.
 	measure 'Resto a máximo empresa' = VAR m = MAXX(ALLSELECTED(DM_Empresa[nombre]), [Ventas netas]) VAR v = [Ventas netas] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 6066fa8e-6214-45dc-adc2-b0d324a6acf6
@@ -461,8 +470,8 @@ table FC_Ventas
 		displayFolder: _Narrativa
 		lineageTag: b3f9739d-ba98-43f1-812b-3b17e360cc15
 
-	/// Subtítulo del histórico: "al 16 oct (79%)" — corte real y fracción del año transcurrida.
-	measure 'Subtítulo de corte anual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del año], "0%") & ")"
+	/// Subtítulo de las hojas anuales: "al 16 oct · 79 % del año transcurrido" — corte real del dato y fracción del año que ya pasó (antes "(79%)" sin decir de qué).
+	measure 'Subtítulo de corte anual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " · " & FORMAT([% Avance del año] * 100, "0") & " % del año transcurrido"
 		displayFolder: _Narrativa
 		lineageTag: 2b3eb718-46c0-404f-9d77-1c061611a34d
 
@@ -471,25 +480,27 @@ table FC_Ventas
 		displayFolder: _Narrativa
 		lineageTag: 4474052c-9f00-44eb-88eb-cd160a643474
 
-	/// Subtítulo del seguimiento: "al 16 oct (52%)" — corte real y fracción del mes transcurrida.
-	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " (" & FORMAT([% Avance del mes], "0%") & ")"
-		displayFolder: _Narrativa
+	/// Subtítulo de las hojas mensuales: "al 16 oct · 52 % del mes transcurrido" — corte real del dato y fracción del mes que ya pasó.
+	measure 'Subtítulo de corte mensual' = VAR f = [Corte de ventas] RETURN "al " & FORMAT(f, "d") & " " & FORMAT(f, "mmm") & " · " & FORMAT([% Avance del mes] * 100, "0") & " % del mes transcurrido"
 		lineageTag: 5656399c-5fff-4ece-b5eb-1f1af6e9dbd7
 
 	/// Meses hacia atrás desde el corte que delimitan la ventana de las cohortes (segmentador "Mes de partida", -12 por defecto).
 	measure 'Meses de partida' = SELECTEDVALUE('MD_Mes de partida'[Mes de partida], -12)
+		isHidden
 		formatString: 0
 		displayFolder: _Auxiliar
 		lineageTag: 335e2816-de02-4665-b951-6d83cca10ffb
 
 	/// Primer día del mes de partida: inicio de la ventana de cohortes.
 	measure 'Inicio de ventana' = VAR f = [Corte de ventas] VAR e = EDATE(f, [Meses de partida]) RETURN DATE(YEAR(e), MONTH(e), 1)
+		isHidden
 		formatString: dd/MM/yyyy
 		displayFolder: _Auxiliar
 		lineageTag: 635a5ae4-b581-4522-9b9d-31553896d131
 
 	/// Primer día del mes que abre los últimos 12 meses (corte incluido): la "cartera de clientes" se lee siempre a 12 meses.
 	measure 'Inicio 12 meses' = VAR f = [Corte de ventas] VAR e = EDATE(f, -11) RETURN DATE(YEAR(e), MONTH(e), 1)
+		isHidden
 		formatString: dd/MM/yyyy
 		displayFolder: _Auxiliar
 		lineageTag: 9ee73b5f-2713-4d6e-8915-97561991a79b
@@ -508,7 +519,7 @@ table FC_Ventas
 
 	/// Variación del mes en curso contra el mismo tramo del año anterior.
 	measure 'Variación del mes en curso vs año anterior' = DIVIDE([Venta del mes en curso] - [Venta del mes en curso año anterior], [Venta del mes en curso año anterior])
-		formatString: +0%;-0%;0%
+		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 10 Seguimiento
 		lineageTag: 186383ab-f7d9-455c-8f82-a59cf2d14bcd
 
@@ -555,6 +566,7 @@ table FC_Ventas
 
 	/// Fondo gris del ranking de vendedores en acumulado del año.
 	measure 'Resto a máximo vendedor acumulado' = VAR m = MAXX(ALLSELECTED(DM_Vendedor[nombre]), [Ventas acumuladas año]) VAR v = [Ventas acumuladas año] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 5c46399b-af28-478b-b2d9-92471199b148
@@ -585,36 +597,42 @@ table FC_Ventas
 
 	/// Fondo gris del ranking por cliente a 12 meses.
 	measure 'Resto a máximo cliente 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Cliente[nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 002624b8-fc6b-49f1-a3a0-3ab10657f34b
 
 	/// Fondo gris del ranking por producto a 12 meses.
 	measure 'Resto a máximo producto 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Producto[nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 2b56056f-bb37-4e26-a17e-c743d86f3334
 
 	/// Fondo gris del ranking por vendedor a 12 meses.
 	measure 'Resto a máximo vendedor 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Vendedor[nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: c090df23-348d-48c1-90e4-7d7d124ccbad
 
 	/// Fondo gris del ranking por sector a 12 meses.
 	measure 'Resto a máximo sector 12 meses' = VAR m = MAXX(ALLSELECTED('DM_Condición de pago'[nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 66a3c564-535a-49d7-b3c7-2c268f92d90a
 
 	/// Fondo gris del ranking por línea a 12 meses.
 	measure 'Resto a máximo línea 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: db7aac98-1ec6-43d2-8883-ca2ed0a0388e
 
 	/// Fondo gris del ranking por categoría a 12 meses.
 	measure 'Resto a máximo categoría 12 meses' = VAR m = MAXX(ALLSELECTED(DM_Cliente[clase_abc_actual_nombre]), [Ventas 12 meses]) VAR v = [Ventas 12 meses] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 66101060-1c9c-4f8d-870f-b119c36d2696
@@ -772,19 +790,22 @@ table FC_Ventas
 		lineageTag: 87bc8e07-f7e0-4a8d-a170-9c9c83897d73
 
 	/// Títulos del dashboard de clientes.
-	measure 'Título de Matriz de oportunidades' = "Matriz de oportunidades"
+	measure 'Título de Matriz de oportunidades' = "Matriz de oportunidades · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 993f6aea-d4bf-4137-b6c8-515ae9465f8b
 
-	measure 'Título de Cartera de clientes' = "Cartera de clientes"
+	/// Título de la hoja Cartera 12 meses: la ventana móvil, no el período del segmentador.
+	measure 'Título de Cartera de clientes' = "Cartera de clientes · últimos 12 meses"
 		displayFolder: _Narrativa
 		lineageTag: ad374747-2198-417c-b82b-da12432d3f0b
 
-	measure 'Título de Clientes nuevos' = "Clientes nuevos"
+	/// Título de la hoja de clientes nuevos con el período activo.
+	measure 'Título de Clientes nuevos' = "Clientes nuevos · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 8da041e2-7c1f-4971-bce0-44af9c4ed395
 
-	measure 'Título de Clientes recuperados' = "Clientes recuperados"
+	/// Título de la hoja de clientes recuperados con el período activo.
+	measure 'Título de Clientes recuperados' = "Clientes recuperados · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 195261e1-ea8f-4bd9-8d58-75b15c4966ba
 
@@ -796,6 +817,7 @@ table FC_Ventas
 
 	/// Primer día del mes que abre los últimos 24 meses (tendencia larga de unidades).
 	measure 'Inicio 24 meses' = VAR f = [Corte de ventas] VAR e = EDATE(f, -23) RETURN DATE(YEAR(e), MONTH(e), 1)
+		isHidden
 		formatString: dd/MM/yyyy
 		displayFolder: _Auxiliar
 		lineageTag: 1970ef87-4b73-40a3-8ae1-3e9f5126c1fb
@@ -909,35 +931,44 @@ table FC_Ventas
 
 	/// Fondo gris del ranking de existencias por bodega / línea.
 	measure 'Resto a máximo bodega existencias' = VAR m = MAXX(ALLSELECTED(DM_Bodega[nombre]), [Unidades en existencia]) VAR v = [Unidades en existencia] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: #,0
 		displayFolder: _Auxiliar
 		lineageTag: d4b2e2e5-c47c-42f8-843f-0d8b82659c77
 
+	/// Barra fantasma del ranking de existencias por línea (auxiliar de dibujo, no es cifra de negocio).
 	measure 'Resto a máximo línea existencias' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_nombre]), [Unidades en existencia]) VAR v = [Unidades en existencia] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: #,0
 		displayFolder: _Auxiliar
 		lineageTag: 7b79465d-870c-45c9-a7d5-d3aca98f77cf
 
+	/// Barra fantasma del ranking de costo por bodega (auxiliar de dibujo).
 	measure 'Resto a máximo bodega valor' = VAR m = MAXX(ALLSELECTED(DM_Bodega[nombre]), [Valor de inventario]) VAR v = [Valor de inventario] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: eecf64b7-70a8-48aa-bc4a-76790ac8312a
 
+	/// Barra fantasma del ranking de costo por línea (auxiliar de dibujo).
 	measure 'Resto a máximo línea valor' = VAR m = MAXX(ALLSELECTED(DM_Producto[grupo_nombre]), [Valor de inventario]) VAR v = [Valor de inventario] RETURN IF(ISBLANK(v), BLANK(), m - v)
+		isHidden
 		formatString: "Q" #,0
 		displayFolder: _Auxiliar
 		lineageTag: 81475a2a-2caf-4f0f-9565-5f94e77edf58
 
 	/// Títulos del dashboard de inventarios.
-	measure 'Título de Existencias de inventario' = "Existencias de inventario"
+	measure 'Título de Existencias de inventario' = "Existencias de inventario · foto de hoy"
 		displayFolder: _Narrativa
 		lineageTag: f72af59c-58a7-4f4a-a6eb-afe4068ace68
 
-	measure 'Título de Costo del inventario' = "Costo del inventario"
+	/// Título de la hoja de costo del inventario: es foto al corte, no flujo.
+	measure 'Título de Costo del inventario' = "Costo del inventario · foto de hoy"
 		displayFolder: _Narrativa
 		lineageTag: 90f17dfb-4511-4f4f-8ba8-97458a1e8361
 
-	measure 'Título de Análisis de inventario' = "Análisis de inventario"
+	/// Título de la hoja de reposición: foto al corte del inventario.
+	measure 'Título de Análisis de inventario' = "Análisis de inventario · foto de hoy"
 		displayFolder: _Narrativa
 		lineageTag: 13b9807e-ce2a-4f28-a8e1-32626133a511
 
@@ -953,33 +984,40 @@ table FC_Ventas
 		displayFolder: 16 Cobros
 		lineageTag: a18b56ae-3a63-4762-b74a-2055348ed3a9
 
+	/// Facturación con IVA de los 12 meses que terminan en el corte: lo que se cargó a la cartera.
 	measure 'Cargos totales 12 meses' = CALCULATE([Ventas netas con IVA], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
 		lineageTag: 44a813c5-ed62-4718-bd8c-935623157648
 
+	/// Cobros de los 12 meses al corte: lo que se abonó a la cartera.
 	measure 'Abonos totales 12 meses' = CALCULATE([Cobros de clientes], REMOVEFILTERS(DM_Calendario), DATESBETWEEN(DM_Calendario[fecha], [Inicio 12 meses], [Corte de ventas]))
 		formatString: "Q" #,0
 		displayFolder: 16 Cobros
 		lineageTag: f6fa4bc0-6dd9-404d-895e-d49c94f32764
 
+	/// Cargos − abonos de 12 meses: si es positivo, la cartera creció en el año móvil.
 	measure 'Cargos menos abonos 12 meses' = VAR c = [Cargos totales 12 meses] VAR a = [Abonos totales 12 meses] RETURN IF(ISBLANK(c) && ISBLANK(a), BLANK(), COALESCE(c, 0) - COALESCE(a, 0))
 		formatString: "Q" #,0;-"Q" #,0;"Q" 0
 		displayFolder: 16 Cobros
 		lineageTag: f5d73e86-adb3-4388-825f-30fece43da80
 
-	/// Utilidad: nombres como los muestra Kraken.
-	measure Ganancia = [Margen bruto]
+	/// Alias de [Margen bruto] con el nombre que muestra Kraken (leyendas de la hoja Utilidad). OCULTO: en el panel de campos se usa el original, así nadie elige entre dos medidas iguales.
+	measure 'Ganancia' = [Margen bruto]
 		formatString: "Q" #,0
+		isHidden
 		displayFolder: 18 Utilidad
 		lineageTag: b6656b59-59bb-4d98-a2ed-ea2f38e22ade
 
+	/// Alias de [Costo de ventas] con el nombre que muestra Kraken. OCULTO por la misma razón que 'Ganancia'.
 	measure 'Costo de lo vendido' = [Costo de ventas]
 		formatString: "Q" #,0
+		isHidden
 		displayFolder: 18 Utilidad
 		lineageTag: 616c57e5-ab3e-4f37-af9f-4a7ecef5f177
 
-	measure 'Título de Utilidad' = "Análisis de utilidad"
+	/// Título de la hoja Utilidad con el período activo.
+	measure 'Título de Utilidad' = "Análisis de utilidad · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 267de79d-24f1-4a02-bf29-8eecbb46f142
 
@@ -1037,41 +1075,44 @@ table FC_Ventas
 
 	/// Mes en curso contra el mes anterior al mismo día. En tenants sin historia de un año es la única comparación posible.
 	measure 'Variación del mes en curso vs mes anterior' = DIVIDE([Venta del mes en curso] - [Venta del mes anterior al día], [Venta del mes anterior al día])
-		formatString: 0.0%
+		formatString: +0.0%;-0.0%;0.0%
 		displayFolder: 17 Resumen
 		lineageTag: 0806192b-8fd3-4863-905c-4249c9b0e163
 
-	/// Título de la hoja Resumen.
-	measure 'Título de Resumen' = "Resumen ejecutivo"
+	/// Título del resumen ejecutivo con el período activo.
+	measure 'Título de Resumen' = "Resumen ejecutivo · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 7471da3e-98ed-4edf-8851-b310f4e14c81
 
 	/// Título de la hoja Segmentación.
-	measure 'Título de Segmentación' = "Segmentación y riesgo de clientes"
+	measure 'Título de Segmentación' = "Segmentación y riesgo de clientes · foto de hoy"
 		displayFolder: _Narrativa
 		lineageTag: 1f6a0f9c-a9eb-462a-98e8-7d67c1a6f9f8
 
 	/// Título de la hoja Concentración.
-	measure 'Título de Concentración' = "Concentración de la venta · 80/20"
+	measure 'Título de Concentración' = "Concentración de la venta · 80/20 · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: cd5c9ef0-fd16-4fad-aeae-e29e1c35690b
 
 	/// Título de la hoja Tesorería.
-	measure 'Título de Tesorería' = "Tesorería y flujo de caja"
+	measure 'Título de Tesorería' = "Tesorería y flujo de caja · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 7c60cc76-d93b-4ad6-93b1-9cc3d36e0738
 
 	/// Título de la hoja Pedidos.
-	measure 'Título de Pedidos' = "Pedidos y entregas"
+	measure 'Título de Pedidos' = "Pedidos y entregas · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: c0370ca2-319b-410b-b7b4-283694a65e96
 
 	/// Título de la hoja Resultados.
-	measure 'Título de Resultados' = "Resultados contables"
+	measure 'Título de Resultados' = "Resultados contables · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 678d0641-50cc-4a0f-8fe6-5be82dec24b7
 
+	/// Título de la hoja Resumen.
+	/// Línea de referencia del Pareto (eje secundario): constante 80 %.
 	measure 'Referencia 80 %' = 0.8
+		isHidden
 		formatString: 0%
 		displayFolder: 07 Pareto
 		lineageTag: 6b4032ff-9912-4a07-bea2-8b690c1d13ab
@@ -1095,24 +1136,28 @@ table FC_Ventas
 		lineageTag: 659bee35-2c02-40e5-af51-d029d9268923
 
 	/// Título de la hoja Vendedores.
-	measure 'Título de Vendedores' = "Desempeño comercial por vendedor"
+	measure 'Título de Vendedores' = "Desempeño comercial por vendedor · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 6475c9fd-e9e6-4093-912a-7d10ab62bb57
 
 	/// Título de la hoja Pulso.
-	measure 'Título de Pulso' = "Pulso diario de la venta"
+	measure 'Título de Pulso' = "Pulso diario de la venta · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: 0271ee8c-19ea-4d00-8e95-a095844ecdcf
 
 	/// Título de la hoja Salud.
-	measure 'Título de Salud de inventario' = "Salud del inventario"
+	measure 'Título de Salud de inventario' = "Salud del inventario · foto de hoy"
 		displayFolder: _Narrativa
 		lineageTag: 1615e713-4592-4080-bd6d-e65858eb488f
 
 	/// Título de la hoja Compras.
-	measure 'Título de Compras' = "Compras y proveedores"
+	measure 'Título de Compras' = "Compras y proveedores · " & [Período activo]
 		displayFolder: _Narrativa
 		lineageTag: f367b336-6c92-4597-a176-1136d8aeee62
+
+	/// Subtítulo del «Ritmo del mes» (Resumen): nombra los dos meses que compara. En enero el mes anterior es diciembre del AÑO ANTERIOR y lo dice; en un tenant sin historia ese mes sale vacío y el subtítulo explica por qué.
+	measure 'Subtítulo de ritmo del mes' = VAR f = [Corte de ventas] VAR ant = EOMONTH(f, -1) RETURN "Acumulado por día · sólida: " & FORMAT(f, "mmmm") & " al " & FORMAT(f, "d") & " · punteada: " & FORMAT(ant, "mmmm") & IF(MONTH(f) = 1, " " & FORMAT(ant, "yyyy") & " (año anterior)", " completo")
+		displayFolder: _Narrativa
 
 	column tiempo_clave
 		dataType: int64
@@ -1399,43 +1444,38 @@ table FC_Ventas
 		summarizeBy: none
 		sourceColumn: version_proceso
 
-	/// Primera compra del cliente de esta línea (sobre TODO el hecho). Base de las cohortes de clientes nuevos.
-	column primera_compra_cliente = VAR c = FC_Ventas[cliente_clave] RETURN CALCULATE(MIN(FC_Ventas[fecha_documento]), FILTER(ALL(FC_Ventas), FC_Ventas[cliente_clave] = c))
+	column primera_compra_cliente
 		dataType: dateTime
-		isHidden
+		summarizeBy: none
+		sourceColumn: primera_compra_cliente
 		formatString: dd/MM/yyyy
 		lineageTag: fa826c86-e230-4f25-a490-cbcc0ad7cbf0
-		summarizeBy: none
 
-	/// La línea pertenece al PRIMER mes de relación del cliente (venta de estreno vs recompra).
-	column es_primer_mes_cliente = EOMONTH(FC_Ventas[fecha_documento], 0) = EOMONTH(FC_Ventas[primera_compra_cliente], 0)
-		dataType: boolean
-		isHidden
-		lineageTag: c4e6273b-4ccd-42f7-9c92-ff7f96ed2afc
-		summarizeBy: none
-
-	/// Mes del documento (fin de mes) para contar meses distintos con compra.
-	column mes_documento = EOMONTH(FC_Ventas[fecha_documento], 0)
+	column fecha_compra_anterior_cliente
 		dataType: dateTime
-		isHidden
-		formatString: dd/MM/yyyy
-		lineageTag: d55af1f8-f1f2-46ce-b59f-ed43b15addd3
 		summarizeBy: none
-
-	/// Compra anterior del mismo cliente (última fecha estrictamente menor). Base de los recuperados.
-	column fecha_compra_anterior_cliente = VAR c = FC_Ventas[cliente_clave] VAR f = FC_Ventas[fecha_documento] RETURN CALCULATE(MAX(FC_Ventas[fecha_documento]), FILTER(ALL(FC_Ventas), FC_Ventas[cliente_clave] = c && FC_Ventas[fecha_documento] < f))
-		dataType: dateTime
-		isHidden
+		sourceColumn: fecha_compra_anterior_cliente
 		formatString: dd/MM/yyyy
 		lineageTag: 17f051ba-c6e5-478a-bfbe-dea6d845604d
-		summarizeBy: none
 
-	/// La línea es una compra de RETORNO: el cliente llevaba 6 meses o más sin comprar.
-	column es_compra_recuperacion = NOT ISBLANK(FC_Ventas[fecha_compra_anterior_cliente]) && DATEDIFF(FC_Ventas[fecha_compra_anterior_cliente], FC_Ventas[fecha_documento], MONTH) >= 6
-		dataType: boolean
-		isHidden
-		lineageTag: 69fd7f2f-dc4c-4a1c-8e22-d3f8e245ff68
+	column mes_documento
+		dataType: dateTime
 		summarizeBy: none
+		sourceColumn: mes_documento
+		formatString: dd/MM/yyyy
+		lineageTag: d55af1f8-f1f2-46ce-b59f-ed43b15addd3
+
+	column es_primer_mes_cliente
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_primer_mes_cliente
+		lineageTag: c4e6273b-4ccd-42f7-9c92-ff7f96ed2afc
+
+	column es_compra_recuperacion
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: es_compra_recuperacion
+		lineageTag: 69fd7f2f-dc4c-4a1c-8e22-d3f8e245ff68
 
 	partition FC_Ventas = m
 		mode: import

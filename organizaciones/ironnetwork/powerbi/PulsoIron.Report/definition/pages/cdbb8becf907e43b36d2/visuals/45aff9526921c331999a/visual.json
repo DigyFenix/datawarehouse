@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "45aff9526921c331999a",
   "position": {
     "x": 24,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "DM_Calendario.mes_nombre_corto",
-              "nativeQueryRef": "mes_nombre_corto",
-              "active": true
+              "nativeQueryRef": "mes_nombre_corto"
             }
           ]
         },
@@ -300,7 +299,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#dfe5ec'"
+                      "Value": "'#64748b'"
                     }
                   }
                 }

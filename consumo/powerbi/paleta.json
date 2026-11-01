@@ -1,0 +1,37 @@
+{
+  "colores": {
+    "PIZARRA": "#2b4c6f",
+    "GRIS_SERIE": "#dfe5ec",
+    "PANEL": "#edf2f7",
+    "TINTA": "#172532",
+    "TINTA_SUAVE": "#64748b",
+    "VERDE_CELDA": "#cdeedd",
+    "ROJO_CELDA": "#f8d0d6",
+    "ROJO": "#d3455b",
+    "VERDE": "#2a9d6a",
+    "PIZARRA_CLARA": "#8fa9c4",
+    "BLANCO": "#ffffff",
+    "ACENTO": "#e0a526",
+    "ACENTO_SUAVE": "#f3d58a",
+    "FILA_ALT": "#f5f8fb",
+    "GRILLA": "#e2e8f0",
+    "ENCABEZADO": "#e9eff5",
+    "MORADO": "#a06cb5",
+    "ACENTO_TEXTO": "#b9781a",
+    "PIZARRA_TEXTO": "#4a6fa5"
+  },
+  "prohibidosEnTexto": [
+    "#e0a526",
+    "#f3d58a",
+    "#8fa9c4",
+    "#dfe5ec"
+  ],
+  "lienzo": {
+    "W": 1280,
+    "H": 960
+  },
+  "pie": {
+    "y": 944,
+    "alto": 16
+  }
+}

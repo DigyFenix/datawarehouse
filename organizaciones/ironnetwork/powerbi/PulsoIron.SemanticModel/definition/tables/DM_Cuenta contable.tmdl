@@ -169,10 +169,11 @@ table 'DM_Cuenta contable'
 		summarizeBy: none
 		sourceColumn: es_vigente
 
+	/// Código y nombre juntos para encabezados de matriz (hoja Resultados).
 	column Cuenta = 'DM_Cuenta contable'[cuenta_codigo_visible] & " · " & 'DM_Cuenta contable'[nombre]
 		dataType: string
-		lineageTag: 744788e6-1470-4d23-880b-9a30d1e98695
 		summarizeBy: none
+		lineageTag: 744788e6-1470-4d23-880b-9a30d1e98695
 
 	hierarchy 'Jerarquía contable'
 		lineageTag: 2188cd4f-4cfc-4fda-a4e4-43a2dbfaa284

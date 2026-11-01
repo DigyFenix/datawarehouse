@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "640518dab49d9fcb84ae",
   "position": {
     "x": 24,
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "FC_Cartera cobrar histórico.fecha_corte",
-              "nativeQueryRef": "fecha_corte",
-              "active": true
+              "nativeQueryRef": "fecha_corte"
             }
           ]
         },

@@ -17,6 +17,8 @@ const W = 1280, H = 960;
 const BANDA = [64, 128];
 const FILA = [192, 448, 704];
 const ALTO = 240;
+// Pie de 16 px en y = 944: la fila 3 termina en 704 + 240 = 944 (antes el pie en 940 la pisaba 4 px en las 23 hojas).
+const PIE = { y: H - 16, alto: 16 };
 
 // ---- tablas del modelo (nombres del TMDL que emite generar_pbip.py) ----
 const T = {
@@ -35,7 +37,16 @@ const C = {
   VERDE_CELDA: '#cdeedd', ROJO_CELDA: '#f8d0d6', ROJO: '#d3455b', VERDE: '#2a9d6a', PIZARRA_CLARA: '#8fa9c4', BLANCO: '#ffffff',
   ACENTO: '#e0a526', ACENTO_SUAVE: '#f3d58a',
   FILA_ALT: '#f5f8fb', GRILLA: '#e2e8f0', ENCABEZADO: '#e9eff5',
+  // Morado de la paleta del tema (dataColors[9]): serie terciaria (saldo, caja). Antes '#8e5ea2' suelto en dos hojas.
+  MORADO: '#a06cb5',
+  // Variantes OSCURAS para TEXTO (auditoría §6, contraste ≥ 4.5:1 sobre blanco): el ámbar (2.19:1) y el pizarra claro
+  // (2.43:1) sirven para rellenos y líneas, nunca para letras. `colorTexto()` hace la traducción.
+  ACENTO_TEXTO: '#b9781a', PIZARRA_TEXTO: '#4a6fa5',
 };
+// Color con que se ESCRIBE una serie: el mismo de su relleno salvo los claros, que pasan a su variante oscura.
+const colorTexto = (hex) => ({
+  [C.ACENTO]: C.ACENTO_TEXTO, [C.ACENTO_SUAVE]: C.ACENTO_TEXTO, [C.PIZARRA_CLARA]: C.PIZARRA_TEXTO, [C.GRIS_SERIE]: C.TINTA_SUAVE,
+}[hex] || hex);
 
 // ---- grilla ----
 const xCol = (n) => 24 + (n - 1) * 104;
@@ -109,8 +120,8 @@ const FONDO_ETIQUETA = { enableBackground: bool(true), backgroundColor: color(C.
 function etiquetasBarra(series, extra = {}, { fondo = true } = {}) {
   const base = { show: bool(true), showAll: bool(true), fontSize: num(8), labelDisplayUnits: str('1'), labelPrecision: int(0), ...(fondo ? FONDO_ETIQUETA : { enableBackground: bool(false), color: color(C.BLANCO) }), ...extra };
   if (!fondo) return [{ properties: base }];
-  if (series.length === 1) base.color = color(series[0][2]);
-  return [{ properties: base }, ...(series.length > 1 ? series.map(([t, m, hex]) => ({ properties: { showSeries: bool(true), color: color(hex) }, selector: meta(t, m) })) : [])];
+  if (series.length === 1) base.color = color(colorTexto(series[0][2]));
+  return [{ properties: base }, ...(series.length > 1 ? series.map(([t, m, hex]) => ({ properties: { showSeries: bool(true), color: color(colorTexto(hex)) }, selector: meta(t, m) })) : [])];
 }
 
 // ---- fábricas ----
@@ -118,7 +129,7 @@ function texto(slug, clave, tabla, medida, pos, { size = 12, bold = false, color
   return visual(id(slug, clave), 'cardVisual', pos, {
     roles: { Data: [pMedida(tabla, medida)] },
     objects: {
-      value: [{ properties: { fontSize: num(size), fontFamily: str(bold ? 'Segoe UI Semibold' : 'Segoe UI'), fontColor: color(colorHex), horizontalAlignment: str(align) }, selector: sel('default') }],
+      value: [{ properties: { fontSize: num(size), fontFamily: str(bold ? 'Segoe UI Semibold' : 'Segoe UI'), fontColor: color(colorTexto(colorHex)), horizontalAlignment: str(align) }, selector: sel('default') }],
       label: [{ properties: { show: bool(false) }, selector: sel('default') }],
       outline: [{ properties: { show: bool(false) }, selector: sel('default') }],
       fillCustom: [{ properties: { show: bool(false) } }, { properties: { show: bool(false) }, selector: sel('default') }],
@@ -131,7 +142,7 @@ function texto(slug, clave, tabla, medida, pos, { size = 12, bold = false, color
 }
 function textoEstatico(slug, clave, contenido, pos, { size = 9, colorHex = C.TINTA_SUAVE, align = 'center' } = {}) {
   return visual(id(slug, clave), 'textbox', pos, {
-    objects: { general: [{ properties: { paragraphs: [{ textRuns: [{ value: contenido, textStyle: { fontFamily: 'Segoe UI', fontSize: `${size}px`, color: colorHex } }], horizontalTextAlignment: align }] } }] },
+    objects: { general: [{ properties: { paragraphs: [{ textRuns: [{ value: contenido, textStyle: { fontFamily: 'Segoe UI', fontSize: `${size}px`, color: colorTexto(colorHex) } }], horizontalTextAlignment: align }] } }] },
     vc: vcDesnudo,
   });
 }
@@ -145,7 +156,7 @@ function encabezado(slug, medidaTitulo, medidaCorte, tablaTitulo = T.VENTAS) {
   ];
 }
 function pie(slug) {
-  return texto(slug, 'chrome-pie', T.VENTAS, 'Pie de ventas', [xCol(1), H - 20, wCol(12), 20], { size: 9, colorHex: C.TINTA_SUAVE });
+  return texto(slug, 'chrome-pie', T.VENTAS, 'Pie de ventas', [xCol(1), PIE.y, wCol(12), PIE.alto], { size: 8, colorHex: C.TINTA_SUAVE });
 }
 
 // Segmentador. modo: Dropdown | VerticalList. seleccion: valor inicial (string | number).
@@ -223,10 +234,17 @@ function kpis(slug, clave, medidas, pos, titulo, subtitulo = 'Moneda de presenta
 // Ranking: barra simple con el monto fuera del extremo. (Sesión 29: se retiró la barra fantasma
 // "resto a máximo" apilada detrás — Power BI oculta toda etiqueta que no cabe en su segmento apilado,
 // así que las barras cortas quedaban sin monto. El parámetro `resto` se conserva por compatibilidad.)
+// Información sobre herramientas de los rankings de cliente y producto (auditoría §6): al pasar sobre la barra,
+// el contexto que el monto solo no da. Solo cuando la barra mide ventas (las medidas viven en FC_Ventas).
+const TOOLTIPS_RANKING = {
+  [T.CLI]: ['Documentos de venta', 'Ticket promedio', 'Variación vs año anterior'],
+  [T.PROD]: ['Unidades vendidas', 'Precio promedio unidad', 'Variación vs año anterior'],
+};
 function ranking(slug, clave, pos, tabla, columna, titulo, dim, medida = 'Ventas netas', resto = `Resto a máximo ${dim}`, tablaMedida = T.VENTAS, { margen = 45 } = {}) {
   void resto;
+  const tips = tablaMedida === T.VENTAS ? (TOOLTIPS_RANKING[tabla] || []).filter((m) => m !== medida) : [];
   return visual(id(slug, clave), 'barChart', pos, {
-    roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(tablaMedida, medida)] },
+    roles: { Category: [pColumna(tabla, columna)], Y: [pMedida(tablaMedida, medida)], ...(tips.length ? { Tooltips: tips.map((m) => pMedida(T.VENTAS, m)) } : {}) },
     sort: ordenDesc(tablaMedida, medida),
     objects: {
       categoryAxis: ejeCat({ fontSize: num(8), maxMarginFactor: num(margen) }),
@@ -516,7 +534,8 @@ function pareto(slug, clave, pos, titulo, subtitulo, [tCat, cCat], [tM, monto], 
     roles: { Category: [pColumna(tCat, cCat)], Y: [pMedida(tM, monto)], Y2: [pMedida(tP, pct), pMedida(T.VENTAS, 'Referencia 80 %')] },
     sort: ordenDesc(tM, monto),
     objects: {
-      categoryAxis: ejeCat({ innerPadding: int(20), fontSize: num(7), preferredCategoryWidth: num(14) }),
+      // 8 pt: a 7 pt los nombres del eje no se leían (auditoría §6).
+      categoryAxis: ejeCat({ innerPadding: int(20), fontSize: num(8), preferredCategoryWidth: num(16) }),
       valueAxis: ejeValGrilla({ secShow: bool(true), secStart: num(0), secEnd: num(1), secFontSize: num(8), secLabelColor: color(C.TINTA_SUAVE), secShowAxisTitle: bool(false) }),
       labels: [{ properties: { show: bool(false) } }],
       legend: leyenda(true),
@@ -559,7 +578,8 @@ function panelAlertas(slug, clave, pos, titulo, subtitulo, alertas) {
 // con barra de color a la izquierda, la CIFRA grande (16 pt, del color del foco) y el DETALLE en gris de 9 pt.
 // Cada foco son dos medidas de texto (…· cifra / …· detalle) para que el número se lea de un vistazo y la
 // explicación no compita con él. Las filas y la barra son textboxes con fondo (patrón ya verificado en render).
-// focos: [[tabla, medidaCifra, medidaDetalle, hex]]
+// focos: [[tabla, medidaCifra, medidaDetalle, hex, hojaDestino?]] — la hoja destino se escribe a la derecha de la
+// cifra («Ver hoja Por cobrar →»): un foco que no dice dónde mirar obliga a buscar entre 23 pestañas.
 function panelFocos(slug, clave, pos, titulo, subtitulo, focos) {
   const [x, y, w, h] = pos;
   const fondo = (hex) => ({
@@ -579,11 +599,13 @@ function panelFocos(slug, clave, pos, titulo, subtitulo, focos) {
   })];
   const margen = 12, cabecera = 54, sep = 8;
   const altoFila = Math.floor((h - cabecera - margen - sep * (focos.length - 1)) / focos.length);
-  focos.forEach(([tabla, cifra, detalle, hex], i) => {
+  focos.forEach(([tabla, cifra, detalle, hex, destino], i) => {
     const fy = y + cabecera + i * (altoFila + sep);
+    const anchoDestino = destino ? 132 : 0;
     vs.push(caja(`${clave}-fila-${i}`, C.BLANCO, [x + margen, fy, w - margen * 2, altoFila]));
     vs.push(caja(`${clave}-barra-${i}`, hex, [x + margen, fy, 5, altoFila]));
-    vs.push(texto(slug, `${clave}-cifra-${i}`, tabla, cifra, [x + margen + 16, fy + 8, w - margen * 2 - 24, Math.floor(altoFila * 0.5)], { size: 16, bold: true, colorHex: hex, align: 'left' }));
+    vs.push(texto(slug, `${clave}-cifra-${i}`, tabla, cifra, [x + margen + 16, fy + 8, w - margen * 2 - 24 - anchoDestino, Math.floor(altoFila * 0.5)], { size: 16, bold: true, colorHex: hex, align: 'left' }));
+    if (destino) vs.push(textoEstatico(slug, `${clave}-destino-${i}`, `Ver hoja ${destino} →`, [x + w - margen - 8 - anchoDestino, fy + 12, anchoDestino, 16], { size: 8, colorHex: C.PIZARRA_TEXTO, align: 'right' }));
     vs.push(texto(slug, `${clave}-detalle-${i}`, tabla, detalle, [x + margen + 16, fy + Math.floor(altoFila * 0.5) + 6, w - margen * 2 - 24, altoFila - Math.floor(altoFila * 0.5) - 10], { size: 9, colorHex: C.TINTA_SUAVE, align: 'left' }));
   });
   return vs;
@@ -640,9 +662,19 @@ function reporteDeArgs() {
 }
 
 module.exports = {
-  W, H, BANDA, FILA, ALTO, T, C, xCol, wCol, id, lit, str, num, int, bool, color, sel, meta, campoMedida, campoColumna,
+  W, H, BANDA, FILA, ALTO, PIE, T, C, colorTexto, xCol, wCol, id, lit, str, num, int, bool, color, sel, meta, campoMedida, campoColumna,
   pMedida, pColumna, fx, ordenDesc, ordenAsc, visual, reiniciar, vcTitulo, vcDesnudo, texto, textoEstatico,
   encabezado, pie, segmentador, kpis, ranking, barras, dona, mapa, semaforo, subtotalesMatriz, matriz, marcadores, marcadoresFinos, ejeValores, ejeCategoria, ejeCat, ejeValOculto, ejeValGrilla, leyenda, etiquetasBarra, bloqueMoneda,
   columnasMensuales, comboMensual, columnasApiladas, escribirPaginas, reporteDeArgs,
   calor, linea, columnas, combo, barrasH, pareto, cascada, panelAlertas, panelFocos, filtroVisual,
 };
+
+// Paleta compartida con el validador (validar_reporte.py la lee de paleta.json): un solo lugar define los
+// colores; el validador acusa todo hex que no esté aquí ni en el tema, y todo TEXTO con un color claro.
+function exportarPaleta(ruta = path.join(__dirname, 'paleta.json')) {
+  const claros = [C.ACENTO, C.ACENTO_SUAVE, C.PIZARRA_CLARA, C.GRIS_SERIE];
+  fs.writeFileSync(ruta, JSON.stringify({ colores: C, prohibidosEnTexto: claros, lienzo: { W, H }, pie: PIE }, null, 2) + '\n');
+  return ruta;
+}
+module.exports.exportarPaleta = exportarPaleta;
+if (require.main === module && process.argv[2] === '--paleta') console.log('OK · paleta →', exportarPaleta());

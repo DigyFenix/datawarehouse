@@ -1,13 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "2ac4453ba2fb87633d7a",
   "position": {
     "x": 24,
     "y": 704,
-    "z": 3500,
+    "z": 4000,
     "height": 240,
     "width": 504,
-    "tabOrder": 35
+    "tabOrder": 40
   },
   "visual": {
     "visualType": "clusteredColumnChart",
@@ -27,8 +27,7 @@
                 }
               },
               "queryRef": "FC_Proyección de caja.semana_etiqueta",
-              "nativeQueryRef": "semana_etiqueta",
-              "active": true
+              "nativeQueryRef": "semana_etiqueta"
             }
           ]
         },

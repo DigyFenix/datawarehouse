@@ -1,12 +1,37 @@
-# Guía de contenido por página — PulsoCresta
+# Guía de contenido por página
 
-Guía de referencia para construir los dashboards a mano en Power BI Desktop. El modelo
-semántico es la fuente: **todo se arma arrastrando medidas ya definidas** (carpetas
-`01 Importes … 07 Pareto` dentro de cada hecho), nunca columnas numéricas sueltas.
+## PulsoIron — 23 hojas generadas por código (vigente, sesión 38)
 
-Convención de tablas: `DM_` dimensión · `FC_` hecho · `MD_` solo medidas (grupo de cálculo).
+Se regeneran todas con `node consumo/powerbi/regenerar_paginas.js organizaciones/ironnetwork/powerbi/PulsoIron.Report`
+(nunca a mano en Desktop: el validador compara el conteo de visuales). Lienzo 1280×960: encabezado 56 px,
+banda de filtros/KPIs 64–192, tres filas de 240 px (192 / 448 / 704) y pie de 16 px en y = 944.
+
+| Familia | Hojas | Eje de tiempo (segmentador · grupo de sincronía) |
+|---|---|---|
+| Gerencia | Resumen | Año (`anio_selector`, abre en «Año actual») · `anio` |
+| Ventas | Histórico · Seguimiento · Vendedores · Pulso | Año · `anio`; Seguimiento: «Año y mes» (`mes_selector`, abre en «Mes actual») · `periodo`; Pulso: Año + Mes (`mes_nombre_corto`) · `mes` |
+| Clientes | Oportunidades · Cartera 12 meses · Nuevos · Recuperados · Segmentación · Concentración | Año · `anio` (Cartera 12 meses y cohortes usan su ventana propia: 12 meses / mes de partida) |
+| Inventario | Existencias · Costo · Reposición · Salud | sin eje de tiempo: foto al corte |
+| Finanzas | Por cobrar · Utilidad · Cobros · Tesorería · Por pagar · Compras · Pedidos · Resultados | Año · `anio`; Utilidad: Año + Mes (`mes_nombre_corto`) · `mes`; carteras: foto de hoy |
+
+Reglas de las hojas (las verifica `validar_reporte.py`):
+
+- **Títulos** = medida `Título de …` con `[Período activo]` en hojas de flujo, «· foto de hoy» o
+  «· últimos 12 meses» en hojas de saldo. Subtítulo de corte: «al 16 oct · 79 % del año transcurrido».
+- **Texto nunca en colores claros**: rellenos en ámbar `#e0a526` / pizarra claro `#8fa9c4`, letras en
+  `#b9781a` / `#4a6fa5` (`colorTexto()` de `pbir.js` traduce sola las etiquetas de serie).
+- **Paleta**: solo `C` de `pbir.js` (exportada a `paleta.json`) y el tema; el morado es `C.MORADO`
+  (`#a06cb5`, color 10 del tema).
+- **Focos de atención** (Resumen) nombran la hoja destino («Ver hoja Por cobrar →»).
+- **Rankings** de cliente y producto llevan tooltip (documentos / ticket / variación; unidades /
+  precio / variación).
+- Sector en Utilidad y Por cobrar = `DM_Cliente[Sector]` (condición de pago de la ficha o de la última
+  factura) con sincronía `sector-cliente`; en las hojas de Clientes, «Sector» filtra la condición de
+  pago del DOCUMENTO (`DM_Condición de pago`) con sincronía `sector`. No son el mismo filtro.
 
 ---
+
+## PulsoCresta — guía de la construcción manual (histórica, 2026-08)
 
 ## 1 · Pulso (portada ejecutiva)
 

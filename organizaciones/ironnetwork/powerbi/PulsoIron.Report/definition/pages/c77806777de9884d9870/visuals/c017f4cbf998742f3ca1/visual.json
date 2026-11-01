@@ -40,7 +40,7 @@
             "fontSize": {
               "expr": {
                 "Literal": {
-                  "Value": "12D"
+                  "Value": "14D"
                 }
               }
             },
@@ -65,7 +65,7 @@
             "horizontalAlignment": {
               "expr": {
                 "Literal": {
-                  "Value": "'center'"
+                  "Value": "'left'"
                 }
               }
             },
@@ -106,6 +106,13 @@
                 }
               }
             },
+            "fontFamily": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Segoe UI'"
+                }
+              }
+            },
             "position": {
               "expr": {
                 "Literal": {
@@ -127,7 +134,7 @@
             "horizontalAlignment": {
               "expr": {
                 "Literal": {
-                  "Value": "'center'"
+                  "Value": "'left'"
                 }
               }
             },
@@ -174,13 +181,40 @@
           }
         }
       ],
+      "fillCustom": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          },
+          "selector": {
+            "id": "default"
+          }
+        }
+      ],
       "padding": [
         {
           "properties": {
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "2L"
+                  "Value": "4L"
                 }
               }
             }
@@ -196,7 +230,7 @@
             "paddingUniform": {
               "expr": {
                 "Literal": {
-                  "Value": "2L"
+                  "Value": "4L"
                 }
               }
             },
@@ -226,7 +260,7 @@
             "verticalSpacing": {
               "expr": {
                 "Literal": {
-                  "Value": "2D"
+                  "Value": "4D"
                 }
               }
             }
@@ -343,7 +377,7 @@
                 "color": {
                   "expr": {
                     "Literal": {
-                      "Value": "'#edf2f7'"
+                      "Value": "'#ffffff'"
                     }
                   }
                 }

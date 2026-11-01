@@ -3,9 +3,43 @@
 Esta carpeta es el **motor**: el generador y los validadores, sin datos ni proyectos de
 ningún cliente. Los PBIP viven en la carpeta de cada organización:
 
-| Proyecto | Ubicación | Base |
+| Proyecto | Ubicación | Base | Hojas |
+|---|---|---|---|
+| `PulsoIron.pbip` | `organizaciones/ironnetwork/powerbi/` | `dw_ironnetwork` | 23 hojas por código (tenant de trabajo) |
+| `PulsoCresta.pbip` | `organizaciones/grupocresta/powerbi/` | `dw_grupocresta` | 1 hoja piloto (base local eliminada) |
+
+## Flujo vigente (sesión 38)
+
+| Qué cambió | Comando | Notas |
 |---|---|---|
-| `PulsoCresta.pbip` | `organizaciones/grupocresta/powerbi/` | `dw_grupocresta` |
+| Una medida o columna calculada (`generar_pbip.py`) | `python consumo/powerbi/generar_pbip.py --solo-medidas organizaciones/ironnetwork/powerbi PulsoIron` | Toca SOLO medidas y columnas calculadas en los `.tmdl` existentes: conserva `lineageTag`, CRLF, particiones y **el caché**. Idempotente |
+| Columnas nuevas en Oro | agregar `--columnas dw_ironnetwork` al comando anterior | Agrega las columnas de Oro que falten (nunca borra); usa `ALIAS_COLUMNAS` para el nombre visible |
+| Estructura de Oro (tablas nuevas, relaciones) | `python consumo/powerbi/generar_pbip.py dw_ironnetwork PulsoIron organizaciones/ironnetwork/powerbi` | Corrida completa: **borra `.pbi/cache.abf`** (Desktop tarda en reconstruirlo). Solo con motivo |
+| Hojas (cualquier generador o `pbir.js`) | `node consumo/powerbi/regenerar_paginas.js organizaciones/ironnetwork/powerbi/PulsoIron.Report` | Exporta `paleta.json`, corre los 6 generadores en orden (ventas → clientes → inventario → cartera → gestión → análisis), registra `conteo_visuales.json` y corre el validador |
+| Validar sin regenerar | `python consumo/powerbi/validar_reporte.py organizaciones/ironnetwork/powerbi [--gate-f61]` | Referencias (medida en su tabla), lienzo 1280×960, pie, paleta, contraste de texto, hash del tema, conteo de visuales |
+
+Reglas: Power BI Desktop **cerrado** mientras corre cualquiera de estos comandos. `generar_reporte.py`
+es del formato legado y **aborta** si el `.Report` ya es PBIR. El tema vive en UNA fuente:
+`organizaciones/<org>/powerbi/theme/<org>-theme.json`, copiada tal cual a
+`<Proyecto>.Report/StaticResources/RegisteredResources/` (el validador compara el hash).
+`theme/quilate-theme.json` de esta carpeta es la **plantilla** de producto para un tenant nuevo
+(no lo usa ningún reporte).
+
+Lo que hay que saber del modelo actual:
+
+- **Una sola definición del aging fino.** `oro.dim_rango_vencimiento` (vence en 31+ … vencido 91+,
+  más «Sin vencimiento») es el nivel de detalle de `dim_rango_aging`; los hechos de cartera traen
+  `rango_vencimiento` / `estado_vencimiento`, que el TMDL expone como `Rango de vencimiento` / `Estado`.
+- **Columnas que antes eran DAX y ahora vienen de Oro** (window functions en dbt): cohortes de
+  `FC_Ventas` (`primera_compra_cliente`, `fecha_compra_anterior_cliente`, `mes_documento`,
+  `es_primer_mes_cliente`, `es_compra_recuperacion`), actividad y sector de `DM_Cliente`
+  (`Meses con compra 12m`, `Meses sin compra`, sus rangos, `Sector`), `Estado del cobro` y
+  `Naturaleza contable`. Los alias de encabezado salen de `ALIAS_COLUMNAS` (TMDL `sourceColumn`).
+- **Segmentadores anclados al corte**: `DM_Calendario[anio_selector]` ('Año actual' / año) y
+  `[mes_selector]` ('Mes actual' / yyyy-MM) con `es_anio_corte` / `es_mes_corte`. Las hojas abren en
+  el año y mes del último dato de ventas, sin años quemados al generar.
+- Medidas auxiliares (`_Auxiliar`, `Referencia 80 %`) y alias de Kraken (`Ganancia`,
+  `Costo de lo vendido`) están **ocultos**; los visuales los siguen usando.
 
 Un solo proyecto sirve para los dos ERPs: para apuntarlo a otro tenant se cambian los
 parámetros `Servidor` y `BaseDatos` en Desktop. El **símbolo de moneda** de las medidas de
@@ -103,7 +137,10 @@ Por eso hay pares de medidas — `Saldo por cobrar` / `Saldo por cobrar terceros
 
 ---
 
-## Las páginas
+## Las páginas (histórico: diseño base de Cresta con `generar_reporte.py`, retirado)
+
+> Para Iron las hojas vigentes están descritas en `GUIA-PAGINAS.md` (23 hojas). Lo que sigue
+> documenta el diseño base de 5 páginas que generaba `generar_reporte.py`.
 
 Cinco páginas, 99 visuales. El hilo es el mismo del análisis: **la cartera no se puede leer sin
 separar el saldo del grupo**.
@@ -148,9 +185,9 @@ POSTGRES_HOST=localhost python consumo/powerbi/generar_pbip.py dw_grupocresta Pu
 python consumo/powerbi/generar_reporte.py organizaciones/grupocresta/powerbi/PulsoCresta.Report "Grupo Cresta"
 ```
 
-**Cuidado:** `generar_reporte.py` **sobrescribe** `report.json`, así que se lleva los visuales que
-hayas hecho a mano. Regenerá el modelo solo (el primer comando) cuando cambie el warehouse; corré
-el segundo únicamente si querés volver al diseño base.
+**Cuidado:** `generar_reporte.py` es del formato legado (`report.json`) y desde la sesión 38
+**aborta** si el `.Report` ya tiene `definition/` (PBIR). Las hojas vigentes salen de
+`regenerar_paginas.js` (ver «Flujo vigente» arriba).
 
 El generador **introspecciona la base**: tipos, columnas y relaciones salen del modelo real, así
 que el PBIP no puede quedar desincronizado. Regenera el modelo; **no toca los visuales** que ya

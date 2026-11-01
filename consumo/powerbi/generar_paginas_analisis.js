@@ -2,7 +2,7 @@
 // ninguna réplica de Kraken 360 ni las hojas de gestión usaban a fondo — vendedores, venta diaria,
 // análisis de producto (inventario muerto / quiebres / ABC) y compras con proveedores.
 //
-// Uso:  node generar_paginas_analisis.js <ruta al .Report> [anio_actual]
+// Uso:  node generar_paginas_analisis.js <ruta al .Report>
 //
 // Determinista (ids sha1 por página y clave); solo reescribe sus propias páginas. El orden final de las
 // hojas lo fija `ordenarPaginas` al final (cada hoja junto a su familia). Correr DESPUÉS de
@@ -14,7 +14,6 @@ const P = require('./pbir');
 const { T, C, BANDA, FILA, ALTO, xCol, wCol, id, segmentador, kpis, ranking, dona, matriz, encabezado, pie, linea, columnas, barrasH, pareto, filtroVisual } = P;
 
 const REPORT = P.reporteDeArgs();
-const ANIO_ACTUAL = Number(process.argv[3] || new Date().getFullYear());
 const V = T.VENTAS, PED = 'FC_Pedidos', INV = 'FC_Inventario', AP = 'DM_Análisis de producto', VD = 'FC_Venta diaria',
   COMP = 'FC_Compras', PROV = 'DM_Proveedor', CXP = 'FC_Cartera por pagar', PAGE = 'FC_Pagos efectuados';
 const kpi = (slug, clave, pos, titulo, medidas, sub) => kpis(slug, clave, medidas, pos, titulo, sub);
@@ -25,7 +24,7 @@ function paginaVendedores() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Vendedores', 'Subtítulo de corte anual'));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(segmentador(slug, 'vendedor', T.VEND, 'nombre', [xCol(1), BANDA[1], wCol(2), 64], { busqueda: true, titulo: 'Vendedor' }));
   vs.push(kpi(slug, 'equipo', [xCol(3), BANDA[0], wCol(7), 112], 'Equipo comercial · período filtrado', [
     [V, 'Ventas netas', 'Ventas netas'], [V, 'Clientes con venta', 'Clientes'], [V, 'Venta promedio por cliente', 'Venta por cliente'], [V, 'Documentos de venta', 'Facturas'], [V, 'Ticket promedio', 'Ticket promedio'], [V, 'Productos vendidos', 'Productos vendidos'],
@@ -57,8 +56,8 @@ function paginaPulso() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Pulso', 'Subtítulo de corte mensual'));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
-  vs.push(segmentador(slug, 'mes', T.CAL, 'mes_nombre', [xCol(1), BANDA[1], wCol(2), 64], { titulo: 'Mes', busqueda: false }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
+  vs.push(segmentador(slug, 'mes', T.CAL, 'mes_nombre_corto', [xCol(1), BANDA[1], wCol(2), 64], { titulo: 'Mes', busqueda: false, sync: 'mes' }));
   vs.push(kpi(slug, 'ritmo', [xCol(3), BANDA[0], wCol(7), 112], 'Ritmo de la venta · período filtrado', [
     [VD, 'Venta diaria neta', 'Venta del período'], [VD, 'Venta promedio día operado', 'Promedio por día operado'], [VD, 'Venta por día hábil', 'Por día hábil'], [VD, 'Días con venta', 'Días con venta'], [VD, 'Días sin venta', 'Días sin venta'], [VD, 'Clientes activos por día', 'Clientes por día'],
   ], 'Serie diaria de Oro · sin IVA · un día sin factura cuenta como día sin venta'));
@@ -121,7 +120,7 @@ function paginaCompras() {
   P.reiniciar();
   const vs = [];
   vs.push(...encabezado(slug, 'Título de Compras', 'Subtítulo de corte anual'));
-  vs.push(segmentador(slug, 'anio', T.CAL, 'anio', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: ANIO_ACTUAL, sync: 'anio', titulo: 'Año' }));
+  vs.push(segmentador(slug, 'anio', T.CAL, 'anio_selector', [xCol(1), BANDA[0], wCol(2), 64], { seleccion: 'Año actual', sync: 'anio', titulo: 'Año', busqueda: false, descendente: true }));
   vs.push(segmentador(slug, 'proveedor', PROV, 'nombre', [xCol(1), BANDA[1], wCol(2), 64], { busqueda: true, titulo: 'Proveedor' }));
   vs.push(kpi(slug, 'compras', [xCol(3), BANDA[0], wCol(7), 112], 'Compras del período', [
     [COMP, 'Compras netas', 'Compras netas'], [COMP, 'Documentos de compra', 'Facturas'], [COMP, 'Proveedores con compra', 'Proveedores'], [COMP, 'Compra promedio por documento', 'Compra promedio'], [COMP, '% Compra en top 10 proveedores', 'Top 10 proveedores'], [COMP, '% Compra en el mayor proveedor', 'Mayor proveedor'],

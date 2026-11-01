@@ -1,40 +1,48 @@
-# QA visual — F6.3 · Ola 1 (00 · Inicio, 01 · Dirección, 09 · Cartera y cobranza)
+# QA visual — F6.3 · PulsoIron (23 hojas, tema «Quilate · Azul profundo»)
 
-ESTADO: **PENDIENTE DE CAPTURAS** — el agente no renderiza el reporte y no puede evaluar
-legibilidad, jerarquía visual ni densidad percibida (§F6.3 del contrato: declararlo, no
-simularlo). Esta acta se completa solo con capturas reales de las 3 páginas.
+ESTADO: **PENDIENTE DE REVISIÓN EN DESKTOP** tras la sesión 38 (auditoría 2026-10-31 §6). Lo
+automatizable ya lo verifica `validar_reporte.py` (ver «Qué ya no se revisa a ojo»); esta acta es
+para lo que solo se juzga viendo el render: legibilidad, jerarquía y que los datos tengan sentido.
 
-> Nunca se marca aprobada sin haber visto capturas. Bloqueo B5.
+> Nunca se marca aprobada sin haber visto el render (captura solo de la ventana de Desktop, nunca
+> pantalla completa). Antes de revisar: Desktop **cerrado** → `node consumo/powerbi/regenerar_paginas.js
+> organizaciones/ironnetwork/powerbi/PulsoIron.Report` → abrir el PBIP → **Actualizar** (el modelo es
+> import: sin refrescar, las columnas nuevas de Oro salen vacías).
 
-## Capturas requeridas
+## Qué ya no se revisa a ojo (lo hace el validador en cada corrida)
 
-1. `00 · Inicio` — página completa a 1280×720, con el mes en curso seleccionado.
-2. `01 · Dirección` — ídem, verificando que los 5 focos muestran texto con cifras.
-3. `09 · Cartera y cobranza` — ídem, con la tabla de agenda de cobro poblada.
-4. Una captura del panel de páginas (para confirmar orden y nombres de pestañas).
+- Referencias: toda tabla/columna existe y cada medida se cita desde la tabla donde vive.
+- Lienzo 1280×960; ningún visual invade el pie (y = 944).
+- Ningún hex fuera de la paleta de `pbir.js` (`paleta.json`) o del tema; ningún texto en ámbar
+  `#e0a526`, pizarra claro `#8fa9c4` o gris de serie (contraste < 3:1): el texto usa `#b9781a` / `#4a6fa5`.
+- Tema fuente (`organizaciones/ironnetwork/powerbi/theme/`) = tema registrado (mismo hash).
+- Ninguna página perdió visuales respecto de `conteo_visuales.json` (Desktop ya los borró dos veces).
 
-## Checklist por página (se llena al revisar las capturas)
+## Checklist por hoja (se llena al revisar el render)
 
-| # | Verificación | 00 | 01 | 09 |
-|---|---|---|---|---|
-| 1 | El título de página muestra `NN · Nombre · período` desde la medida | ☐ | ☐ | ☐ |
-| 2 | El pie de frescura es legible y dice la fecha correcta (2026-08-08, no 2027) | ☐ | ☐ | ☐ |
-| 3 | Los tres segmentadores están alineados en su banda y el período arranca en el mes en curso | ☐ | ☐ | ☐ |
-| 4 | Ningún visual se ve cortado, vacío ni con "(En blanco)" inesperado | ☐ | ☐ | ☐ |
-| 5 | Tipografía consistente (Segoe UI; tarjetas 30px azul; ejes 9px) | ☐ | ☐ | ☐ |
-| 6 | El tema de marca se aplicó (banda azul #0043af, tablas con cabecera azul, fondo #f4f6f9) | ☐ | ☐ | ☐ |
-| 7 | El rojo aparece SOLO en estado crítico (KPI vencido, alertas), nunca como serie | ☐ | ☐ | ☐ |
-| 8 | Densidad: la página se lee en <10 segundos sin hacer zoom | ☐ | ☐ | ☐ |
+| # | Verificación | ☐ |
+|---|---|---|
+| 1 | Título = nombre de la hoja · período activo («Resumen ejecutivo · 2026») o «· foto de hoy» / «· últimos 12 meses» en hojas de saldo | ☐ |
+| 2 | Subtítulo del encabezado: «al 16 oct · 79 % del año transcurrido» (o «… del mes transcurrido») | ☐ |
+| 3 | El segmentador de Año abre en **Año actual** (y Seguimiento en **Mes actual**), no en un año quemado | ☐ |
+| 4 | El pie no toca la fila 3 y se lee completo | ☐ |
+| 5 | Ningún visual vacío ni «(En blanco)» inesperado — en especial Sector, Rango de vencimiento, Estado del cobro, Naturaleza contable y las matrices de frecuencia/abandono (ahora columnas de Oro) | ☐ |
+| 6 | Etiquetas de series claras escritas en su variante oscura (barras «pedido», «inventario», pareto) | ☐ |
+| 7 | Rankings de cliente y producto muestran tooltip con documentos / ticket / variación (cliente) o unidades / precio / variación (producto) | ☐ |
+| 8 | Densidad: la hoja se lee en < 10 segundos sin zoom | ☐ |
 
 ## Verificaciones específicas
 
-- **00**: los 2 botones activos navegan (01 y 09); los 4 inertes se ven pero no confunden
-  (¿necesitan estado deshabilitado visible?). La tabla de dominios muestra los 11 dominios.
-- **01**: los 5 focos muestran su cifra viva; el foco de vencido navega a 09. El KPI
-  `Proyección de cierre de mes` muestra valor (no BLANK) con el mes en curso seleccionado.
-- **09**: las 4 tarjetas muestran la foto de hoy aunque el período sea agosto; la agenda de
-  cobro lista clientes con documento y fecha; la tendencia declara "serie en formación".
+- **Resumen**: el KPI «Media móvil 3 meses» reemplaza al acumulado del año; el «Ritmo del mes»
+  nombra los dos meses en su subtítulo (en enero: «diciembre <año> (año anterior)»); cada foco dice
+  «Ver hoja … →» y la hoja existe; DSO/DPO usan el saldo de hoy (cuadran con «Por cobrar hoy»).
+- **Pulso**: «Proyección de cierre de mes» con un mes elegido usa los días hábiles hasta el corte
+  del dato (no hasta hoy).
+- **Pedidos**: «Fill rate» en blanco cuando no hay pedidos en el período (antes 100 %).
+- **Por cobrar / Cobros / Por pagar**: los rangos finos («Vence en 7» … «Vencido 91+») salen del
+  catálogo `oro.dim_rango_vencimiento`; las partidas sin vencimiento caen en «Sin vencimiento».
+- **Cartera 12 meses**: frecuencia y abandono por clase con los rangos de Oro.
 
-## Defectos encontrados (ronda 1 de máximo 2)
+## Defectos encontrados
 
-_(vacío hasta recibir capturas)_
+_(vacío hasta revisar el render)_

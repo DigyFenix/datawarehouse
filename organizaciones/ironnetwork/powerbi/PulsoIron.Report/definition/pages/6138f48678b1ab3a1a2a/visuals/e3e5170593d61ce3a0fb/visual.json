@@ -23,11 +23,11 @@
                       "Entity": "DM_Calendario"
                     }
                   },
-                  "Property": "anio_mes"
+                  "Property": "mes_selector"
                 }
               },
-              "queryRef": "DM_Calendario.anio_mes",
-              "nativeQueryRef": "anio_mes",
+              "queryRef": "DM_Calendario.mes_selector",
+              "nativeQueryRef": "mes_selector",
               "active": true
             }
           ]
@@ -43,7 +43,7 @@
                     "Entity": "DM_Calendario"
                   }
                 },
-                "Property": "anio_mes"
+                "Property": "mes_selector"
               }
             },
             "direction": "Descending"
@@ -91,7 +91,7 @@
                                   "Source": "t"
                                 }
                               },
-                              "Property": "anio_mes"
+                              "Property": "mes_selector"
                             }
                           }
                         ],
@@ -99,7 +99,7 @@
                           [
                             {
                               "Literal": {
-                                "Value": "'2026-10'"
+                                "Value": "'Mes actual'"
                               }
                             }
                           ]

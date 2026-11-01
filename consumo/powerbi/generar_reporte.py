@@ -28,6 +28,9 @@ DECISIONES DE DISEÑO (este reporte se muestra a un cliente que está decidiendo
     "hecho a la carrera" aunque nadie sepa señalar por qué.
 
 Uso:  python generar_reporte.py <carpeta_proyecto.Report> [nombre_empresa]
+
+RETIRADO PARA REPORTES PBIR: aborta si el .Report tiene `definition/` (ver main). Se conserva solo
+como referencia histórica del formato legado; las hojas vigentes salen de regenerar_paginas.js.
 """
 
 from __future__ import annotations
@@ -969,6 +972,15 @@ def main() -> int:
         return 1
     destino = Path(sys.argv[1])
     empresa = sys.argv[2]
+
+    # GUARDA (auditoría 2026-10-31 §6): este generador es del formato legado y DESTRUCTIVO. Si el
+    # reporte ya está en PBIR (definition/pages), escribir report.json deja un proyecto que Desktop
+    # no abre (no admite ambos formatos) y, al «arreglarlo», se pierden las páginas. Las hojas
+    # vigentes se regeneran con `node consumo/powerbi/regenerar_paginas.js <.Report>`.
+    if (destino / "definition" / "pages").exists() or (destino / "definition").exists():
+        print(f"ABORTADO · {destino} ya tiene definition/ (formato PBIR): generar_reporte.py lo "
+              "destruiría. Usá `node consumo/powerbi/regenerar_paginas.js <ruta .Report>`.")
+        return 2
 
     secciones = [
         pagina("pagina_pulso", "Pulso", 0, pagina_pulso(empresa)),
