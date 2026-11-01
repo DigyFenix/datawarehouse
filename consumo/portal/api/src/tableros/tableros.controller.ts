@@ -5,8 +5,15 @@ import { Response } from 'express';
 import { Publico } from '../auth/publico.decorator';
 import { RequestPortal } from '../auth/jwt-auth.guard';
 import { UsuarioPortal } from '../auth/tipos';
+import { LimitadorPorIp } from '../common/limitador-ip';
 import { PasesVisorService } from './pases-visor.service';
 import { TablerosService } from './tableros.service';
+
+/**
+ * Destino público del iframe: cada apertura legítima es UNA petición (el pase es de un solo
+ * uso), así que 60 por minuto por IP cubren una oficina entera detrás de un NAT (B7).
+ */
+const LIMITE_VISOR = new LimitadorPorIp(60, 60 * 1000);
 
 @Controller('t/:hash/tableros')
 export class TablerosController {
@@ -42,8 +49,10 @@ export class TablerosController {
     @Param('hash') hash: string,
     @Param('clave') clave: string,
     @Query('pase') pase: string | undefined,
+    @Req() req: RequestPortal,
     @Res() res: Response,
   ): void {
+    LIMITE_VISOR.consumir(req.ip ?? null);
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Referrer-Policy', 'no-referrer');
     const url = typeof pase === 'string' && pase.length > 0 ? this.pases.canjear(hash, clave, pase) : null;

@@ -7,6 +7,22 @@ export const enviarMensajeSchema = z.object({
 export type EnviarMensajeDto = z.infer<typeof enviarMensajeSchema>;
 
 /**
+ * Clic en un botón de desambiguación o en una sugerencia: la acción que armó el CÓDIGO del
+ * agente (tool + params). Aquí solo se valida la FORMA; el paquete la revalida con el Zod
+ * estricto de la tool, el catálogo, el alcance y el RLS de quien hace clic antes de ejecutarla.
+ */
+export const accionChatSchema = z.object({
+  etiqueta: z.string().trim().min(1).max(160),
+  accion: z.object({
+    tool: z.enum(['consultar_metrica', 'consultar_aging', 'consultar_metrica_por_dimension', 'explicar_metrica']),
+    params: z.record(z.string().regex(/^[a-z_]{1,40}$/), z.union([z.string().max(200), z.number().finite(), z.boolean()])).refine((o) => Object.keys(o).length <= 12, {
+      message: 'Demasiados parámetros',
+    }),
+  }),
+});
+export type AccionChatDto = z.infer<typeof accionChatSchema>;
+
+/**
  * Especificación guardable: la tool y sus parámetros. Aquí solo se valida la FORMA
  * (tool permitida, params objeto plano con valores escalares); la validación de
  * negocio (Zod estricto por tool, catálogo, alcance) la hace el paquete del agente al

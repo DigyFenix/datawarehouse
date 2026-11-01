@@ -41,7 +41,18 @@ import { PESTANAS_ADMIN } from './pestanas';
                     @if (e.despues) {
                       <details>
                         <summary>{{ resumen(e.despues) }}</summary>
+                        @if (e.antes) {
+                          <span class="sutil">Antes</span>
+                          <pre class="json">{{ formatear(e.antes) }}</pre>
+                          <span class="sutil">Después</span>
+                        }
                         <pre class="json">{{ formatear(e.despues) }}</pre>
+                      </details>
+                    } @else if (e.antes) {
+                      <!-- Eliminaciones: solo queda lo que había antes. -->
+                      <details>
+                        <summary>Antes: {{ resumen(e.antes) }}</summary>
+                        <pre class="json">{{ formatear(e.antes) }}</pre>
                       </details>
                     } @else {
                       <span class="sutil">—</span>

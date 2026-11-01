@@ -65,6 +65,10 @@ const OPERACIONES: { valor: Operacion; etiqueta: string; simbolo: string; ayuda:
 
     @if (cargando()) {
       <div class="tarjeta"><app-skeleton></app-skeleton><app-skeleton></app-skeleton></div>
+    } @else if (errorCarga()) {
+      <app-empty titulo="No se pudieron cargar los indicadores">
+        {{ errorCarga() }} <button type="button" class="enlace" (click)="cargar()">Reintentar</button>
+      </app-empty>
     } @else if (derivadas().length === 0) {
       <app-empty titulo="Todavía sin indicadores propios">
         Un ejemplo típico: «% de margen» = Margen Bruto ÷ Ventas Netas × 100.
@@ -113,22 +117,25 @@ const OPERACIONES: { valor: Operacion; etiqueta: string; simbolo: string; ayuda:
             <h3>{{ editando() ? 'Editar indicador' : 'Nuevo indicador' }}</h3>
           </header>
 
-          <form (ngSubmit)="guardar()">
+          <form #f="ngForm" (ngSubmit)="f.valid && formularioValido() && guardar()">
             <div class="campo">
               <label for="nombre">Nombre</label>
               <input id="nombre" name="nombre" [(ngModel)]="form.nombre"
-                     (ngModelChange)="sugerirClave()" required placeholder="% de margen" />
+                     (ngModelChange)="sugerirClave()" required minlength="3" maxlength="80" placeholder="% de margen" />
+              @if (form.nombre.trim().length >= 3 && !claveValida()) {
+                <span class="error">El nombre necesita al menos 3 letras o dígitos (de él sale la clave interna).</span>
+              }
             </div>
 
             <div class="campo">
               <label for="definicion">Qué mide</label>
               <textarea id="definicion" name="definicion" rows="2" [(ngModel)]="form.definicion"
-                        required placeholder="Qué parte de la venta neta queda como margen."></textarea>
+                        required minlength="3" maxlength="400" placeholder="Qué parte de la venta neta queda como margen."></textarea>
             </div>
 
             <div class="campo">
               <label for="opA">Primera métrica</label>
-              <select id="opA" name="opA" [(ngModel)]="form.operandoA">
+              <select id="opA" name="opA" [(ngModel)]="form.operandoA" required>
                 @for (m of metricas(); track m.clave) {
                   <option [ngValue]="m.clave">{{ m.nombreOficial }}</option>
                 }
@@ -147,13 +154,17 @@ const OPERACIONES: { valor: Operacion; etiqueta: string; simbolo: string; ayuda:
 
             <div class="campo">
               <label for="opB">Segunda métrica</label>
-              <select id="opB" name="opB" [(ngModel)]="form.operandoB">
+              <select id="opB" name="opB" [(ngModel)]="form.operandoB" required>
                 @for (m of metricas(); track m.clave) {
                   <option [ngValue]="m.clave" [disabled]="m.clave === form.operandoA">
                     {{ m.nombreOficial }}
                   </option>
                 }
               </select>
+              @if (form.operandoA && form.operandoA === form.operandoB) {
+                <span class="error">Elige dos métricas distintas.</span>
+              }
+              @if (errorMetricas()) { <span class="error">No se pudo cargar la lista de métricas: {{ errorMetricas() }}</span> }
             </div>
 
             <div class="vista-previa">
@@ -170,7 +181,7 @@ const OPERACIONES: { valor: Operacion; etiqueta: string; simbolo: string; ayuda:
 
             <div class="acciones-fila">
               <button type="button" class="secundario" (click)="cerrar()">Cancelar</button>
-              <button type="submit" [disabled]="guardando()">
+              <button type="submit" [disabled]="guardando() || f.invalid || !formularioValido()">
                 {{ guardando() ? 'Guardando…' : 'Guardar' }}
               </button>
             </div>
@@ -220,6 +231,9 @@ export class DerivadasComponent implements OnInit {
   readonly derivadas = signal<Derivada[]>([]);
   readonly metricas = signal<MetricaOpcion[]>([]);
   readonly cargando = signal(true);
+  /** Distinguen «no se pudo cargar» de «no hay indicadores». */
+  readonly errorCarga = signal<string | null>(null);
+  readonly errorMetricas = signal<string | null>(null);
   readonly abierto = signal(false);
   readonly editando = signal<Derivada | null>(null);
   readonly guardando = signal(false);
@@ -247,6 +261,7 @@ export class DerivadasComponent implements OnInit {
     this.cargar();
     this.api.get<MetricaOpcion[]>('/admin/glosario/metricas').subscribe({
       next: (ms) => this.metricas.set(ms),
+      error: (e: Error) => this.errorMetricas.set(e.message),
     });
   }
 
@@ -260,6 +275,16 @@ export class DerivadasComponent implements OnInit {
 
   ayudaOperacion(): string {
     return OPERACIONES.find((o) => o.valor === this.form.operacion)?.ayuda ?? '';
+  }
+
+  /** Clave derivada válida (mismo patrón que admin.dto.ts: ^[a-z0-9_]+$, 3 a 60). */
+  claveValida(): boolean {
+    return /^[a-z0-9_]{3,60}$/.test(this.form.clave);
+  }
+
+  /** Reglas que el formulario de plantilla no expresa: clave derivada y operandos distintos. */
+  formularioValido(): boolean {
+    return this.claveValida() && !!this.form.operandoA && !!this.form.operandoB && this.form.operandoA !== this.form.operandoB;
   }
 
   /** La clave la usa el asistente; se deriva del nombre para que nadie la escriba. */
@@ -276,6 +301,7 @@ export class DerivadasComponent implements OnInit {
 
   cargar(): void {
     this.cargando.set(true);
+    this.errorCarga.set(null);
     this.api.get<Derivada[]>('/admin/derivadas').subscribe({
       next: (ds) => {
         this.derivadas.set(ds);
@@ -283,7 +309,7 @@ export class DerivadasComponent implements OnInit {
       },
       error: (e: Error) => {
         this.cargando.set(false);
-        this.toast.error('No se pudieron cargar los indicadores', e.message);
+        this.errorCarga.set(e.message);
       },
     });
   }
@@ -312,7 +338,11 @@ export class DerivadasComponent implements OnInit {
   }
 
   editar(d: Derivada): void {
-    this.form = { ...d };
+    // Solo los campos del formulario: `id` (y lo que agregue el API) no viaja en el PUT.
+    this.form = {
+      clave: d.clave, nombre: d.nombre, definicion: d.definicion, operacion: d.operacion,
+      operandoA: d.operandoA, operandoB: d.operandoB, unidad: d.unidad, activa: d.activa,
+    };
     this.editando.set(d);
     this.errorForm.set(null);
     this.abierto.set(true);

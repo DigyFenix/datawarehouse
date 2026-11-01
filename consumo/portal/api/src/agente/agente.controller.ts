@@ -19,6 +19,8 @@ import { UsuarioPortal } from '../auth/tipos';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AgenteService } from './agente.service';
 import {
+  accionChatSchema,
+  AccionChatDto,
   actualizarConsultaGuardadaSchema,
   ActualizarConsultaGuardadaDto,
   crearConsultaGuardadaSchema,
@@ -73,6 +75,24 @@ export class AgenteController {
     return this.agente.responderMensaje(this.usuario(req), id, dto.contenido, req.ip ?? null);
   }
 
+  /**
+   * Clic en un botón de desambiguación o una sugerencia: ejecuta la tool validada SIN pasar por
+   * el modelo (cero tokens) y persiste el turno en la conversación.
+   *
+   * @param id conversación propia del usuario
+   * @param dto `{ etiqueta, accion: { tool, params } }`
+   * @returns RespuestaChat (texto de plantilla, tarjetas, conjuntos, consultas, sugerencias, sesión)
+   * @throws 400 tool o parámetros fuera de contrato · 404 conversación ajena · 409 tope de mensajes
+   */
+  @Post('conversaciones/:id/accion')
+  ejecutarAccion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(accionChatSchema)) dto: AccionChatDto,
+    @Req() req: RequestPortal,
+  ) {
+    return this.agente.responderAccion(this.usuario(req), id, dto.accion, dto.etiqueta, req.ip ?? null);
+  }
+
   @Delete('conversaciones/:id')
   @HttpCode(204)
   eliminarConversacion(@Param('id', ParseIntPipe) id: number, @Req() req: RequestPortal) {
@@ -89,6 +109,17 @@ export class AgenteController {
   @Get('metricas')
   metricas(@Req() req: RequestPortal) {
     return this.agente.metricasDisponibles(this.usuario(req));
+  }
+
+  /**
+   * Preguntas sugeridas para el chat vacío, armadas en código desde el alcance real del usuario.
+   * Cada una es una acción que se ejecuta con `POST conversaciones/:id/accion`.
+   *
+   * @returns OpcionAccion[] (2-4)
+   */
+  @Get('sugerencias')
+  sugerencias(@Req() req: RequestPortal) {
+    return this.agente.sugerenciasIniciales(this.usuario(req));
   }
 
   // ---------------------------------------------------------------- consultas guardadas

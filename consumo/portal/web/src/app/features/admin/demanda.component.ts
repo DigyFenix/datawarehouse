@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/api.service';
@@ -117,7 +117,18 @@ const NOMBRE_ESTADO: Record<EstadoSolicitud, string> = {
                   <td data-label="Qué pidió" class="pedido">
                     <strong>{{ s.resumen }}</strong>
                     <details><summary>Mensaje original</summary><p class="pregunta">{{ s.pregunta }}</p></details>
-                    @if (s.notaAdmin) { <p class="nota">Nota: {{ s.notaAdmin }}</p> }
+                    @if (notaEditando() === s.id) {
+                      <form class="nota-form" #fn="ngForm" (ngSubmit)="fn.valid && guardarNota(s)">
+                        <label class="sutil" [attr.for]="'nota-' + s.id">Nota del administrador (qué se decidió)</label>
+                        <textarea [id]="'nota-' + s.id" name="nota" rows="2" maxlength="1000" [(ngModel)]="notaTexto"></textarea>
+                        <div class="nota-form__acciones">
+                          <button type="button" class="pequeno secundario" (click)="notaEditando.set(null)">Cancelar</button>
+                          <button type="submit" class="pequeno" [disabled]="guardandoNota() || fn.invalid">{{ guardandoNota() ? 'Guardando…' : 'Guardar nota' }}</button>
+                        </div>
+                      </form>
+                    } @else if (s.notaAdmin) {
+                      <p class="nota">Nota: {{ s.notaAdmin }}</p>
+                    }
                   </td>
                   <td data-label="Relacionado">
                     @if (s.metricaClave) { <code>{{ s.metricaClave }}</code> }
@@ -132,9 +143,13 @@ const NOMBRE_ESTADO: Record<EstadoSolicitud, string> = {
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="6"><app-empty titulo="Sin solicitudes">
-                  Cuando alguien pida algo que el asistente no pueda dar, aparece aquí.
-                </app-empty></td></tr>
+                @if (errorCarga()) {
+                  <tr><td colspan="6"><app-empty titulo="No se pudo cargar la demanda">{{ errorCarga() }}</app-empty></td></tr>
+                } @else {
+                  <tr><td colspan="6"><app-empty titulo="Sin solicitudes">
+                    Cuando alguien pida algo que el asistente no pueda dar, aparece aquí.
+                  </app-empty></td></tr>
+                }
               }
             }
           </tbody>
@@ -162,6 +177,9 @@ const NOMBRE_ESTADO: Record<EstadoSolicitud, string> = {
     .pedido details summary { cursor: pointer; font-size: 11px; color: var(--muted); }
     .pregunta { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--muted); white-space: pre-wrap; }
     .nota { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--brand-700); }
+    .nota-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .nota-form textarea { font-size: var(--fs-sm); }
+    .nota-form__acciones { display: flex; gap: 6px; justify-content: flex-end; }
     .estado { display: flex; gap: 6px; align-items: center; min-width: 230px; }
     .estado select { font-size: var(--fs-xs); width: auto; min-width: 130px; padding: 6px 8px; }
     td code { margin-right: 8px; }
@@ -179,11 +197,17 @@ export class DemandaComponent {
   readonly resumen = signal<ResumenDemanda | null>(null);
   readonly filtroEstado = signal<string>('');
   readonly cargando = signal(true);
+  readonly errorCarga = signal<string | null>(null);
   readonly nombreDominio = nombreDominio;
-  readonly hayNuevas = computed(() => (this.resumen()?.nuevas ?? 0) > 0);
+  /** Solicitud cuya nota se edita en línea (reemplaza a window.prompt). */
+  readonly notaEditando = signal<number | null>(null);
+  readonly guardandoNota = signal(false);
+  notaTexto = '';
 
   constructor() {
     this.cargar();
+    // Los totales no dependen del filtro: se piden una vez y tras cada cambio de estado.
+    this.cargarResumen();
   }
 
   nombreTipo(t: string): string {
@@ -200,36 +224,55 @@ export class DemandaComponent {
 
   private cargar(): void {
     this.cargando.set(true);
-    const q = this.filtroEstado() ? `?estado=${this.filtroEstado()}` : '';
+    this.errorCarga.set(null);
+    const q = this.filtroEstado() ? `?estado=${encodeURIComponent(this.filtroEstado())}` : '';
     this.api.get<Solicitud[]>(`/admin/solicitudes${q}`).subscribe({
       next: (d) => {
         this.solicitudes.set(d);
         this.cargando.set(false);
       },
       error: (e: Error) => {
-        this.toast.error('No se pudo cargar la demanda', e.message);
+        this.errorCarga.set(e.message);
         this.cargando.set(false);
       },
     });
-    this.api.get<ResumenDemanda>('/admin/solicitudes/resumen').subscribe({ next: (r) => this.resumen.set(r), error: () => undefined });
+  }
+
+  /** Totales de la cabecera. Si fallan, la tabla sigue sirviendo; se avisa sin bloquear. */
+  private cargarResumen(): void {
+    this.api.get<ResumenDemanda>('/admin/solicitudes/resumen').subscribe({
+      next: (r) => this.resumen.set(r),
+      error: (e: Error) => this.toast.error('No se pudieron cargar los totales', e.message),
+    });
   }
 
   cambiarEstado(s: Solicitud, estado: EstadoSolicitud): void {
     this.api.patch<Solicitud>(`/admin/solicitudes/${s.id}`, { estado }).subscribe({
       next: (n) => {
         this.solicitudes.update((xs) => xs.map((x) => (x.id === n.id ? n : x)));
-        this.api.get<ResumenDemanda>('/admin/solicitudes/resumen').subscribe({ next: (r) => this.resumen.set(r), error: () => undefined });
+        this.cargarResumen();
       },
       error: (e: Error) => this.toast.error('No se pudo actualizar', e.message),
     });
   }
 
   editarNota(s: Solicitud): void {
-    const nota = window.prompt('Nota del administrador (qué se decidió):', s.notaAdmin ?? '');
-    if (nota === null) return;
-    this.api.patch<Solicitud>(`/admin/solicitudes/${s.id}`, { notaAdmin: nota.trim() || null }).subscribe({
-      next: (n) => this.solicitudes.update((xs) => xs.map((x) => (x.id === n.id ? n : x))),
-      error: (e: Error) => this.toast.error('No se pudo guardar la nota', e.message),
+    this.notaTexto = s.notaAdmin ?? '';
+    this.notaEditando.set(s.id);
+  }
+
+  guardarNota(s: Solicitud): void {
+    this.guardandoNota.set(true);
+    this.api.patch<Solicitud>(`/admin/solicitudes/${s.id}`, { notaAdmin: this.notaTexto.trim() || null }).subscribe({
+      next: (n) => {
+        this.solicitudes.update((xs) => xs.map((x) => (x.id === n.id ? n : x)));
+        this.guardandoNota.set(false);
+        this.notaEditando.set(null);
+      },
+      error: (e: Error) => {
+        this.guardandoNota.set(false);
+        this.toast.error('No se pudo guardar la nota', e.message);
+      },
     });
   }
 }

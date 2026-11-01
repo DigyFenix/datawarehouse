@@ -18,10 +18,15 @@ import {
   EstadoSesion,
   MensajeChat,
   MetricaDisponible,
+  OpcionAccion,
+  RespuestaAgente,
   SugerenciaChat,
+  TarjetaDato,
+  UnidadMetrica,
   VistaConsulta,
 } from './chat.service';
 import { DatosVisualComponent } from './datos-visual.component';
+import { fechaCorte, formatearValor, textoEmpresas } from './formato-cifras';
 
 function leerPreferencia(clave: string, porDefecto: boolean): boolean {
   try {
@@ -165,9 +170,10 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
                 Una pregunta, una respuesta: métricas certificadas, dentro de tu alcance, con su período
                 y su estado. Lo que te sirva, lo guardas y lo reabres con datos frescos.
                 @if (sugerencias().length) {
+                  <!-- Armadas en código desde tu alcance real: el clic consulta sin pasar por el modelo. -->
                   <div class="sugerencias">
-                    @for (s of sugerencias(); track s) {
-                      <button class="secundario pequeno" (click)="usarSugerencia(s)">{{ s }}</button>
+                    @for (s of sugerencias(); track s.etiqueta) {
+                      <button class="secundario pequeno" (click)="ejecutarOpcion(s)" [disabled]="pensando()">{{ s.etiqueta }}</button>
                     }
                   </div>
                 }
@@ -214,10 +220,11 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
                     <div class="tarjetas">
                       @for (t of m.tarjetas ?? []; track t.metricaClave + t.periodo + (t.empresa ?? '')) {
                         <div class="dato" [class.dato--exploratoria]="t.estado === 'exploratoria'">
-                          <span class="dato__valor">{{ formatear(t.valor) }}</span>
+                          <span class="dato__valor">{{ formatear(t.valor, t.unidad) }}</span>
                           <span class="dato__metrica">{{ t.metricaNombre }}</span>
+                          <!-- Período · corte · empresas (el estado va en el badge): siempre visibles. -->
                           <span class="dato__meta">
-                            {{ t.periodo }}@if (t.empresa) { · {{ t.empresa }} }
+                            {{ t.periodo }}@if (corteDe(t); as c) { · dato al {{ c }} }@if (empresasDe(t); as e) { · {{ e }} }
                           </span>
                           <span class="badge" [class.badge--certificada]="t.estado === 'certificada'"
                                 [class.badge--exploratoria]="t.estado === 'exploratoria'">
@@ -228,6 +235,27 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
                     </div>
                   }
                 </article>
+              }
+            }
+
+            @if (!pensando() && acciones(); as ac) {
+              @if (ac.regenerado) {
+                <p class="nota-regenerado"><app-icon name="info" [size]="13" /> Texto armado directamente desde los datos consultados.</p>
+              }
+              @if (ac.opciones.length) {
+                <div class="acciones acciones--opciones" role="group" aria-label="Elige una opción">
+                  @for (o of ac.opciones; track o.etiqueta) {
+                    <button type="button" class="pequeno" (click)="ejecutarOpcion(o)">{{ o.etiqueta }}</button>
+                  }
+                </div>
+              }
+              @if (ac.sugerencias.length) {
+                <div class="acciones" role="group" aria-label="Siguientes preguntas sugeridas">
+                  <span class="acciones__titulo">También puedes ver</span>
+                  @for (o of ac.sugerencias; track o.etiqueta) {
+                    <button type="button" class="pequeno secundario" (click)="ejecutarOpcion(o)">{{ o.etiqueta }}</button>
+                  }
+                </div>
               }
             }
 
@@ -380,6 +408,10 @@ const RETOMAR_MS = 2 * 60 * 60 * 1000;
       .aviso { margin: 0; display: flex; gap: 8px; align-items: flex-start; color: var(--warn); background: var(--warn-bg); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); font-size: var(--fs-sm); }
 
       .sugerencias { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); justify-content: center; }
+      .acciones { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+      .acciones button { white-space: normal; text-align: left; line-height: 1.3; }
+      .acciones__titulo { font-size: var(--fs-2xs); color: var(--faint); margin-right: 2px; }
+      .nota-regenerado { margin: 0; display: flex; align-items: center; gap: 6px; font-size: var(--fs-2xs); color: var(--muted); }
       .redactar { display: flex; gap: var(--sp-2); align-items: flex-end; padding: var(--sp-2); border: 1px solid var(--border-2); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--sh-1); }
       .redactar:focus-within { border-color: var(--brand-500); box-shadow: 0 0 0 3px color-mix(in srgb, var(--marca) 14%, transparent); }
       .redactar textarea { flex: 1; resize: none; min-height: 44px; border: 0; box-shadow: none; background: transparent; padding: 10px 8px; }
@@ -431,12 +463,10 @@ export class ChatbotComponent implements OnInit {
     for (const m of this.metricas()) grupos.set(m.dominio, [...(grupos.get(m.dominio) ?? []), m]);
     return [...grupos.entries()].map(([dominio, metricas]) => ({ dominio, metricas }));
   });
-  readonly sugerencias = signal<string[]>([
-    '¿Cuáles fueron las ventas netas por mes de este año?',
-    '¿Quiénes son mis 10 mejores clientes del año?',
-    '¿Cuánto tengo por cobrar y cómo está repartido por antigüedad?',
-    '¿Qué significa "ventas netas" exactamente?',
-  ]);
+  /** Sugerencias del chat vacío: las arma el agente desde el alcance real (nunca nombran una métrica sin acceso). */
+  readonly sugerencias = signal<OpcionAccion[]>([]);
+  /** Botones de la última respuesta (desambiguación y siguientes preguntas). No se persisten: valen para el turno. */
+  readonly acciones = signal<{ opciones: OpcionAccion[]; sugerencias: OpcionAccion[]; regenerado: boolean } | null>(null);
 
   // ---- guardadas
   readonly pestana = signal<'conversaciones' | 'guardadas'>('conversaciones');
@@ -471,6 +501,8 @@ export class ChatbotComponent implements OnInit {
     });
     this.recargarGuardadas();
     this.chat.metricas().subscribe({ next: (ms) => this.metricas.set(ms), error: () => undefined });
+    // Sin sugerencias el chat sigue funcionando: el error se ignora a propósito (no bloquea).
+    this.chat.sugerenciasIniciales().subscribe({ next: (ss) => this.sugerencias.set(ss), error: () => undefined });
   }
 
   alternarGuardadas(): void {
@@ -505,6 +537,7 @@ export class ChatbotComponent implements OnInit {
     this.cargandoMensajes.set(true);
     this.error.set(null);
     this.sugerencia.set(null);
+    this.acciones.set(null);
     this.chat.estado(c.id).subscribe({ next: (e) => this.sesion.set(e), error: () => this.sesion.set(null) });
     this.chat.mensajes(c.id).subscribe({
       next: (ms) => {
@@ -529,6 +562,7 @@ export class ChatbotComponent implements OnInit {
         this.modo.set('chat');
         this.sesion.set(null);
         this.sugerencia.set(null);
+        this.acciones.set(null);
         this.creando.set(false);
         this.panelAbierto.set(false);
       },
@@ -560,9 +594,64 @@ export class ChatbotComponent implements OnInit {
     });
   }
 
-  usarSugerencia(texto: string): void {
-    this.borrador = texto;
-    this.enviar();
+  /**
+   * Clic en una opción o sugerencia: la acción (tool + params armados por el agente) se ejecuta
+   * sin modelo y el turno queda en la conversación con la etiqueta como pregunta.
+   */
+  ejecutarOpcion(opcion: OpcionAccion): void {
+    if (this.pensando()) return;
+    this.modo.set('chat');
+    const conversacion = this.activaId();
+    if (conversacion === null) {
+      this.chat.crear().subscribe({
+        next: (c) => {
+          this.conversaciones.update((cs) => [c, ...cs]);
+          this.activaId.set(c.id);
+          this.ejecutarOpcionEn(c.id, opcion);
+        },
+        error: (e: Error) => this.error.set(e.message),
+      });
+      return;
+    }
+    this.ejecutarOpcionEn(conversacion, opcion);
+  }
+
+  private ejecutarOpcionEn(conversacion: number, opcion: OpcionAccion): void {
+    this.prepararTurno(opcion.etiqueta);
+    this.chat.accion(conversacion, opcion).subscribe({
+      next: (r) => this.trasRespuesta(conversacion, r),
+      error: (e: Error) => {
+        this.pensando.set(false);
+        this.error.set(e.message);
+      },
+    });
+  }
+
+  /** Eco optimista del turno del usuario y estado «pensando». */
+  private prepararTurno(texto: string): void {
+    this.error.set(null);
+    this.acciones.set(null);
+    this.pensando.set(true);
+    this.mensajes.update((ms) => [
+      ...ms,
+      { id: -Date.now(), rol: 'usuario', contenido: texto, tarjetas: null, datos: null, creadoEn: new Date().toISOString() },
+    ]);
+    this.alFinal();
+  }
+
+  /** Respuesta del agente (mensaje o acción): estado, botones y recarga de lo persistido. */
+  private trasRespuesta(conversacion: number, r: RespuestaAgente): void {
+    this.pensando.set(false);
+    this.sesion.set(r.sesion);
+    this.sugerencia.set(r.sugerencia);
+    this.acciones.set({ opciones: r.opciones ?? [], sugerencias: r.sugerencias ?? [], regenerado: r.textoRegenerado === true });
+    this.chat.mensajes(conversacion).subscribe({
+      next: (ms) => {
+        this.mensajes.set(ms);
+        this.alFinal();
+      },
+    });
+    this.chat.conversaciones().subscribe({ next: (cs) => this.conversaciones.set(cs) });
   }
 
   enviarConEnter(evento: Event): void {
@@ -593,30 +682,13 @@ export class ChatbotComponent implements OnInit {
   }
 
   private enviarA(conversacion: number, texto: string): void {
-    this.error.set(null);
     this.borrador = '';
-    this.pensando.set(true);
     // Eco optimista: el turno del usuario se ve de inmediato; el id definitivo
     // llega al recargar los mensajes persistidos.
-    this.mensajes.update((ms) => [
-      ...ms,
-      { id: -Date.now(), rol: 'usuario', contenido: texto, tarjetas: null, datos: null, creadoEn: new Date().toISOString() },
-    ]);
-    this.alFinal();
+    this.prepararTurno(texto);
 
     this.chat.enviar(conversacion, texto).subscribe({
-      next: (r) => {
-        this.pensando.set(false);
-        this.sesion.set(r.sesion);
-        this.sugerencia.set(r.sugerencia);
-        this.chat.mensajes(conversacion).subscribe({
-          next: (ms) => {
-            this.mensajes.set(ms);
-            this.alFinal();
-          },
-        });
-        this.chat.conversaciones().subscribe({ next: (cs) => this.conversaciones.set(cs) });
-      },
+      next: (r) => this.trasRespuesta(conversacion, r),
       error: (e: Error) => {
         this.pensando.set(false);
         this.error.set(e.message);
@@ -773,13 +845,17 @@ export class ChatbotComponent implements OnInit {
       .join(' · ');
   }
 
-  formatear(valor: number): string {
-    const abs = Math.abs(valor);
-    const decimales = abs >= 1000 ? 0 : 2;
-    return new Intl.NumberFormat('es-GT', {
-      minimumFractionDigits: decimales,
-      maximumFractionDigits: decimales,
-    }).format(valor);
+  formatear(valor: number, unidad?: UnidadMetrica): string {
+    return formatearValor(valor, unidad);
+  }
+
+  corteDe(t: TarjetaDato): string | null {
+    return fechaCorte(t.corte);
+  }
+
+  /** La empresa de la fila (desglose por empresa) o las empresas que suma la cifra. */
+  empresasDe(t: TarjetaDato): string | null {
+    return t.empresa ?? textoEmpresas(t.empresas);
   }
 
   private alFinal(): void {

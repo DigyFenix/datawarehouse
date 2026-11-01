@@ -67,9 +67,14 @@ export class AuthService {
     );
   }
 
-  cambiarPassword(passwordActual: string, passwordNueva: string): Observable<unknown> {
-    return this.api.post('/auth/cambiar-password', { passwordActual, passwordNueva }).pipe(
-      tap(() => {
+  /**
+   * Cambia la contraseña. El API revoca los tokens anteriores (también el de esta sesión) y
+   * devuelve uno nuevo: se guarda para seguir dentro sin volver a iniciar sesión.
+   */
+  cambiarPassword(passwordActual: string, passwordNueva: string): Observable<{ cambiada: boolean; token?: string }> {
+    return this.api.post<{ cambiada: boolean; token?: string }>('/auth/cambiar-password', { passwordActual, passwordNueva }).pipe(
+      tap((r) => {
+        if (r.token) localStorage.setItem(this.claveToken(), r.token);
         const usuario = this._usuario();
         if (usuario) {
           const actualizado = { ...usuario, debeCambiarPassword: false };

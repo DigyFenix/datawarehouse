@@ -49,7 +49,12 @@ export const asignarAlcancesSchema = z.object({
     .array(
       z.object({
         recursoTipo: z.enum(['dominio', 'metrica', 'empresa']),
-        recursoClave: z.string().min(1).max(120),
+        // Clave del recurso (dominio, métrica o empresa) o '*' = todos. Mismo alfabeto que el catálogo.
+        recursoClave: z
+          .string()
+          .min(1)
+          .max(120)
+          .regex(/^[a-z0-9_]+$|^\*$/, 'clave inválida (minúsculas, dígitos y _, o * para todos)'),
       }),
     )
     .max(200),

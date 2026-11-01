@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output, computed, signal } from '@angul
 
 import { IconComponent } from '../../ui/icon.component';
 import { ConjuntoDatos, VistaConsulta } from './chat.service';
+import { fechaCorte, formatearValor, textoEmpresas } from './formato-cifras';
 
 /**
  * Un conjunto de datos del asistente, visto como tabla, barras o líneas, con exportación
@@ -19,7 +20,10 @@ import { ConjuntoDatos, VistaConsulta } from './chat.service';
       <header class="dv__cab">
         <div class="dv__titulos">
           <strong>{{ conjunto.titulo }}</strong>
-          <span class="dv__meta">{{ conjunto.metricaNombre }} · {{ conjunto.periodo }}</span>
+          <!-- Período · corte · empresas · estado: siempre a la vista, salen del dato, no del modelo. -->
+          <span class="dv__meta">
+            {{ conjunto.metricaNombre }} · {{ conjunto.periodo }}@if (corte(); as c) { · dato al {{ c }} }@if (empresas(); as e) { · {{ e }} }
+          </span>
         </div>
         <div class="dv__acciones">
           <span class="badge" [class.badge--certificada]="conjunto.estado === 'certificada'"
@@ -256,13 +260,19 @@ export class DatosVisualComponent {
   }
 
   formatear(valor: number): string {
-    const abs = Math.abs(valor);
-    const decimales = abs >= 1000 || Number.isInteger(valor) ? 0 : 2;
-    return new Intl.NumberFormat('es-GT', { minimumFractionDigits: decimales, maximumFractionDigits: decimales }).format(valor);
+    return formatearValor(valor, this._conjunto().unidad);
   }
+
+  /** Corte del dato (en aging, la fecha de la foto) — no se repite si el período ya la nombra. */
+  readonly corte = computed(() => {
+    const c = this._conjunto();
+    return c.corte && !c.periodo.includes(c.corte) ? fechaCorte(c.corte) : null;
+  });
+  readonly empresas = computed(() => textoEmpresas(this._conjunto().empresas));
 
   abreviar(v: number): string {
     const abs = Math.abs(v);
+    if (this._conjunto().unidad === 'porcentaje') return `${v.toFixed(1)} %`;
     if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
     if (abs >= 1_000) return `${Math.round(v / 1_000)}K`;
     return `${Math.round(v)}`;
@@ -282,7 +292,7 @@ export class DatosVisualComponent {
         return col.tipo === 'numero' ? String(v) : esc(String(v));
       }).join(';'),
     );
-    const pie = `${esc('Métrica')};${esc(`${c.metricaNombre} (${c.estado}) · ${c.periodo}`)}`;
+    const pie = `${esc('Métrica')};${esc(`${c.metricaNombre} (${c.estado}) · ${c.periodo}${c.corte ? ` · dato al ${c.corte}` : ''}${c.empresas?.length ? ` · ${c.empresas.join(', ')}` : ''}`)}`;
     // BOM para que Excel en español abra el UTF-8 y respete el separador ';'.
     const contenido = '﻿' + [cab, ...filas, '', pie].join('\r\n');
     const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8' });

@@ -11,6 +11,11 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
 import { TabsComponent } from '../../ui/tabs.component';
 import { PESTANAS_ADMIN } from './pestanas';
 
+/** YYYY-MM de una fecha en hora local del navegador. */
+function mesLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 interface UsoPorUsuario {
   usuarioId: number;
   nombre: string;
@@ -177,7 +182,8 @@ export class UsoIaComponent {
   readonly tenant = inject(TenantService);
 
   readonly pestanas = PESTANAS_ADMIN;
-  readonly mesActual = new Date().toISOString().slice(0, 7);
+  /** Mes en curso en hora LOCAL: toISOString daba el mes UTC (desde las 18:00 del último día en GT, el siguiente). */
+  readonly mesActual = mesLocal(new Date());
   readonly mes = signal(this.mesActual);
   readonly resumen = signal<ResumenUsoIa | null>(null);
   readonly cargando = signal(true);
@@ -202,7 +208,7 @@ export class UsoIaComponent {
 
   cargar(): void {
     this.cargando.set(true);
-    this.api.get<ResumenUsoIa>(`/admin/uso-ia?mes=${this.mes()}`).subscribe({
+    this.api.get<ResumenUsoIa>(`/admin/uso-ia?mes=${encodeURIComponent(this.mes())}`).subscribe({
       next: (r) => {
         this.resumen.set(r);
         this.cargando.set(false);

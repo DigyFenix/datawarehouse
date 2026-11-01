@@ -17,6 +17,9 @@ import type { Env } from '../config/env';
 
 const NOMBRE_BD_VALIDO = /^[a-z0-9_]+$/;
 
+/** Consulta dentro de la transacción RLS abierta por `conTransaccion` (mismo cliente). */
+export type ConsultarRls = (sql: string, params: unknown[]) => Promise<Record<string, unknown>[]>;
+
 @Injectable()
 export class LectorPoolsService implements OnModuleDestroy {
   private readonly pools = new Map<string, Pool>();
@@ -42,7 +45,7 @@ export class LectorPoolsService implements OnModuleDestroy {
         database: baseDatosDw,
         user: 'portal_lector',
         password,
-        max: 5,
+        max: this.config.get('POSTGRES_POOL_MAX', { infer: true }),
         idleTimeoutMillis: 30_000,
       });
       this.pools.set(baseDatosDw, pool);
@@ -74,6 +77,71 @@ export class LectorPoolsService implements OnModuleDestroy {
       throw error;
     } finally {
       cliente.release();
+    }
+  }
+
+  /**
+   * Una sola transacción RLS para TODO un turno (mensaje del chat, tablero, consulta guardada):
+   * BEGIN + set_config UNA vez y `fn` recibe `consultar`, que reutiliza el mismo cliente. Antes
+   * cada consulta abría la suya (connect + BEGIN + set_config + query + COMMIT = 4 viajes extra).
+   *
+   * Garantías:
+   * - Las consultas se SERIALIZAN sobre el cliente (una cola interna), así que `fn` puede
+   *   lanzarlas en paralelo (`Promise.all`) sin mezclar resultados.
+   * - Si una consulta falla, la transacción queda abortada en Postgres; se reabre (ROLLBACK +
+   *   BEGIN + set_config) antes de propagar el error. Así los `.catch(() => [])` deliberados del
+   *   paquete del agente (tabla opcional ausente) no envenenan las consultas siguientes.
+   * - El contexto RLS es `is_local = true`: muere con la transacción y nunca pasa al siguiente
+   *   usuario del pool.
+   */
+  async conTransaccion<T>(
+    baseDatos: string,
+    empresasCsv: string,
+    fn: (consultar: ConsultarRls) => Promise<T>,
+  ): Promise<T> {
+    const pool = this.obtenerPool(baseDatos);
+    const cliente = await pool.connect();
+    const abrir = async (): Promise<void> => {
+      await cliente.query('BEGIN READ ONLY');
+      await cliente.query(`SELECT set_config('app.empresas', $1, true)`, [empresasCsv]);
+    };
+    let cola: Promise<unknown> = Promise.resolve();
+    let conexionRota = false;
+    const consultar: ConsultarRls = (sql, params) => {
+      const turno = cola.then(async () => {
+        try {
+          const resultado = await cliente.query(sql, params);
+          return resultado.rows as Record<string, unknown>[];
+        } catch (error) {
+          try {
+            await cliente.query('ROLLBACK');
+            await abrir();
+          } catch {
+            // No se pudo reabrir: el cliente se descarta al final (no vuelve al pool).
+            conexionRota = true;
+          }
+          throw error;
+        }
+      });
+      // La cola sigue aunque una consulta falle: el error lo recibe quien la pidió.
+      cola = turno.catch(() => undefined);
+      return turno;
+    };
+
+    try {
+      await abrir();
+      const resultado = await fn(consultar);
+      await cola;
+      await cliente.query('COMMIT');
+      return resultado;
+    } catch (error) {
+      await cola;
+      await cliente.query('ROLLBACK').catch(() => {
+        conexionRota = true;
+      });
+      throw error;
+    } finally {
+      cliente.release(conexionRota);
     }
   }
 

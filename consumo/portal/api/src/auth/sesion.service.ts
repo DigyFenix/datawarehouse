@@ -22,6 +22,8 @@ interface FilaUsuario {
   esAdmin: boolean;
   debeCambiarPassword: boolean;
   activo: boolean;
+  /** Segundos epoch (piso) del último cambio de contraseña; null = nunca cambiada. */
+  passwordCambiadaEn: number | null;
 }
 
 @Injectable()
@@ -37,14 +39,20 @@ export class SesionService {
     return { organizacion, pool: this.tenantPools.obtenerPool(organizacion.baseDatosDw) };
   }
 
-  /** Usuario vigente del tenant (401 si no existe o está inactivo). */
-  async usuarioVigente(hash: string, usuarioId: number): Promise<UsuarioPortal> {
+  /**
+   * Usuario vigente del tenant (401 si no existe o está inactivo).
+   * @param emitidoEn `iat` del JWT (segundos): si es anterior al último cambio de contraseña,
+   *                  la sesión se revoca (auditoría M3). Se compara contra el piso en segundos
+   *                  para que el token nuevo que se emite al cambiarla siga siendo válido.
+   */
+  async usuarioVigente(hash: string, usuarioId: number, emitidoEn?: number): Promise<UsuarioPortal> {
     const { pool } = await this.contexto(hash);
     const resultado = await pool.query(
       `SELECT id, email, nombre,
               es_admin              AS "esAdmin",
               debe_cambiar_password AS "debeCambiarPassword",
-              activo
+              activo,
+              floor(extract(epoch FROM password_cambiada_en))::float8 AS "passwordCambiadaEn"
          FROM portal.usuarios
         WHERE id = $1`,
       [usuarioId],
@@ -52,6 +60,9 @@ export class SesionService {
     const fila = resultado.rows[0] as FilaUsuario | undefined;
     if (!fila || !fila.activo) {
       throw new UnauthorizedException('Sesión no vigente');
+    }
+    if (emitidoEn !== undefined && fila.passwordCambiadaEn !== null && emitidoEn < fila.passwordCambiadaEn) {
+      throw new UnauthorizedException('La contraseña cambió: vuelve a iniciar sesión');
     }
     return {
       id: fila.id,

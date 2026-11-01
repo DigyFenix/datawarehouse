@@ -80,18 +80,36 @@ export class EntrarComoComponent implements OnInit {
   readonly error = signal<string | null>(null);
 
   ngOnInit(): void {
-    const ticket = this.ruta.snapshot.queryParamMap.get('pase');
+    // En carga fría nadie activó todavía el tenant: sin esto `exigirHash()` lanzaba y la
+    // pantalla quedaba para siempre en «Entrando…» (auditoría §3).
+    const hash = this.ruta.snapshot.paramMap.get('hash');
+    if (!hash) {
+      this.error.set('La dirección no indica la organización.');
+      return;
+    }
+    // El pase viaja en el fragmento (#pase=…): no llega al servidor ni a sus logs ni al Referer.
+    // `?pase=` se acepta por compatibilidad con enlaces emitidos antes del cambio.
+    const fragmento = new URLSearchParams(this.ruta.snapshot.fragment ?? '');
+    const ticket = fragmento.get('pase') ?? this.ruta.snapshot.queryParamMap.get('pase');
+    // Se borra de la barra de direcciones: el pase es de un solo uso y no debe quedar en el historial.
+    history.replaceState(history.state, '', location.pathname);
     if (!ticket) {
       this.error.set('Falta el pase de acceso en la dirección.');
       return;
     }
-    this.auth.entrarComo(ticket).subscribe({
-      next: () => void this.router.navigate(['/', this.tenant.exigirHash(), 'inicio']),
-      error: (e: Error) => this.error.set(e.message),
+    this.tenant.activar(hash).subscribe({
+      next: () => {
+        this.auth.entrarComo(ticket).subscribe({
+          next: () => void this.router.navigate(['/', hash, 'inicio']),
+          error: (e: Error) => this.error.set(e.message),
+        });
+      },
+      error: () => this.error.set('Esta dirección de acceso no es válida.'),
     });
   }
 
   irALogin(): void {
-    void this.router.navigate(['/', this.tenant.exigirHash(), 'login']);
+    const hash = this.ruta.snapshot.paramMap.get('hash');
+    void this.router.navigate(hash ? ['/', hash, 'login'] : ['/']);
   }
 }

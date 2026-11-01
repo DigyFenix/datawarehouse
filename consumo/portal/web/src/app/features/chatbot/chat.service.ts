@@ -23,7 +23,20 @@ export interface TarjetaDato {
   valor: number;
   estado: 'certificada' | 'exploratoria';
   empresa?: string;
-  unidad?: string;
+  /** Empresas que suma el valor (respuestas anteriores a esta versión no lo traen). */
+  empresas?: string[];
+  unidad?: UnidadMetrica;
+  /** Dato más reciente del dominio ('YYYY-MM-DD'). */
+  corte?: string | null;
+}
+
+/** Unidad de presentación: monto, porcentaje (1 decimal) o número. */
+export type UnidadMetrica = 'moneda' | 'porcentaje' | 'numero';
+
+/** Acción que el agente armó en código: el clic la ejecuta sin pasar por el modelo. */
+export interface OpcionAccion {
+  etiqueta: string;
+  accion: { tool: string; params: Record<string, unknown> };
 }
 
 /** Tabla de datos de una respuesta: serie mensual, ranking por dimensión o aging. */
@@ -35,7 +48,9 @@ export interface ConjuntoDatos {
   dominio?: string;
   estado: 'certificada' | 'exploratoria';
   periodo: string;
-  unidad?: string;
+  unidad?: UnidadMetrica;
+  empresas?: string[];
+  corte?: string | null;
   columnas: { clave: string; nombre: string; tipo: 'texto' | 'numero' | 'periodo' }[];
   filas: Record<string, string | number | null>[];
 }
@@ -82,6 +97,12 @@ export interface RespuestaAgente {
   consultas: ConsultaEjecutada[];
   sesion: EstadoSesion;
   sugerencia: SugerenciaChat | null;
+  /** true = el texto del modelo citaba cifras sin respaldo y se reemplazó por uno armado desde los datos. */
+  textoRegenerado?: boolean;
+  /** Botones de desambiguación (la pregunta era ambigua). */
+  opciones?: OpcionAccion[];
+  /** Siguientes preguntas sugeridas (2-3). */
+  sugerencias?: OpcionAccion[];
 }
 
 export interface MetricaDisponible {
@@ -146,6 +167,16 @@ export class ChatService {
 
   enviar(id: number, contenido: string): Observable<RespuestaAgente> {
     return this.api.post<RespuestaAgente>(`/agente/conversaciones/${id}/mensajes`, { contenido });
+  }
+
+  /** Ejecuta un botón u opción sugerida (sin modelo) y persiste el turno. */
+  accion(id: number, opcion: OpcionAccion): Observable<RespuestaAgente> {
+    return this.api.post<RespuestaAgente>(`/agente/conversaciones/${id}/accion`, { etiqueta: opcion.etiqueta, accion: opcion.accion });
+  }
+
+  /** Preguntas sugeridas para el chat vacío, desde el alcance real del usuario. */
+  sugerenciasIniciales(): Observable<OpcionAccion[]> {
+    return this.api.get<OpcionAccion[]>('/agente/sugerencias');
   }
 
   eliminar(id: number): Observable<void> {

@@ -269,7 +269,9 @@ export class AdminController {
   async usoIaResumen(@Req() req: RequestPortal, @Query('mes') mes?: string) {
     const actor = this.usuario(req);
     const { pool } = await this.sesion.contexto(actor.hash);
-    const valido = mes && /^\d{4}-(0[1-9]|1[0-2])$/.test(mes) ? mes : new Date().toISOString().slice(0, 7);
+    // Default = mes en curso en la zona del negocio (toISOString daba el mes UTC: el último día
+    // del mes a partir de las 18:00 en Guatemala ya mostraba el mes siguiente vacío).
+    const valido = mes && /^\d{4}-(0[1-9]|1[0-2])$/.test(mes) ? mes : this.usoIa.mesActual();
     return this.usoIa.resumen(pool, valido);
   }
 

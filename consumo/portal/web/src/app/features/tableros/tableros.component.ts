@@ -2,9 +2,9 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { ApiService } from '../../core/api.service';
 import { TableroResumen } from '../../core/modelos';
 import { agruparTableros } from '../../core/tableros';
+import { TablerosService } from '../../core/tableros.service';
 import { TenantService } from '../../core/tenant.service';
 import { ToastService } from '../../core/toast.service';
 import { EmptyComponent } from '../../ui/empty.component';
@@ -54,7 +54,9 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
         </section>
       } @empty {
         <div class="tarjeta vacio-caja">
-          @if (tableros().length) {
+          @if (errorCarga()) {
+            <app-empty titulo="No se pudieron cargar los tableros">{{ errorCarga() }}</app-empty>
+          } @else if (tableros().length) {
             <app-empty titulo="Ningún tablero coincide">Prueba con otra palabra o quita el filtro de familia.</app-empty>
           } @else {
             <app-empty titulo="Sin tableros asignados">
@@ -84,12 +86,13 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
   `],
 })
 export class TablerosComponent {
-  private readonly api = inject(ApiService);
+  private readonly tablerosSrv = inject(TablerosService);
   private readonly toast = inject(ToastService);
   readonly tenant = inject(TenantService);
 
   readonly tableros = signal<TableroResumen[]>([]);
   readonly cargando = signal(true);
+  readonly errorCarga = signal<string | null>(null);
   readonly filtro = signal('');
   readonly familia = signal<string | null>(null);
   readonly todosLosGrupos = computed(() => agruparTableros(this.tableros()));
@@ -103,13 +106,14 @@ export class TablerosComponent {
   });
 
   constructor() {
-    this.api.get<TableroResumen[]>('/tableros').subscribe({
+    this.tablerosSrv.listar().subscribe({
       next: (d) => {
         this.tableros.set(d);
         this.cargando.set(false);
       },
       error: (e: Error) => {
         this.toast.error('No se pudieron cargar los tableros', e.message);
+        this.errorCarga.set(e.message);
         this.cargando.set(false);
       },
     });

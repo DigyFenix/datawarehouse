@@ -63,7 +63,11 @@ interface FormUsuario {
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="5"><app-empty titulo="Sin usuarios">Crea los usuarios de tu organización.</app-empty></td></tr>
+                @if (errorCarga()) {
+                  <tr><td colspan="5"><app-empty titulo="No se pudieron cargar los usuarios">{{ errorCarga() }} <button type="button" class="enlace" (click)="cargar()">Reintentar</button></app-empty></td></tr>
+                } @else {
+                  <tr><td colspan="5"><app-empty titulo="Sin usuarios">Crea los usuarios de tu organización.</app-empty></td></tr>
+                }
               }
             }
           </tbody>
@@ -73,14 +77,14 @@ interface FormUsuario {
 
     @if (drawerUsuario()) {
       <app-drawer [titulo]="edicionId() ? 'Editar usuario' : 'Nuevo usuario'" eyebrow="Usuarios" (cerrar)="drawerUsuario.set(false)">
-        <form (ngSubmit)="guardar()">
-          <div class="campo"><label>Email</label><input name="email" type="email" [(ngModel)]="form.email" required [disabled]="!!edicionId()" /></div>
-          <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="form.nombre" required /></div>
+        <form #f="ngForm" (ngSubmit)="f.valid && guardar()">
+          <div class="campo"><label>Email</label><input name="email" type="email" [(ngModel)]="form.email" required email maxlength="200" [disabled]="!!edicionId()" /></div>
+          <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="form.nombre" required minlength="2" maxlength="200" /></div>
           @if (!edicionId()) {
             <div class="campo">
               <label>Contraseña temporal</label>
               <div class="pass-fila">
-                <input name="password" type="text" [(ngModel)]="form.password" required minlength="8" autocomplete="off" spellcheck="false" />
+                <input name="password" type="text" [(ngModel)]="form.password" required minlength="8" maxlength="100" autocomplete="off" spellcheck="false" />
                 <button type="button" class="secundario pequeno" (click)="form.password = generarPassword()">Generar</button>
                 <button type="button" class="secundario pequeno" (click)="copiar(form.password)" [disabled]="!form.password">Copiar</button>
               </div>
@@ -91,7 +95,7 @@ interface FormUsuario {
               <div class="chips-sel">
                 @for (p of perfiles(); track p.id) {
                   <button type="button" class="chip-sel" [class.chip-sel--on]="perfilesNuevo().has(p.id)" (click)="alternarPerfilNuevo(p.id)" [attr.aria-pressed]="perfilesNuevo().has(p.id)" [disabled]="!p.activo">{{ p.nombre }}</button>
-                } @empty { <span class="sutil">Aún no hay perfiles: créalos en la pestaña Perfiles.</span> }
+                } @empty { <span class="sutil">@if (errorPerfiles()) { No se pudieron cargar los perfiles: {{ errorPerfiles() }} } @else { Aún no hay perfiles: créalos en la pestaña Perfiles. }</span> }
               </div>
               @if (perfiles().length && perfilesNuevo().size === 0 && !form.esAdmin) { <span class="aviso">Sin perfil, el usuario entra pero no ve tableros ni puede usar el asistente.</span> }
             </div>
@@ -103,7 +107,7 @@ interface FormUsuario {
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="drawerUsuario.set(false)">Cancelar</button>
-            <button type="submit" [disabled]="guardando()">
+            <button type="submit" [disabled]="guardando() || f.invalid">
               @if (guardando()) { <span class="spinner"></span> }
               {{ guardando() ? 'Guardando…' : 'Guardar' }}
             </button>
@@ -123,7 +127,7 @@ interface FormUsuario {
               {{ p.nombre }} <span class="sutil">({{ p.clave }})</span>
             </label>
           } @empty {
-            <p class="sutil">Aún no hay perfiles. Créalos en la pestaña Perfiles.</p>
+            <p class="sutil">@if (errorPerfiles()) { No se pudieron cargar los perfiles: {{ errorPerfiles() }} } @else { Aún no hay perfiles. Créalos en la pestaña Perfiles. }</p>
           }
         </fieldset>
         @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
@@ -139,11 +143,11 @@ interface FormUsuario {
 
     @if (drawerRestablecer()) {
       <app-drawer titulo="Restablecer contraseña" [eyebrow]="seleccionado()?.nombre ?? ''" (cerrar)="drawerRestablecer.set(false)">
-        <form (ngSubmit)="restablecer()">
+        <form #fr="ngForm" (ngSubmit)="fr.valid && restablecer()">
           <div class="campo">
             <label>Contraseña temporal nueva</label>
             <div class="pass-fila">
-              <input name="passwordNueva" type="text" [(ngModel)]="passwordNueva" required minlength="8" autocomplete="off" spellcheck="false" />
+              <input name="passwordNueva" type="text" [(ngModel)]="passwordNueva" required minlength="8" maxlength="100" autocomplete="off" spellcheck="false" />
               <button type="button" class="secundario pequeno" (click)="passwordNueva = generarPassword()">Generar</button>
               <button type="button" class="secundario pequeno" (click)="copiar(passwordNueva)" [disabled]="!passwordNueva">Copiar</button>
             </div>
@@ -152,7 +156,7 @@ interface FormUsuario {
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="drawerRestablecer.set(false)">Cancelar</button>
-            <button type="submit" [disabled]="guardando()">
+            <button type="submit" [disabled]="guardando() || fr.invalid">
               @if (guardando()) { <span class="spinner"></span> }
               {{ guardando() ? 'Restableciendo…' : 'Restablecer' }}
             </button>
@@ -187,6 +191,9 @@ export class UsuariosComponent {
   readonly usuarios = signal<UsuarioOrg[]>([]);
   readonly perfiles = signal<PerfilOrg[]>([]);
   readonly cargando = signal(true);
+  /** Distinguen «no se pudo cargar» de «no hay»: antes un fallo se mostraba como lista vacía. */
+  readonly errorCarga = signal<string | null>(null);
+  readonly errorPerfiles = signal<string | null>(null);
   readonly drawerUsuario = signal(false);
   readonly drawerPerfiles = signal(false);
   readonly drawerRestablecer = signal(false);
@@ -210,19 +217,32 @@ export class UsuariosComponent {
 
   cargar(): void {
     this.cargando.set(true);
+    this.errorCarga.set(null);
+    this.errorPerfiles.set(null);
     this.api.get<UsuarioOrg[]>('/admin/usuarios').subscribe({
       next: (d) => {
         this.usuarios.set(d);
         this.cargando.set(false);
       },
       error: (e: Error) => {
-        this.toast.error('No se pudieron cargar los usuarios', e.message);
+        this.errorCarga.set(e.message);
         this.cargando.set(false);
       },
     });
     this.api.get<PerfilOrg[]>('/admin/perfiles').subscribe({
       next: (d) => this.perfiles.set(d),
-      error: () => {},
+      error: (e: Error) => this.errorPerfiles.set(e.message),
+    });
+  }
+
+  /** Inserta o reemplaza un usuario en la lista con lo que devolvió el API (sin volver a pedir todo). */
+  private ponerEnLista(id: number, cambios: Partial<UsuarioOrg>): void {
+    this.usuarios.update((lista) => {
+      const existe = lista.some((u) => u.id === id);
+      const nueva = existe
+        ? lista.map((u) => (u.id === id ? { ...u, ...cambios } : u))
+        : [...lista, { perfiles: [], ...cambios } as UsuarioOrg];
+      return nueva.sort((a, b) => a.nombre.localeCompare(b.nombre));
     });
   }
 
@@ -252,12 +272,12 @@ export class UsuariosComponent {
     this.guardando.set(true);
     const id = this.edicionId();
     const accion = id
-      ? this.api.put(`/admin/usuarios/${id}`, {
+      ? this.api.put<Partial<UsuarioOrg> & { id: number }>(`/admin/usuarios/${id}`, {
           nombre: this.form.nombre,
           esAdmin: this.form.esAdmin,
           activo: this.form.activo,
         })
-      : this.api.post('/admin/usuarios', {
+      : this.api.post<Partial<UsuarioOrg> & { id: number }>('/admin/usuarios', {
           email: this.form.email,
           nombre: this.form.nombre,
           password: this.form.password,
@@ -265,11 +285,11 @@ export class UsuariosComponent {
           perfilIds: [...this.perfilesNuevo()],
         });
     accion.subscribe({
-      next: () => {
+      next: (fila) => {
         this.toast.exito(id ? 'Usuario actualizado' : 'Usuario creado', id ? this.form.nombre : `${this.form.nombre}: entrégale su contraseña temporal; la cambia al entrar.`);
         this.guardando.set(false);
         this.drawerUsuario.set(false);
-        this.cargar();
+        this.ponerEnLista(fila.id, fila);
       },
       error: (e: Error) => {
         this.errorForm.set(e.message);
@@ -324,14 +344,21 @@ export class UsuariosComponent {
     const usuario = this.seleccionado();
     if (!usuario) return;
     this.guardando.set(true);
+    const perfilIds = this.perfilesSeleccionados();
     this.api
-      .put(`/admin/usuarios/${usuario.id}/perfiles`, { perfilIds: this.perfilesSeleccionados() })
+      .put(`/admin/usuarios/${usuario.id}/perfiles`, { perfilIds })
       .subscribe({
         next: () => {
           this.toast.exito('Perfiles asignados', usuario.nombre);
           this.guardando.set(false);
           this.drawerPerfiles.set(false);
-          this.cargar();
+          const elegidos = new Set(perfilIds);
+          this.ponerEnLista(usuario.id, {
+            perfiles: this.perfiles()
+              .filter((p) => elegidos.has(p.id))
+              .map((p) => ({ id: p.id, clave: p.clave, nombre: p.nombre }))
+              .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+          });
         },
         error: (e: Error) => {
           this.errorForm.set(e.message);

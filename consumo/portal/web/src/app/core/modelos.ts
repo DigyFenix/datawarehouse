@@ -68,18 +68,6 @@ export interface CatalogoAlcances {
   dominios: { clave: string; metricas: { clave: string; nombre: string; estado: string }[] }[];
 }
 
-/** Catálogo con nombres legibles para armar los alcances de un perfil (GET /admin/catalogo-alcances). */
-export interface CatalogoAlcances {
-  empresas: { clave: string; nombre: string }[];
-  dominios: { clave: string; metricas: { clave: string; nombre: string; estado: string }[] }[];
-}
-
-/** Catálogo con nombres legibles para armar los alcances de un perfil (GET /admin/catalogo-alcances). */
-export interface CatalogoAlcances {
-  empresas: { clave: string; nombre: string }[];
-  dominios: { clave: string; metricas: { clave: string; nombre: string; estado: string }[] }[];
-}
-
 export interface PerfilOrg {
   id: number;
   clave: string;

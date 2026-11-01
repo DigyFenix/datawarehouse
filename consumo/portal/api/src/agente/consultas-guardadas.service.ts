@@ -186,10 +186,16 @@ export class ConsultasGuardadasService {
   }
 
   async marcarEjecutada(usuario: UsuarioPortal, id: number): Promise<void> {
+    await this.marcarEjecutadas(usuario, [id]);
+  }
+
+  /** Marca varias de una vez (el tablero): un UPDATE en lugar de uno por widget. */
+  async marcarEjecutadas(usuario: UsuarioPortal, ids: number[]): Promise<void> {
+    if (ids.length === 0) return;
     const pool = await this.pool(usuario);
     await pool.query(
-      `UPDATE portal.consultas_guardadas SET ultima_ejecucion_en = now() WHERE id = $1 AND usuario_id = $2`,
-      [id, usuario.id],
+      `UPDATE portal.consultas_guardadas SET ultima_ejecucion_en = now() WHERE id = ANY($1::bigint[]) AND usuario_id = $2`,
+      [ids, usuario.id],
     );
   }
 
@@ -209,6 +215,17 @@ export class ConsultasGuardadasService {
       [metricaClave],
     );
     return filas[0]?.version ?? null;
+  }
+
+  /** Versión vigente de varias métricas en una sola consulta (el tablero). */
+  async versionesDefinicion(claves: string[]): Promise<Map<string, number>> {
+    const unicas = [...new Set(claves)];
+    if (unicas.length === 0) return new Map();
+    const filas = await this.controlDb.query<{ clave: string; version: number }>(
+      `SELECT clave, version_definicion AS version FROM metadatos.catalogo_metricas WHERE clave = ANY($1::text[])`,
+      [unicas],
+    );
+    return new Map(filas.map((f) => [f.clave, f.version]));
   }
 
   /** Clave de métrica que sustenta la especificación (el aging se ancla al saldo de su cartera). */

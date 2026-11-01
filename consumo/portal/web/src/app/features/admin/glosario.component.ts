@@ -27,6 +27,13 @@ interface MetricaOpcion {
   estado: string;
 }
 
+interface FormTermino {
+  termino: string;
+  definicion: string;
+  equivaleA: string | null;
+  dominio: string | null;
+}
+
 /**
  * Glosario de la organización: cómo habla SU gente.
  *
@@ -53,6 +60,10 @@ interface MetricaOpcion {
 
     @if (cargando()) {
       <div class="tarjeta"><app-skeleton></app-skeleton><app-skeleton></app-skeleton><app-skeleton></app-skeleton></div>
+    } @else if (errorCarga()) {
+      <app-empty titulo="No se pudo cargar el glosario">
+        {{ errorCarga() }} <button type="button" class="enlace" (click)="cargar()">Reintentar</button>
+      </app-empty>
     } @else if (terminos().length === 0) {
       <app-empty titulo="Todavía sin términos propios">
         El asistente funciona con el vocabulario general del producto. Agrega aquí las
@@ -101,17 +112,17 @@ interface MetricaOpcion {
             <h3>{{ editando() ? 'Editar término' : 'Nuevo término' }}</h3>
           </header>
 
-          <form (ngSubmit)="guardar()">
+          <form #f="ngForm" (ngSubmit)="f.valid && guardar()">
             <div class="campo">
               <label for="termino">Término</label>
-              <input id="termino" name="termino" [(ngModel)]="form.termino" required
+              <input id="termino" name="termino" [(ngModel)]="form.termino" required minlength="2" maxlength="80"
                      placeholder="cliente de ruta" />
               <span class="ayuda">La palabra tal como la dice la gente, no como aparece en el sistema.</span>
             </div>
 
             <div class="campo">
               <label for="definicion">Qué significa</label>
-              <textarea id="definicion" name="definicion" rows="3" [(ngModel)]="form.definicion" required
+              <textarea id="definicion" name="definicion" rows="3" [(ngModel)]="form.definicion" required minlength="3" maxlength="600"
                         placeholder="Cliente que se atiende con vehículo propio en una ruta fija semanal."></textarea>
             </div>
 
@@ -123,6 +134,7 @@ interface MetricaOpcion {
                   <option [ngValue]="m.clave">{{ m.nombreOficial }}</option>
                 }
               </select>
+              @if (errorMetricas()) { <span class="error">No se pudo cargar la lista de métricas: {{ errorMetricas() }}</span> }
               <span class="ayuda">
                 Si eliges una, cuando alguien use esta palabra el asistente consultará esa métrica.
                 Déjalo en «sólo vocabulario» si el término explica un concepto sin cifra propia.
@@ -133,7 +145,7 @@ interface MetricaOpcion {
 
             <div class="acciones-fila">
               <button type="button" class="secundario" (click)="cerrar()">Cancelar</button>
-              <button type="submit" [disabled]="guardando()">
+              <button type="submit" [disabled]="guardando() || f.invalid">
                 {{ guardando() ? 'Guardando…' : 'Guardar' }}
               </button>
             </div>
@@ -182,16 +194,19 @@ export class GlosarioComponent implements OnInit {
   readonly terminos = signal<Termino[]>([]);
   readonly metricas = signal<MetricaOpcion[]>([]);
   readonly cargando = signal(true);
+  /** Distinguen «no se pudo cargar» de «no hay términos». */
+  readonly errorCarga = signal<string | null>(null);
+  readonly errorMetricas = signal<string | null>(null);
   readonly abierto = signal(false);
   readonly editando = signal<Termino | null>(null);
   readonly guardando = signal(false);
   readonly errorForm = signal<string | null>(null);
 
-  form: { termino: string; definicion: string; equivaleA: string | null } = {
-    termino: '',
-    definicion: '',
-    equivaleA: null,
-  };
+  /**
+   * `dominio` viaja en el formulario aunque no se edite aquí: el PUT reemplaza el término
+   * completo y sin él cada edición lo borraba (auditoría §3).
+   */
+  form: FormTermino = this.vacio();
 
   readonly nombreDominio = nombreDominio;
   readonly pestanas = PESTANAS_ADMIN;
@@ -204,15 +219,20 @@ export class GlosarioComponent implements OnInit {
     this.cargar();
     this.api
       .get<MetricaOpcion[]>('/admin/glosario/metricas')
-      .subscribe({ next: (ms) => this.metricas.set(ms) });
+      .subscribe({ next: (ms) => this.metricas.set(ms), error: (e: Error) => this.errorMetricas.set(e.message) });
   }
 
   nombreMetrica(clave: string): string {
     return this.porClave().get(clave) ?? clave;
   }
 
+  private vacio(): FormTermino {
+    return { termino: '', definicion: '', equivaleA: null, dominio: null };
+  }
+
   cargar(): void {
     this.cargando.set(true);
+    this.errorCarga.set(null);
     this.api.get<Termino[]>('/admin/glosario').subscribe({
       next: (ts) => {
         this.terminos.set(ts);
@@ -220,20 +240,20 @@ export class GlosarioComponent implements OnInit {
       },
       error: (e: Error) => {
         this.cargando.set(false);
-        this.toast.error('No se pudo cargar el glosario', e.message);
+        this.errorCarga.set(e.message);
       },
     });
   }
 
   nuevo(): void {
-    this.form = { termino: '', definicion: '', equivaleA: null };
+    this.form = this.vacio();
     this.editando.set(null);
     this.errorForm.set(null);
     this.abierto.set(true);
   }
 
   editar(t: Termino): void {
-    this.form = { termino: t.termino, definicion: t.definicion, equivaleA: t.equivaleA };
+    this.form = { termino: t.termino, definicion: t.definicion, equivaleA: t.equivaleA, dominio: t.dominio };
     this.editando.set(t);
     this.errorForm.set(null);
     this.abierto.set(true);

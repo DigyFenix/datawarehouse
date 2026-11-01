@@ -21,11 +21,15 @@ import { Request } from 'express';
 
 import type { Env } from '../config/env';
 import { ES_PUBLICO } from './publico.decorator';
-import { SesionService } from './sesion.service';
+import { ContextoTenant, SesionService } from './sesion.service';
 import { SOLO_ADMIN } from './solo-admin.decorator';
 import { PayloadPortal, UsuarioPortal } from './tipos';
 
-export type RequestPortal = Request & { usuarioPortal?: UsuarioPortal };
+export type RequestPortal = Request & {
+  usuarioPortal?: UsuarioPortal;
+  /** Organización + pool del tenant, resueltos UNA vez por request por este guard. */
+  contextoTenant?: ContextoTenant;
+};
 
 /** Métodos que no modifican nada: los únicos permitidos al suplantar. */
 const METODOS_LECTURA = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -67,11 +71,14 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('El token no corresponde a esta organización');
     }
 
-    const usuario = await this.sesion.usuarioVigente(hash, payload.sub);
+    const usuario = await this.sesion.usuarioVigente(hash, payload.sub, payload.iat);
     // La marca de suplantación viaja en el token, no en la BD: es propia de ESTA
     // sesión, no del usuario. Dos pestañas del mismo usuario pueden ser una normal
     // y otra suplantada, y solo la segunda queda restringida.
     req.usuarioPortal = payload.imp ? { ...usuario, impersonadoPor: payload.imp } : usuario;
+    // Ya resuelto por usuarioVigente (caché de 60 s en ControlDbService): queda en el request
+    // para que controladores y servicios no lo vuelvan a pedir.
+    req.contextoTenant = await this.sesion.contexto(hash);
 
     // Una sesión suplantada es para MIRAR. Escribir en nombre de otro dejaría en su
     // historial acciones que esa persona nunca hizo.

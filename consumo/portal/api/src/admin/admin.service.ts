@@ -14,6 +14,7 @@ import {
 import { Pool } from 'pg';
 
 import { AuditoriaPortalService } from '../auditoria/auditoria-portal.service';
+import { AgenteService } from '../agente/agente.service';
 import { ControlDbService } from '../db/control-db.service';
 import { SesionService } from '../auth/sesion.service';
 import { UsuarioPortal } from '../auth/tipos';
@@ -42,6 +43,7 @@ export class AdminService {
     private readonly sesion: SesionService,
     private readonly auditoria: AuditoriaPortalService,
     private readonly controlDb: ControlDbService,
+    private readonly agente: AgenteService,
   ) {}
 
   private pool(actor: UsuarioPortal): Promise<Pool> {
@@ -89,32 +91,51 @@ export class AdminService {
     return resultado.rows as unknown[];
   }
 
+  /**
+   * Alta del usuario y sus perfiles en UNA transacción: si un perfil no existe, no queda
+   * un usuario creado a medias sin acceso (auditoría B8).
+   * @throws 409 email repetido · 400 algún perfil no existe
+   */
   async crearUsuario(actor: UsuarioPortal, dto: CrearUsuarioDto, ip: string | null) {
     const pool = await this.pool(actor);
     const hash = await argon2.hash(dto.password);
-    let insertado;
+    const cliente = await pool.connect();
+    let usuario: { id: number; email: string };
     try {
-      insertado = await pool.query(
+      await cliente.query('BEGIN');
+      const insertado = await cliente.query(
         `INSERT INTO portal.usuarios (email, nombre, hash_password, es_admin)
          VALUES ($1, $2, $3, $4)
          RETURNING ${COLUMNAS_USUARIO}`,
         [dto.email.toLowerCase(), dto.nombre, hash, dto.esAdmin],
       );
-    } catch (e) {
-      if ((e as { code?: string }).code === '23505') {
-        throw new ConflictException('Ya existe un usuario con ese email');
+      usuario = insertado.rows[0] as { id: number; email: string };
+      if (dto.perfilIds.length) {
+        await cliente.query(
+          `INSERT INTO portal.usuario_perfiles (usuario_id, perfil_id)
+           SELECT $1, p FROM unnest($2::bigint[]) AS p
+           ON CONFLICT DO NOTHING`,
+          [usuario.id, dto.perfilIds],
+        );
       }
+      await cliente.query('COMMIT');
+    } catch (e) {
+      await cliente.query('ROLLBACK');
+      const codigo = (e as { code?: string }).code;
+      if (codigo === '23505') throw new ConflictException('Ya existe un usuario con ese email');
+      if (codigo === '23503') throw new BadRequestException('Alguno de los perfiles no existe');
       throw e;
-    }
-    const usuario = insertado.rows[0] as { id: number; email: string };
-    for (const perfilId of dto.perfilIds) {
-      await pool.query(
-        `INSERT INTO portal.usuario_perfiles (usuario_id, perfil_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [usuario.id, perfilId],
-      );
+    } finally {
+      cliente.release();
     }
     await this.auditar(pool, actor, 'crear', 'usuarios', String(usuario.id), null, { ...usuario, perfilIds: dto.perfilIds }, ip);
-    return usuario;
+    const perfiles = await pool.query(
+      `SELECT p.id, p.clave, p.nombre
+         FROM portal.usuario_perfiles up JOIN portal.perfiles p ON p.id = up.perfil_id
+        WHERE up.usuario_id = $1 ORDER BY p.nombre`,
+      [usuario.id],
+    );
+    return { ...usuario, perfiles: perfiles.rows as { id: number; clave: string; nombre: string }[] };
   }
 
   async actualizarUsuario(
@@ -155,7 +176,8 @@ export class AdminService {
     const hash = await argon2.hash(dto.password);
     await pool.query(
       `UPDATE portal.usuarios
-          SET hash_password = $1, debe_cambiar_password = true, actualizado_en = now()
+          SET hash_password = $1, debe_cambiar_password = true,
+              password_cambiada_en = now(), actualizado_en = now()
         WHERE id = $2`,
       [hash, usuarioId],
     );
@@ -401,16 +423,18 @@ export class AdminService {
    * Solo lectura; la validación al guardar sigue en `asignarAlcances`.
    */
   async catalogoAlcances(actor: UsuarioPortal) {
-    const pool = await this.pool(actor);
-    const [empresas, dominiosMetrica, metricas] = await Promise.all([
-      pool.query(
+    // Sin leer `oro` con portal_app (no tiene GRANT en producción): las empresas salen de las
+    // sociedades activas del plano de control y el dominio de cada métrica del lector con RLS.
+    const { organizacion } = await this.sesion.contexto(actor.hash);
+    const [empresasFilas, dominioPorClave, metricas] = await Promise.all([
+      this.controlDb.query<{ clave: string; nombre: string }>(
         `SELECT empresa_id AS clave, nombre
-           FROM oro.dim_organizacion
-          WHERE es_vigente AND empresa_id IS NOT NULL
-            AND empresa_id <> 'GLOBAL' AND nombre <> 'No definido'
-          ORDER BY nombre`,
+           FROM gobierno.sociedades
+          WHERE organizacion_id = $1 AND activo
+          ORDER BY orden, nombre`,
+        [organizacion.id],
       ),
-      pool.query(`SELECT DISTINCT metrica_clave, dominio FROM oro.metrica_valor`),
+      this.agente.dominiosDeMetricas(actor),
       this.controlDb.query<{ clave: string; nombre_oficial: string; estado: string }>(
         `SELECT clave, nombre_oficial, estado
            FROM metadatos.catalogo_metricas
@@ -419,9 +443,6 @@ export class AdminService {
         [],
       ),
     ]);
-    const dominioPorClave = new Map(
-      (dominiosMetrica.rows as { metrica_clave: string; dominio: string }[]).map((d) => [String(d.metrica_clave), String(d.dominio)]),
-    );
     const dominios = new Map<string, { clave: string; metricas: { clave: string; nombre: string; estado: string }[] }>();
     for (const m of metricas) {
       const dominio = dominioPorClave.get(m.clave) ?? 'otros';
@@ -430,7 +451,7 @@ export class AdminService {
       dominios.set(dominio, grupo);
     }
     return {
-      empresas: empresas.rows as { clave: string; nombre: string }[],
+      empresas: empresasFilas,
       dominios: [...dominios.values()].sort((a, b) => a.clave.localeCompare(b.clave)),
     };
   }

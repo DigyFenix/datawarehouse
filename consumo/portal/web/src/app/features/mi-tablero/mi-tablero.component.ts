@@ -90,7 +90,7 @@ import { ChatService, ConsultaGuardada, EjecucionGuardada, VistaConsulta } from 
             @for (a of w.avisos; track a) { <p class="aviso">{{ a }}</p> }
             <footer class="widget__pie">
               Ejecutada {{ w.ejecutadaEn | date: 'dd/MM HH:mm' }}
-              @if (frescuraDe(w); as f) { · dato al {{ f }} }
+              @if (frescuraDe(w); as f) { · dato al {{ f | date: 'dd/MM' }} }
             </footer>
           </section>
         }
@@ -203,9 +203,15 @@ export class MiTableroComponent implements OnInit {
   }
 
   private aplicarOrden(ws: EjecucionGuardada[]): void {
+    // Se mueve en pantalla de inmediato; si el servidor no lo guarda, se vuelve al orden
+    // anterior para que lo que se ve coincida con lo que se verá al recargar.
+    const anterior = this.widgets();
     this.widgets.set(ws);
     this.chat.ordenarTablero(ws.map((w) => w.consulta.id)).subscribe({
-      error: (e: Error) => this.toast.error('No se pudo guardar el orden', e.message),
+      error: (e: Error) => {
+        this.widgets.set(anterior);
+        this.toast.error('No se pudo guardar el orden', e.message);
+      },
     });
   }
 

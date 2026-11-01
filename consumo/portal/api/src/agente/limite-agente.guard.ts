@@ -3,7 +3,7 @@
  *
  * Cada mensaje dispara hasta AGENTE_MAX_ITERACIONES llamadas al modelo y cada consulta
  * guardada una lectura del warehouse: sin tope, un usuario autenticado podía agotar el
- * presupuesto de la API o las 5 conexiones del pool del tenant. Los topes son por usuario y
+ * presupuesto de la API o las conexiones del pool del tenant (POSTGRES_POOL_MAX). Los topes son por usuario y
  * por proceso (suficiente con una réplica del API, que es el despliegue actual).
  */
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';

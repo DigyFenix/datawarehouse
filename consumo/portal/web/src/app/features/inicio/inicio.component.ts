@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
+import { TablerosService } from '../../core/tableros.service';
 import { AuthService } from '../../core/auth.service';
 import { nombreDominio } from '../../core/dominios';
 import { TableroResumen } from '../../core/modelos';
@@ -14,14 +15,17 @@ import { SkeletonComponent } from '../../ui/skeleton.component';
 
 interface FrescuraDominio {
   dominio: string;
+  /** Fecha (YYYY-MM-DD) del dato más reciente del ERP. */
   fechaDatoMasReciente: string | null;
-  estado: string | null;
+  /** Calculado por el API contra la hora actual: el PEOR estado entre las empresas del dominio. */
+  estado: 'Al día' | 'Atrasado' | 'Desactualizado' | null;
 }
 
 interface ResumenInicio {
   frescura: FrescuraDominio[];
   proximaCarga: { iso: string; texto: string; minutos: number } | null;
   tableros: number;
+  /** `visto` en ISO 8601 con zona (lo parsea DatePipe en cualquier navegador). */
   recientes: { clave: string; nombre: string; visto: string }[];
 }
 
@@ -96,9 +100,13 @@ interface ResumenInicio {
         </section>
       } @empty {
         <div class="tarjeta vacio-caja">
-          <app-empty titulo="Sin tableros asignados">
-            Tu perfil aún no tiene tableros. Pide acceso al administrador de tu organización.
-          </app-empty>
+          @if (errorTableros()) {
+            <app-empty titulo="No se pudieron cargar tus tableros">{{ errorTableros() }}</app-empty>
+          } @else {
+            <app-empty titulo="Sin tableros asignados">
+              Tu perfil aún no tiene tableros. Pide acceso al administrador de tu organización.
+            </app-empty>
+          }
         </div>
       }
     }
@@ -141,24 +149,29 @@ interface ResumenInicio {
 })
 export class InicioComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly tablerosSrv = inject(TablerosService);
   readonly auth = inject(AuthService);
   readonly tenant = inject(TenantService);
 
   readonly resumen = signal<ResumenInicio | null>(null);
   private readonly tableros = signal<TableroResumen[]>([]);
   readonly cargandoTableros = signal(true);
+  readonly errorTableros = signal<string | null>(null);
   readonly frescura = computed(() => this.resumen()?.frescura ?? []);
   readonly grupos = computed(() => agruparTableros(this.tableros()));
   readonly recientes = computed(() => (this.resumen()?.recientes ?? []).slice(0, 6));
 
   ngOnInit(): void {
-    this.api.get<TableroResumen[]>('/tableros').subscribe({
+    this.tablerosSrv.listar().subscribe({
       next: (lista) => {
         this.tableros.set(lista);
         this.cargandoTableros.set(false);
       },
-      // Sin tableros queda el estado vacío; el error ya lo registra el API.
-      error: () => this.cargandoTableros.set(false),
+      // «No se pudo cargar» no es lo mismo que «no tienes tableros».
+      error: (e: Error) => {
+        this.errorTableros.set(e.message);
+        this.cargandoTableros.set(false);
+      },
     });
     // El inicio nunca bloquea: si el resumen falla, solo falta la línea de frescura.
     this.api.get<ResumenInicio>('/inicio').subscribe({

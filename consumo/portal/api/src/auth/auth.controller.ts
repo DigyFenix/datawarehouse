@@ -1,6 +1,7 @@
 /** Endpoints de autenticación, bajo el tenant de la URL (/t/:hash/auth). */
 import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 
+import { LimitadorPorIp } from '../common/limitador-ip';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import {
   cambiarPasswordSchema,
@@ -14,6 +15,9 @@ import { AuthService } from './auth.service';
 import { RequestPortal } from './jwt-auth.guard';
 import { Publico } from './publico.decorator';
 import { UsuarioPortal } from './tipos';
+
+/** Canje del pase de soporte: 10 intentos por IP cada 15 min sobran para un operador (B7). */
+const LIMITE_IMPERSONAR = new LimitadorPorIp(10, 15 * 60 * 1000);
 
 @Controller('t/:hash/auth')
 export class AuthController {
@@ -48,6 +52,7 @@ export class AuthController {
     @Body(new ZodValidationPipe(impersonarSchema)) dto: ImpersonarDto,
     @Req() req: RequestPortal,
   ) {
+    LIMITE_IMPERSONAR.consumir(req.ip ?? null);
     return this.servicio.canjearImpersonacion(hash, dto.ticket, req.ip ?? null);
   }
 

@@ -340,8 +340,13 @@ export class DescargasComponent implements OnInit {
         const a = document.createElement('a');
         a.href = url;
         a.download = nombre ?? 'quilate_descarga.xlsx';
+        // Firefox ignora el click de un <a> fuera del documento, y revocar en el mismo tick
+        // puede cortar la descarga antes de que el navegador lea el blob.
+        a.style.display = 'none';
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
         this.toast.exito('Archivo listo', 'Revisa la hoja «Ficha» para el contexto de cada dato.');
       },
       error: (e: Error) => {

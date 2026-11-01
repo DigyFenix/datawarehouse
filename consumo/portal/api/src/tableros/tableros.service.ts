@@ -87,7 +87,10 @@ export class TablerosService {
       accion: 'ver_tablero',
       entidad: 'tableros',
       entidadId: String(tablero.id),
-      despues: { clave: tablero.clave },
+      // Abierto en una sesión de soporte: queda dicho quién miraba en realidad (auditoría B9).
+      despues: usuario.impersonadoPor
+        ? { clave: tablero.clave, impersonadoPor: usuario.impersonadoPor }
+        : { clave: tablero.clave },
       ip,
     });
     const { urlPublica, ...resumen } = tablero;

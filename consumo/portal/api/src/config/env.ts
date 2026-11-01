@@ -74,6 +74,10 @@ const esquemaEnv = z.object({
         return z.NEVER;
       }
     }),
+
+  // Conexiones máximas por pool (control, cada tenant y cada lector RLS). Un turno del chat
+  // retiene una conexión del lector mientras dura: con 5, cinco chats simultáneos agotaban el pool.
+  POSTGRES_POOL_MAX: z.coerce.number().int().min(2).max(50).default(10),
 });
 
 export type Env = z.infer<typeof esquemaEnv>;

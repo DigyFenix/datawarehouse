@@ -11,6 +11,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { prepararDescarga, resolverAlcance, type HojaDescarga, type ResultadoDescarga } from '@quilate/agente';
 import ExcelJS from 'exceljs';
+import { PassThrough } from 'node:stream';
 
 import { AgenteService } from '../agente/agente.service';
 import { UsuarioPortal } from '../auth/tipos';
@@ -42,6 +43,19 @@ export interface ArchivoDescarga {
   filas: number;
 }
 
+/** Filas máximas de datos por LIBRO (suma de todas las hojas). */
+const TOPE_FILAS_LIBRO = 100_000;
+
+/** Recorta las hojas en orden para que el libro no pase del tope; la que se corta queda marcada. */
+function recortarAlTope(hojas: HojaDescarga[], tope: number): HojaDescarga[] {
+  let restante = tope;
+  return hojas.map((h) => {
+    const cupo = Math.max(0, restante);
+    restante -= Math.min(h.filas.length, cupo);
+    return h.filas.length > cupo ? { ...h, filas: h.filas.slice(0, cupo), truncada: true } : h;
+  });
+}
+
 const ANCHO_MINIMO = 12;
 const ANCHO_MAXIMO = 60;
 
@@ -51,8 +65,11 @@ export class DescargasService {
 
   /** Qué puede descargar este usuario: sus métricas autorizadas agrupadas por módulo. */
   async catalogo(usuario: UsuarioPortal): Promise<CatalogoDescargas> {
-    const ctx = await this.agente.contextoLectura(usuario);
-    const alcance = await resolverAlcance(ctx.ejecutor, usuario.id, { soloCertificadas: this.agente.soloCertificadas() });
+    // Una sola transacción RLS para todas las lecturas del alcance.
+    const { ctx, alcance } = await this.agente.conContextoLectura(usuario, async (c) => ({
+      ctx: c,
+      alcance: await resolverAlcance(c.ejecutor, usuario.id, { soloCertificadas: this.agente.soloCertificadas() }),
+    }));
     const porDominio = new Map<string, MetricaDescargable[]>();
     for (const m of alcance.metricas.values()) {
       const dominio = m.dominio || 'otros';
@@ -84,21 +101,36 @@ export class DescargasService {
 
   /** Arma el .xlsx. 400 si la especificación no pasa las guardas (el motivo se le dice al usuario). */
   async excel(usuario: UsuarioPortal, params: unknown, ip: string | null): Promise<ArchivoDescarga> {
-    const ctx = await this.agente.contextoLectura(usuario);
-    const resultado: ResultadoDescarga = await prepararDescarga({
-      ejecutor: ctx.ejecutor, usuarioId: usuario.id, empresas: ctx.empresas, params, soloCertificadas: this.agente.soloCertificadas(),
-    });
-    await this.agente.auditarEvento(ctx.pool, usuario, resultado.auditoria, 'descarga', ip);
-    if (!resultado.ok) throw new BadRequestException(resultado.motivo ?? 'No se pudo preparar la descarga.');
+    // Todas las lecturas de la descarga (alcance + cada hoja) en UNA transacción RLS del lector.
+    const { preparado, pool, frescura } = await this.agente.conContextoLectura(usuario, async (ctx) => ({
+      preparado: await prepararDescarga({
+        ejecutor: ctx.ejecutor, usuarioId: usuario.id, empresas: ctx.empresas, params, soloCertificadas: this.agente.soloCertificadas(),
+      }),
+      pool: ctx.pool,
+      frescura: ctx.frescura,
+    }));
+    await this.agente.auditarEvento(pool, usuario, preparado.auditoria, 'descarga', ip);
+    if (!preparado.ok) throw new BadRequestException(preparado.motivo ?? 'No se pudo preparar la descarga.');
+    // Tope GLOBAL por libro (además del tope por hoja del paquete): 10 métricas × 50k filas
+    // eran 500k filas en memoria y un archivo que Excel apenas abre.
+    const resultado: ResultadoDescarga = { ...preparado, hojas: recortarAlTope(preparado.hojas, TOPE_FILAS_LIBRO) };
 
-    const libro = new ExcelJS.Workbook();
+    // Escritura en STREAMING: cada fila se confirma (commit) y se serializa al zip en cuanto se
+    // escribe, en lugar de retener el modelo completo del libro. El controlador responde con un
+    // Buffer, así que el zip se junta en memoria (solo los bytes comprimidos).
+    const trozos: Buffer[] = [];
+    const salida = new PassThrough();
+    salida.on('data', (trozo: Buffer) => trozos.push(trozo));
+    const libro = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: salida, useStyles: true, useSharedStrings: false });
     libro.creator = 'Quilate Analytics';
     libro.created = new Date();
 
-    this.hojaFicha(libro, resultado, ctx.frescura, usuario);
+    this.hojaFicha(libro, resultado, frescura, usuario);
+    libro.getWorksheet('Ficha')?.commit();
     for (const h of resultado.hojas) this.hojaDatos(libro, h);
+    await libro.commit();
 
-    const contenido = Buffer.from(await libro.xlsx.writeBuffer());
+    const contenido = Buffer.concat(trozos);
     const fecha = new Date().toISOString().slice(0, 10);
     const base = resultado.hojas.length === 1 ? resultado.hojas[0]?.metricaClave ?? 'datos' : `${resultado.hojas.length}_metricas`;
     return {
@@ -115,26 +147,29 @@ export class DescargasService {
     usuario: UsuarioPortal,
   ): void {
     const hoja = libro.addWorksheet('Ficha', { properties: { tabColor: { argb: 'FF2B4C6F' } } });
+    // Nombres de empresa, de métrica y la definición vienen de metadatos editables: un texto que
+    // empieza con = + - @ Excel lo evalúa como fórmula. Mismo apóstrofo que en las hojas de datos (B2).
+    const seguro = (v: string): string => (/^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
     hoja.columns = [{ width: 26 }, { width: 90 }];
     const titulo = hoja.addRow(['Quilate Analytics · descarga gobernada']);
     titulo.font = { bold: true, size: 14, color: { argb: 'FF2B4C6F' } };
     hoja.addRow([]);
     hoja.addRow(['Generado', new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC']);
-    hoja.addRow(['Usuario', usuario.email]);
-    hoja.addRow(['Empresas incluidas', r.empresas.join(', ') || '—']);
+    hoja.addRow(['Usuario', seguro(usuario.email)]);
+    hoja.addRow(['Empresas incluidas', seguro(r.empresas.join(', ')) || '—']);
     hoja.addRow([]);
     const cab = hoja.addRow(['Hoja', 'Métrica · estado · período · definición']);
     cab.font = { bold: true };
     for (const h of r.hojas) {
       const fila = hoja.addRow([
-        h.nombre,
-        `${h.metricaNombre} · ${h.estado === 'certificada' ? 'CERTIFICADA' : 'EXPLORATORIA (no certificada: no usar para decidir)'} · ${h.periodo}${h.truncada ? ' · TRUNCADA al tope de filas, acote el período' : ''}\n${h.definicion}`,
+        seguro(h.nombre),
+        seguro(`${h.metricaNombre} · ${h.estado === 'certificada' ? 'CERTIFICADA' : 'EXPLORATORIA (no certificada: no usar para decidir)'} · ${h.periodo}${h.truncada ? ' · TRUNCADA al tope de filas, acote el período' : ''}\n${h.definicion}`),
       ]);
       fila.alignment = { wrapText: true, vertical: 'top' };
       if (h.estado === 'exploratoria') fila.getCell(2).font = { color: { argb: 'FF8A5A00' } };
     }
     hoja.addRow([]);
-    const f = hoja.addRow(['Frescura del dato', frescura.map((x) => `${x.dominio}: ${x.fechaDatoMasReciente ?? 'sin dato'}`).join(' · ') || '—']);
+    const f = hoja.addRow(['Frescura del dato', seguro(frescura.map((x) => `${x.dominio}: ${x.fechaDatoMasReciente ?? 'sin dato'}`).join(' · ')) || '—']);
     f.alignment = { wrapText: true, vertical: 'top' };
     hoja.addRow([
       'Nota',
@@ -163,7 +198,8 @@ export class DescargasService {
         // ERP y cualquiera puede editarlos allá. Se neutraliza con un apóstrofo (inyección CSV/XLSX).
         valores[c.clave] = typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
       }
-      hoja.addRow(valores);
+      // Se confirma al escribirla: la fila se serializa y deja de ocupar memoria.
+      hoja.addRow(valores).commit();
     }
     if (h.filas.length > 0) {
       hoja.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: h.columnas.length } };
@@ -178,5 +214,6 @@ export class DescargasService {
         filaTotal.font = { bold: true };
       }
     }
+    hoja.commit();
   }
 }

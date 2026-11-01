@@ -5,6 +5,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/api.service';
+import { TablerosService } from '../../core/tableros.service';
+import { ToastService } from '../../core/toast.service';
 import { TableroDetalle, TableroResumen } from '../../core/modelos';
 import { TenantService } from '../../core/tenant.service';
 import { EmptyComponent } from '../../ui/empty.component';
@@ -43,10 +45,10 @@ const PAUSA_PINTADO_MS = 2500;
     <div class="page-header">
       <div class="titulo-grupo">
         <span class="eyebrow">
-          <a [routerLink]="['/', tenant.hash()]" class="volver">← Inicio</a>
+          <a [routerLink]="['/', tenant.hash(), 'tableros']" class="volver">← Tableros</a>
           @if (tablero()?.grupo; as grupo) { <span class="sep">·</span> {{ grupo }} }
         </span>
-        <h2>{{ tablero()?.nombre ?? 'Cargando…' }}</h2>
+        <h2>{{ tablero()?.nombre ?? (error() ? 'Tablero' : 'Cargando…') }}</h2>
       </div>
       @if (urlSegura()) {
         <button type="button" class="secundario pequeno" (click)="pantallaCompleta()">
@@ -67,6 +69,10 @@ const PAUSA_PINTADO_MS = 2500;
             <span>Cargando el tablero…</span>
           </div>
         }
+        <!-- sandbox con allow-scripts + allow-same-origin NO aísla de verdad (el contenido podría
+             quitarse el sandbox), pero Power BI Publish to Web no funciona sin ambos. Lo que protege
+             es que el iframe carga OTRO origen (app.powerbi.com tras el 302 del /visor): no puede
+             leer el DOM ni el almacenamiento del portal. -->
         <iframe
           [src]="url"
           title="Tablero"
@@ -108,6 +114,8 @@ const PAUSA_PINTADO_MS = 2500;
 })
 export class TableroVisorComponent {
   private readonly api = inject(ApiService);
+  private readonly tablerosSrv = inject(TablerosService);
+  private readonly toast = inject(ToastService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
@@ -123,9 +131,15 @@ export class TableroVisorComponent {
   /** Sube con cada apertura: la pausa de pintado de una hoja anterior no destapa la nueva. */
   private apertura = 0;
 
+  /**
+   * Grupo de la última hoja abierta. Vive aparte de `tablero` para que las pestañas no
+   * parpadeen mientras se carga la hoja siguiente (el tablero se limpia al cambiar).
+   */
+  private readonly grupoActual = signal<string | null>(null);
+
   /** Hojas del mismo grupo que el usuario puede abrir, en el orden del admin. */
   readonly pestanas = computed<PestanaTab[]>(() => {
-    const grupo = this.tablero()?.grupo;
+    const grupo = this.grupoActual();
     if (!grupo) return [];
     return this.disponibles()
       .filter((t) => t.grupo === grupo)
@@ -134,7 +148,7 @@ export class TableroVisorComponent {
 
   constructor() {
     // Para las pestañas. Si falla, el visor sigue funcionando sin ellas.
-    this.api.get<TableroResumen[]>('/tableros').subscribe({
+    this.tablerosSrv.listar().subscribe({
       next: (lista) => this.disponibles.set(lista),
       error: () => this.disponibles.set([]),
     });
@@ -154,13 +168,21 @@ export class TableroVisorComponent {
     this.error.set(null);
     this.iframeListo.set(false);
     this.urlSegura.set(null);
-    this.api.get<TableroDetalle>(`/tableros/${clave}`).subscribe({
+    // Sin esto, mientras llega la hoja nueva se veía el nombre de la anterior.
+    this.tablero.set(null);
+    const apertura = this.apertura;
+    this.api.get<TableroDetalle>(`/tableros/${encodeURIComponent(clave)}`).subscribe({
       next: (t) => {
+        // Una respuesta lenta de una hoja anterior no pisa la que se eligió después.
+        if (apertura !== this.apertura) return;
         this.tablero.set(t);
+        this.grupoActual.set(t.grupo);
         // Ruta propia (mismo origen) con pase de un solo uso; el API la arma, no el usuario.
         this.urlSegura.set(this.sanitizer.bypassSecurityTrustResourceUrl(`${environment.apiUrl}${t.visor}`));
       },
-      error: (e: Error) => this.error.set(e.message),
+      error: (e: Error) => {
+        if (apertura === this.apertura) this.error.set(e.message);
+      },
     });
   }
 
@@ -175,6 +197,7 @@ export class TableroVisorComponent {
   pantallaCompleta(): void {
     const marco = this.marco()?.nativeElement;
     if (!marco) return;
-    marco.requestFullscreen().catch((e: Error) => this.error.set(`No se pudo abrir en pantalla completa: ${e.message}`));
+    // `error` solo se pinta cuando no hay tablero: el fallo de pantalla completa va en un aviso.
+    marco.requestFullscreen().catch((e: Error) => this.toast.error('No se pudo abrir en pantalla completa', e.message));
   }
 }

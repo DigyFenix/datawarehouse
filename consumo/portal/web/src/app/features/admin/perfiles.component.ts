@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
 import { DrawerComponent } from '../../core/drawer.component';
 import { AlcancePerfil, CatalogoAlcances, PerfilOrg, TableroAdmin } from '../../core/modelos';
+import { TablerosService } from '../../core/tableros.service';
 import { TenantService } from '../../core/tenant.service';
 import { ToastService } from '../../core/toast.service';
 import { ConfirmService } from '../../ui/confirm.service';
@@ -13,6 +14,9 @@ import { PageHeaderComponent } from '../../ui/page-header.component';
 import { SkeletonComponent } from '../../ui/skeleton.component';
 import { TabsComponent } from '../../ui/tabs.component';
 import { PESTANAS_ADMIN } from './pestanas';
+
+/** Fila de perfil tal como la devuelve el API al crear o actualizar (sin asignaciones). */
+type FilaPerfil = Omit<PerfilOrg, 'tableroIds' | 'alcances' | 'usuarios'>;
 
 interface FormPerfil {
   clave: string;
@@ -70,7 +74,11 @@ interface FormPerfil {
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="6"><app-empty titulo="Sin perfiles">Crea perfiles (gerencia, finanzas, ventas…) y asígnales tableros.</app-empty></td></tr>
+                @if (errorCarga()) {
+                  <tr><td colspan="6"><app-empty titulo="No se pudieron cargar los perfiles">{{ errorCarga() }} <button type="button" class="enlace" (click)="cargar()">Reintentar</button></app-empty></td></tr>
+                } @else {
+                  <tr><td colspan="6"><app-empty titulo="Sin perfiles">Crea perfiles (gerencia, finanzas, ventas…) y asígnales tableros.</app-empty></td></tr>
+                }
               }
             }
           </tbody>
@@ -80,19 +88,19 @@ interface FormPerfil {
 
     @if (drawerPerfil()) {
       <app-drawer [titulo]="edicionId() ? 'Editar perfil' : 'Nuevo perfil'" eyebrow="Perfiles" (cerrar)="drawerPerfil.set(false)">
-        <form (ngSubmit)="guardar()">
+        <form #f="ngForm" (ngSubmit)="f.valid && guardar()">
           <div class="campo">
             <label>Clave</label>
-            <input name="clave" [(ngModel)]="form.clave" required placeholder="gerencia" [disabled]="!!edicionId()" />
+            <input name="clave" [(ngModel)]="form.clave" required minlength="2" maxlength="80" pattern="[a-z0-9_]+" placeholder="gerencia" [disabled]="!!edicionId()" />
             <span class="sutil">Minúsculas, números y guion bajo.</span>
           </div>
-          <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="form.nombre" required placeholder="Gerencia" /></div>
-          <div class="campo"><label>Descripción</label><input name="descripcion" [(ngModel)]="form.descripcion" /></div>
+          <div class="campo"><label>Nombre</label><input name="nombre" [(ngModel)]="form.nombre" required minlength="2" maxlength="200" placeholder="Gerencia" /></div>
+          <div class="campo"><label>Descripción</label><input name="descripcion" [(ngModel)]="form.descripcion" maxlength="1000" /></div>
           <label class="check"><input type="checkbox" name="activo" [(ngModel)]="form.activo" /> Activo</label>
           @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
           <div class="acciones-fila">
             <button type="button" class="secundario" (click)="drawerPerfil.set(false)">Cancelar</button>
-            <button type="submit" [disabled]="guardando()">
+            <button type="submit" [disabled]="guardando() || f.invalid">
               @if (guardando()) { <span class="spinner"></span> }
               {{ guardando() ? 'Guardando…' : 'Guardar' }}
             </button>
@@ -149,7 +157,7 @@ interface FormPerfil {
             </div>
           </section>
         } @empty {
-          <p class="sutil">@if (tableros().length) { Ningún tablero coincide con la búsqueda. } @else { El proveedor aún no ha dado de alta tableros para tu organización. }</p>
+          <p class="sutil">@if (errorTableros()) { No se pudieron cargar los tableros: {{ errorTableros() }} } @else if (tableros().length) { Ningún tablero coincide con la búsqueda. } @else { El proveedor aún no ha dado de alta tableros para tu organización. }</p>
         }
         @if (errorForm()) { <p class="error">{{ errorForm() }}</p> }
         <div class="acciones-fila sel-pie">
@@ -296,12 +304,16 @@ export class PerfilesComponent {
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
+  private readonly tablerosSrv = inject(TablerosService);
   readonly tenant = inject(TenantService);
 
   readonly pestanas = PESTANAS_ADMIN;
   readonly perfiles = signal<PerfilOrg[]>([]);
   readonly tableros = signal<TableroAdmin[]>([]);
   readonly cargando = signal(true);
+  /** Distinguen «no se pudo cargar» de «no hay»: antes un fallo se mostraba como lista vacía. */
+  readonly errorCarga = signal<string | null>(null);
+  readonly errorTableros = signal<string | null>(null);
   readonly drawerPerfil = signal(false);
   readonly drawerTableros = signal(false);
   readonly drawerAlcances = signal(false);
@@ -344,7 +356,6 @@ export class PerfilesComponent {
       marcados: tableros.filter((t) => t.activo && marcados.has(t.id)).length,
     }));
   });
-  readonly alcancesEdicion = signal<AlcancePerfil[]>([]);
   // Alcances como estado estructurado (sesión 37): el admin elige con chips, no escribe claves.
   readonly catalogo = signal<CatalogoAlcances | null>(null);
   readonly empresasTodas = signal(false);
@@ -389,20 +400,31 @@ export class PerfilesComponent {
 
   cargar(): void {
     this.cargando.set(true);
+    this.errorCarga.set(null);
+    this.errorTableros.set(null);
     this.api.get<PerfilOrg[]>('/admin/perfiles').subscribe({
       next: (d) => {
         this.perfiles.set(d);
         this.cargando.set(false);
       },
       error: (e: Error) => {
-        this.toast.error('No se pudieron cargar los perfiles', e.message);
+        this.errorCarga.set(e.message);
         this.cargando.set(false);
       },
     });
     this.api.get<TableroAdmin[]>('/admin/tableros').subscribe({
       next: (d) => this.tableros.set(d),
-      error: () => {},
+      error: (e: Error) => this.errorTableros.set(e.message),
     });
+  }
+
+  /** Reemplaza un perfil de la lista con lo que devolvió el API (sin volver a pedir todo). */
+  private actualizarEnLista(id: number, cambios: Partial<PerfilOrg>): void {
+    this.perfiles.update((lista) =>
+      lista
+        .map((p) => (p.id === id ? { ...p, ...cambios } : p))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    );
   }
 
   /** Cierra el <details> de acciones tras elegir una opción del menú. */
@@ -435,14 +457,18 @@ export class PerfilesComponent {
       ...(id ? {} : { clave: this.form.clave }),
     };
     const accion = id
-      ? this.api.put(`/admin/perfiles/${id}`, cuerpo)
-      : this.api.post('/admin/perfiles', cuerpo);
+      ? this.api.put<FilaPerfil>(`/admin/perfiles/${id}`, cuerpo)
+      : this.api.post<FilaPerfil>('/admin/perfiles', cuerpo);
     accion.subscribe({
-      next: () => {
+      next: (fila) => {
         this.toast.exito(id ? 'Perfil actualizado' : 'Perfil creado', this.form.nombre);
         this.guardando.set(false);
         this.drawerPerfil.set(false);
-        this.cargar();
+        if (id) this.actualizarEnLista(id, fila);
+        else
+          this.perfiles.update((lista) =>
+            [...lista, { ...fila, tableroIds: [], alcances: [], usuarios: 0 }].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+          );
       },
       error: (e: Error) => {
         this.errorForm.set(e.message);
@@ -462,7 +488,8 @@ export class PerfilesComponent {
     this.api.delete(`/admin/perfiles/${p.id}`).subscribe({
       next: () => {
         this.toast.exito('Perfil eliminado', p.nombre);
-        this.cargar();
+        this.perfiles.update((lista) => lista.filter((x) => x.id !== p.id));
+        this.tablerosSrv.invalidar();
       },
       error: (e: Error) => this.toast.error('No se pudo eliminar', e.message),
     });
@@ -516,14 +543,16 @@ export class PerfilesComponent {
     const perfil = this.seleccionado();
     if (!perfil) return;
     this.guardando.set(true);
+    const tableroIds = [...this.tablerosSeleccionados()].sort((a, b) => a - b);
     this.api
-      .put(`/admin/perfiles/${perfil.id}/tableros`, { tableroIds: this.tablerosSeleccionados() })
+      .put(`/admin/perfiles/${perfil.id}/tableros`, { tableroIds })
       .subscribe({
         next: () => {
-          this.toast.exito('Tableros asignados', `${perfil.nombre}: ${this.tablerosSeleccionados().length} visibles. Los usuarios del perfil los ven al recargar.`);
+          this.toast.exito('Tableros asignados', `${perfil.nombre}: ${tableroIds.length} visibles. Los usuarios del perfil los ven al recargar.`);
           this.guardando.set(false);
           this.drawerTableros.set(false);
-          this.cargar();
+          this.actualizarEnLista(perfil.id, { tableroIds });
+          this.tablerosSrv.invalidar();
         },
         error: (e: Error) => {
           this.errorForm.set(e.message);
@@ -534,7 +563,6 @@ export class PerfilesComponent {
 
   abrirAlcances(p: PerfilOrg): void {
     this.seleccionado.set(p);
-    this.alcancesEdicion.set(p.alcances.map((a) => ({ ...a })));
     const empresas = p.alcances.filter((a) => a.recursoTipo === 'empresa').map((a) => a.recursoClave);
     this.empresasTodas.set(empresas.includes('*'));
     this.empresasSel.set(new Set(empresas.filter((c) => c !== '*')));
@@ -609,7 +637,7 @@ export class PerfilesComponent {
         this.toast.exito('Alcances guardados', `${perfil.nombre}: el asistente ya responde con este alcance a sus usuarios.`);
         this.guardando.set(false);
         this.drawerAlcances.set(false);
-        this.cargar();
+        this.actualizarEnLista(perfil.id, { alcances });
       },
       error: (e: Error) => {
         this.errorForm.set(e.message);

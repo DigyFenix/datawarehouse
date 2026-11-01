@@ -9,6 +9,8 @@ export interface PayloadPortal {
   esAdmin: boolean;
   /** Correo del operador del producto que está suplantando. Ausente en una sesión normal. */
   imp?: string;
+  /** Emitido en (segundos epoch), lo agrega jsonwebtoken. Se compara con password_cambiada_en. */
+  iat?: number;
 }
 
 /** Usuario autenticado adjunto al request (estado FRESCO leído de la BD del tenant). */

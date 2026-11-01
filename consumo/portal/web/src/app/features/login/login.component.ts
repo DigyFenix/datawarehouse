@@ -33,17 +33,17 @@ import { TenantService } from '../../core/tenant.service';
         <h1>Inicia sesión</h1>
         <p class="sub">Tableros y métricas certificadas de tu organización, en un solo lugar.</p>
 
-        <form class="acceso-form" (ngSubmit)="entrar()">
+        <form class="acceso-form" #f="ngForm" (ngSubmit)="f.valid && entrar()">
           <div class="campo">
             <label for="email">Correo</label>
-            <input id="email" type="email" name="email" [(ngModel)]="email" required autocomplete="username" placeholder="nombre@empresa.com" />
+            <input id="email" type="email" name="email" [(ngModel)]="email" required email maxlength="200" autocomplete="username" placeholder="nombre@empresa.com" />
           </div>
           <div class="campo">
             <label for="password">Contraseña</label>
-            <input id="password" type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" placeholder="••••••••" />
+            <input id="password" type="password" name="password" [(ngModel)]="password" required maxlength="100" autocomplete="current-password" placeholder="••••••••" />
           </div>
           @if (error()) { <p class="error" aria-live="polite">{{ error() }}</p> }
-          <button type="submit" class="entrar" [disabled]="cargando()">
+          <button type="submit" class="entrar" [disabled]="cargando() || f.invalid">
             @if (cargando()) { <span class="spinner"></span> }
             {{ cargando() ? 'Verificando…' : 'Entrar' }}
           </button>

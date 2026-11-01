@@ -146,6 +146,14 @@ export class UsoIaService {
     }
   }
 
+  /** Mes en curso (YYYY-MM) en la zona horaria del negocio, no en UTC. */
+  mesActual(ahora: Date = new Date()): string {
+    const zona = this.config.get('ZONA_HORARIA', { infer: true });
+    const partes = new Intl.DateTimeFormat('en-CA', { timeZone: zona, year: 'numeric', month: '2-digit' }).formatToParts(ahora);
+    const v = (tipo: string): string => partes.find((p) => p.type === tipo)?.value ?? '';
+    return `${v('year')}-${v('month')}`;
+  }
+
   /**
    * Resumen para el administrador: mes elegido (YYYY-MM, zona del negocio) por usuario, por
    * perfil y por día, más el acumulado histórico. Un usuario con varios perfiles suma su costo
@@ -153,7 +161,11 @@ export class UsoIaService {
    */
   async resumen(pool: Pool, mes: string): Promise<ResumenUsoIa> {
     const zona = this.config.get('ZONA_HORARIA', { infer: true });
-    const filtroMes = `to_char(u.ocurrido_en AT TIME ZONE $2, 'YYYY-MM') = $1`;
+    // Rango [inicio, fin) del mes en la zona del negocio, como timestamptz: comparar la columna
+    // directo usa los índices por fecha (to_char sobre la columna obligaba a recorrer la tabla).
+    const inicioMes = `((($1 || '-01')::date)::timestamp AT TIME ZONE $2)`;
+    const finMes = `(((($1 || '-01')::date) + interval '1 month')::timestamp AT TIME ZONE $2)`;
+    const filtroMes = `u.ocurrido_en >= ${inicioMes} AND u.ocurrido_en < ${finMes}`;
 
     const [usuarios, perfiles, dias, totales] = await Promise.all([
       pool.query(
@@ -165,7 +177,7 @@ export class UsoIaService {
                 COALESCE(sum(u.tokens_entrada + u.tokens_cache_lectura + u.tokens_cache_escritura), 0)::bigint AS "tokensEntrada",
                 COALESCE(sum(u.tokens_salida), 0)::bigint AS "tokensSalida",
                 COALESCE(sum(u.costo_usd), 0)::float AS "costoUsd",
-                max(u.ocurrido_en)::text AS "ultimoUso"
+                max(u.ocurrido_en) AS "ultimoUso"
            FROM portal.usuarios us
            LEFT JOIN portal.uso_ia u ON u.usuario_id = us.id AND ${filtroMes}
           GROUP BY us.id
@@ -194,9 +206,9 @@ export class UsoIaService {
       ),
       pool.query(
         `SELECT COALESCE(sum(costo_usd), 0)::float AS acumulado,
-                COALESCE(sum(costo_usd) FILTER (WHERE to_char(ocurrido_en AT TIME ZONE $2, 'YYYY-MM') = $1), 0)::float AS mes,
-                count(*) FILTER (WHERE to_char(ocurrido_en AT TIME ZONE $2, 'YYYY-MM') = $1)::int AS turnos
-           FROM portal.uso_ia`,
+                COALESCE(sum(u.costo_usd) FILTER (WHERE ${filtroMes}), 0)::float AS mes,
+                count(*) FILTER (WHERE ${filtroMes})::int AS turnos
+           FROM portal.uso_ia u`,
         [mes, zona],
       ),
     ]);

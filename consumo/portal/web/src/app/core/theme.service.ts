@@ -12,26 +12,36 @@ export type PreferenciaTema = 'claro' | 'oscuro' | 'sistema';
  */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  private readonly claveMarca = 'marca-color';
+  /** Color de marca POR TENANT (`marca-color_<hash>`): dos organizaciones en el mismo navegador no se pisan. */
+  private readonly prefijoMarca = 'marca-color_';
   private readonly prefijoTema = 'portal_tema_';
 
   readonly tema = signal<PreferenciaTema>('sistema');
 
-  /** Aplica el color (o restablece al default si es null/undefined). */
-  aplicar(color?: string | null): void {
+  /** Aplica el color del tenant (o restablece al default si es null/undefined) y lo recuerda. */
+  aplicar(color: string | null | undefined, hash: string): void {
     const root = document.documentElement;
-    if (color) {
-      root.style.setProperty('--marca', color);
-      localStorage.setItem(this.claveMarca, color);
-    } else {
-      root.style.removeProperty('--marca');
-      localStorage.removeItem(this.claveMarca);
+    if (color) root.style.setProperty('--marca', color);
+    else root.style.removeProperty('--marca');
+    try {
+      if (color) localStorage.setItem(this.prefijoMarca + hash, color);
+      else localStorage.removeItem(this.prefijoMarca + hash);
+    } catch {
+      // Almacenamiento bloqueado (modo privado): el color se aplica igual, solo no se recuerda.
     }
   }
 
-  /** Aplica lo persistido (llamar en el arranque para evitar parpadeo). */
+  /** Aplica el color persistido del tenant de la URL (llamar en el arranque para evitar parpadeo). */
   aplicarDesdeAlmacen(): void {
-    const c = localStorage.getItem(this.claveMarca);
+    const h = this.hashDeUrl();
+    let c: string | null = null;
+    try {
+      c = h ? localStorage.getItem(this.prefijoMarca + h) : null;
+      // Clave anterior sin prefijo: compartida entre tenants, se descarta.
+      localStorage.removeItem('marca-color');
+    } catch {
+      c = null;
+    }
     if (c) document.documentElement.style.setProperty('--marca', c);
   }
 

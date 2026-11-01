@@ -185,9 +185,12 @@ export class AuthService {
     if (!valida) throw new UnauthorizedException('La contraseña actual no es correcta');
 
     const hashNueva = await argon2.hash(dto.passwordNueva);
+    // password_cambiada_en revoca los tokens emitidos antes (otros equipos). El de ESTA sesión
+    // también queda viejo: se devuelve uno nuevo para que quien cambió la contraseña siga dentro.
     await pool.query(
       `UPDATE portal.usuarios
-          SET hash_password = $1, debe_cambiar_password = false, actualizado_en = now()
+          SET hash_password = $1, debe_cambiar_password = false,
+              password_cambiada_en = now(), actualizado_en = now()
         WHERE id = $2`,
       [hashNueva, usuario.id],
     );
@@ -199,7 +202,17 @@ export class AuthService {
       entidadId: String(usuario.id),
       ip,
     });
-    return { cambiada: true };
+    const payload: PayloadPortal = {
+      sub: usuario.id,
+      email: usuario.email,
+      org: usuario.hash,
+      esAdmin: usuario.esAdmin,
+    };
+    const token = await this.jwt.signAsync(payload, {
+      secret: this.config.get('PORTAL_JWT_SECRET', { infer: true }),
+      expiresIn: this.config.get('PORTAL_JWT_EXPIRA_EN', { infer: true }),
+    });
+    return { cambiada: true, token };
   }
 
   /** Perfil de la sesión + perfiles de acceso vigentes (leídos de la BD). */

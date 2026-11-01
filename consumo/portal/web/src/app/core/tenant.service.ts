@@ -48,7 +48,7 @@ export class TenantService {
       }),
       tap((b) => {
         this._branding.set(b);
-        this.tema.aplicar(b.colorMarca);
+        this.tema.aplicar(b.colorMarca, hash);
         this.tema.aplicarTemaDesdeAlmacen(hash);
         document.title = `${b.nombre} — Portal`;
       }),

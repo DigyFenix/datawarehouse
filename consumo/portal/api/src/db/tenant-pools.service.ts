@@ -28,7 +28,7 @@ export class TenantPoolsService implements OnModuleDestroy {
         database: baseDatosDw,
         user: this.config.get('POSTGRES_USER', { infer: true }),
         password: this.config.get('POSTGRES_PASSWORD', { infer: true }),
-        max: 5,
+        max: this.config.get('POSTGRES_POOL_MAX', { infer: true }),
         idleTimeoutMillis: 30_000,
       });
       this.pools.set(baseDatosDw, pool);
