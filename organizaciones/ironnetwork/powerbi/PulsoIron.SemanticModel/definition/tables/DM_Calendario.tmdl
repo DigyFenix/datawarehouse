@@ -418,22 +418,26 @@ table DM_Calendario
 
 	column es_anio_corte
 		dataType: boolean
+		lineageTag: 45ca124e-5676-4c22-b4a3-634e9882149f
 		summarizeBy: none
 		sourceColumn: es_anio_corte
 
 	column es_mes_corte
 		dataType: boolean
+		lineageTag: 8df8f865-996a-4b0d-b7f1-c09f87f6933c
 		summarizeBy: none
 		sourceColumn: es_mes_corte
 
 	column anio_selector
 		dataType: string
+		lineageTag: 123ef35e-4e5f-48a7-abb8-9d0b76ce7294
 		summarizeBy: none
 		sourceColumn: anio_selector
 		sortByColumn: anio
 
 	column mes_selector
 		dataType: string
+		lineageTag: febaf29d-cf78-4f3d-99fb-b466881fabff
 		summarizeBy: none
 		sourceColumn: mes_selector
 		sortByColumn: anio_mes_orden

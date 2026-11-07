@@ -148,53 +148,53 @@ table DM_Cliente
 
 	column Sector
 		dataType: string
+		lineageTag: 987da73a-57ea-4163-bd4b-5a5ae75347f4
 		summarizeBy: none
 		sourceColumn: sector
-		lineageTag: 987da73a-57ea-4163-bd4b-5a5ae75347f4
 
 	column 'Meses con compra 12m'
 		dataType: int64
-		summarizeBy: none
-		sourceColumn: meses_con_compra_12m
 		formatString: #,0
 		lineageTag: 7dc15e02-817a-45be-a05e-095341e0ee42
+		summarizeBy: none
+		sourceColumn: meses_con_compra_12m
 
 	column 'Meses sin compra'
 		dataType: int64
-		summarizeBy: none
-		sourceColumn: meses_sin_compra
 		formatString: #,0
 		lineageTag: a4f0c7ad-e952-4e9b-a9a0-e3ddea2c4d5d
+		summarizeBy: none
+		sourceColumn: meses_sin_compra
 
 	column 'Rango de meses con compra'
 		dataType: string
+		lineageTag: f99a4f81-a593-49f7-ad28-325a9c31439a
 		summarizeBy: none
 		sourceColumn: rango_meses_con_compra
 		sortByColumn: 'Rango de meses con compra orden'
-		lineageTag: f99a4f81-a593-49f7-ad28-325a9c31439a
 
 	column 'Rango de meses con compra orden'
 		dataType: int64
 		isHidden
-		summarizeBy: none
-		sourceColumn: rango_meses_con_compra_orden
 		formatString: 0
 		lineageTag: 591b4ddf-8979-4a09-a729-df47b6f8446b
+		summarizeBy: none
+		sourceColumn: rango_meses_con_compra_orden
 
 	column 'Rango de meses sin compra'
 		dataType: string
+		lineageTag: 390183b7-217c-469a-8500-244d24cff9af
 		summarizeBy: none
 		sourceColumn: rango_meses_sin_compra
 		sortByColumn: 'Rango de meses sin compra orden'
-		lineageTag: 390183b7-217c-469a-8500-244d24cff9af
 
 	column 'Rango de meses sin compra orden'
 		dataType: int64
 		isHidden
-		summarizeBy: none
-		sourceColumn: rango_meses_sin_compra_orden
 		formatString: 0
 		lineageTag: 3b7df0a2-29b1-44ad-a599-c3be4d8906c5
+		summarizeBy: none
+		sourceColumn: rango_meses_sin_compra_orden
 
 	partition DM_Cliente = m
 		mode: import

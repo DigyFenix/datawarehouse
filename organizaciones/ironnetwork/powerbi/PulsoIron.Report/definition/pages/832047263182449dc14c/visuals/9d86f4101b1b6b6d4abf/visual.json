@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "9d86f4101b1b6b6d4abf",
   "position": {
     "x": 24,
@@ -27,7 +27,26 @@
                 }
               },
               "queryRef": "DM_Calendario.mes_nombre_corto",
-              "nativeQueryRef": "mes_nombre_corto"
+              "nativeQueryRef": "mes_nombre_corto",
+              "active": true
+            }
+          ]
+        },
+        "Tooltips": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Variación vs año anterior"
+                }
+              },
+              "queryRef": "FC_Ventas.Variación vs año anterior",
+              "nativeQueryRef": "Variación vs año anterior"
             }
           ]
         },
@@ -60,24 +79,6 @@
               },
               "queryRef": "FC_Ventas.Ventas netas",
               "nativeQueryRef": "Ventas netas"
-            }
-          ]
-        },
-        "Tooltips": {
-          "projections": [
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "FC_Ventas"
-                    }
-                  },
-                  "Property": "Variación vs año anterior"
-                }
-              },
-              "queryRef": "FC_Ventas.Variación vs año anterior",
-              "nativeQueryRef": "Variación vs año anterior"
             }
           ]
         }
@@ -500,5 +501,65 @@
       ]
     },
     "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "6b638740d048d828a05a",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "DM_Calendario"
+              }
+            },
+            "Property": "mes_nombre_corto"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "e4dfe21f039d4108a1ca",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "FC_Ventas"
+              }
+            },
+            "Property": "Ventas año anterior"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "131f2dc5ba94b33d341b",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "FC_Ventas"
+              }
+            },
+            "Property": "Ventas netas"
+          }
+        },
+        "type": "Advanced"
+      },
+      {
+        "name": "2bec1aa3a2838e79269b",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "FC_Ventas"
+              }
+            },
+            "Property": "Variación vs año anterior"
+          }
+        },
+        "type": "Advanced"
+      }
+    ]
   }
 }

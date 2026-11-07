@@ -259,9 +259,9 @@ table 'FC_Resultados contables'
 
 	column 'Naturaleza contable'
 		dataType: string
+		lineageTag: edea7701-3a22-42bc-adb8-b058c0334f57
 		summarizeBy: none
 		sourceColumn: naturaleza_contable
-		lineageTag: edea7701-3a22-42bc-adb8-b058c0334f57
 
 	partition 'FC_Resultados contables' = m
 		mode: import

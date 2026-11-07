@@ -20,7 +20,7 @@ table FC_Pedidos
 		lineageTag: 11c7de3a-4427-4d27-939d-daa98f15e1d3
 
 	/// Pedido y AÚN no cumplido (líneas abiertas): lo que la operación debe entregar/facturar.
-	measure 'Backlog' = CALCULATE(SUM(FC_Pedidos[monto_abierto]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
+	measure Backlog = CALCULATE(SUM(FC_Pedidos[monto_abierto]), KEEPFILTERS(FC_Pedidos[es_abierta] = TRUE))
 		formatString: "Q" #,0
 		displayFolder: 02 Backlog
 		lineageTag: 7dd33e2c-9a70-4926-8aef-cc323738c24c
@@ -391,8 +391,8 @@ table FC_Pedidos
 	/// Alias de negocio del número de pedido para encabezados de matriz.
 	column Pedido = FC_Pedidos[pedido_numero]
 		dataType: string
-		summarizeBy: none
 		lineageTag: 7e674417-e9a1-4a5c-802d-2815c130f0df
+		summarizeBy: none
 
 	partition FC_Pedidos = m
 		mode: import

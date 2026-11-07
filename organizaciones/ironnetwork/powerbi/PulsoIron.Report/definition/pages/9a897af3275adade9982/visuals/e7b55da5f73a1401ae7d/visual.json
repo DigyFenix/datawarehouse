@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "e7b55da5f73a1401ae7d",
   "position": {
     "x": 440,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Comportamiento de pago.perfil_riesgo_nombre",
-              "nativeQueryRef": "perfil_riesgo_nombre"
+              "nativeQueryRef": "perfil_riesgo_nombre",
+              "active": true
             }
           ]
         },

@@ -215,9 +215,9 @@ table 'FC_Pagos recibidos'
 
 	column 'Estado del cobro'
 		dataType: string
+		lineageTag: 4e53a96e-21f1-4e85-9fab-d8a2380918b3
 		summarizeBy: none
 		sourceColumn: estado_cobro
-		lineageTag: 4e53a96e-21f1-4e85-9fab-d8a2380918b3
 
 	partition 'FC_Pagos recibidos' = m
 		mode: import

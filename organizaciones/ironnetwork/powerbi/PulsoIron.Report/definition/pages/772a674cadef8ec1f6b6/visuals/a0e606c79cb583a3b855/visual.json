@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "a0e606c79cb583a3b855",
   "position": {
     "x": 24,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Producto.Línea",
-              "nativeQueryRef": "Línea"
+              "nativeQueryRef": "Línea",
+              "active": true
             },
             {
               "field": {
@@ -41,7 +42,8 @@
                 }
               },
               "queryRef": "DM_Producto.Producto",
-              "nativeQueryRef": "Producto"
+              "nativeQueryRef": "Producto",
+              "active": false
             }
           ]
         },

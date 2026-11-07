@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "8a9bf1cd7d31b056c132",
   "position": {
     "x": 752,
@@ -27,7 +27,8 @@
                 }
               },
               "queryRef": "DM_Calendario.Mes corto",
-              "nativeQueryRef": "Mes corto"
+              "nativeQueryRef": "Mes corto",
+              "active": true
             }
           ]
         },
@@ -100,14 +101,14 @@
             "columnAdjustment": {
               "expr": {
                 "Literal": {
-                  "Value": "'growToFit'"
+                  "Value": "'fitToContent'"
                 }
               }
             },
             "autoSizeColumnWidth": {
               "expr": {
                 "Literal": {
-                  "Value": "false"
+                  "Value": "true"
                 }
               }
             },

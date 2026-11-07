@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
   "name": "4a7e40e345db2ac4832d",
   "position": {
     "x": 648,
@@ -27,25 +27,8 @@
                 }
               },
               "queryRef": "DM_Producto.grupo_nombre",
-              "nativeQueryRef": "grupo_nombre"
-            }
-          ]
-        },
-        "Y": {
-          "projections": [
-            {
-              "field": {
-                "Measure": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "FC_Ventas"
-                    }
-                  },
-                  "Property": "Ventas netas"
-                }
-              },
-              "queryRef": "FC_Ventas.Ventas netas",
-              "nativeQueryRef": "Ventas netas"
+              "nativeQueryRef": "grupo_nombre",
+              "active": true
             }
           ]
         },
@@ -92,6 +75,24 @@
               },
               "queryRef": "FC_Ventas.Variación vs año anterior",
               "nativeQueryRef": "Variación vs año anterior"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FC_Ventas"
+                    }
+                  },
+                  "Property": "Ventas netas"
+                }
+              },
+              "queryRef": "FC_Ventas.Ventas netas",
+              "nativeQueryRef": "Ventas netas"
             }
           ]
         }

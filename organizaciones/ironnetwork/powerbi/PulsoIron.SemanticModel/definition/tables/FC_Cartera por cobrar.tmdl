@@ -473,24 +473,24 @@ table 'FC_Cartera por cobrar'
 
 	column 'Rango de vencimiento'
 		dataType: string
+		lineageTag: 3b49be16-f9cf-4a58-b498-7255c4a0cf55
 		summarizeBy: none
 		sourceColumn: rango_vencimiento
 		sortByColumn: 'Rango de vencimiento orden'
-		lineageTag: 3b49be16-f9cf-4a58-b498-7255c4a0cf55
 
 	column 'Rango de vencimiento orden'
 		dataType: int64
 		isHidden
-		summarizeBy: none
-		sourceColumn: rango_vencimiento_orden
 		formatString: 0
 		lineageTag: 57709200-3a11-4503-935f-c87ed25ec69c
+		summarizeBy: none
+		sourceColumn: rango_vencimiento_orden
 
 	column Estado
 		dataType: string
+		lineageTag: b0115991-1507-43b9-b6a4-2b5d46e4f38e
 		summarizeBy: none
 		sourceColumn: estado_vencimiento
-		lineageTag: b0115991-1507-43b9-b6a4-2b5d46e4f38e
 
 	partition 'FC_Cartera por cobrar' = m
 		mode: import

@@ -176,6 +176,7 @@ table 'FC_Cartera por pagar'
 	measure 'Por pagar terceros hoy' = CALCULATE([Saldo por pagar terceros], REMOVEFILTERS(DM_Calendario))
 		formatString: "Q" #,0
 		displayFolder: 05 Ciclo de efectivo
+		lineageTag: b4571a6a-9c43-4dfe-b198-55aa5e5ae845
 
 	column tiempo_clave
 		dataType: int64
@@ -380,24 +381,24 @@ table 'FC_Cartera por pagar'
 
 	column 'Rango de vencimiento'
 		dataType: string
+		lineageTag: 43aa2d2d-026a-466c-99ad-3f6131ecacf6
 		summarizeBy: none
 		sourceColumn: rango_vencimiento
 		sortByColumn: 'Rango de vencimiento orden'
-		lineageTag: 43aa2d2d-026a-466c-99ad-3f6131ecacf6
 
 	column 'Rango de vencimiento orden'
 		dataType: int64
 		isHidden
-		summarizeBy: none
-		sourceColumn: rango_vencimiento_orden
 		formatString: 0
 		lineageTag: 5903f213-df59-423f-bbf6-fd8beb61d23f
+		summarizeBy: none
+		sourceColumn: rango_vencimiento_orden
 
 	column Estado
 		dataType: string
+		lineageTag: ae19b0bf-bf48-4fe7-8681-995f0dafd129
 		summarizeBy: none
 		sourceColumn: estado_vencimiento
-		lineageTag: ae19b0bf-bf48-4fe7-8681-995f0dafd129
 
 	partition 'FC_Cartera por pagar' = m
 		mode: import
