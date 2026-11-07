@@ -60,3 +60,6 @@ organizaciones/*/powerbi.zip
 
 # Capturas y logs del MCP de Playwright
 .playwright-mcp/
+
+# Claude Code: permisos locales de cada máquina
+.claude/settings.local.json
